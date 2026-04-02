@@ -28,3 +28,5 @@ package-lock.json
 _environment
 
 .venv
+
+sample_data/LSOA_2011_Boundaries_Super_Generalised_Clipped_BSC_EW_V4.geojson
