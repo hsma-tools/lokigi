@@ -59,11 +59,23 @@ SOLVER_DEFINITIONS = {
 }
 
 
-def _check_crs_match(gdf_1, gdf_2):
+def _check_crs_match(gdf_1, gdf_2, strict=False):
     """
     Check that the coordinate reference system of two geodataframes is the same and warn if it is not
     """
-    assert gdf_1.crs == gdf_2.crs, f"CRS Mismatch. {gdf_1.crs} vs {gdf_2.crs}."
+    if strict:
+        assert gdf_1.crs == gdf_2.crs, f"CRS Mismatch. {gdf_1.crs} vs {gdf_2.crs}."
+    else:
+        return gdf_1.crs == gdf_2.crs
+
+
+def _check_crs_match_pref(gdf, pref, strict=False):
+    if strict:
+        assert gdf.crs.to_string() == pref, (
+            f"CRS Mismatch. {gdf.crs.to_string()} vs {pref}."
+        )
+    else:
+        return gdf.crs.to_string() == pref
 
 
 def _guess_crs(
@@ -139,6 +151,10 @@ def _guess_crs(
 
     if verbose:
         print(f"Guessed CRS: {crs} ({reason})")
+
+
+def _convert_crs(df, target_crs):
+    return df.to_crs(target_crs)
 
 
 def _validate_columns(
@@ -218,14 +234,14 @@ def _generate_all_combinations(n_facilities: int, p: int) -> list:
 
 
 def _try_drop(df, drop_cols):
-    missing_cols = [col for col in drop_cols if col not in df.columns]
-
-    if missing_cols:
-        raise ValueError(
-            f"The following columns were not found in the GeoDataFrame: {missing_cols}"
-        )
-
     if drop_cols:
+        missing_cols = [col for col in drop_cols if col not in df.columns]
+
+        if missing_cols:
+            raise ValueError(
+                f"The following columns were not found in the GeoDataFrame: {missing_cols}"
+            )
+
         try:
             df = df.drop(columns=drop_cols)
         except Exception as e:
@@ -233,7 +249,7 @@ def _try_drop(df, drop_cols):
                 f"Failed to drop columns {drop_cols} from GeoDataFrame."
             ) from e
 
-        return df
+    return df
 
 
 def _load_spatial_or_tabular_data(data_input, skip_cols=None):
@@ -313,12 +329,11 @@ def _load_spatial_or_tabular_data(data_input, skip_cols=None):
         if ext == ".xlsx":
             df = pd.read_excel(content)
 
-        if skip_cols:
-            return _try_drop(df, skip_cols), "pandas"
+        return _try_drop(df, skip_cols), "pandas"
 
     # Final Fallback: Try GeoPandas anyway if extension is ambiguous
     try:
         df = gpd.read_file(content)
-        _try_drop(df, skip_cols), "geopandas"
+        return _try_drop(df, skip_cols), "geopandas"
     except:
         raise ValueError(f"Could not parse data with extension '{ext}'.")

@@ -4,6 +4,9 @@ from lokigi.utils import (
     _load_spatial_or_tabular_data,
     _guess_crs,
     GEOPANDAS_EXTS,
+    _generate_all_combinations,
+    _check_crs_match_pref,
+    _convert_crs,
 )
 
 import pandas as pd
@@ -13,6 +16,8 @@ import textwrap
 from adjustText import adjust_text
 import matplotlib.pyplot as plt
 from warnings import warn
+import numpy as np
+import math
 
 # Warn if brute force will be slow
 _BRUTE_FORCE_WARN_THRESHOLD = 50
@@ -37,8 +42,8 @@ class SiteProblem:
         Number of diverse candidate solutions to return.
     """
 
-    def __init__(self, debug_mode=True):
-        self.name = None
+    def __init__(self, preferred_crs="EPSG:27700", debug_mode=True):
+        self.preferred_crs = preferred_crs
 
         self.demand_data = None  # Patient GeoDataFrame
         self._demand_data_type = None
@@ -51,6 +56,7 @@ class SiteProblem:
         self._candidate_sites_vertical_col = None
         self._candidate_sites_horizontal_col = None
         self._candidate_sites_capacity_col = None
+        self.total_n_sites = None
 
         self.travel_matrix = None  # Travel time/distance matrix
         self._travel_matrix_type = None
@@ -63,7 +69,7 @@ class SiteProblem:
         # self.baseline_sites = None  # Current existing clinics
         # self._baseline_sites_type = None
 
-        self.joined_demand_travel_df = None
+        self.travel_and_demand_df = None
 
         if debug_mode:
             self._verbose = True
@@ -150,6 +156,8 @@ class SiteProblem:
                 f"{GEOPANDAS_EXTS} will be automatically read in as geopandas dataframes."
             )
 
+        if not _check_crs_match_pref(loaded_df, self.preferred_crs):
+            loaded_df = _convert_crs(loaded_df, self.preferred_crs)
         self.region_geometry_layer = loaded_df
         self._region_geometry_layer_type = df_type
         self._region_geometry_layer_common_col = common_col
@@ -207,6 +215,9 @@ class SiteProblem:
                     verbose=self._verbose,
                 )
 
+                if self.preferred_crs is None:
+                    self.preferred_crs = crs
+
             loaded_df = geopandas.GeoDataFrame(
                 data=loaded_df,
                 geometry=geopandas.points_from_xy(
@@ -215,11 +226,15 @@ class SiteProblem:
                 crs=crs,
             )
 
+        if not _check_crs_match_pref(loaded_df, self.preferred_crs):
+            loaded_df = _convert_crs(loaded_df, target_crs=self.preferred_crs)
+
         self.candidate_sites = loaded_df
         self._candidate_sites_type = df_type
         self._candidate_sites_candidate_id_col = candidate_id_col
         self._candidate_sites_geometry_col = geometry_col
         self._candidate_sites_capacity_col = capacity_col
+        self.total_n_sites = len(self.candidate_sites)
 
     def show_sites(self):
         print(self.candidate_sites)
@@ -268,7 +283,7 @@ class SiteProblem:
         self.travel_matrix = loaded_df
         self._travel_matrix_source_col = source_col
 
-    def _create_joined_demand_travel_df(self):
+    def _create_joined_demand_travel_df(self, index_col):
         # If one is a geopandas dataframe, put that first in the merge call so that the
         # output object will also be a geodataframe
         if self._demand_data_type == "geopandas":
@@ -278,7 +293,7 @@ class SiteProblem:
                 left_on=self._demand_data_id_col,
                 right_on=self._travel_matrix_source_col,
                 how="inner",
-            ).set_index(self._demand_data_id_col)
+            ).set_index(index_col)
 
         else:
             self.travel_and_demand_df = pd.merge(
@@ -287,7 +302,7 @@ class SiteProblem:
                 left_on=self._travel_matrix_source_col,
                 right_on=self._demand_data_id_col,
                 how="inner",
-            ).set_index(self._travel_matrix_source_col)
+            ).set_index(index_col)
 
             self.travel_and_demand_df = self.travel_and_demand_df
 
@@ -300,7 +315,7 @@ class SiteProblem:
                 f"demand dataframe (sample values: {self.demand_data.head(5)[self._demand_data_id_col]})"
             )
 
-    def evaluate_single_solution(self, site_names=None, site_indices=None):
+    def evaluate_single_solution_pmedian(self, site_names=None, site_indices=None):
         """
         Evaluates a solution. User must provide either site_names OR site_indices.
         """
@@ -315,7 +330,7 @@ class SiteProblem:
 
         # 2. Ensure travel data is ready
         if self.travel_and_demand_df is None:
-            self._create_joined_demand_travel_df()
+            self._create_joined_demand_travel_df(index_col=self._demand_data_id_col)
 
         # 3. Resolve to indices based on the chosen input
         if site_names:
@@ -359,7 +374,24 @@ class SiteProblem:
         # Assume travel to closest facility
         active_facilities["min_cost"] = active_facilities.min(axis=1)
 
-        return active_facilities
+        afi = active_facilities.index
+        active_facilities = active_facilities.reset_index()
+
+        # Re-add the demand data
+        active_facilities = active_facilities.merge(
+            self.demand_data,
+            left_on=afi,
+            right_on=self._demand_data_id_col,
+            how="inner",
+        )
+
+        return EvaluatedCombination(
+            "p-median",
+            site_indices=resolved_indices,
+            site_names=site_names,
+            evaluated_combination_df=active_facilities,
+            site_problem=self,
+        )
 
     def solve(
         self,
@@ -394,7 +426,20 @@ class SiteProblem:
         )
 
     def _solve_pmedian_problem(self, p: int):
-        pass
+        possible_combinations = _generate_all_combinations(
+            n_facilities=self.total_n_sites, p=p
+        )
+
+        outputs = []
+
+        for possible_solution in possible_combinations:
+            outputs.append(
+                self.evaluate_single_solution_pmedian(
+                    site_indices=possible_solution
+                ).generate_solution_metrics()
+            )
+
+        return SiteSolutionSet(pd.DataFrame(outputs).sort_values("weighted_average"))
 
     # def solve_lscp(self, p, num_options=10, capacitated=False):
     #     """
@@ -450,23 +495,234 @@ class SiteProblem:
             )
 
 
-class SiteSolution:
-    def __init__(self, solution_type):
+class EvaluatedCombination:
+    def __init__(
+        self,
+        solution_type,
+        site_names,
+        site_indices,
+        evaluated_combination_df,
+        site_problem,
+    ):
         self.solution_type = solution_type
+        self.site_names = site_names
+        self.site_indices = site_indices
+        self.evaluated_combination_df = evaluated_combination_df
+        self.site_problem = site_problem
 
-    @property
-    def info(self):
-        """Prints a student-friendly explanation of the model used."""
-        data = SOLVER_DEFINITIONS.get(self.solution_type, {})
-        print(f"--- Model Type: {data.get('name')} ---")
-        print(f"Goal: {data.get('goal')}")
-        print(f"Healthcare Application: {data.get('healthcare_context')}")
-        print(f"Keep in mind: {data.get('trade_off')}")
+    def generate_solution_metrics(self):
+        # Return weighted average
+        weighted_average = np.average(
+            self.evaluated_combination_df["min_cost"],
+            weights=self.evaluated_combination_df[
+                self.site_problem._demand_data_demand_col
+            ],
+        )
+        unweighted_average = np.average(self.evaluated_combination_df["min_cost"])
+        max_travel = np.max(self.evaluated_combination_df["min_cost"])
 
-    def plot_utilization(self):
-        pass
+        return {
+            "site_names": self.site_names,
+            "site_indices": self.site_indices,
+            "weighted_average": weighted_average,
+            "unweighted_average": unweighted_average,
+            "max": max_travel,
+            "problem_df": self.evaluated_combination_df,
+        }
 
 
 class SiteSolutionSet:
-    def __init__(self):
-        pass
+    def __init__(self, solution_df):
+        self.solution_df = solution_df.reset_index(drop=True)
+
+    def show_solutions(self):
+        return self.solution_df
+
+    def return_best_combination_details(self, rank_on="weighted_average"):
+        return self.solution_df.sort_values(rank_on).head(1)
+
+    def return_best_combination_site_indices(self, rank_on="weighted_average"):
+        return (
+            self.solution_df.sort_values(rank_on)
+            .head(1)["site_indices"]
+            .reset_index()[0]
+        )
+
+    def return_best_combination_site_names(self, rank_on="weighted_average"):
+        return (
+            self.solution_df.sort_values(rank_on).head(1)["site_names"].reset_index()[0]
+        )
+
+    def plot_best_combination(
+        self,
+        problem_class,
+        rank_on="weighted_average",
+        title=None,
+        show_all_locations=True,
+        cmap="Blues",
+        chosen_site_colour="magenta",
+        unchosen_site_colour="grey",
+    ):
+
+        if problem_class.region_geometry_layer is None:
+            raise ValueError(
+                "The region data has not been initialised in the problem class."
+                "Please run add_region_geometry_layer() first."
+            )
+
+        solution = self.solution_df.sort_values(rank_on).head().reset_index()
+
+        nearest_site_travel_gdf = pd.merge(
+            problem_class.region_geometry_layer,
+            solution["problem_df"][0],
+            left_on=problem_class._region_geometry_layer_common_col,
+            right_on=problem_class._demand_data_id_col,
+        )
+
+        ax = nearest_site_travel_gdf.plot(
+            "min_cost",
+            legend=True,
+            cmap=cmap,
+            alpha=0.7,
+            edgecolor="black",
+            linewidth=0.5,
+            figsize=(12, 6),
+        )
+
+        selected_sites = problem_class.candidate_sites.iloc[
+            solution.site_indices.iloc[0]
+        ]
+
+        if show_all_locations:
+            all_site_points = problem_class.candidate_sites.plot(
+                ax=ax, color=unchosen_site_colour, markersize=30, alpha=0.3
+            )
+
+        selected_site_points = selected_sites.plot(
+            ax=ax, color=chosen_site_colour, markersize=60
+        )
+
+        cx.add_basemap(
+            ax,
+            crs=nearest_site_travel_gdf.crs.to_string(),
+        )
+
+        for x, y, label in zip(
+            selected_sites.geometry.x,
+            selected_sites.geometry.y,
+            selected_sites[problem_class._candidate_sites_candidate_id_col],
+        ):
+            ax.annotate(
+                label,
+                xy=(x, y),
+                xytext=(10, 3),
+                textcoords="offset points",
+                bbox=dict(facecolor="white"),
+            )
+
+        ax.axis("off")
+
+        if title is not None:
+            plt.title(title)
+
+        return ax
+
+    def plot_n_best_combinations(
+        self,
+        problem_class,
+        n_best=10,
+        rank_on="weighted_average",
+        title=None,
+        subplot_title="default",
+        show_all_locations=True,
+        cmap="Blues",
+        chosen_site_colour="magenta",
+        unchosen_site_colour="grey",
+    ):
+        max_cols = 5
+        ncols = min(n_best, max_cols)
+        nrows = math.ceil(n_best / ncols)
+
+        fig, axs = plt.subplots(nrows, ncols, figsize=(6 * ncols, 5 * nrows))
+
+        # flatten axs in case it's a 2D array
+        if isinstance(axs, np.ndarray):
+            axs = axs.flatten()
+
+        if problem_class.region_geometry_layer is None:
+            raise ValueError(
+                "The region data has not been initialised in the problem class."
+                "Please run add_region_geometry_layer() first."
+            )
+
+        sorted_df = self.solution_df.sort_values(rank_on).reset_index().head(n_best)
+
+        for i, ax in enumerate(fig.axes):
+            solution = sorted_df.iloc[[i]]
+            solution_df = solution["problem_df"].values[0]
+
+            nearest_site_travel_gdf = pd.merge(
+                problem_class.region_geometry_layer,
+                solution_df,
+                left_on=problem_class._region_geometry_layer_common_col,
+                right_on=problem_class._demand_data_id_col,
+            )
+
+            ax = nearest_site_travel_gdf.plot(
+                "min_cost",
+                legend=True,
+                cmap=cmap,
+                alpha=0.7,
+                edgecolor="black",
+                linewidth=0.5,
+                figsize=(12, 6),
+                ax=ax,
+            )
+
+            selected_sites = problem_class.candidate_sites.iloc[
+                solution.site_indices.iloc[0]
+            ]
+
+            if show_all_locations:
+                all_site_points = problem_class.candidate_sites.plot(
+                    ax=ax, color=unchosen_site_colour, markersize=30, alpha=0.3
+                )
+
+            selected_site_points = selected_sites.plot(
+                ax=ax, color=chosen_site_colour, markersize=60
+            )
+
+            cx.add_basemap(
+                ax,
+                crs=nearest_site_travel_gdf.crs.to_string(),
+            )
+
+            for x, y, label in zip(
+                selected_sites.geometry.x,
+                selected_sites.geometry.y,
+                selected_sites[problem_class._candidate_sites_candidate_id_col],
+            ):
+                ax.annotate(
+                    label,
+                    xy=(x, y),
+                    xytext=(10, 3),
+                    textcoords="offset points",
+                    bbox=dict(facecolor="white"),
+                )
+
+            ax.axis("off")
+
+            def safe_evaluate_title(subplot_title):
+                try:
+                    return eval(f"f{repr(subplot_title)}", {}, {"solution": solution})
+                except Exception:
+                    # fallback: treat as literal string
+                    return subplot_title
+
+            if subplot_title is not None:
+                if subplot_title == "default":
+                    ax.set_title(f"\n{solution['weighted_average'].values[0]:.1f}")
+                else:
+                    ax.set_title(safe_evaluate_title(subplot_title))
+            if title is not None:
+                ax.set_title(title)
