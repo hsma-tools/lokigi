@@ -1,0 +1,57 @@
+{
+  "projectName": "lokigi",
+  "projectOwner": "hsma-tools",
+  "files": [
+    "README.md",
+    "lokigi_docs/index.qmd"
+  ],
+  "commitType": "docs",
+  "commitConvention": "angular",
+  "contributorsPerLine": 7,
+  "contributors": [
+    {
+      "login": "Bergam0t",
+      "name": "Sammi Rosser",
+      "avatar_url": "https://avatars.githubusercontent.com/u/29951987?v=4",
+      "profile": "http://hsma.co.uk",
+      "contributions": [
+        "code",
+        "doc",
+        "test",
+        "bug",
+        "content",
+        "design",
+        "example",
+        "ideas",
+        "infra",
+        "maintenance",
+        "projectManagement",
+        "promotion",
+        "research",
+        "talk",
+        "tutorial"
+      ]
+    },
+    {
+      "login": "TomMonks",
+      "name": "Tom Monks",
+      "avatar_url": "https://avatars.githubusercontent.com/u/881493?v=4",
+      "profile": "https://experts.exeter.ac.uk/19244-thomas-monks",
+      "contributions": [
+        "code",
+        "ideas",
+        "mentoring"
+      ]
+    },
+        {
+      "login": "hsma-chief-elf",
+      "name": "Dr Daniel Chalk",
+      "avatar_url": "https://avatars.githubusercontent.com/u/43324262?v=4",
+      "profile": "https://sites.google.com/nihr.ac.uk/hsma",
+      "contributions": [
+        "mentoring"
+      ]
+    }
+  ],
+  "repoType": "github"
+}

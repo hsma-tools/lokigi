@@ -1,0 +1,91 @@
+<h1 style="text-align: center;">lokigi</h1>
+
+<p style="text-align: center; font-size: 22px;">
+  Make better decisions about where to locate your healthcare (and other) services
+</p>
+
+lokigi exists to make the process of providing decision support for healthcare problems with a geographical component easier.
+
+
+<br>
+
+:::: {.columns}
+
+::: {.column width='20%'}
+
+:::
+
+::: {.column width='60%'}
+
+<p style="text-align: center; font-size: 24px; font-weight: bold">
+  Install with a single command
+</p>
+
+```{.bash}
+pip install lokigi
+```
+
+:::
+
+::: {.column width='20%'}
+
+:::
+
+::::
+
+<br>
+
+```{=html}
+<div class="value-grid-2" style="justify-content:center; text-align:center;">
+  <a href="https://hsma-tools.github.io/lokigi/lokigi_docs/getting_started.html" class="value-box bg-green">
+    <div class="icon"><i class="fa-solid fa-circle-play"></i></div>
+    <div class="value">Getting Started</div>
+    <div class="details">Get an overview of how lokigi works</div>
+  </a>
+    <a href="https://hsma-tools.github.io/lokigi/examples/examples.html" class="value-box bg-green">
+    <div class="icon"><i class="fa-solid fa-lightbulb"></i></div>
+    <div class="value">Examples</div>
+    <div class="details">Take a look at our wide range of lokigi examples</div>
+  </a>
+</div>
+```
+
+```{=html}
+<div class="value-grid-2" style="justify-content:center; text-align:center;">
+  <a href="https://hsma-tools.github.io/lokigi/examples/feature_breakdowns.html" class="value-box bg-green">
+    <div class="icon"><i class="bi bi-tools"></i></div>
+    <div class="value">Feature Breakdowns</div>
+    <div class="details">View detailed walkthroughs of some lokigi features</div>
+  </a>
+    <a href="https://hsma-tools.github.io/lokigi/reference/" class="value-box bg-green">
+    <div class="icon"><i class="fa-solid fa-book-atlas"></i></div>
+    <div class="value">API Reference</div>
+    <div class="details">Browse the full list of lokigi classes and functions</div>
+  </a>
+</div>
+```
+
+<br>
+
+## What does the name mean?
+
+**lokigi** is the [Esperanto](https://en.wikipedia.org/wiki/Esperanto) ![](Flag_of_Esperanto.svg.png){height=30px} word for "to show".
+It can also be read as the backronym: "Visual Interactive Dynamics and Integrated Graphical Insights" - whichever floats your boat.
+
+<br>
+
+## Acknowledgements
+
+Thanks goes to all of the following people ([emoji key](https://allcontributors.org/docs/en/emoji-key)).
+
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+<br>
+
+## Licence
+
+lokigi is released under the MIT licence.
+
+{{< include ../LICENSE.md >}}
