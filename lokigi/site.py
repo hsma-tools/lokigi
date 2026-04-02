@@ -3,6 +3,7 @@ from lokigi.utils import (
     _validate_columns,
     _load_spatial_or_tabular_data,
     _guess_crs,
+    GEOPANDAS_EXTS,
 )
 
 import pandas as pd
@@ -11,6 +12,7 @@ import contextily as cx
 import textwrap
 from adjustText import adjust_text
 import matplotlib.pyplot as plt
+from warnings import warn
 
 # Warn if brute force will be slow
 _BRUTE_FORCE_WARN_THRESHOLD = 50
@@ -54,11 +56,14 @@ class SiteProblem:
         self._travel_matrix_type = None
         self._travel_matrix_source_col = None
 
-        self.geometry_layer = None
-        self._geometry_layer_common_col = None
+        self.region_geometry_layer = None
+        self._region_geometry_layer_type = None
+        self._region_geometry_layer_common_col = None
 
-        self.baseline_sites = None  # Current existing clinics
-        self._baseline_sites_type = None
+        # self.baseline_sites = None  # Current existing clinics
+        # self._baseline_sites_type = None
+
+        self.joined_demand_travel_df = None
 
         if debug_mode:
             self._verbose = True
@@ -103,14 +108,16 @@ class SiteProblem:
         print(f"{'...':<15} | {'...':<15} | {'...':<15}")
         print("--------------------------------------------\n")
 
-    def add_demand(self, demand_df, demand_col, location_id_col):
+    def add_demand(self, demand_df, demand_col, location_id_col, skip_cols=None):
         """
         Adds a dataframe or geodataframe containing the demand observed
         to the SiteProblem object.
 
         df: Pandas DataFrame or Geopandas Geodataframe
         Validates CRS and aligns patient data."""
-        loaded_df, df_type = _load_spatial_or_tabular_data(demand_df)
+        loaded_df, df_type = _load_spatial_or_tabular_data(
+            demand_df, skip_cols=skip_cols
+        )
 
         _validate_columns(
             df=loaded_df,
@@ -133,6 +140,20 @@ class SiteProblem:
     def show_demand(self):
         print(self.demand_data)
 
+    def add_region_geometry_layer(self, region_geometry_df, common_col):
+
+        loaded_df, df_type = _load_spatial_or_tabular_data(region_geometry_df)
+        if df_type != "geopandas":
+            raise TypeError(
+                "Please pass in a created geodataframe or the path to a source of geographic data."
+                "If passing a path to geographic data as a string, paths with extensions"
+                f"{GEOPANDAS_EXTS} will be automatically read in as geopandas dataframes."
+            )
+
+        self.region_geometry_layer = loaded_df
+        self._region_geometry_layer_type = df_type
+        self._region_geometry_layer_common_col = common_col
+
     def add_sites(
         self,
         candidate_site_df,
@@ -142,9 +163,12 @@ class SiteProblem:
         horizontal_geometry_col="long",
         crs=None,
         capacity_col=None,
+        skip_cols=None,
     ):
         """Validates CRS and identifies potential new sites."""
-        loaded_df, df_type = _load_spatial_or_tabular_data(candidate_site_df)
+        loaded_df, df_type = _load_spatial_or_tabular_data(
+            candidate_site_df, skip_cols=skip_cols
+        )
 
         col_list = [candidate_id_col]
         if capacity_col is not None:
@@ -225,9 +249,11 @@ class SiteProblem:
     #     """Loads 'status quo' sites to calculate the starting benchmark."""
     #     pass
 
-    def add_travel_matrix(self, travel_matrix_df, source_col):
+    def add_travel_matrix(self, travel_matrix_df, source_col, skip_cols=None):
         """Ensures the matrix indices match the demand/candidate IDs."""
-        loaded_df, df_type = _load_spatial_or_tabular_data(travel_matrix_df)
+        loaded_df, df_type = _load_spatial_or_tabular_data(
+            travel_matrix_df, skip_cols=skip_cols
+        )
 
         _validate_columns(
             df=loaded_df,
@@ -243,7 +269,97 @@ class SiteProblem:
         self._travel_matrix_source_col = source_col
 
     def _create_joined_demand_travel_df(self):
-        self.travel_and_demand_df = pd.merge()
+        # If one is a geopandas dataframe, put that first in the merge call so that the
+        # output object will also be a geodataframe
+        if self._demand_data_type == "geopandas":
+            self.travel_and_demand_df = pd.merge(
+                self.demand_data,
+                self.travel_matrix,
+                left_on=self._demand_data_id_col,
+                right_on=self._travel_matrix_source_col,
+                how="inner",
+            ).set_index(self._demand_data_id_col)
+
+        else:
+            self.travel_and_demand_df = pd.merge(
+                self.travel_matrix,
+                self.demand_data,
+                left_on=self._travel_matrix_source_col,
+                right_on=self._demand_data_id_col,
+                how="inner",
+            ).set_index(self._travel_matrix_source_col)
+
+            self.travel_and_demand_df = self.travel_and_demand_df
+
+        if len(self.travel_and_demand_df) == 0:
+            raise KeyError(
+                "Warning: merging the travel matrix and demand data has failed."
+                f"This may be because there are no common values found in the {self._travel_matrix_source_col}"
+                f"(sample values: {self.travel_matrix.head(5)[self._travel_matrix_source_col]})"
+                f"column in the travel dataframe and the {self._demand_data_id_col} column in the"
+                f"demand dataframe (sample values: {self.demand_data.head(5)[self._demand_data_id_col]})"
+            )
+
+    def evaluate_single_solution(self, site_names=None, site_indices=None):
+        """
+        Evaluates a solution. User must provide either site_names OR site_indices.
+        """
+        # 1. Guard clause: Ensure exactly one argument is provided
+        if (site_names is None and site_indices is None) or (
+            site_names and site_indices
+        ):
+            raise ValueError(
+                "Please provide either 'site_names' or 'site_indices', but not both. "
+                "This helps prevent 'off-by-one' errors with numeric site IDs."
+            )
+
+        # 2. Ensure travel data is ready
+        if self.travel_and_demand_df is None:
+            self._create_joined_demand_travel_df()
+
+        # 3. Resolve to indices based on the chosen input
+        if site_names:
+            try:
+                # Use .get_indexer to find positions of a list of labels
+                # This returns integer positions for the provided names
+                resolved_indices = self.travel_and_demand_df.columns.get_indexer(
+                    site_names
+                )
+
+                # Check if any names were not found (get_indexer returns -1 for missing)
+                if -1 in resolved_indices:
+                    missing = [
+                        site_names[i]
+                        for i, idx in enumerate(resolved_indices)
+                        if idx == -1
+                    ]
+                    raise KeyError(
+                        f"The following site names were not found: {missing}"
+                    )
+            except Exception as e:
+                raise ValueError(f"Error mapping site names: {e}")
+
+        else:
+            # User provided site_indices directly
+            resolved_indices = site_indices
+
+        # 4. Filter and calculate
+        try:
+            # We use .iloc because we now have guaranteed integer positions
+            active_facilities = self.travel_and_demand_df.iloc[
+                :, resolved_indices
+            ].copy()
+        except IndexError:
+            max_idx = self.travel_and_demand_df.shape[1] - 1
+            raise IndexError(
+                f"Index out of bounds. Your travel data has indices 0 to {max_idx}. "
+                f"You provided indices: {site_indices}"
+            )
+
+        # Assume travel to closest facility
+        active_facilities["min_cost"] = active_facilities.min(axis=1)
+
+        return active_facilities
 
     def solve(
         self,
