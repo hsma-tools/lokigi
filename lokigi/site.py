@@ -584,8 +584,8 @@ class SiteSolutionSet:
     def __init__(self, solution_df):
         self.solution_df = solution_df.reset_index(drop=True)
 
-    def show_solutions(self):
-        return self.solution_df
+    def show_solutions(self, rounding=2):
+        return round(self.solution_df, rounding)
 
     def return_best_combination_details(self, rank_on="weighted_average"):
         return self.solution_df.sort_values(rank_on).head(1)
