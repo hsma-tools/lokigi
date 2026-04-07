@@ -264,7 +264,9 @@ class SiteProblem:
     #     """Loads 'status quo' sites to calculate the starting benchmark."""
     #     pass
 
-    def add_travel_matrix(self, travel_matrix_df, source_col, skip_cols=None):
+    def add_travel_matrix(
+        self, travel_matrix_df, source_col, skip_cols=None, from_unit=None, to_unit=None
+    ):
         """Ensures the matrix indices match the demand/candidate IDs."""
         loaded_df, df_type = _load_spatial_or_tabular_data(
             travel_matrix_df, skip_cols=skip_cols
@@ -279,6 +281,20 @@ class SiteProblem:
                 "you are passing to the .add_travel_matrix() method."
             ),
         )
+
+        conversion = {
+            ("seconds", "minutes"): 1 / 60,
+            ("seconds", "hours"): 1 / 3600,
+            ("minutes", "seconds"): 60,
+            ("minutes", "hours"): 1 / 60,
+            ("hours", "seconds"): 3600,
+            ("hours", "minutes"): 60,
+        }
+
+        if from_unit and to_unit:
+            factor = conversion[(from_unit, to_unit)]
+            num_cols = loaded_df.select_dtypes(include="number").columns
+            loaded_df.loc[:, num_cols] *= factor
 
         self.travel_matrix = loaded_df
         self._travel_matrix_source_col = source_col
