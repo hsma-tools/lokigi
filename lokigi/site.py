@@ -587,8 +587,8 @@ class SiteSolutionSet:
     def show_solutions(self, rounding=2):
         return round(self.solution_df, rounding)
 
-    def return_best_combination_details(self, rank_on="weighted_average"):
-        return self.solution_df.sort_values(rank_on).head(1)
+    def return_best_combination_details(self, rank_on="weighted_average", top_n=1):
+        return self.solution_df.sort_values(rank_on).head(top_n).reset_index()
 
     def return_best_combination_site_indices(self, rank_on="weighted_average"):
         return (
