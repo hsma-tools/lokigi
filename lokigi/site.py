@@ -566,6 +566,7 @@ class EvaluatedCombination:
             ],
         )
         unweighted_average = np.average(self.evaluated_combination_df["min_cost"])
+        percentile_90th = np.percentile(self.evaluated_combination_df["min_cost"], q=90)
         max_travel = np.max(self.evaluated_combination_df["min_cost"])
 
         return {
@@ -573,6 +574,7 @@ class EvaluatedCombination:
             "site_indices": self.site_indices,
             "weighted_average": weighted_average,
             "unweighted_average": unweighted_average,
+            "90th_percentile": percentile_90th,
             "max": max_travel,
             "problem_df": self.evaluated_combination_df,
         }
