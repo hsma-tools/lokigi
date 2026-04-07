@@ -485,6 +485,9 @@ class SiteProblem:
 
         return SiteSolutionSet(pd.DataFrame(outputs).sort_values("weighted_average"))
 
+    def evaluate_n_sites(self, min_sites, max_sites):
+        pass
+
     # def solve_lscp(self, p, num_options=10, capacitated=False):
     #     """
     #     """
@@ -596,6 +599,12 @@ class SiteSolutionSet:
         return (
             self.solution_df.sort_values(rank_on).head(1)["site_names"].reset_index()[0]
         )
+
+    def plot_travel_time_distribution():
+        pass
+
+    def summary_table():
+        pass
 
     def plot_best_combination(
         self,
