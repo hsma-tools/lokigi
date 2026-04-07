@@ -1,0 +1,13 @@
+website:
+  sidebar:
+  - collapse-level: 3
+    contents:
+    - reference/index.qmd
+    - contents:
+      - reference/site.SiteProblem.qmd
+      - reference/site.EvaluatedCombination.qmd
+      - reference/site.SiteSolutionSet.qmd
+      section: Location Optimization Problem Classes
+    id: reference
+    style: floating
+  - id: dummy-sidebar

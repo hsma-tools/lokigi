@@ -1,0 +1,5 @@
+---
+title: Structure
+---
+
+![](lokigi_class_diagram.drawio.png)

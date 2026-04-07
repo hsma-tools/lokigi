@@ -59,6 +59,8 @@ dev = [
     "nbqa",
     "pylint==4.0.5",
     "pytest-html==4.1.1",
-    "quartodoc==0.9.1",
+    "quartodoc==0.11.1",
     "tox==4.25.0",
+    "griffe<2.0.0",
+    "plotly>=6.6.0",
 ]

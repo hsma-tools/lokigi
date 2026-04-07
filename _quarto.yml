@@ -11,7 +11,7 @@ metadata-files:
 
 website:
   title: lokigi
-  description: "Documentation for the lokigi site and boundary optimization package"
+  description: "Documentation for the lokigi site optimization package"
   back-to-top-navigation: true
   page-footer:
     center: |
@@ -27,6 +27,8 @@ website:
     left:
       - text: "Home"
         href: lokigi_docs/index.qmd
+      - text: "Examples"
+        href: examples/examples.qmd
     right:
       - icon: github
         href: https://github.com/hsma-tools/lokigi/
@@ -61,11 +63,12 @@ quartodoc:
 
   # Define the Python objects to document
   sections:
-    - title: lokigi site classes
+    - title: Location Optimization Problem Classes
       desc: ""
       contents:
-        - problem.SiteProblem
-        - problem.SiteSolution
+        - site.SiteProblem
+        - site.EvaluatedCombination
+        - site.SiteSolutionSet
     # - title: lokigi boundary classes
     #   desc: ""
     #   contents:
@@ -82,9 +85,9 @@ format:
     execute:
       freeze: auto
     theme:
-      dark: [darkly, theme-dark.scss]
-      light: [flatly, theme-light.scss]
-    css: lokigi_docs/styles.css
+      dark: [darkly, lokigi_docs/resources/theme-dark.scss]
+      light: [flatly, lokigi_docs/resources/theme-light.scss]
+    css: lokigi_docs/resources/styles.css
     include-in-header:
       - text: |
           <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">

@@ -1,0 +1,21 @@
+---
+title: "Examples Gallery"
+subtitle: "Explore what's possible with vidigi through these hands-on examples."
+toc: true
+listing:
+  - id: simpy-examples
+    contents:
+      - "location/simple/simple.ipynb"
+    type: grid
+    sort: "title"
+    grid-columns: 3
+    template: ../lokigi_docs/resources/listing.ejs
+
+---
+
+## Single Objective Location Optimization
+
+Examples relating to optimizing the combination of sites to meet a single objective - for example, minimising the average travel time of individuals to a site.
+
+::: {#single-objective-site}
+:::
