@@ -7,6 +7,8 @@ from lokigi.utils import (
     _generate_all_combinations,
     _check_crs_match_pref,
     _convert_crs,
+    ALIASES,
+    SUPPORTED_OBJECTIVES,
 )
 
 import pandas as pd
@@ -18,6 +20,7 @@ import matplotlib.pyplot as plt
 from warnings import warn
 import numpy as np
 import math
+from typing import Literal
 
 # Warn if brute force will be slow
 _BRUTE_FORCE_WARN_THRESHOLD = 50
@@ -331,11 +334,30 @@ class SiteProblem:
                 f"demand dataframe (sample values: {self.demand_data.head(5)[self._demand_data_id_col]})"
             )
 
-    def evaluate_single_solution_pmedian(self, site_names=None, site_indices=None):
+    def evaluate_single_solution(
+        self,
+        objectives: str | list[str] = "p_median",
+        site_names=None,
+        site_indices=None,
+    ):
         """
         Evaluates a solution. User must provide either site_names OR site_indices.
         """
-        # 1. Guard clause: Ensure exactly one argument is provided
+        # Check for valid objectives
+        if isinstance(objectives, list) and len(objectives) > 1:
+            warn(
+                "Multi-objective optimization is coming in a future release."
+                f"For now, just your first objective {objectives[0]} has been taken."
+            )
+
+        objective = objectives if isinstance(objectives, str) else objectives[0]
+
+        if objective in ALIASES:
+            objective = ALIASES[objective]
+        else:
+            raise ValueError(f"Unsupported objective ({objective}) passed.")
+
+        # Ensure exactly one argument is provided out of site_names and site_indices
         if (site_names is None and site_indices is None) or (
             site_names and site_indices
         ):
@@ -344,11 +366,11 @@ class SiteProblem:
                 "This helps prevent 'off-by-one' errors with numeric site IDs."
             )
 
-        # 2. Ensure travel data is ready
+        # Ensure travel data is ready
         if self.travel_and_demand_df is None:
             self._create_joined_demand_travel_df(index_col=self._demand_data_id_col)
 
-        # 3. Resolve to indices based on the chosen input
+        # Resolve to indices based on the chosen input
         if site_names:
             try:
                 # Use .get_indexer to find positions of a list of labels
@@ -374,7 +396,7 @@ class SiteProblem:
             # User provided site_indices directly
             resolved_indices = site_indices
 
-        # 4. Filter and calculate
+        # Filter and calculate
         try:
             # We use .iloc because we now have guaranteed integer positions
             active_facilities = self.travel_and_demand_df.iloc[
@@ -387,44 +409,56 @@ class SiteProblem:
                 f"You provided indices: {site_indices}"
             )
 
-        # Assume travel to closest facility
-        active_facilities["min_cost"] = active_facilities.min(axis=1)
+        if objective == "p_median":
+            # Assume travel to closest facility
+            active_facilities["min_cost"] = active_facilities.min(axis=1)
 
-        afi = active_facilities.index
-        active_facilities = active_facilities.reset_index()
+            afi = active_facilities.index
+            active_facilities = active_facilities.reset_index()
 
-        # Re-add the demand data
-        active_facilities = active_facilities.merge(
-            self.demand_data,
-            left_on=afi,
-            right_on=self._demand_data_id_col,
-            how="inner",
-        )
+            # Re-add the demand data
+            active_facilities = active_facilities.merge(
+                self.demand_data,
+                left_on=afi,
+                right_on=self._demand_data_id_col,
+                how="inner",
+            )
 
-        return EvaluatedCombination(
-            "p-median",
-            site_indices=resolved_indices,
-            site_names=site_names,
-            evaluated_combination_df=active_facilities,
-            site_problem=self,
-        )
+            return EvaluatedCombination(
+                "p-median",
+                site_indices=resolved_indices,
+                site_names=site_names,
+                evaluated_combination_df=active_facilities,
+                site_problem=self,
+            )
+        else:
+            raise ValueError(
+                f"Unknown objective '{objective}'. Currently supported: {SUPPORTED_OBJECTIVES.join(', ')}."
+            )
 
     def solve(
         self,
         p: int,
         objectives: str | list[str] = "p_median",
-        num_options=10,
         capacitated=False,
-        strategy=None,
+        search_strategy: Literal[
+            "brute-force", "evolutionary", "genetic"
+        ] = "brute-force",
         **kwargs,
     ):
+
         if isinstance(objectives, list) and len(objectives) > 1:
-            raise NotImplementedError(
-                "Multi-objective solving is not yet implemented. "
-                "Pass a single objective string, or use solve_pmedian()."
+            warn(
+                "Multi-objective optimization is coming in a future release."
+                f"For now, just your first objective {objectives[0]} has been taken."
             )
 
         objective = objectives if isinstance(objectives, str) else objectives[0]
+
+        if objective in ALIASES:
+            objective = ALIASES[objective]
+        else:
+            raise ValueError(f"Unsupported objective ({objective}) passed.")
 
         if objective == "p_median":
             return self._solve_pmedian_problem(
@@ -435,12 +469,6 @@ class SiteProblem:
                 f"Unknown objective '{objective}'. Currently supported: 'p_median'."
             )
 
-    def solve_pmedian(self, p, num_options=10, capacitated=False):
-        """ """
-        return self.solve(
-            p=p, objectives="p_median", num_options=num_options, capacitated=capacitated
-        )
-
     def _solve_pmedian_problem(self, p: int):
         possible_combinations = _generate_all_combinations(
             n_facilities=self.total_n_sites, p=p
@@ -450,8 +478,8 @@ class SiteProblem:
 
         for possible_solution in possible_combinations:
             outputs.append(
-                self.evaluate_single_solution_pmedian(
-                    site_indices=possible_solution
+                self.evaluate_single_solution(
+                    site_indices=possible_solution, objectives="p-median"
                 ).generate_solution_metrics()
             )
 
