@@ -1291,7 +1291,7 @@ class SiteSolutionSet:
                         f"Top {n_best} Solutions by {rank_on.replace('_', ' ').title()}"
                     )
                 else:
-                    fig.update_layout(
+                    ax.set_title(
                         title=f"Top {n_best} Solutions: {self.objectives.replace('_', ' ').title()})"
                     )
             elif title is None:
