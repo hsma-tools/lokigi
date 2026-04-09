@@ -994,9 +994,14 @@ class SiteSolutionSet:
         )
 
         if title == "default":
-            fig.update_layout(
-                title=f"Distribution of Travel Times (Top {top_n} Solutions by {rank_on.replace('_', ' ').title()})"
-            )
+            if rank_on is not None:
+                fig.update_layout(
+                    title=f"Distribution of Travel Times (Top {top_n} Solutions by {rank_on.replace('_', ' ').title()})"
+                )
+            else:
+                fig.update_layout(
+                    title=f"Distribution of Travel Times (Top {top_n} Solutions: {self.objectives.replace('_', ' ').title()})"
+                )
         else:
             fig.update_layout(title=title)
 
@@ -1264,11 +1269,15 @@ class SiteSolutionSet:
 
         if interactive:
             df["site_indices"] = df["site_indices"].astype("str")
+            if rank_on is not None:
+                title = f"Top {n_best} Solutions by {rank_on.replace('_', ' ').title()}"
+            else:
+                title = f"Top {n_best} Solutions: {self.objectives.replace('_', ' ').title()}"
             fig = px.bar(
                 df,
                 x="site_indices",
                 y=y_axis,
-                title=f"Top {n_best} Solutions by {rank_on.replace('_', ' ').title()} Travel Time",
+                title=,
             )
         else:
             fig, ax = plt.subplots()
@@ -1277,9 +1286,14 @@ class SiteSolutionSet:
                 df[y_axis],
             )
             if title == "default":
-                ax.set_title(
-                    f"Top {n_best} Solutions by {rank_on.replace('_', ' ').title()} Travel Time"
-                )
+                if rank_on is not None:
+                    ax.set_title(
+                        f"Top {n_best} Solutions by {rank_on.replace('_', ' ').title()}"
+                    )
+                else:
+                    fig.update_layout(
+                        title=f"Top {n_best} Solutions: {self.objectives.replace('_', ' ').title()})"
+                    )
             elif title is None:
                 pass
             else:
