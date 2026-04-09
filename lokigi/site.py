@@ -1277,7 +1277,7 @@ class SiteSolutionSet:
                 df,
                 x="site_indices",
                 y=y_axis,
-                title=,
+                title=title,
             )
         else:
             fig, ax = plt.subplots()
