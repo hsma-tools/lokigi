@@ -1157,3 +1157,48 @@ class SiteSolutionSet:
 
         # Add the colorbar to the figure
         fig.colorbar(sm, ax=axs, fraction=0.02, pad=0.04, label="Min Cost")
+
+    def plot_n_best_combinations_bar(
+        self,
+        n_best=10,
+        interactive=True,
+        rank_on=None,
+        title="default",
+    ):
+        if rank_on is not None:
+            df = self.solution_df.sort_values(rank_on)
+        else:
+            df = self.solution_df
+        if n_best is not None:
+            df = df.head(n_best)
+
+        if interactive:
+            df["site_indices"] = df["site_indices"].astype("str")
+            fig = px.bar(
+                df,
+                x="site_indices",
+                y="weighted_average",
+                title=f"Top {n_best} Solutions by {rank_on.replace('_', ' ').title()} Travel Time",
+            )
+        else:
+            fig, ax = plt.subplots()
+            ax.bar(
+                df["site_indices"].astype(str),
+                df["weighted_average"],
+            )
+            if title == "default":
+                ax.set_title(
+                    f"Top {n_best} Solutions by {rank_on.replace('_', ' ').title()} Travel Time"
+                )
+            elif title is None:
+                pass
+            else:
+                ax.set_title(title)
+
+            ax.set_xlabel("Site Indices")
+            ax.set_ylabel("Weighted Average Travel Time")
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            plt.close(fig)
+
+        return fig
