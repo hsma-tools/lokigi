@@ -4,7 +4,7 @@ from functools import wraps
 import inspect
 from pandas.api.types import is_numeric_dtype
 import pandas as pd
-import geopandas as gpd
+import geopandas
 from pathlib import Path
 from urllib.parse import urlparse
 import requests
@@ -114,7 +114,7 @@ def _guess_crs(
 
     Returns
     -------
-    gpd.GeoDataFrame
+    geopandas.GeoDataFrame
         GeoDataFrame with guessed CRS
 
     Raises
@@ -176,6 +176,11 @@ def _validate_columns(
     msg_template=None,
     context=None,
 ):
+    if not isinstance(df, (pd.DataFrame, geopandas.GeoDataFrame)):
+        raise TypeError(
+            f"Passed a {type(df)} where a Pandas or Geopandas dataframe was expected."
+        )
+
     if numeric_col_names is None:
         numeric_col_names = []
 
@@ -187,7 +192,9 @@ def _validate_columns(
             error_msg = msg_template.format(missing=missing, available=list(df.columns))
         else:
             context_str = f" in {context}" if context else ""
-            error_msg = f"Missing columns{context_str}: {missing}"
+            error_msg = (
+                f"Missing columns{context_str}: {missing}. Found columns: {df.columns}"
+            )
         raise ValueError(error_msg)
 
     # --- 2. Check for Numeric Data Types ---
@@ -271,7 +278,7 @@ def _load_spatial_or_tabular_data(data_input, skip_cols=None):
     """
 
     # 1. Handle existing DataFrames
-    if isinstance(data_input, gpd.GeoDataFrame):
+    if isinstance(data_input, geopandas.GeoDataFrame):
         return _try_drop(data_input, skip_cols), "geopandas"
     if isinstance(data_input, pd.DataFrame):
         return _try_drop(data_input, skip_cols), "pandas"
@@ -323,7 +330,7 @@ def _load_spatial_or_tabular_data(data_input, skip_cols=None):
         try:
             # We use content for GeoJSON/GPKG, etc.
             # Note: For .zip (Shapefiles), GeoPandas usually needs a path or specific handle
-            df = gpd.read_file(content)
+            df = geopandas.read_file(content)
             return _try_drop(df, skip_cols), "geopandas"
         except Exception as e:
             # If it failed but it's a JSON-like extension, it might just be a pandas-style JSON
@@ -345,7 +352,7 @@ def _load_spatial_or_tabular_data(data_input, skip_cols=None):
 
     # Final Fallback: Try GeoPandas anyway if extension is ambiguous
     try:
-        df = gpd.read_file(content)
+        df = geopandas.read_file(content)
         return _try_drop(df, skip_cols), "geopandas"
     except:
         raise ValueError(f"Could not parse data with extension '{ext}'.")
