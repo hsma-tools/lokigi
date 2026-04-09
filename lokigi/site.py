@@ -149,7 +149,7 @@ class SiteProblem:
         self._demand_data_id_col = location_id_col
 
     def show_demand(self):
-        print(self.demand_data)
+        return self.demand_data
 
     def add_region_geometry_layer(self, region_geometry_df, common_col):
 
@@ -163,6 +163,7 @@ class SiteProblem:
 
         if not _check_crs_match_pref(loaded_df, self.preferred_crs):
             loaded_df = _convert_crs(loaded_df, self.preferred_crs)
+
         self.region_geometry_layer = loaded_df
         self._region_geometry_layer_type = df_type
         self._region_geometry_layer_common_col = common_col
@@ -242,7 +243,7 @@ class SiteProblem:
         self.total_n_sites = len(self.candidate_sites)
 
     def show_sites(self):
-        print(self.candidate_sites)
+        return self.candidate_sites
 
     def plot_sites(self, add_basemap=True, show_labels=True):
         """
@@ -303,6 +304,9 @@ class SiteProblem:
 
         self.travel_matrix = loaded_df
         self._travel_matrix_source_col = source_col
+
+    def show_travel_matrix(self):
+        return self.travel_matrix
 
     def _create_joined_demand_travel_df(self, index_col):
         # If one is a geopandas dataframe, put that first in the merge call so that the
@@ -558,6 +562,9 @@ class EvaluatedCombination:
         self.site_indices = site_indices
         self.evaluated_combination_df = evaluated_combination_df
         self.site_problem = site_problem
+
+    def show_result_df(self):
+        return self.evaluated_combination_df
 
     def generate_solution_metrics(self):
         # Return weighted average
