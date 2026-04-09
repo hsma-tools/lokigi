@@ -442,6 +442,32 @@ class SiteProblem:
                 f"Unknown objective '{objective}'. Currently supported: {SUPPORTED_OBJECTIVES.join(', ')}."
             )
 
+    def _setup_equal_demand_df(self):
+        demand_data_temp = pd.DataFrame(
+            self.travel_matrix[self._travel_matrix_source_col],
+            columns=[self._travel_matrix_source_col],
+        )
+        demand_data_temp["n"] = 1
+
+        self.demand_data = demand_data_temp
+        self._demand_data_type = "pandas"
+        self._demand_data_id_col = self._travel_matrix_source_col
+        self._demand_data_demand_col = "n"
+
+    def _setup_sites_df_from_travel_matrix(self):
+        sites_df_temp = pd.DataFrame(
+            self.travel_matrix.columns.T.drop(self._demand_data_id_col),
+            columns=["site"],
+        )
+
+        self.candidate_sites = sites_df_temp
+        self._candidate_sites_type = "pandas"
+        self._candidate_sites_candidate_id_col = "site"
+        self._candidate_sites_vertical_col = None
+        self._candidate_sites_horizontal_col = None
+        self._candidate_sites_capacity_col = None
+        self.total_n_sites = len(self.candidate_sites)
+
     def solve(
         self,
         p: int,
@@ -452,6 +478,29 @@ class SiteProblem:
         ] = "brute-force",
         **kwargs,
     ):
+
+        # Check minimum required information is provided
+        if self.travel_matrix is None:
+            raise ValueError(
+                "No travel matrix or other cost matrix has been provided. Please add this using the .add_travel_matrix() method before running .solve() again."
+            )
+
+        if self.demand_data is None:
+            self._setup_equal_demand_df()
+            warn(
+                "No demand data was provided. Demand from all regions has been assumed to be equal."
+                "If you wish to override this, run .add_demand() to add your site dataframe before running .solve() again."
+                "You can use the .show_demand_format() to see the expected format beforehand."
+            )
+
+        if self.candidate_sites is None:
+            self._setup_sites_df_from_travel_matrix()
+            warn(
+                "No candidate site dataframe was given."
+                f"\nSites names have been taken from the columns of your travel matrix: {', '.join(self.candidate_sites[self._candidate_sites_candidate_id_col].to_list())}."
+                "\nIf you wish to override this, run .add_sites() to add your site dataframe before running .solve() again."
+                "\nYou can use the .show_sites_format() to see the expected format beforehand."
+            )
 
         if isinstance(objectives, list) and len(objectives) > 1:
             warn(
