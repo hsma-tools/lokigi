@@ -197,10 +197,10 @@ class SiteProblem:
             )
             if interactive:
                 m = plotting_df.explore(
-                    column=self._demand_data_demand_col,  # make choropleth based on "BoroName" column
-                    tooltip=self._demand_data_demand_col,  # show "BoroName" value in tooltip (on hover)
+                    column=self._demand_data_demand_col,  # make choropleth based on demand col
+                    tooltip=self._demand_data_demand_col,  # show demand col value in tooltip (on hover)
                     popup=True,  # show all values in popup (on click)
-                    cmap="Blues",  # use "Set1" matplotlib colormap
+                    cmap="Blues",  # use "Blues" matplotlib colormap
                     style_kwds=dict(color="black"),
                     tiles="CartoDB positron",
                     **kwargs,

@@ -49,9 +49,7 @@ jobs:
           filters: |
             docker:
               - 'Dockerfile'
-              - 'dev_environment/environment.yml'
-              - 'renv.lock'
-              - 'renv/**'
+              - 'lokigi/**'
 
       - name: Login to GitHub Container Registry
         if: >
