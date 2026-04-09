@@ -22,6 +22,8 @@ import numpy as np
 import math
 from typing import Literal
 
+import plotly.express as px
+
 # Warn if brute force will be slow
 _BRUTE_FORCE_WARN_THRESHOLD = 50
 
@@ -602,10 +604,116 @@ class SiteSolutionSet:
             self.solution_df.sort_values(rank_on).head(1)["site_names"].reset_index()[0]
         )
 
-    def plot_travel_time_distribution():
-        pass
+    def plot_travel_time_distribution(
+        self,
+        top_n=1,
+        rank_on="weighted_average",
+        secondary_ranking="max",
+        title="default",
+        height=None,
+        height_per_plot=250,
+        compare_to_best=False,
+        **kwargs,
+    ):
+        solutions_filtered = (
+            self.solution_df.sort_values([rank_on, secondary_ranking])
+            .reset_index(drop=True)
+            .head(top_n)
+        )
+        dfs = []
+        if compare_to_best:
+            best_df = solutions_filtered.head(1)["problem_df"][0]
 
-    def summary_table():
+        for index, row in solutions_filtered.iterrows():
+            df = row["problem_df"].copy()
+            df["site_indices"] = str(row["site_indices"])
+            df["weighted_average"] = row["weighted_average"]
+            df["unweighted_average"] = row["unweighted_average"]
+            df["max"] = row["max"]
+            df["90th_percentile"] = row["90th_percentile"]
+            if compare_to_best:
+                df["min_cost_diff"] = df["min_cost"] - best_df["min_cost"].values
+
+            dfs.append(df)
+
+        dfs = pd.concat(dfs)
+        dfs["label"] = (
+            "Sites: "
+            + dfs["site_indices"].astype(str)
+            + " | Weighted Average: "
+            + dfs["weighted_average"].round(2).astype(str)
+            + " |Unweighted Average: "
+            + dfs["unweighted_average"].round(2).astype(str)
+            + " | 90th percentile: "
+            + dfs["90th_percentile"].round(2).astype(str)
+            + " | Max: "
+            + dfs["max"].round(2).astype(str)
+        )
+        fig = px.histogram(
+            dfs,
+            x="min_cost_diff" if compare_to_best else "min_cost",
+            facet_row="label",
+            nbins=30,
+            histnorm="probability density",
+            height=height,
+            **kwargs,
+        )
+
+        fig.for_each_annotation(
+            lambda a: a.update(
+                text=a.text.replace("label=", ""),
+                textangle=0,
+                x=a.x - 0.98,  # small shift left
+                y=a.y + 0.092,  # move above subplot
+                xanchor="left",
+                yanchor="bottom",
+            )
+        )
+
+        if title == "default":
+            fig.update_layout(
+                title=f"Distribution of Travel Times (Top {top_n} Solutions by {rank_on.replace('_', ' ').title()})"
+            )
+        else:
+            fig.update_layout(title=title)
+
+        if compare_to_best:
+            fig.add_vline(
+                x=0,
+                line_color="black",
+                line_width=2,
+                annotation_text="Best",
+            )
+        else:
+            for i, (_, row) in enumerate(solutions_filtered.iterrows()):
+                fig.add_vline(
+                    x=row["weighted_average"],
+                    line_dash="dash",
+                    annotation_text="WA",
+                    row=i + 1,
+                    col=1,
+                )
+
+                fig.add_vline(
+                    x=row["90th_percentile"],
+                    line_dash="dot",
+                    annotation_text="P90",
+                    row=i + 1,
+                    col=1,
+                )
+
+        if height is None:
+            fig_height = max(300, height_per_plot * top_n)
+
+            fig.update_layout(height=fig_height)
+
+            # fig.update_layout(
+            #     margin=dict(t=80, b=40, l=40, r=40),
+            # )
+
+        return fig
+
+    def summary_table(self):
         pass
 
     def plot_best_combination(
