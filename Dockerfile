@@ -46,11 +46,11 @@ WORKDIR /workspace
 # Install Dependencies
 # We copy only these first to leverage Docker layer caching
 COPY pyproject.toml uv.lock* README.md ./
-RUN uv sync --frozen --no-install-project --no-dev
+RUN uv sync --frozen --no-install-project --all-extras
 
 # Copy Project and Install
 COPY . .
-RUN uv sync --frozen
+RUN uv sync --frozen --all-extras
 
 # Ensure the virtualenv is used by default
 ENV PATH="/workspace/.venv/bin:$PATH"
