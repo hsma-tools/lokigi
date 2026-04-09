@@ -26,9 +26,7 @@
         "infra",
         "maintenance",
         "projectManagement",
-        "promotion",
         "research",
-        "talk",
         "tutorial"
       ]
     },
@@ -43,13 +41,22 @@
         "mentoring"
       ]
     },
-        {
+    {
       "login": "hsma-chief-elf",
       "name": "Dr Daniel Chalk",
       "avatar_url": "https://avatars.githubusercontent.com/u/43324262?v=4",
       "profile": "https://sites.google.com/nihr.ac.uk/hsma",
       "contributions": [
         "mentoring"
+      ]
+    },
+    {
+      "login": "amyheather",
+      "name": "Amy Heather",
+      "avatar_url": "https://avatars.githubusercontent.com/u/92166537?v=4",
+      "profile": "https://www.linkedin.com/in/amyheather",
+      "contributions": [
+        "infra"
       ]
     }
   ],
