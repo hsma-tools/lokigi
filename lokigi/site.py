@@ -473,9 +473,7 @@ class SiteProblem:
         p: int,
         objectives: str | list[str] = "p_median",
         capacitated=False,
-        search_strategy: Literal[
-            "brute-force", "evolutionary", "genetic"
-        ] = "brute-force",
+        search_strategy: Literal["brute-force", "greedy", "local"] = "brute-force",
         **kwargs,
     ):
 
@@ -515,16 +513,19 @@ class SiteProblem:
         else:
             raise ValueError(f"Unsupported objective ({objective}) passed.")
 
-        if objective == "p_median":
-            return self._solve_pmedian_problem(
-                p,
+        if search_strategy not in ["brute-force", "greedy", "local"]:
+            raise ValueError(
+                f"Unsupported search strategy ({search_strategy}) passed. Please choose from 'brute-force', 'greedy', or 'local'."
             )
+
+        if objective == "p_median":
+            return self._solve_pmedian_problem(p, search_strategy=search_strategy)
         else:
             raise ValueError(
                 f"Unknown objective '{objective}'. Currently supported: 'p_median'."
             )
 
-    def _solve_pmedian_problem(self, p: int):
+    def _brute_force(self, p: int, objectives):
         possible_combinations = _generate_all_combinations(
             n_facilities=self.total_n_sites, p=p
         )
@@ -534,9 +535,18 @@ class SiteProblem:
         for possible_solution in possible_combinations:
             outputs.append(
                 self.evaluate_single_solution(
-                    site_indices=possible_solution, objectives="p-median"
+                    site_indices=possible_solution, objectives=objectives
                 ).generate_solution_metrics()
             )
+
+        return outputs
+
+    def _solve_pmedian_problem(self, p: int, search_strategy):
+        if search_strategy == "brute-force":
+            outputs = self._brute_force(p=p, objectives="p-median")
+
+        else:
+            raise ValueError(f"Approach {search_strategy} not yet supported.")
 
         return SiteSolutionSet(
             solution_df=pd.DataFrame(outputs).sort_values("weighted_average"),
