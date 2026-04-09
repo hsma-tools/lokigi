@@ -3,23 +3,17 @@ FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # ============================================================
-# STAGE 1: Install ALL system dependencies FIRST
+# STAGE 1: System dependencies
 # ============================================================
-# This must happen before Conda to ensure R compiles against
-# system libraries, not conda libraries
 RUN set -eux; \
-    # retry apt-get update a few times in case mirrors are mid-sync
     for i in 1 2 3; do \
       apt-get update && break; \
       echo "apt-get update failed, retrying ($i/3)..."; \
       sleep 5; \
     done; \
     apt-get install -y --no-install-recommends \
-        # Basic utilities
         wget ca-certificates gnupg software-properties-common \
         dirmngr locales git \
-        graphviz \
-        # R compilation dependencies (CRITICAL for igraph)
         build-essential gfortran \
         libxml2-dev \
         libglpk-dev \
@@ -27,10 +21,10 @@ RUN set -eux; \
         libblas-dev \
         liblapack-dev \
         libcurl4-openssl-dev \
-        libssl-dev && \
+        libssl-dev \
+        python3 python3-pip && \
     locale-gen en_GB.UTF-8 && \
     rm -rf /var/lib/apt/lists/*
-
 
 # ============================================================
 # STAGE 2: Install Quarto
@@ -42,41 +36,25 @@ RUN wget -qO /tmp/quarto.deb https://quarto.org/download/latest/quarto-linux-amd
     rm -rf /var/lib/apt/lists/*
 
 # ============================================================
-# STAGE 3: Install Miniconda (use explicit paths, not PATH)
-# ============================================================
-ENV CONDA_DIR=/opt/conda
-RUN wget -qO /tmp/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-    bash /tmp/miniconda.sh -b -p "$CONDA_DIR" && \
-    rm /tmp/miniconda.sh
-
-RUN $CONDA_DIR/bin/conda config --system --set always_yes yes && \
-    $CONDA_DIR/bin/conda config --system --set changeps1 no
-
-# ============================================================
-# STAGE 4: Set up project and create conda environment
+# STAGE 3: Install uv + Python deps
 # ============================================================
 WORKDIR /workspace
-COPY . /workspace
-RUN rm -f /workspace/.Renviron
 
-# Accept Anaconda ToS for required channels (non-interactive)
-RUN $CONDA_DIR/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
-    $CONDA_DIR/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+# Install uv
+RUN pip install uv
 
-# Create conda environment using explicit path (NOT in PATH yet)
-RUN $CONDA_DIR/bin/conda env create -f dev_environment/environment.yml
+# Copy dependency files first (for caching)
+COPY pyproject.toml uv.lock* ./
 
-# Install Python package
-RUN /opt/conda/envs/lokigi_package_dev/bin/pip install -e /workspace
+# Install dependencies into system Python
+RUN uv sync --frozen --all-extras --dev
 
 # ============================================================
-# STAGE 5: Activate conda environment for RUNTIME only
+# STAGE 4: Copy project
 # ============================================================
-# Now that R packages are installed, it's safe to add conda to PATH
-ENV CONDA_DEFAULT_ENV=lokigi_package_dev
-ENV PATH="/opt/conda/envs/lokigi_package_dev/bin:${PATH}"
-ENV RETICULATE_PYTHON=/opt/conda/envs/lokigi_package_dev/bin/python
+COPY . .
 
-RUN echo "conda activate lokigi_package_dev" >> /root/.bashrc
+# Install your package (editable)
+RUN uv pip install -e .
 
 CMD ["/bin/bash"]
