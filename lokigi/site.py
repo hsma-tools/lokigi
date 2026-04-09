@@ -21,11 +21,15 @@ from warnings import warn
 import numpy as np
 import math
 from typing import Literal
+import heapq
 
 import plotly.express as px
 
+from tqdm.auto import tqdm
+
 # Warn if brute force will be slow
-_BRUTE_FORCE_WARN_THRESHOLD = 50
+BRUTE_FORCE_WARN_THRESHOLD = 75_000
+BRUTE_FORCE_LIMIT = 500_000
 
 
 class SiteProblem:
@@ -481,6 +485,11 @@ class SiteProblem:
         objectives: str | list[str] = "p_median",
         capacitated=False,
         search_strategy: Literal["brute-force", "greedy", "local"] = "brute-force",
+        ignore_brute_force_limit=False,
+        show_brute_force_progress=False,
+        keep_best_n=None,
+        keep_worst_n=None,
+        rank_best_n_on="weighted_average",
         **kwargs,
     ):
 
@@ -526,31 +535,133 @@ class SiteProblem:
             )
 
         if objective == "p_median":
-            return self._solve_pmedian_problem(p, search_strategy=search_strategy)
+            return self._solve_pmedian_problem(
+                p,
+                search_strategy=search_strategy,
+                ignore_brute_force_limit=ignore_brute_force_limit,
+                show_brute_force_progress=show_brute_force_progress,
+                keep_best_n=keep_best_n,
+                keep_worst_n=keep_worst_n,
+                rank_best_n_on=rank_best_n_on,
+            )
         else:
             raise ValueError(
                 f"Unknown objective '{objective}'. Currently supported: 'p_median'."
             )
 
-    def _brute_force(self, p: int, objectives):
+    def _brute_force(
+        self,
+        p: int,
+        objectives,
+        ignore_brute_force_limit: bool = False,
+        show_brute_force_progress: bool = False,
+        keep_best_n=None,
+        keep_worst_n=None,
+        rank_best_n_on="weighted_average",
+    ):
+
+        if keep_best_n is not None:
+            top_n_heap = []  # To store the smallest scores (best)
+        if keep_worst_n is not None:
+            bottom_n_heap = []  # To store the largest scores (worst)
+
         possible_combinations = _generate_all_combinations(
             n_facilities=self.total_n_sites, p=p, site_problem=self
         )
 
-        outputs = []
-
-        for possible_solution in possible_combinations:
-            outputs.append(
-                self.evaluate_single_solution(
-                    site_indices=possible_solution, objectives=objectives
-                ).generate_solution_metrics()
+        if len(possible_combinations) > BRUTE_FORCE_LIMIT:
+            if not ignore_brute_force_limit:
+                raise MemoryError(
+                    f"You are trying to evaluate {len(possible_combinations):,d} combinations via brute force. The limit is {BRUTE_FORCE_LIMIT:,d}. Please try a different solver."
+                )
+            else:
+                warn(
+                    f"You are trying to evaluate {len(possible_combinations):,d} combinations via brute force and have opted to ignore the advised limit of {BRUTE_FORCE_LIMIT:,d} combinations. This could take a while!"
+                )
+        elif len(possible_combinations) > BRUTE_FORCE_WARN_THRESHOLD:
+            warn(
+                f"You are trying to evaluate {len(possible_combinations):,d} combinations via brute force. The recommended maximum is {BRUTE_FORCE_WARN_THRESHOLD:,d}. This could take a while! You may wish to try a different solver."
             )
 
-        return outputs
+        outputs = []
 
-    def _solve_pmedian_problem(self, p: int, search_strategy):
+        if show_brute_force_progress:
+            possible_combinations = tqdm(possible_combinations)
+
+        for possible_solution in possible_combinations:
+            if keep_best_n is None and keep_worst_n is None:
+                # Keep all results
+                outputs.append(
+                    self.evaluate_single_solution(
+                        site_indices=possible_solution, objectives=objectives
+                    ).return_solution_metrics()
+                )
+
+            # --- Logic for Top N (Smallest Scores) ---
+            # We store -score to simulate a Max-Heap using heapq
+            else:
+                metrics = self.evaluate_single_solution(
+                    site_indices=possible_solution, objectives=objectives
+                ).return_solution_metrics()
+
+                score = metrics[rank_best_n_on]
+
+                if keep_best_n is not None:
+                    if len(top_n_heap) < keep_best_n:
+                        heapq.heappush(top_n_heap, (-score, metrics))
+                    elif -score > top_n_heap[0][0]:
+                        heapq.heapreplace(top_n_heap, (-score, metrics))
+
+                # --- Logic for Bottom N (Largest Scores) ---
+                # Standard Min-Heap to keep the largest values
+                if keep_worst_n is not None:
+                    if len(bottom_n_heap) < keep_best_n:
+                        heapq.heappush(bottom_n_heap, (score, metrics))
+                    elif score > bottom_n_heap[0][0]:
+                        heapq.heapreplace(bottom_n_heap, (score, metrics))
+
+        if keep_best_n is None and keep_worst_n is None:
+            return outputs
+        else:
+            # Reconstruct the 'outputs' list
+            # Extract dictionaries from heaps and sort them
+            if keep_best_n is not None:
+                best_list = [
+                    item[1]
+                    for item in sorted(top_n_heap, key=lambda x: x[0], reverse=True)
+                ]
+            if keep_worst_n is not None:
+                worst_list = [
+                    item[1] for item in sorted(bottom_n_heap, key=lambda x: x[0])
+                ]
+
+            if keep_best_n is not None and keep_worst_n is None:
+                return best_list
+            elif keep_worst_n is not None and keep_best_n is None:
+                return worst_list
+            else:
+                return best_list + worst_list
+
+    def _solve_pmedian_problem(
+        self,
+        p: int,
+        search_strategy,
+        ignore_brute_force_limit=False,
+        show_brute_force_progress=False,
+        keep_best_n=None,
+        keep_worst_n=None,
+        rank_best_n_on="weighted_average",
+    ):
         if search_strategy == "brute-force":
-            outputs = self._brute_force(p=p, objectives="p-median")
+            outputs = self._brute_force(
+                p=p,
+                objectives="p-median",
+                ignore_brute_force_limit=ignore_brute_force_limit,
+                show_brute_force_progress=show_brute_force_progress,
+                keep_best_n=keep_best_n,
+                keep_worst_n=keep_worst_n,
+                rank_best_n_on=rank_best_n_on,
+            )
 
         else:
             raise ValueError(f"Approach {search_strategy} not yet supported.")
@@ -631,29 +742,30 @@ class EvaluatedCombination:
         self.site_indices = site_indices
         self.evaluated_combination_df = evaluated_combination_df
         self.site_problem = site_problem
-
-    def show_result_df(self):
-        return self.evaluated_combination_df
-
-    def generate_solution_metrics(self):
-        # Return weighted average
-        weighted_average = np.average(
+        self.weighted_average = np.average(
             self.evaluated_combination_df["min_cost"],
             weights=self.evaluated_combination_df[
                 self.site_problem._demand_data_demand_col
             ],
         )
-        unweighted_average = np.average(self.evaluated_combination_df["min_cost"])
-        percentile_90th = np.percentile(self.evaluated_combination_df["min_cost"], q=90)
-        max_travel = np.max(self.evaluated_combination_df["min_cost"])
+        self.unweighted_average = np.average(self.evaluated_combination_df["min_cost"])
+        self.percentile_90th = np.percentile(
+            self.evaluated_combination_df["min_cost"], q=90
+        )
+        self.max_travel = np.max(self.evaluated_combination_df["min_cost"])
 
+    def show_result_df(self):
+        return self.evaluated_combination_df
+
+    def return_solution_metrics(self):
+        # Return weighted average
         return {
             "site_names": self.site_names,
             "site_indices": self.site_indices,
-            "weighted_average": weighted_average,
-            "unweighted_average": unweighted_average,
-            "90th_percentile": percentile_90th,
-            "max": max_travel,
+            "weighted_average": self.weighted_average,
+            "unweighted_average": self.unweighted_average,
+            "90th_percentile": self.percentile_90th,
+            "max": self.max_travel,
             "problem_df": self.evaluated_combination_df,
         }
 
