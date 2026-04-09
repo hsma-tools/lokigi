@@ -3,9 +3,12 @@ title: "Examples Gallery"
 subtitle: "Explore what's possible with vidigi through these hands-on examples."
 toc: true
 listing:
-  - id: simpy-examples
+  - id: single-objective-site
     contents:
       - "location/simple/simple.ipynb"
+      - "location/existing_sites/existing_sites.ipynb"
+      - "location/no_geometry/no_geometry.ipynb"
+      - "location/larger_problems/larger_problems.ipynb"
     type: grid
     sort: "title"
     grid-columns: 3
