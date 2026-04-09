@@ -909,6 +909,10 @@ class SiteSolutionSet:
 
         sorted_df = self.solution_df.sort_values(rank_on).reset_index().head(n_best)
 
+        # Calculate global color scale boundaries
+        global_vmin = min(df["min_cost"].min() for df in sorted_df["problem_df"])
+        global_vmax = max(df["min_cost"].max() for df in sorted_df["problem_df"])
+
         for i, ax in enumerate(fig.axes):
             solution = sorted_df.iloc[[i]]
             solution_df = solution["problem_df"].values[0]
@@ -922,13 +926,15 @@ class SiteSolutionSet:
 
             ax = nearest_site_travel_gdf.plot(
                 "min_cost",
-                legend=True,
+                legend=False,
                 cmap=cmap,
                 alpha=0.7,
                 edgecolor="black",
                 linewidth=0.5,
                 figsize=(12, 6),
                 ax=ax,
+                vmin=global_vmin,
+                vmax=global_vmax,
             )
 
             selected_sites = self.site_problem.candidate_sites.iloc[
@@ -973,8 +979,19 @@ class SiteSolutionSet:
 
             if subplot_title is not None:
                 if subplot_title == "default":
-                    ax.set_title(f"\n{solution['weighted_average'].values[0]:.1f}")
+                    ax.set_title(
+                        f"Weighted Average: {solution['weighted_average'].values[0]:.1f} | Maximum: {solution['max'].values[0]:.1f}"
+                    )
                 else:
                     ax.set_title(safe_evaluate_title(subplot_title))
             if title is not None:
                 ax.set_title(title)
+
+        # Create a single colorbar based on the global scale and chosen colormap
+        sm = plt.cm.ScalarMappable(
+            cmap=cmap, norm=plt.Normalize(vmin=global_vmin, vmax=global_vmax)
+        )
+        sm._A = []  # Empty array for the scalar mappable
+
+        # Add the colorbar to the figure
+        fig.colorbar(sm, ax=axs, fraction=0.02, pad=0.04, label="Min Cost")
