@@ -876,10 +876,24 @@ class SiteSolutionSet:
         cmap="Blues",
         chosen_site_colour="magenta",
         unchosen_site_colour="grey",
+        n_cols=None,
+        n_rows=None,
     ):
-        max_cols = 5
-        ncols = min(n_best, max_cols)
-        nrows = math.ceil(n_best / ncols)
+        if n_best > len(self.solution_df):
+            n_best = len(self.solution_df)
+
+        if n_cols is None and n_rows is None:
+            max_cols = 5
+            ncols = min(n_best, max_cols)
+            nrows = math.ceil(n_best / ncols)
+
+        elif n_cols is None and n_rows is not None:
+            nrows = n_rows
+            ncols = min(n_best, max_cols)
+
+        else:
+            ncols = n_cols
+            nrows = math.ceil(n_best / ncols)
 
         fig, axs = plt.subplots(nrows, ncols, figsize=(6 * ncols, 5 * nrows))
 
