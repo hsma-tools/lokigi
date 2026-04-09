@@ -61,6 +61,7 @@ class SiteProblem:
         self._candidate_sites_vertical_col = None
         self._candidate_sites_horizontal_col = None
         self._candidate_sites_capacity_col = None
+        self._candidate_sites_required_sites_col = None
         self.total_n_sites = None
 
         self.travel_matrix = None  # Travel time/distance matrix
@@ -172,6 +173,7 @@ class SiteProblem:
         self,
         candidate_site_df,
         candidate_id_col,
+        required_sites_col=None,
         geometry_col="geometry",
         vertical_geometry_col="lat",
         horizontal_geometry_col="long",
@@ -235,11 +237,14 @@ class SiteProblem:
         if not _check_crs_match_pref(loaded_df, self.preferred_crs):
             loaded_df = _convert_crs(loaded_df, target_crs=self.preferred_crs)
 
+        loaded_df = loaded_df.reset_index(drop=False, names="index")
+
         self.candidate_sites = loaded_df
         self._candidate_sites_type = df_type
         self._candidate_sites_candidate_id_col = candidate_id_col
         self._candidate_sites_geometry_col = geometry_col
         self._candidate_sites_capacity_col = capacity_col
+        self._candidate_sites_required_sites_col = required_sites_col
         self.total_n_sites = len(self.candidate_sites)
 
     def show_sites(self):
@@ -460,6 +465,8 @@ class SiteProblem:
             columns=["site"],
         )
 
+        sites_df_temp = sites_df_temp.reset_index(drop=False, names="index")
+
         self.candidate_sites = sites_df_temp
         self._candidate_sites_type = "pandas"
         self._candidate_sites_candidate_id_col = "site"
@@ -527,7 +534,7 @@ class SiteProblem:
 
     def _brute_force(self, p: int, objectives):
         possible_combinations = _generate_all_combinations(
-            n_facilities=self.total_n_sites, p=p
+            n_facilities=self.total_n_sites, p=p, site_problem=self
         )
 
         outputs = []
