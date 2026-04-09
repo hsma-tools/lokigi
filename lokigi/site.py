@@ -538,7 +538,10 @@ class SiteProblem:
                 ).generate_solution_metrics()
             )
 
-        return SiteSolutionSet(pd.DataFrame(outputs).sort_values("weighted_average"))
+        return SiteSolutionSet(
+            solution_df=pd.DataFrame(outputs).sort_values("weighted_average"),
+            site_problem=self,
+        )
 
     def evaluate_n_sites(self, min_sites, max_sites):
         pass
@@ -639,8 +642,9 @@ class EvaluatedCombination:
 
 
 class SiteSolutionSet:
-    def __init__(self, solution_df):
+    def __init__(self, solution_df, site_problem):
         self.solution_df = solution_df.reset_index(drop=True)
+        self.site_problem = site_problem
 
     def show_solutions(self, rounding=2):
         return round(self.solution_df, rounding)
@@ -774,7 +778,6 @@ class SiteSolutionSet:
 
     def plot_best_combination(
         self,
-        problem_class,
         rank_on="weighted_average",
         title=None,
         show_all_locations=True,
@@ -783,7 +786,7 @@ class SiteSolutionSet:
         unchosen_site_colour="grey",
     ):
 
-        if problem_class.region_geometry_layer is None:
+        if self.site_problem.region_geometry_layer is None:
             raise ValueError(
                 "The region data has not been initialised in the problem class."
                 "Please run add_region_geometry_layer() first."
@@ -792,10 +795,10 @@ class SiteSolutionSet:
         solution = self.solution_df.sort_values(rank_on).head().reset_index()
 
         nearest_site_travel_gdf = pd.merge(
-            problem_class.region_geometry_layer,
+            self.site_problem.region_geometry_layer,
             solution["problem_df"][0],
-            left_on=problem_class._region_geometry_layer_common_col,
-            right_on=problem_class._demand_data_id_col,
+            left_on=self.site_problem._region_geometry_layer_common_col,
+            right_on=self.site_problem._demand_data_id_col,
         )
 
         ax = nearest_site_travel_gdf.plot(
@@ -808,12 +811,12 @@ class SiteSolutionSet:
             figsize=(12, 6),
         )
 
-        selected_sites = problem_class.candidate_sites.iloc[
+        selected_sites = self.site_problem.candidate_sites.iloc[
             solution.site_indices.iloc[0]
         ]
 
         if show_all_locations:
-            all_site_points = problem_class.candidate_sites.plot(
+            all_site_points = self.site_problem.candidate_sites.plot(
                 ax=ax, color=unchosen_site_colour, markersize=30, alpha=0.3
             )
 
@@ -829,7 +832,7 @@ class SiteSolutionSet:
         for x, y, label in zip(
             selected_sites.geometry.x,
             selected_sites.geometry.y,
-            selected_sites[problem_class._candidate_sites_candidate_id_col],
+            selected_sites[self.site_problem._candidate_sites_candidate_id_col],
         ):
             ax.annotate(
                 label,
@@ -848,7 +851,6 @@ class SiteSolutionSet:
 
     def plot_n_best_combinations(
         self,
-        problem_class,
         n_best=10,
         rank_on="weighted_average",
         title=None,
@@ -868,7 +870,7 @@ class SiteSolutionSet:
         if isinstance(axs, np.ndarray):
             axs = axs.flatten()
 
-        if problem_class.region_geometry_layer is None:
+        if self.site_problem.region_geometry_layer is None:
             raise ValueError(
                 "The region data has not been initialised in the problem class."
                 "Please run add_region_geometry_layer() first."
@@ -881,10 +883,10 @@ class SiteSolutionSet:
             solution_df = solution["problem_df"].values[0]
 
             nearest_site_travel_gdf = pd.merge(
-                problem_class.region_geometry_layer,
+                self.site_problem.region_geometry_layer,
                 solution_df,
-                left_on=problem_class._region_geometry_layer_common_col,
-                right_on=problem_class._demand_data_id_col,
+                left_on=self.site_problem._region_geometry_layer_common_col,
+                right_on=self.site_problem._demand_data_id_col,
             )
 
             ax = nearest_site_travel_gdf.plot(
@@ -898,12 +900,12 @@ class SiteSolutionSet:
                 ax=ax,
             )
 
-            selected_sites = problem_class.candidate_sites.iloc[
+            selected_sites = self.site_problem.candidate_sites.iloc[
                 solution.site_indices.iloc[0]
             ]
 
             if show_all_locations:
-                all_site_points = problem_class.candidate_sites.plot(
+                all_site_points = self.site_problem.candidate_sites.plot(
                     ax=ax, color=unchosen_site_colour, markersize=30, alpha=0.3
                 )
 
@@ -919,7 +921,7 @@ class SiteSolutionSet:
             for x, y, label in zip(
                 selected_sites.geometry.x,
                 selected_sites.geometry.y,
-                selected_sites[problem_class._candidate_sites_candidate_id_col],
+                selected_sites[self.site_problem._candidate_sites_candidate_id_col],
             ):
                 ax.annotate(
                     label,
