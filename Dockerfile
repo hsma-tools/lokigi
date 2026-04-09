@@ -1,30 +1,29 @@
 FROM ubuntu:24.04
 
-ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=noninteractive \
+    LC_ALL=en_GB.UTF-8 \
+    LANG=en_GB.UTF-8 \
+    PYTHONUNBUFFERED=1
 
 # ============================================================
 # STAGE 1: System dependencies
 # ============================================================
-RUN set -eux; \
-    for i in 1 2 3; do \
-      apt-get update && break; \
-      echo "apt-get update failed, retrying ($i/3)..."; \
-      sleep 5; \
-    done; \
-    apt-get install -y --no-install-recommends \
-        wget ca-certificates gnupg software-properties-common \
-        dirmngr locales git \
-        build-essential gfortran \
-        libxml2-dev \
-        libglpk-dev \
-        libgmp-dev \
-        libblas-dev \
-        liblapack-dev \
-        libcurl4-openssl-dev \
-        libssl-dev \
-        python3 python3-pip && \
-    locale-gen en_GB.UTF-8 && \
-    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    ca-certificates \
+    curl \
+    gnupg \
+    locales \
+    git \
+    build-essential \
+    libxml2-dev \
+    libglpk-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    python3 \
+    python3-pip \
+    && locale-gen en_GB.UTF-8 \
+    && rm -rf /var/lib/apt/lists/*
 
 # ============================================================
 # STAGE 2: Install Quarto
@@ -36,32 +35,24 @@ RUN wget -qO /tmp/quarto.deb https://quarto.org/download/latest/quarto-linux-amd
     rm -rf /var/lib/apt/lists/*
 
 # ============================================================
-# STAGE 3: Install uv + Python deps
+# STAGE 3: Install uv
 # ============================================================
+# This grabs the binary from the official image and puts it in your path
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Workspace Setup
 WORKDIR /workspace
 
-# Install uv
-RUN curl -Ls https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:$PATH"
-
-# Copy only dependency + metadata files
+# Install Dependencies
+# We copy only these first to leverage Docker layer caching
 COPY pyproject.toml uv.lock* README.md ./
+RUN uv sync --frozen --no-install-project --no-dev
 
-# Install dependencies (without project)
-RUN uv sync --no-install-project --frozen --all-extras --dev
-
-# Copy rest of project
+# Copy Project and Install
 COPY . .
+RUN uv sync --frozen
 
-# Install your package
-RUN uv pip install -e .
-
-# ============================================================
-# STAGE 4: Copy project
-# ============================================================
-COPY . .
-
-# Install your package (editable)
-RUN uv pip install -e .
+# Ensure the virtualenv is used by default
+ENV PATH="/workspace/.venv/bin:$PATH"
 
 CMD ["/bin/bash"]
