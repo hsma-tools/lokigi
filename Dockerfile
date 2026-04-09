@@ -40,8 +40,12 @@ RUN wget -qO /tmp/quarto.deb https://quarto.org/download/latest/quarto-linux-amd
 # ============================================================
 WORKDIR /workspace
 
-# Install uv
-RUN pip install uv
+# Install uv (official installer)
+RUN apt-get update && apt-get install -y curl && \
+    curl -Ls https://astral.sh/uv/install.sh | sh
+
+ENV PATH="/root/.local/bin:$PATH"
+ENV PATH="/workspace/.venv/bin:$PATH"
 
 # Copy dependency files first (for caching)
 COPY pyproject.toml uv.lock* ./
