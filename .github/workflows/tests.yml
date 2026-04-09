@@ -81,29 +81,14 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install uv
-        if: steps.should_run.outputs.run == 'true'
-        run: |
-          python -m pip install --upgrade pip
-          pip install uv
-
-      - name: Cache Python deps via uv.lock
-        if: steps.should_run.outputs.run == 'true'
-        id: cache_uv
-        uses: actions/cache@v3
+        uses: astral-sh/setup-uv@v5
         with:
-          path: ~/.cache/uv
-          key: uv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('uv.lock') }}
-          restore-keys: |
-            uv-${{ runner.os }}-${{ matrix.python-version }}-
+          enable-cache: true
 
       - name: Install dependencies
         if: steps.should_run.outputs.run == 'true'
-        run: uv sync --no-install-project --all-extras --dev
-
-      - name: Install package
-        if: steps.should_run.outputs.run == 'true'
-        run: uv pip install -e .
+        run: uv sync --all-extras --dev
 
       - name: Run tests
         if: steps.should_run.outputs.run == 'true'
-        run: pytest --verbose --tb=short
+        run: uv run pytest --verbose --tb=short
