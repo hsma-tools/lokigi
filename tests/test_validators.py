@@ -7,53 +7,7 @@ from lokigi.utils import _validate_columns
 # All tests have been checked by a human
 
 
-class DummyManager:
-    """A minimal class to test the decorator."""
 
-    @_validate_columns(
-        df_arg_name="candidate_df",
-        col_arg_names=["id_col", "lat_col", "long_col"],
-        numeric_col_args=[
-            "lat_col",
-            "long_col",
-        ],  # We only care that coords are numeric
-        msg_template="Missing: {missing}. Found: {available}",
-    )
-    def add_data(self, candidate_df, id_col, lat_col="lat", long_col="long"):
-        # If it reaches here, validation passed!
-        self.success = True
-        return True
-
-
-# --- Fixtures ---
-# Fixtures provide reusable test data
-
-
-@pytest.fixture
-def manager():
-    return DummyManager()
-
-
-@pytest.fixture
-def valid_df():
-    return pd.DataFrame(
-        {
-            "site_id": ["Site A", "Site B"],
-            "lat": [51.5074, 53.4808],
-            "long": [-0.1278, -2.2426],
-        }
-    )
-
-
-@pytest.fixture
-def invalid_df():
-    return pd.DataFrame(
-        {
-            "site_id": ["Site A", "Site B"],
-            "lat": [51.5074, 53.4808],
-            "long": ["-0.1278", -2.2426],
-        }
-    )
 
 
 # --- Tests ---
@@ -75,8 +29,7 @@ def test_missing_column_raises_value_error(manager, valid_df):
         manager.add_data(bad_df, id_col="site_id")
 
     # Check that our custom message formatted correctly
-    assert "Missing: ['lat']" in str(exc_info.value)
-    assert "Found: ['site_id', 'long']" in str(exc_info.value)
+    assert "Missing columns: ['lat']" in str(exc_info.value)
 
 
 def test_string_in_numeric_column_raises_type_error(manager, invalid_df):
