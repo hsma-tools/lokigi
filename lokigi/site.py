@@ -7,7 +7,6 @@ from lokigi.utils import (
     _generate_all_combinations,
     _check_crs_match_pref,
     _convert_crs,
-    ALIASES,
     SUPPORTED_OBJECTIVES,
 )
 
@@ -417,9 +416,7 @@ class SiteProblem:
 
         objective = objectives if isinstance(objectives, str) else objectives[0]
 
-        if objective in ALIASES:
-            objective = ALIASES[objective]
-        else:
+        if objective not in SUPPORTED_OBJECTIVES:
             raise ValueError(f"Unsupported objective ({objective}) passed.")
 
         # Ensure exactly one argument is provided out of site_names and site_indices
@@ -474,7 +471,13 @@ class SiteProblem:
                 f"You provided indices: {site_indices}"
             )
 
-        if objective == "p_median":
+        if objective in [
+            "p_median",
+            "p_center",
+            "simple_p_median",
+            "hybrid_p_median",
+            "hybrid_simple_p_median",
+        ]:
             # Assume travel to closest facility
             active_facilities["min_cost"] = active_facilities.min(axis=1)
 
@@ -490,12 +493,13 @@ class SiteProblem:
             )
 
             return EvaluatedCombination(
-                "p-median",
+                objective,
                 site_indices=resolved_indices,
                 site_names=site_names,
                 evaluated_combination_df=active_facilities,
                 site_problem=self,
             )
+
         else:
             raise ValueError(
                 f"Unknown objective '{objective}'. Currently supported: {SUPPORTED_OBJECTIVES.join(', ')}."
@@ -532,16 +536,21 @@ class SiteProblem:
     def solve(
         self,
         p: int,
-        objectives: str | list[str] = "p_median",
-        capacitated=False,
+        objectives: str = "p_median",
+        capacitated=False,  # Not yet implemented
         search_strategy: Literal["brute-force", "greedy", "local"] = "brute-force",
         ignore_brute_force_limit=False,
         show_brute_force_progress=False,
         keep_best_n=None,
         keep_worst_n=None,
-        rank_best_n_on="weighted_average",
+        max_value_cutoff=None,  # only used for hybrid
         **kwargs,
     ):
+
+        if capacitated:
+            raise ValueError(
+                "Capacitated modelling not yet supported. Please rerun with `capacitated=False`."
+            )
 
         # Check minimum required information is provided
         if self.travel_matrix is None:
@@ -574,25 +583,47 @@ class SiteProblem:
 
         objective = objectives if isinstance(objectives, str) else objectives[0]
 
-        if objective in ALIASES:
-            objective = ALIASES[objective]
-        else:
+        if objective not in SUPPORTED_OBJECTIVES:
             raise ValueError(f"Unsupported objective ({objective}) passed.")
 
-        if search_strategy not in ["brute-force", "greedy", "local"]:
+        # if search_strategy not in ["brute-force", "greedy", "local"]:
+        #     raise ValueError(
+        #         f"Unsupported search strategy ({search_strategy}) passed. Please choose from 'brute-force', 'greedy', or 'local'."
+        #     )
+        if search_strategy not in ["brute-force"]:
             raise ValueError(
-                f"Unsupported search strategy ({search_strategy}) passed. Please choose from 'brute-force', 'greedy', or 'local'."
+                f"Unsupported search strategy ({search_strategy}) passed. Only 'brute-force' is currently supported."
             )
 
-        if objective == "p_median":
-            return self._solve_pmedian_problem(
+        if max_value_cutoff is not None and objective not in [
+            "hybrid_p_median",
+            "hybrid_simple_p_median",
+        ]:
+            raise ValueError(
+                f"A max value cutoff of {max_value_cutoff} has been provided for a model variant ({objective}) that doesn't support it."
+                "Please rerun with hybrid_p_median or hybrid_simple_p_median."
+            )
+
+        if objective in ["p_median", "p_center", "simple_p_median"]:
+            return self._solve_pmedian_pcenter_problem(
                 p,
                 search_strategy=search_strategy,
                 ignore_brute_force_limit=ignore_brute_force_limit,
                 show_brute_force_progress=show_brute_force_progress,
                 keep_best_n=keep_best_n,
                 keep_worst_n=keep_worst_n,
-                rank_best_n_on=rank_best_n_on,
+                objective=objective,
+            )
+        elif objective in ["hybrid_p_median", "hybrid_simple_p_median"]:
+            return self._solve_pmedian_pcenter_problem(
+                p,
+                search_strategy=search_strategy,
+                ignore_brute_force_limit=ignore_brute_force_limit,
+                show_brute_force_progress=show_brute_force_progress,
+                keep_best_n=keep_best_n,
+                keep_worst_n=keep_worst_n,
+                objective=objective,
+                max_value_cutoff=max_value_cutoff,
             )
         else:
             raise ValueError(
@@ -608,6 +639,7 @@ class SiteProblem:
         keep_best_n=None,
         keep_worst_n=None,
         rank_best_n_on="weighted_average",
+        max_value_cutoff=None,
     ):
 
         if keep_best_n is not None:
@@ -641,11 +673,14 @@ class SiteProblem:
         for possible_solution in possible_combinations:
             if keep_best_n is None and keep_worst_n is None:
                 # Keep all results
-                outputs.append(
-                    self.evaluate_single_solution(
-                        site_indices=possible_solution, objectives=objectives
-                    ).return_solution_metrics()
-                )
+                single_solution_metrics = self.evaluate_single_solution(
+                    site_indices=possible_solution, objectives=objectives
+                ).return_solution_metrics()
+                if max_value_cutoff is None or (
+                    max_value_cutoff is not None
+                    and single_solution_metrics["max"] <= max_value_cutoff
+                ):
+                    outputs.append(single_solution_metrics)
 
             # --- Logic for Top N (Smallest Scores) ---
             # We store -score to simulate a Max-Heap using heapq
@@ -655,20 +690,23 @@ class SiteProblem:
                 ).return_solution_metrics()
 
                 score = metrics[rank_best_n_on]
+                max_value = metrics["max"]
+                if max_value_cutoff is None or (
+                    max_value_cutoff is not None and max_value <= max_value_cutoff
+                ):
+                    if keep_best_n is not None:
+                        if len(top_n_heap) < keep_best_n and max_value <= max:
+                            heapq.heappush(top_n_heap, (-score, metrics))
+                        elif -score > top_n_heap[0][0]:
+                            heapq.heapreplace(top_n_heap, (-score, metrics))
 
-                if keep_best_n is not None:
-                    if len(top_n_heap) < keep_best_n:
-                        heapq.heappush(top_n_heap, (-score, metrics))
-                    elif -score > top_n_heap[0][0]:
-                        heapq.heapreplace(top_n_heap, (-score, metrics))
-
-                # --- Logic for Bottom N (Largest Scores) ---
-                # Standard Min-Heap to keep the largest values
-                if keep_worst_n is not None:
-                    if len(bottom_n_heap) < keep_best_n:
-                        heapq.heappush(bottom_n_heap, (score, metrics))
-                    elif score > bottom_n_heap[0][0]:
-                        heapq.heapreplace(bottom_n_heap, (score, metrics))
+                    # --- Logic for Bottom N (Largest Scores) ---
+                    # Standard Min-Heap to keep the largest values
+                    if keep_worst_n is not None:
+                        if len(bottom_n_heap) < keep_best_n:
+                            heapq.heappush(bottom_n_heap, (score, metrics))
+                        elif score > bottom_n_heap[0][0]:
+                            heapq.heapreplace(bottom_n_heap, (score, metrics))
 
         if keep_best_n is None and keep_worst_n is None:
             return outputs
@@ -692,34 +730,64 @@ class SiteProblem:
             else:
                 return best_list + worst_list
 
-    def _solve_pmedian_problem(
+    def _solve_pmedian_pcenter_problem(
         self,
         p: int,
-        search_strategy,
+        objective="p_median",
+        search_strategy="brute-force",
         ignore_brute_force_limit=False,
         show_brute_force_progress=False,
         keep_best_n=None,
         keep_worst_n=None,
-        rank_best_n_on="weighted_average",
+        max_value_cutoff=None,
     ):
+
+        if objective not in SUPPORTED_OBJECTIVES:
+            raise ValueError(
+                "Unsupported objective passed to _solve_pmedian_pcenter_problem. Please contact a developer."
+            )
+        if max_value_cutoff is not None and objective not in [
+            "hybrid_p_median",
+            "hybrid_simple_p_median",
+        ]:
+            raise ValueError(
+                f"A max value cutoff of {max_value_cutoff} has been provided for a model objective ({objective} that doesn't support it.)"
+                "Please rerun with hybrid_p_median or hybrid_simple_p_median."
+            )
+
+        if search_strategy != "brute-force":
+            raise ValueError(f"Approach {search_strategy} not yet supported.")
         if search_strategy == "brute-force":
+            if objective in ["p_median", "hybrid_p_median"]:
+                ranking = "weighted_average"
+            elif objective in ["simple_p_median", "hybrid_simple_p_median"]:
+                ranking = "unweighted_average"
+            elif objective in ["p_center"]:
+                ranking = "max"
+
+            if objective in ["hybrid_p_median", "hybrid_simple_p_median"]:
+                max_value_cutoff = max_value_cutoff
+            else:
+                max_value_cutoff = None
+
             outputs = self._brute_force(
                 p=p,
-                objectives="p-median",
+                objectives=objective,
                 ignore_brute_force_limit=ignore_brute_force_limit,
                 show_brute_force_progress=show_brute_force_progress,
                 keep_best_n=keep_best_n,
                 keep_worst_n=keep_worst_n,
-                rank_best_n_on=rank_best_n_on,
+                rank_best_n_on=ranking,
+                max_value_cutoff=max_value_cutoff,
             )
 
-        else:
-            raise ValueError(f"Approach {search_strategy} not yet supported.")
-
-        return SiteSolutionSet(
-            solution_df=pd.DataFrame(outputs).sort_values("weighted_average"),
-            site_problem=self,
-        )
+            return SiteSolutionSet(
+                solution_df=pd.DataFrame(outputs).sort_values(
+                    [ranking, "weighted_average"]
+                ),
+                site_problem=self,
+                objectives=objective,
+            )
 
     def evaluate_n_sites(self, min_sites, max_sites):
         pass
@@ -802,7 +870,7 @@ class EvaluatedCombination:
         self.percentile_90th = np.percentile(
             self.evaluated_combination_df["min_cost"], q=90
         )
-        self.max_travel = np.max(self.evaluated_combination_df["min_cost"])
+        self.max = np.max(self.evaluated_combination_df["min_cost"])
 
     def show_result_df(self):
         return self.evaluated_combination_df
@@ -815,38 +883,50 @@ class EvaluatedCombination:
             "weighted_average": self.weighted_average,
             "unweighted_average": self.unweighted_average,
             "90th_percentile": self.percentile_90th,
-            "max": self.max_travel,
+            "max": self.max,
             "problem_df": self.evaluated_combination_df,
         }
 
 
 class SiteSolutionSet:
-    def __init__(self, solution_df, site_problem):
+    def __init__(self, solution_df, site_problem, objectives):
         self.solution_df = solution_df.reset_index(drop=True)
         self.site_problem = site_problem
+        self.objectives = objectives
 
     def show_solutions(self, rounding=2):
         return round(self.solution_df, rounding)
 
-    def return_best_combination_details(self, rank_on="weighted_average", top_n=1):
-        return self.solution_df.sort_values(rank_on).head(top_n).reset_index()
+    def return_best_combination_details(self, rank_on=None, top_n=1):
+        if rank_on is not None:
+            return self.solution_df.sort_values(rank_on).head(top_n).reset_index()
+        else:
+            return self.solution_df.head(top_n).reset_index()
 
-    def return_best_combination_site_indices(self, rank_on="weighted_average"):
-        return (
-            self.solution_df.sort_values(rank_on)
-            .head(1)["site_indices"]
-            .reset_index()[0]
-        )
+    def return_best_combination_site_indices(self, rank_on=None):
+        if rank_on is not None:
+            return (
+                self.solution_df.sort_values(rank_on)
+                .head(1)["site_indices"]
+                .reset_index()[0]
+            )
+        else:
+            return self.solution_df.head(1)["site_indices"].reset_index()[0]
 
-    def return_best_combination_site_names(self, rank_on="weighted_average"):
-        return (
-            self.solution_df.sort_values(rank_on).head(1)["site_names"].reset_index()[0]
-        )
+    def return_best_combination_site_names(self, rank_on=None):
+        if rank_on is not None:
+            return (
+                self.solution_df.sort_values(rank_on)
+                .head(1)["site_names"]
+                .reset_index()[0]
+            )
+        else:
+            return self.solution_df.head(1)["site_names"].reset_index()[0]
 
     def plot_travel_time_distribution(
         self,
         top_n=1,
-        rank_on="weighted_average",
+        rank_on=None,
         secondary_ranking="max",
         title="default",
         height=None,
@@ -854,11 +934,15 @@ class SiteSolutionSet:
         compare_to_best=False,
         **kwargs,
     ):
-        solutions_filtered = (
-            self.solution_df.sort_values([rank_on, secondary_ranking])
-            .reset_index(drop=True)
-            .head(top_n)
-        )
+        if rank_on is not None:
+            solutions_filtered = (
+                self.solution_df.sort_values([rank_on, secondary_ranking])
+                .reset_index(drop=True)
+                .head(top_n)
+            )
+        else:
+            solutions_filtered = self.solution_df.reset_index(drop=True).head(top_n)
+
         dfs = []
         if compare_to_best:
             best_df = solutions_filtered.head(1)["problem_df"][0]
@@ -957,21 +1041,23 @@ class SiteSolutionSet:
 
     def plot_best_combination(
         self,
-        rank_on="weighted_average",
+        rank_on=None,
         title=None,
         show_all_locations=True,
         cmap="Blues",
         chosen_site_colour="magenta",
         unchosen_site_colour="grey",
     ):
-
         if self.site_problem.region_geometry_layer is None:
             raise ValueError(
                 "The region data has not been initialised in the problem class."
                 "Please run add_region_geometry_layer() first."
             )
 
-        solution = self.solution_df.sort_values(rank_on).head().reset_index()
+        if rank_on is not None:
+            solution = self.solution_df.sort_values(rank_on).head().reset_index()
+        else:
+            solution = self.solution_df.head().reset_index()
 
         nearest_site_travel_gdf = pd.merge(
             self.site_problem.region_geometry_layer,
@@ -1031,7 +1117,7 @@ class SiteSolutionSet:
     def plot_n_best_combinations(
         self,
         n_best=10,
-        rank_on="weighted_average",
+        rank_on=None,
         title=None,
         subplot_title="default",
         show_all_locations=True,
@@ -1069,7 +1155,10 @@ class SiteSolutionSet:
                 "Please run add_region_geometry_layer() first."
             )
 
-        sorted_df = self.solution_df.sort_values(rank_on).reset_index().head(n_best)
+        if rank_on is not None:
+            sorted_df = self.solution_df.sort_values(rank_on).reset_index().head(n_best)
+        else:
+            sorted_df = self.solution_df.reset_index().head(n_best)
 
         # Calculate global color scale boundaries
         global_vmin = min(df["min_cost"].min() for df in sorted_df["problem_df"])
@@ -1160,6 +1249,7 @@ class SiteSolutionSet:
 
     def plot_n_best_combinations_bar(
         self,
+        y_axis="weighted_average",
         n_best=10,
         interactive=True,
         rank_on=None,
@@ -1177,14 +1267,14 @@ class SiteSolutionSet:
             fig = px.bar(
                 df,
                 x="site_indices",
-                y="weighted_average",
+                y=y_axis,
                 title=f"Top {n_best} Solutions by {rank_on.replace('_', ' ').title()} Travel Time",
             )
         else:
             fig, ax = plt.subplots()
             ax.bar(
                 df["site_indices"].astype(str),
-                df["weighted_average"],
+                df[y_axis],
             )
             if title == "default":
                 ax.set_title(
@@ -1196,7 +1286,7 @@ class SiteSolutionSet:
                 ax.set_title(title)
 
             ax.set_xlabel("Site Indices")
-            ax.set_ylabel("Weighted Average Travel Time")
+            ax.set_ylabel(f"{y_axis.str.replace('_').title()}")
             plt.xticks(rotation=45)
             plt.tight_layout()
             plt.close(fig)

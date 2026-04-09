@@ -9,6 +9,7 @@ listing:
       - "location/existing_sites/existing_sites.ipynb"
       - "location/no_geometry/no_geometry.ipynb"
       - "location/larger_problems/larger_problems.ipynb"
+      - "location/p_median_and_p_center_variants/p_median_and_p_center_variants.ipynb"
     type: grid
     sort: "title"
     grid-columns: 3
