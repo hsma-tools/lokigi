@@ -173,6 +173,52 @@ class SiteProblem:
         self._region_geometry_layer_type = df_type
         self._region_geometry_layer_common_col = common_col
 
+    def show_region_geometry_layer(self):
+        return self.region_geometry_layer
+
+    def plot_region_geometry_layer(
+        self, interactive=False, plot_demand=False, **kwargs
+    ):
+        if self.region_geometry_layer is None:
+            raise ValueError(
+                "No region geometry layer has been initialised."
+                "Please run `.add_region_geometry_layer()` first."
+            )
+        if plot_demand and self.demand_data is None:
+            raise ValueError(
+                "Cannot plot demand when no demand data is present."
+                "Please run `.add_demand()` first or change the `plot_demand` parameter to False."
+            )
+
+        if plot_demand:
+            plotting_df = self.region_geometry_layer.merge(
+                self.demand_data,
+                left_on=self._region_geometry_layer_common_col,
+                right_on=self._demand_data_id_col,
+            )
+            if interactive:
+                m = plotting_df.explore(
+                    column=self._demand_data_demand_col,  # make choropleth based on "BoroName" column
+                    tooltip=self._demand_data_demand_col,  # show "BoroName" value in tooltip (on hover)
+                    popup=True,  # show all values in popup (on click)
+                    cmap="Blues",  # use "Set1" matplotlib colormap
+                    style_kwds=dict(color="black"),
+                    tiles="CartoDB positron",
+                    **kwargs,
+                )
+
+                return m
+            else:
+                plotting_df.plot(
+                    column=self._demand_data_demand_col, legend=True, **kwargs
+                )
+
+        if interactive:
+            m = self.region_geometry_layer.explore(tiles="CartoDB positron", **kwargs)
+            return m
+        else:
+            self.region_geometry_layer.plot(**kwargs)
+
     def add_sites(
         self,
         candidate_site_df,
@@ -254,26 +300,30 @@ class SiteProblem:
     def show_sites(self):
         return self.candidate_sites
 
-    def plot_sites(self, add_basemap=True, show_labels=True):
+    def plot_sites(self, add_basemap=True, show_labels=True, interactive=False):
         """
         Adds a quick plot
         """
-        ax = self.candidate_sites.plot()
+        if not interactive or self._candidate_sites_type == "pandas":
+            ax = self.candidate_sites.plot()
 
-        if show_labels:
-            texts = []
-            for x, y, label in zip(
-                self.candidate_sites.geometry.x,
-                self.candidate_sites.geometry.y,
-                self.candidate_sites[self._candidate_sites_candidate_id_col],
-            ):
-                wrapped_label = textwrap.fill(label, 15).title()
-                texts.append(plt.text(x, y, wrapped_label))
+            if show_labels:
+                texts = []
+                for x, y, label in zip(
+                    self.candidate_sites.geometry.x,
+                    self.candidate_sites.geometry.y,
+                    self.candidate_sites[self._candidate_sites_candidate_id_col],
+                ):
+                    wrapped_label = textwrap.fill(label, 15).title()
+                    texts.append(plt.text(x, y, wrapped_label))
 
-            adjust_text(texts, force_explode=(0.05, 0.05))
+                adjust_text(texts, force_explode=(0.05, 0.05))
 
-        if add_basemap:
-            cx.add_basemap(ax, crs=self.candidate_sites.crs.to_string())
+            if add_basemap:
+                cx.add_basemap(ax, crs=self.candidate_sites.crs.to_string())
+        else:
+            m = self.candidate_sites.explore()
+            return m
 
     # def add_baseline(self, gdf, id_col):
     #     """Loads 'status quo' sites to calculate the starting benchmark."""
