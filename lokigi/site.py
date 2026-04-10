@@ -1300,7 +1300,7 @@ class SiteSolutionSet:
                 ax.set_title(title)
 
             ax.set_xlabel("Site Indices")
-            ax.set_ylabel(f"{y_axis.str.replace('_').title()}")
+            ax.set_ylabel(f"{y_axis.replace('_').title()}")
             plt.xticks(rotation=45)
             plt.tight_layout()
             plt.close(fig)
