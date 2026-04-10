@@ -1292,7 +1292,7 @@ class SiteSolutionSet:
                     )
                 else:
                     ax.set_title(
-                        title=f"Top {n_best} Solutions: {self.objectives.replace('_', ' ').title()})"
+                        f"Top {n_best} Solutions: {self.objectives.replace('_', ' ').title()})"
                     )
             elif title is None:
                 pass
