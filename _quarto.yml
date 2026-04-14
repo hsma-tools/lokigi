@@ -27,6 +27,8 @@ website:
     left:
       - text: "Home"
         href: lokigi_docs/index.qmd
+      - text: "Getting Started"
+        href: lokigi_docs/getting_started.qmd
       - text: "Examples"
         href: examples/examples.qmd
     right:

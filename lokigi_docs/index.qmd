@@ -52,12 +52,7 @@ pip install lokigi
 
 ```{=html}
 <div class="value-grid-2" style="justify-content:center; text-align:center;">
-  <a href="https://hsma-tools.github.io/lokigi/examples/feature_breakdowns.html" class="value-box bg-blue">
-    <div class="icon"><i class="bi bi-tools"></i></div>
-    <div class="value">Feature Breakdowns</div>
-    <div class="details">View detailed walkthroughs of some lokigi features</div>
-  </a>
-    <a href="https://hsma-tools.github.io/lokigi/reference/" class="value-box bg-blue">
+    <a href="https://hsma-tools.github.io/lokigi/reference/" class="value-box bg-blue" style="grid-column: span 2;">
     <div class="icon"><i class="fa-solid fa-book-atlas"></i></div>
     <div class="value">API Reference</div>
     <div class="details">Browse the full list of lokigi classes and functions</div>
