@@ -1081,36 +1081,37 @@ class SiteSolutionSet:
             figsize=(12, 6),
         )
 
-        selected_sites = self.site_problem.candidate_sites.iloc[
-            solution.site_indices.iloc[0]
-        ]
+        if self.site_problem._candidate_sites_type == "geopandas":
+            selected_sites = self.site_problem.candidate_sites.iloc[
+                solution.site_indices.iloc[0]
+            ]
 
-        if show_all_locations:
-            all_site_points = self.site_problem.candidate_sites.plot(
-                ax=ax, color=unchosen_site_colour, markersize=30, alpha=0.3
+            if show_all_locations:
+                all_site_points = self.site_problem.candidate_sites.plot(
+                    ax=ax, color=unchosen_site_colour, markersize=30, alpha=0.3
+                )
+
+            selected_site_points = selected_sites.plot(
+                ax=ax, color=chosen_site_colour, markersize=60
             )
 
-        selected_site_points = selected_sites.plot(
-            ax=ax, color=chosen_site_colour, markersize=60
-        )
+            for x, y, label in zip(
+                selected_sites.geometry.x,
+                selected_sites.geometry.y,
+                selected_sites[self.site_problem._candidate_sites_candidate_id_col],
+            ):
+                ax.annotate(
+                    label,
+                    xy=(x, y),
+                    xytext=(10, 3),
+                    textcoords="offset points",
+                    bbox=dict(facecolor="white"),
+                )
 
         cx.add_basemap(
             ax,
             crs=nearest_site_travel_gdf.crs.to_string(),
         )
-
-        for x, y, label in zip(
-            selected_sites.geometry.x,
-            selected_sites.geometry.y,
-            selected_sites[self.site_problem._candidate_sites_candidate_id_col],
-        ):
-            ax.annotate(
-                label,
-                xy=(x, y),
-                xytext=(10, 3),
-                textcoords="offset points",
-                bbox=dict(facecolor="white"),
-            )
 
         ax.axis("off")
 
@@ -1193,36 +1194,37 @@ class SiteSolutionSet:
                 vmax=global_vmax,
             )
 
-            selected_sites = self.site_problem.candidate_sites.iloc[
-                solution.site_indices.iloc[0]
-            ]
+            if self.site_problem._candidate_sites_type == "geopandas":
+                selected_sites = self.site_problem.candidate_sites.iloc[
+                    solution.site_indices.iloc[0]
+                ]
 
-            if show_all_locations:
-                all_site_points = self.site_problem.candidate_sites.plot(
-                    ax=ax, color=unchosen_site_colour, markersize=30, alpha=0.3
+                if show_all_locations:
+                    all_site_points = self.site_problem.candidate_sites.plot(
+                        ax=ax, color=unchosen_site_colour, markersize=30, alpha=0.3
+                    )
+
+                selected_site_points = selected_sites.plot(
+                    ax=ax, color=chosen_site_colour, markersize=60
                 )
 
-            selected_site_points = selected_sites.plot(
-                ax=ax, color=chosen_site_colour, markersize=60
-            )
+                for x, y, label in zip(
+                    selected_sites.geometry.x,
+                    selected_sites.geometry.y,
+                    selected_sites[self.site_problem._candidate_sites_candidate_id_col],
+                ):
+                    ax.annotate(
+                        label,
+                        xy=(x, y),
+                        xytext=(10, 3),
+                        textcoords="offset points",
+                        bbox=dict(facecolor="white"),
+                    )
 
             cx.add_basemap(
                 ax,
                 crs=nearest_site_travel_gdf.crs.to_string(),
             )
-
-            for x, y, label in zip(
-                selected_sites.geometry.x,
-                selected_sites.geometry.y,
-                selected_sites[self.site_problem._candidate_sites_candidate_id_col],
-            ):
-                ax.annotate(
-                    label,
-                    xy=(x, y),
-                    xytext=(10, 3),
-                    textcoords="offset points",
-                    bbox=dict(facecolor="white"),
-                )
 
             ax.axis("off")
 
