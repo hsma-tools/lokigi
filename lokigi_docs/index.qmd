@@ -37,12 +37,12 @@ pip install lokigi
 
 ```{=html}
 <div class="value-grid-2" style="justify-content:center; text-align:center;">
-  <a href="https://hsma-tools.github.io/lokigi/lokigi_docs/getting_started.html" class="value-box bg-green">
+  <a href="https://hsma-tools.github.io/lokigi/lokigi_docs/getting_started.html" class="value-box bg-blue">
     <div class="icon"><i class="fa-solid fa-circle-play"></i></div>
     <div class="value">Getting Started</div>
     <div class="details">Get an overview of how lokigi works</div>
   </a>
-    <a href="https://hsma-tools.github.io/lokigi/examples/examples.html" class="value-box bg-green">
+    <a href="https://hsma-tools.github.io/lokigi/examples/examples.html" class="value-box bg-blue">
     <div class="icon"><i class="fa-solid fa-lightbulb"></i></div>
     <div class="value">Examples</div>
     <div class="details">Take a look at our wide range of lokigi examples</div>
@@ -52,12 +52,12 @@ pip install lokigi
 
 ```{=html}
 <div class="value-grid-2" style="justify-content:center; text-align:center;">
-  <a href="https://hsma-tools.github.io/lokigi/examples/feature_breakdowns.html" class="value-box bg-green">
+  <a href="https://hsma-tools.github.io/lokigi/examples/feature_breakdowns.html" class="value-box bg-blue">
     <div class="icon"><i class="bi bi-tools"></i></div>
     <div class="value">Feature Breakdowns</div>
     <div class="details">View detailed walkthroughs of some lokigi features</div>
   </a>
-    <a href="https://hsma-tools.github.io/lokigi/reference/" class="value-box bg-green">
+    <a href="https://hsma-tools.github.io/lokigi/reference/" class="value-box bg-blue">
     <div class="icon"><i class="fa-solid fa-book-atlas"></i></div>
     <div class="value">API Reference</div>
     <div class="details">Browse the full list of lokigi classes and functions</div>
