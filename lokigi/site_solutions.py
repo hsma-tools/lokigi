@@ -651,7 +651,7 @@ class SiteSolutionSet:
             "proportion_within_coverage_threshold",
         ] = "max",
     ):
-        fig = spv.pareto_plot(
+        plot_obj = spv.pareto_plot(
             self.solution_df,
             x=x_axis,
             y=y_axis,
@@ -662,7 +662,7 @@ class SiteSolutionSet:
             theme="whitegrid",
         )
 
-        return fig
+        return plot_obj
 
     def plot_all_metric_pareto_front(self):
         metrics = [
@@ -670,27 +670,36 @@ class SiteSolutionSet:
             "unweighted_average",
             "90th_percentile",
             "max",
-            "proportion_within_coverage_threshold",
         ]
+
+        if self.solution_df.coverage_threshold[0] is not None:
+            metrics.append("proportion_within_coverage_threshold")
 
         metric_pairs = list(itertools.combinations(metrics, 2))
         num_plots = len(metric_pairs)
-
-        # Calculate grid size (e.g., 5 metrics = 10 plots -> 3x4 grid)
         cols = 3
         rows = math.ceil(num_plots / cols)
-
         fig, axes = plt.subplots(rows, cols, figsize=(cols * 5, rows * 4))
-        axes = axes.flatten()  # Flatten to easily iterate over a 1D array of axes
+        axes = axes.flatten()
 
         for idx, (x_metric, y_metric) in enumerate(metric_pairs):
             ax = axes[idx]
-            self.plot_simple_pareto_front(x_axis=x_metric, y_axis=y_metric, ax=ax)
+            plot_obj = spv.pareto_plot(
+                self.solution_df,
+                x=x_metric,
+                y=y_metric,
+                maxx=False,
+                maxy=True,
+                show_points=True,
+                height=4,
+                theme="whitegrid",
+            )
+            _ = plot_obj.on(ax).plot()
             ax.set_title(f"{y_metric} vs {x_metric}")
 
-        # Hide any unused subplots (if your grid is larger than your pair count)
         for idx in range(num_plots, len(axes)):
             fig.delaxes(axes[idx])
 
         plt.tight_layout()
+        plt.close(fig)
         return fig
