@@ -16,6 +16,7 @@ import contextily as cx
 import textwrap
 from adjustText import adjust_text
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 from warnings import warn
 import numpy as np
 import math
@@ -195,6 +196,7 @@ class SiteProblem:
                 left_on=self._region_geometry_layer_common_col,
                 right_on=self._demand_data_id_col,
             )
+
             if interactive:
                 m = plotting_df.explore(
                     column=self._demand_data_demand_col,  # make choropleth based on demand col
@@ -208,15 +210,18 @@ class SiteProblem:
 
                 return m
             else:
-                plotting_df.plot(
+                fig = plotting_df.plot(
                     column=self._demand_data_demand_col, legend=True, **kwargs
                 )
+
+                return fig
 
         if interactive:
             m = self.region_geometry_layer.explore(tiles="CartoDB positron", **kwargs)
             return m
         else:
-            self.region_geometry_layer.plot(**kwargs)
+            fig = self.region_geometry_layer.plot(**kwargs)
+            return fig
 
     def add_sites(
         self,
@@ -481,6 +486,9 @@ class SiteProblem:
             # Assume travel to closest facility
             active_facilities["min_cost"] = active_facilities.min(axis=1)
 
+            # Add column for the selected site (column name with minimum cost)
+            active_facilities["selected_site"] = active_facilities.idxmin(axis=1)
+
             afi = active_facilities.index
             active_facilities = active_facilities.reset_index()
 
@@ -676,6 +684,7 @@ class SiteProblem:
                 single_solution_metrics = self.evaluate_single_solution(
                     site_indices=possible_solution, objectives=objectives
                 ).return_solution_metrics()
+
                 if max_value_cutoff is None or (
                     max_value_cutoff is not None
                     and single_solution_metrics["max"] <= max_value_cutoff
@@ -691,6 +700,7 @@ class SiteProblem:
 
                 score = metrics[rank_best_n_on]
                 max_value = metrics["max"]
+
                 if max_value_cutoff is None or (
                     max_value_cutoff is not None and max_value <= max_value_cutoff
                 ):
@@ -872,6 +882,8 @@ class EvaluatedCombination:
         )
         self.max = np.max(self.evaluated_combination_df["min_cost"])
 
+        # Augment the evaluated_combination_df with which site has been allocated to the dataset
+
     def show_result_df(self):
         return self.evaluated_combination_df
 
@@ -1049,7 +1061,8 @@ class SiteSolutionSet:
         rank_on=None,
         title=None,
         show_all_locations=True,
-        cmap="Blues",
+        plot_site_allocation=False,
+        cmap=None,
         chosen_site_colour="magenta",
         unchosen_site_colour="grey",
     ):
@@ -1071,15 +1084,35 @@ class SiteSolutionSet:
             right_on=self.site_problem._demand_data_id_col,
         )
 
-        ax = nearest_site_travel_gdf.plot(
-            "min_cost",
-            legend=True,
-            cmap=cmap,
-            alpha=0.7,
-            edgecolor="black",
-            linewidth=0.5,
-            figsize=(12, 6),
-        )
+        # Choose appropriate colourmap if a colourmap is not provided
+        if cmap is None:
+            if not plot_site_allocation:
+                # If plotting travel time/distance/other cost, use a sequential colourmap
+                cmap = "Blues"
+            else:
+                # If plotting site allocation, use a categorical (qualitative) colourmap
+                cmap = "Set2"
+
+        if not plot_site_allocation:
+            ax = nearest_site_travel_gdf.plot(
+                "min_cost",
+                legend=True,
+                cmap=cmap,
+                alpha=0.7,
+                edgecolor="black",
+                linewidth=0.5,
+                figsize=(12, 6),
+            )
+        else:
+            ax = nearest_site_travel_gdf.plot(
+                "selected_site",
+                legend=True,
+                cmap=cmap,
+                alpha=0.7,
+                edgecolor="black",
+                linewidth=0.5,
+                figsize=(12, 6),
+            )
 
         if self.site_problem._candidate_sites_type == "geopandas":
             selected_sites = self.site_problem.candidate_sites.iloc[
@@ -1127,7 +1160,8 @@ class SiteSolutionSet:
         title=None,
         subplot_title="default",
         show_all_locations=True,
-        cmap="Blues",
+        plot_site_allocation=False,
+        cmap=None,
         chosen_site_colour="magenta",
         unchosen_site_colour="grey",
         n_cols=None,
@@ -1166,9 +1200,42 @@ class SiteSolutionSet:
         else:
             sorted_df = self.solution_df.reset_index().head(n_best)
 
-        # Calculate global color scale boundaries
-        global_vmin = min(df["min_cost"].min() for df in sorted_df["problem_df"])
-        global_vmax = max(df["min_cost"].max() for df in sorted_df["problem_df"])
+        # Choose appropriate colourmap if a colourmap is not provided
+        if cmap is None:
+            if not plot_site_allocation:
+                # If plotting travel time/distance/other cost, use a sequential colourmap
+                cmap = "Blues"
+            else:
+                # If plotting site allocation, use a categorical (qualitative) colourmap
+                cmap = "Set2"
+
+        # Set up a consistent legend that will be shared across all subplots
+        if not plot_site_allocation:
+            # Calculate global color scale boundaries
+            global_vmin = min(df["min_cost"].min() for df in sorted_df["problem_df"])
+            global_vmax = max(df["min_cost"].max() for df in sorted_df["problem_df"])
+        else:
+            master_site_order = self.site_problem.candidate_sites[
+                self.site_problem._candidate_sites_candidate_id_col
+            ].tolist()
+
+            # Extract all unique selected sites across all top solutions for consistent mapping
+            all_allocated_sites = set()
+            for df in sorted_df["problem_df"]:
+                all_allocated_sites.update(df["selected_site"].unique())
+            all_allocated_sites = sorted(list(all_allocated_sites))
+
+            sorted_allocated_sites = [
+                site for site in master_site_order if site in all_allocated_sites
+            ]
+
+            # Create a consistent color mapping for categorical site data
+            cmap_obj = plt.get_cmap(cmap)
+            # Handles qualitative maps seamlessly (wrapping around if too many sites)
+            site_color_map = {
+                site: cmap_obj(i % cmap_obj.N)
+                for i, site in enumerate(sorted_allocated_sites)
+            }
 
         for i, ax in enumerate(fig.axes):
             solution = sorted_df.iloc[[i]]
@@ -1181,18 +1248,30 @@ class SiteSolutionSet:
                 right_on=self.site_problem._demand_data_id_col,
             )
 
-            ax = nearest_site_travel_gdf.plot(
-                "min_cost",
-                legend=False,
-                cmap=cmap,
-                alpha=0.7,
-                edgecolor="black",
-                linewidth=0.5,
-                figsize=(12, 6),
-                ax=ax,
-                vmin=global_vmin,
-                vmax=global_vmax,
-            )
+            if not plot_site_allocation:
+                ax = nearest_site_travel_gdf.plot(
+                    "min_cost",
+                    legend=False,
+                    cmap=cmap,
+                    alpha=0.7,
+                    edgecolor="black",
+                    linewidth=0.5,
+                    figsize=(12, 6),
+                    ax=ax,
+                    vmin=global_vmin,
+                    vmax=global_vmax,
+                )
+            else:
+                # Map the site IDs to their consistent global color
+                colors = nearest_site_travel_gdf["selected_site"].map(site_color_map)
+                ax = nearest_site_travel_gdf.plot(
+                    color=colors,
+                    legend=False,
+                    alpha=0.7,
+                    edgecolor="black",
+                    linewidth=0.5,
+                    ax=ax,
+                )
 
             if self.site_problem._candidate_sites_type == "geopandas":
                 selected_sites = self.site_problem.candidate_sites.iloc[
@@ -1245,14 +1324,28 @@ class SiteSolutionSet:
             if title is not None:
                 ax.set_title(title)
 
-        # Create a single colorbar based on the global scale and chosen colormap
-        sm = plt.cm.ScalarMappable(
-            cmap=cmap, norm=plt.Normalize(vmin=global_vmin, vmax=global_vmax)
-        )
-        sm._A = []  # Empty array for the scalar mappable
+        if not plot_site_allocation:
+            # Create a single colorbar based on the global scale and chosen colormap
+            sm = plt.cm.ScalarMappable(
+                cmap=cmap, norm=plt.Normalize(vmin=global_vmin, vmax=global_vmax)
+            )
+            sm._A = []  # Empty array for the scalar mappable
 
-        # Add the colorbar to the figure
-        fig.colorbar(sm, ax=axs, fraction=0.02, pad=0.04, label="Min Cost")
+            # Add the colorbar to the figure
+            fig.colorbar(sm, ax=axs, fraction=0.02, pad=0.04, label="Min Cost")
+        else:
+            legend_patches = [
+                mpatches.Patch(color=color, label=str(site))
+                for site, color in site_color_map.items()
+            ]
+            fig.legend(
+                handles=legend_patches,
+                title="Allocated Sites",
+                loc="center right",
+                bbox_to_anchor=(1.05, 0.5),
+            )
+
+        return fig, ax
 
     def plot_n_best_combinations_bar(
         self,

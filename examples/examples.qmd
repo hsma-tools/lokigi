@@ -5,6 +5,7 @@ toc: true
 listing:
   - id: single-objective-site
     contents:
+      - "location/simple/simple.ipynb"
       - "location/existing_sites/existing_sites.ipynb"
       - "location/no_geometry/no_geometry.ipynb"
       - "location/larger_problems/larger_problems.ipynb"
