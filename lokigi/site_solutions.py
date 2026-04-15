@@ -9,6 +9,7 @@ import numpy as np
 import math
 import plotly.express as px
 from lokigi.utils import _safe_evaluate
+import sweetpareto.vis as spv
 
 
 class EvaluatedCombination:
@@ -629,4 +630,65 @@ class SiteSolutionSet:
             plt.tight_layout()
             plt.close(fig)
 
+        return fig
+
+    def plot_simple_pareto_front(
+        self,
+        x_axis: Literal[
+            "weighted_average",
+            "unweighted_average",
+            "90th_percentile",
+            "max",
+            "proportion_within_coverage_threshold",
+        ] = "weighted_average",
+        y_axis: Literal[
+            "weighted_average",
+            "unweighted_average",
+            "90th_percentile",
+            "max",
+            "proportion_within_coverage_threshold",
+        ] = "max",
+    ):
+        fig = spv.pareto_plot(
+            self.solution_df,
+            x=x_axis,
+            y=y_axis,
+            maxx=False,
+            maxy=True,
+            show_points=True,
+            height=4,
+            theme="whitegrid",
+        )
+
+        return fig
+
+    def plot_all_metric_pareto_front(self):
+        metrics = [
+            "weighted_average",
+            "unweighted_average",
+            "90th_percentile",
+            "max",
+            "proportion_within_coverage_threshold",
+        ]
+
+        metric_pairs = list(itertools.combinations(metrics, 2))
+        num_plots = len(metric_pairs)
+
+        # Calculate grid size (e.g., 5 metrics = 10 plots -> 3x4 grid)
+        cols = 3
+        rows = math.ceil(num_plots / cols)
+
+        fig, axes = plt.subplots(rows, cols, figsize=(cols * 5, rows * 4))
+        axes = axes.flatten()  # Flatten to easily iterate over a 1D array of axes
+
+        for idx, (x_metric, y_metric) in enumerate(metric_pairs):
+            ax = axes[idx]
+            self.plot_simple_pareto_front(x_axis=x_metric, y_axis=y_metric, ax=ax)
+            ax.set_title(f"{y_metric} vs {x_metric}")
+
+        # Hide any unused subplots (if your grid is larger than your pair count)
+        for idx in range(num_plots, len(axes)):
+            fig.delaxes(axes[idx])
+
+        plt.tight_layout()
         return fig
