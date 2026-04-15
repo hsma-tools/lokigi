@@ -447,3 +447,11 @@ def _load_spatial_or_tabular_data(data_input, skip_cols=None):
         return _try_drop(df, skip_cols), "geopandas"
     except:
         raise ValueError(f"Could not parse data with extension '{ext}'.")
+
+
+def _safe_evaluate(text_string, solution):
+    try:
+        return eval(f"f{repr(text_string)}", {}, {"solution": solution})
+    except Exception:
+        # fallback: treat as literal string
+        return text_string
