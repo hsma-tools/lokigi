@@ -3,7 +3,7 @@ import lokigi
 
 # Test that a simple problem runs successfully
 def test_site_single_evaluation_runs(brighton_problem):
-    result = brighton_problem.evaluate_single_solution(
+    result = brighton_problem.evaluate_single_solution_single_objective(
         site_indices=[1, 2], objectives="p median"
     )
 
