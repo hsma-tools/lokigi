@@ -403,23 +403,25 @@ class SiteProblem:
                 f"demand dataframe (sample values: {self.demand_data.head(5)[self._demand_data_id_col]})"
             )
 
-    def evaluate_single_solution(
+    def evaluate_single_solution_single_objective(
         self,
-        objectives: str | list[str] = "p_median",
+        objective: str = "p_median",
         site_names=None,
         site_indices=None,
+        capacitated=False,
+        threshold_for_coverage=None,
     ):
         """
         Evaluates a solution. User must provide either site_names OR site_indices.
         """
         # Check for valid objectives
-        if isinstance(objectives, list) and len(objectives) > 1:
+        if isinstance(objective, list) and len(objective) > 1:
             warn(
                 "Multi-objective optimization is coming in a future release."
-                f"For now, just your first objective {objectives[0]} has been taken."
+                f"For now, just your first objective {objective[0]} has been taken."
             )
 
-        objective = objectives if isinstance(objectives, str) else objectives[0]
+        objective = objective if isinstance(objective, str) else objective[0]
 
         if objective not in SUPPORTED_OBJECTIVES:
             raise ValueError(f"Unsupported objective ({objective}) passed.")
@@ -476,18 +478,19 @@ class SiteProblem:
                 f"You provided indices: {site_indices}"
             )
 
-        if objective in [
-            "p_median",
-            "p_center",
-            "simple_p_median",
-            "hybrid_p_median",
-            "hybrid_simple_p_median",
-        ]:
+        if not capacitated:
             # Assume travel to closest facility
             active_facilities["min_cost"] = active_facilities.min(axis=1)
 
             # Add column for the selected site (column name with minimum cost)
             active_facilities["selected_site"] = active_facilities.idxmin(axis=1)
+
+            if threshold_for_coverage is None:
+                active_facilities["within_threshold"] = np.nan
+            else:
+                active_facilities["within_threshold"] = active_facilities[
+                    "min_cost"
+                ].apply(lambda x: x < threshold_for_coverage)
 
             afi = active_facilities.index
             active_facilities = active_facilities.reset_index()
@@ -500,18 +503,18 @@ class SiteProblem:
                 how="inner",
             )
 
-            return EvaluatedCombination(
-                objective,
-                site_indices=resolved_indices,
-                site_names=site_names,
-                evaluated_combination_df=active_facilities,
-                site_problem=self,
-            )
-
         else:
             raise ValueError(
-                f"Unknown objective '{objective}'. Currently supported: {SUPPORTED_OBJECTIVES.join(', ')}."
+                "Capacitated solving not yet supported. Please rerun with capacitated=False."
             )
+
+        return EvaluatedCombination(
+            objective,
+            site_indices=resolved_indices,
+            site_names=site_names,
+            evaluated_combination_df=active_facilities,
+            site_problem=self,
+        )
 
     def _setup_equal_demand_df(self):
         demand_data_temp = pd.DataFrame(
@@ -552,6 +555,7 @@ class SiteProblem:
         keep_best_n=None,
         keep_worst_n=None,
         max_value_cutoff=None,  # only used for hybrid
+        threshold_for_coverage=None,  # only used for mclp or lscp
         **kwargs,
     ):
 
@@ -613,7 +617,7 @@ class SiteProblem:
             )
 
         if objective in ["p_median", "p_center", "simple_p_median"]:
-            return self._solve_pmedian_pcenter_problem(
+            return self._solve_pmedian_pcenter_mclp_problem(
                 p,
                 search_strategy=search_strategy,
                 ignore_brute_force_limit=ignore_brute_force_limit,
@@ -623,7 +627,7 @@ class SiteProblem:
                 objective=objective,
             )
         elif objective in ["hybrid_p_median", "hybrid_simple_p_median"]:
-            return self._solve_pmedian_pcenter_problem(
+            return self._solve_pmedian_pcenter_mclp_problem(
                 p,
                 search_strategy=search_strategy,
                 ignore_brute_force_limit=ignore_brute_force_limit,
@@ -632,6 +636,17 @@ class SiteProblem:
                 keep_worst_n=keep_worst_n,
                 objective=objective,
                 max_value_cutoff=max_value_cutoff,
+            )
+        elif objective in ["mclp"]:
+            return self._solve_pmedian_pcenter_mclp_problem(
+                p,
+                search_strategy=search_strategy,
+                ignore_brute_force_limit=ignore_brute_force_limit,
+                show_brute_force_progress=show_brute_force_progress,
+                keep_best_n=keep_best_n,
+                keep_worst_n=keep_worst_n,
+                objective=objective,
+                threshold_for_coverage=threshold_for_coverage,
             )
         else:
             raise ValueError(
@@ -648,6 +663,7 @@ class SiteProblem:
         keep_worst_n=None,
         rank_best_n_on="weighted_average",
         max_value_cutoff=None,
+        threshold_for_coverage=None,
     ):
 
         if keep_best_n is not None:
@@ -681,9 +697,13 @@ class SiteProblem:
         for possible_solution in possible_combinations:
             if keep_best_n is None and keep_worst_n is None:
                 # Keep all results
-                single_solution_metrics = self.evaluate_single_solution(
-                    site_indices=possible_solution, objectives=objectives
-                ).return_solution_metrics()
+                single_solution_metrics = (
+                    self.evaluate_single_solution_single_objective(
+                        site_indices=possible_solution,
+                        objective=objectives,
+                        threshold_for_coverage=threshold_for_coverage,
+                    ).return_solution_metrics()
+                )
 
                 if max_value_cutoff is None or (
                     max_value_cutoff is not None
@@ -740,7 +760,7 @@ class SiteProblem:
             else:
                 return best_list + worst_list
 
-    def _solve_pmedian_pcenter_problem(
+    def _solve_pmedian_pcenter_mclp_problem(
         self,
         p: int,
         objective="p_median",
@@ -750,11 +770,12 @@ class SiteProblem:
         keep_best_n=None,
         keep_worst_n=None,
         max_value_cutoff=None,
+        threshold_for_coverage=None,  # only used for mclp
     ):
 
         if objective not in SUPPORTED_OBJECTIVES:
             raise ValueError(
-                "Unsupported objective passed to _solve_pmedian_pcenter_problem. Please contact a developer."
+                "Unsupported objective passed to _solve_pmedian_pcenter_mclp_problem. Please contact a developer."
             )
         if max_value_cutoff is not None and objective not in [
             "hybrid_p_median",
@@ -774,6 +795,8 @@ class SiteProblem:
                 ranking = "unweighted_average"
             elif objective in ["p_center"]:
                 ranking = "max"
+            elif objective in ["mclp"]:
+                ranking = "proportion_within_coverage_threshold"
 
             if objective in ["hybrid_p_median", "hybrid_simple_p_median"]:
                 max_value_cutoff = max_value_cutoff
@@ -789,11 +812,21 @@ class SiteProblem:
                 keep_worst_n=keep_worst_n,
                 rank_best_n_on=ranking,
                 max_value_cutoff=max_value_cutoff,
+                threshold_for_coverage=threshold_for_coverage,
             )
 
+        if objective != "mclp":
             return SiteSolutionSet(
                 solution_df=pd.DataFrame(outputs).sort_values(
                     [ranking, "weighted_average"]
+                ),
+                site_problem=self,
+                objectives=objective,
+            )
+        else:
+            return SiteSolutionSet(
+                solution_df=pd.DataFrame(outputs).sort_values(
+                    [ranking, "weighted_average"], ascending=[False, True]
                 ),
                 site_problem=self,
                 objectives=objective,
@@ -881,8 +914,9 @@ class EvaluatedCombination:
             self.evaluated_combination_df["min_cost"], q=90
         )
         self.max = np.max(self.evaluated_combination_df["min_cost"])
-
-        # Augment the evaluated_combination_df with which site has been allocated to the dataset
+        self.proportion_within_coverage_threshold = np.sum(
+            self.evaluated_combination_df["within_threshold"]
+        ) / len(self.evaluated_combination_df)
 
     def show_result_df(self):
         return self.evaluated_combination_df
@@ -896,6 +930,7 @@ class EvaluatedCombination:
             "unweighted_average": self.unweighted_average,
             "90th_percentile": self.percentile_90th,
             "max": self.max,
+            "proportion_within_coverage_threshold": self.proportion_within_coverage_threshold,
             "problem_df": self.evaluated_combination_df,
         }
 

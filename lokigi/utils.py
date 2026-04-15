@@ -11,7 +11,7 @@ import requests
 from io import BytesIO
 
 
-PANDAS_EXTS = [".csv", ".parquet", ".xlsx"]
+PANDAS_EXTS = [".csv", ".parquet", ".xlsx", ".xls"]
 GEOPANDAS_EXTS = [".shp", ".geojson", ".gpkg"]
 
 SUPPORTED_OBJECTIVES = [
@@ -20,10 +20,10 @@ SUPPORTED_OBJECTIVES = [
     "p_center",
     "simple_p_median",
     "hybrid_simple_p_median",
+    "mclp",
 ]
 
 PLANNED_OBJECTIVES = [
-    "mclp",
     "lscp",
     "lscp_b",
 ]
@@ -75,7 +75,7 @@ SOLVER_DEFINITIONS = {
         "goal": "Maximize the number of people within a specific time/distance 'threshold' (e.g., 15 minutes).",
         "healthcare_context": "Best for emergency services (Ambulance/ER) where getting there within a 'Golden Hour' is more important than the average trip time.",
         "trade_off": "Does not care how far away people are once they are outside the threshold.",
-        "status": "Planned",
+        "status": "Supported",
         "academic_ref": "Church & ReVelle (1974)",
     },
     "lscp": {
@@ -436,7 +436,7 @@ def _load_spatial_or_tabular_data(data_input, skip_cols=None):
             df = pd.read_csv(content)
         if ext == ".parquet":
             df = pd.read_parquet(content)
-        if ext == ".xlsx":
+        if ext in [".xlsx", ".xls"]:
             df = pd.read_excel(content)
 
         return _try_drop(df, skip_cols), "pandas"
