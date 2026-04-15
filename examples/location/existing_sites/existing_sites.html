@@ -548,17 +548,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <div id="d961ec7a" class="cell" data-execution_count="4">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>solutions.plot_n_best_combinations(n_best<span class="op">=</span><span class="dv">9</span>, n_cols<span class="op">=</span><span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="4">
+<pre><code>(&lt;Figure size 1728x1440 with 10 Axes&gt;,
+ &lt;Axes: title={'center': 'Weighted Average: 6.2 | Maximum: 16.7'}&gt;)</code></pre>
+</div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="existing_sites_files/figure-html/cell-5-output-1.png" width="1403" height="1054" class="figure-img"></p>
+<p><img src="existing_sites_files/figure-html/cell-5-output-2.png" width="1403" height="1054" class="figure-img"></p>
 </figure>
 </div>
 </div>
 </div>
 <p>However, looking at our sites, we can see there’s another column this time that specifies whether the site must be included, and the version of our code above hasn’t taken that into account.</p>
 <div id="0154d54d" class="cell" data-execution_count="5">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>problem.show_sites()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>problem.show_sites()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="5">
 <div>
 
@@ -625,14 +629,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>So a lot of the solutions provided wouldn’t be valid.</p>
 <p>Let’s reimport this sites data, but this time passing in a new parameter that lokigi supports - the <code>required_sites_col</code> parameter. This will then look for common options in that column that could indicate that a site must be included in the final solution: <code>"Yes", "yes", "Y", "y", True, true, or 1.</code></p>
 <div id="f5f97dbf" class="cell" data-execution_count="6">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>problem.add_sites(<span class="st">"../../../sample_data/brighton_sites_existing.geojson"</span>,</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>                  candidate_id_col<span class="op">=</span><span class="st">"site"</span>,</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>                  required_sites_col<span class="op">=</span><span class="st">"existing"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>problem.add_sites(<span class="st">"../../../sample_data/brighton_sites_existing.geojson"</span>,</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>                  candidate_id_col<span class="op">=</span><span class="st">"site"</span>,</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>                  required_sites_col<span class="op">=</span><span class="st">"existing"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Now we will solve again. Note that we don’t need to specify anything different in our call to <code>.solve()</code> - it will automatically look for the required_sites_col if we’ve passed that in when setting up the problem.</p>
 <div id="beddb75b" class="cell" data-execution_count="7">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>solutions <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">4</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>)</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>solutions.show_solutions()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>solutions <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">4</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>solutions.show_solutions()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="7">
 <div>
 
@@ -719,11 +723,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <p>We can see that this time far fewer possible solutions have been passed back - only those that meet the criteria of having the specified sites included.</p>
 <div id="13d0ab9e" class="cell" data-execution_count="8">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>solutions.plot_n_best_combinations(n_cols<span class="op">=</span><span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>solutions.plot_n_best_combinations(n_cols<span class="op">=</span><span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="8">
+<pre><code>(&lt;Figure size 1728x960 with 7 Axes&gt;,
+ &lt;Axes: title={'center': 'Weighted Average: 7.7 | Maximum: 21.7'}&gt;)</code></pre>
+</div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="existing_sites_files/figure-html/cell-9-output-1.png" width="1403" height="674" class="figure-img"></p>
+<p><img src="existing_sites_files/figure-html/cell-9-output-2.png" width="1403" height="674" class="figure-img"></p>
 </figure>
 </div>
 </div>

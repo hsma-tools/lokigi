@@ -2,6 +2,7 @@
   {
     "listing": "/examples/examples.html",
     "items": [
+      "/examples/location/simple/simple.html",
       "/examples/location/p_median_and_p_center_variants/p_median_and_p_center_variants.html",
       "/examples/location/existing_sites/existing_sites.html",
       "/examples/location/no_geometry/no_geometry.html",
