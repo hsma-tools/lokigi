@@ -392,10 +392,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>SiteProblem.solve_pmedian.__doc__ = f’’’ {SOLVER_DEFINITIONS[‘p_median’][‘goal’]}</p>
 <p>Healthcare Context: {SOLVER_DEFINITIONS[‘p_median’][‘healthcare_context’]}</p>
 <p>Trade-offs: {SOLVER_DEFINITIONS[‘p_median’][‘trade_off’]}</p>
-<section id="parameters" class="level2 doc-section doc-section-parameters">
-<h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters:</h2>
-<p>p : int Number of facilities to locate. num_options : int Number of diverse candidate solutions to return.</p>
-</section>
 <section id="methods" class="level2">
 <h2 class="anchored" data-anchor-id="methods">Methods</h2>
 <table class="caption-top table">
@@ -423,7 +419,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Prints a menu of available optimization strategies for healthcare.</td>
 </tr>
 <tr class="odd">
-<td><a href="#lokigi.site.SiteProblem.evaluate_single_solution">evaluate_single_solution</a></td>
+<td><a href="#lokigi.site.SiteProblem.evaluate_single_solution_single_objective">evaluate_single_solution_single_objective</a></td>
 <td>Evaluates a solution. User must provide either site_names OR site_indices.</td>
 </tr>
 <tr class="even">
@@ -472,9 +468,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    travel_matrix_df,</span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    source_col,</span>
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    skip_cols<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    from_unit<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    to_unit<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    unit<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    from_unit<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    to_unit<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Ensures the matrix indices match the demand/candidate IDs.</p>
 </section>
 <section id="lokigi.site.SiteProblem.describe_models" class="level3">
@@ -482,13 +479,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.describe_models(available_only<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Prints a menu of available optimization strategies for healthcare.</p>
 </section>
-<section id="lokigi.site.SiteProblem.evaluate_single_solution" class="level3">
-<h3 class="anchored" data-anchor-id="lokigi.site.SiteProblem.evaluate_single_solution">evaluate_single_solution</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.evaluate_single_solution(</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    objectives<span class="op">=</span><span class="st">'p_median'</span>,</span>
+<section id="lokigi.site.SiteProblem.evaluate_single_solution_single_objective" class="level3">
+<h3 class="anchored" data-anchor-id="lokigi.site.SiteProblem.evaluate_single_solution_single_objective">evaluate_single_solution_single_objective</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.evaluate_single_solution_single_objective(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    objective<span class="op">=</span><span class="st">'p_median'</span>,</span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    site_names<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    site_indices<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    capacitated<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    threshold_for_coverage<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Evaluates a solution. User must provide either site_names OR site_indices.</p>
 </section>
 <section id="lokigi.site.SiteProblem.plot_sites" class="level3">
