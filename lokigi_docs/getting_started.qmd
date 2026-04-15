@@ -147,12 +147,12 @@ Here, we are passing in a geojson that contains the
 ```{python}
 #| label: add-region-geometry
 problem.add_region_geometry_layer(
-    region_geometry_df="../sample_data/LSOA_2011_Boundaries_Super_Generalised_Clipped_BSC_EW_V4.geojson", # <1>
+    region_geometry_df="https://github.com/hsma-programme/h6_3d_facility_location_problems/raw/refs/heads/main/h6_3d_facility_location_problems/example_code/LSOA_2011_Boundaries_Super_Generalised_Clipped_BSC_EW_V4.geojson", # <1>
     common_col="LSOA11NM" # <2>
     )
 ```
 
-1.  We pass in the pass to a geojson, shp or geopackage file. This can be located locally or on the web.
+1.  We pass in the pass to a geojson, shp or geopackage file. This can be located locally or on the web. If provided with a standard github link, it will automatically try to create the appropriate 'raw' link that it can download the file directly from.
 2.  We pass in the name of the column in this geojson that should be used when trying to join to the other datasets - i.e. the column that acts as a bridge between the rows in our travel matrix and this geographic data. In our travel matrix, recall we have a column called "LSOA". This contains the LSOA names in the same format as the "LSOA11NM" in our geographic dataset - so this is what we provide as our 'common_col'.
 
 Let's take a look at the first few rows of this geographic data.
