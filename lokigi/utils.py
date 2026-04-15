@@ -273,7 +273,9 @@ def _validate_columns(
         )
 
 
-def _generate_all_combinations(n_facilities: int, p: int, site_problem=None) -> list:
+def _generate_all_combinations(
+    n_facilities: int, p: int, site_problem=None, force_include_indices=None
+) -> list:
     """
     Generate all possible permutations of a list without replacement.
 
@@ -312,7 +314,13 @@ def _generate_all_combinations(n_facilities: int, p: int, site_problem=None) -> 
     facility = np.arange(n_facilities, dtype=int)
     result = [np.array(a) for a in combinations(facility, p)]
 
-    if site_problem:
+    # if site_problem is not None and force_include_indices is not None:
+    #     raise ValueError(
+    #         "Dev error: please provide only one of site_problem or"
+    #         "force_include_indices to _generate_all_combinations()"
+    #     )
+
+    if site_problem is not None:
         if site_problem._candidate_sites_required_sites_col is not None:
             # Define a set of sensible "truthy" values (all lowercase)
             truthy_values = {"y", "yes", "true", "t", "required", "1"}
@@ -339,6 +347,13 @@ def _generate_all_combinations(n_facilities: int, p: int, site_problem=None) -> 
 
             # Filter the combinations to only keep those containing ALL required sites
             result = [a for a in result if required_set.issubset(a)]
+
+    if force_include_indices is not None:
+        # Convert required indices to a set for O(1) lookups
+        required_set = set(force_include_indices)
+
+        # Filter the combinations to only keep those containing ALL required sites
+        result = [a for a in result if required_set.issubset(a)]
 
     return result
 
@@ -455,3 +470,14 @@ def _safe_evaluate(text_string, solution):
     except Exception:
         # fallback: treat as literal string
         return text_string
+
+
+def _get_ranking_by_objective(objective):
+    if objective in ["p_median", "hybrid_p_median"]:
+        return "weighted_average"
+    elif objective in ["simple_p_median", "hybrid_simple_p_median"]:
+        return "unweighted_average"
+    elif objective in ["p_center"]:
+        return "max"
+    elif objective in ["mclp"]:
+        return "proportion_within_coverage_threshold"

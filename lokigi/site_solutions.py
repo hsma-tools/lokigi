@@ -10,6 +10,8 @@ import math
 import plotly.express as px
 from lokigi.utils import _safe_evaluate
 import sweetpareto.vis as spv
+import itertools
+from typing import Literal
 
 
 class EvaluatedCombination:
@@ -333,7 +335,7 @@ class SiteSolutionSet:
         if title is not None:
             if title == "default":
                 if self.objectives == "mclp":
-                    plt.title(
+                    title = plt.title(
                         f"Best solution for {self.n_sites} sites \nCoverage within threshold of {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}: {solution['proportion_within_coverage_threshold'].values[0]:.1%} \nUnweighted Average: {solution['unweighted_average'].values[0]:.1f} {self.site_problem._travel_matrix_unit} \nMaximum: {solution['max'].values[0]:.1f} {self.site_problem._travel_matrix_unit}"
                     )
 
@@ -341,16 +343,16 @@ class SiteSolutionSet:
                     "simple_p_median",
                     "hybrid_simple_p_median",
                 ]:
-                    plt.title(
+                    title = plt.title(
                         f"Best solution for {self.n_sites} sites \nUnweighted Average: {solution['unweighted_average'].values[0]:.1f} {self.site_problem._travel_matrix_unit} \nMaximum: {solution['max'].values[0]:.1f} {self.site_problem._travel_matrix_unit}"
                     )
 
                 else:
-                    plt.title(
+                    title = plt.title(
                         f"Best solution for {self.n_sites} sites \nWeighted Average: {solution['weighted_average'].values[0]:.1f} {self.site_problem._travel_matrix_unit} \nMaximum: {solution['max'].values[0]:.1f} {self.site_problem._travel_matrix_unit}"
                     )
             else:
-                plt.title(_safe_evaluate(title, solution=solution))
+                title = plt.title(_safe_evaluate(title, solution=solution))
 
         return ax
 

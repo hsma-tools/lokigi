@@ -8,6 +8,7 @@ from lokigi.utils import (
     _check_crs_match_pref,
     _convert_crs,
     SUPPORTED_OBJECTIVES,
+    _get_ranking_by_objective,
 )
 
 from lokigi.site_solutions import EvaluatedCombination, SiteSolutionSet
@@ -559,7 +560,7 @@ class SiteProblem:
         p: int,
         objectives: str = "p_median",
         capacitated=False,  # Not yet implemented
-        search_strategy: Literal["brute-force", "greedy", "local"] = "brute-force",
+        search_strategy: Literal["brute-force", "greedy"] = "brute-force",
         ignore_brute_force_limit=False,
         show_brute_force_progress=False,
         keep_best_n=None,
@@ -613,7 +614,7 @@ class SiteProblem:
         #     raise ValueError(
         #         f"Unsupported search strategy ({search_strategy}) passed. Please choose from 'brute-force', 'greedy', or 'local'."
         #     )
-        if search_strategy not in ["brute-force"]:
+        if search_strategy not in ["brute-force", "greedy"]:
             raise ValueError(
                 f"Unsupported search strategy ({search_strategy}) passed. Only 'brute-force' is currently supported."
             )
@@ -636,6 +637,7 @@ class SiteProblem:
                 keep_best_n=keep_best_n,
                 keep_worst_n=keep_worst_n,
                 objective=objective,
+                threshold_for_coverage=threshold_for_coverage,
             )
         elif objective in ["hybrid_p_median", "hybrid_simple_p_median"]:
             return self._solve_pmedian_pcenter_mclp_problem(
@@ -647,6 +649,7 @@ class SiteProblem:
                 keep_worst_n=keep_worst_n,
                 objective=objective,
                 max_value_cutoff=max_value_cutoff,
+                threshold_for_coverage=threshold_for_coverage,
             )
         elif objective in ["mclp"]:
             return self._solve_pmedian_pcenter_mclp_problem(
@@ -788,6 +791,7 @@ class SiteProblem:
             raise ValueError(
                 "Unsupported objective passed to _solve_pmedian_pcenter_mclp_problem. Please contact a developer."
             )
+
         if max_value_cutoff is not None and objective not in [
             "hybrid_p_median",
             "hybrid_simple_p_median",
@@ -797,23 +801,16 @@ class SiteProblem:
                 "Please rerun with hybrid_p_median or hybrid_simple_p_median."
             )
 
-        if search_strategy != "brute-force":
+        ranking = _get_ranking_by_objective(objective=objective)
+
+        if objective in ["hybrid_p_median", "hybrid_simple_p_median"]:
+            max_value_cutoff = max_value_cutoff
+        else:
+            max_value_cutoff = None
+
+        if search_strategy not in ["brute-force", "greedy"]:
             raise ValueError(f"Approach {search_strategy} not yet supported.")
         if search_strategy == "brute-force":
-            if objective in ["p_median", "hybrid_p_median"]:
-                ranking = "weighted_average"
-            elif objective in ["simple_p_median", "hybrid_simple_p_median"]:
-                ranking = "unweighted_average"
-            elif objective in ["p_center"]:
-                ranking = "max"
-            elif objective in ["mclp"]:
-                ranking = "proportion_within_coverage_threshold"
-
-            if objective in ["hybrid_p_median", "hybrid_simple_p_median"]:
-                max_value_cutoff = max_value_cutoff
-            else:
-                max_value_cutoff = None
-
             outputs = self._brute_force(
                 p=p,
                 objectives=objective,
@@ -826,7 +823,33 @@ class SiteProblem:
                 threshold_for_coverage=threshold_for_coverage,
             )
 
-        if objective != "mclp":
+            if objective != "mclp":
+                return SiteSolutionSet(
+                    solution_df=pd.DataFrame(outputs).sort_values(
+                        [ranking, "weighted_average"]
+                    ),
+                    site_problem=self,
+                    objectives=objective,
+                    n_sites=p,
+                )
+
+            else:
+                return SiteSolutionSet(
+                    solution_df=pd.DataFrame(outputs).sort_values(
+                        [ranking, "weighted_average"], ascending=[False, True]
+                    ),
+                    site_problem=self,
+                    objectives=objective,
+                    n_sites=p,
+                )
+
+        if search_strategy == "greedy":
+            # Note that coverage threshold will only be used for assessing coverage, not for
+            # filtering out solutions, when using greedy search strategy
+            outputs = self._greedy(
+                p=p, objectives=objective, threshold_for_coverage=threshold_for_coverage
+            )
+
             return SiteSolutionSet(
                 solution_df=pd.DataFrame(outputs).sort_values(
                     [ranking, "weighted_average"]
@@ -835,15 +858,77 @@ class SiteProblem:
                 objectives=objective,
                 n_sites=p,
             )
-        else:
-            return SiteSolutionSet(
-                solution_df=pd.DataFrame(outputs).sort_values(
-                    [ranking, "weighted_average"], ascending=[False, True]
-                ),
+
+    def _greedy(
+        self,
+        p: int,
+        objectives,
+        show_progress: bool = False,
+        threshold_for_coverage=None,
+    ):
+        ranking = _get_ranking_by_objective(objective=objectives)
+
+        # Loop through
+        best_indices = []
+
+        loop_iterations = range(1, p + 1)
+        if show_progress:
+            loop_iterations = tqdm(loop_iterations)
+
+        for i in loop_iterations:
+            print(f"Loop {i}")
+            possible_combinations = _generate_all_combinations(
+                n_facilities=self.total_n_sites,
+                p=i,
                 site_problem=self,
-                objectives=objective,
-                n_sites=p,
+                force_include_indices=None if i == 1 else list(best_indices),
             )
+
+            # print(f"Possible combinations: {possible_combinations}")
+
+            outputs = []
+
+            for possible_solution in possible_combinations:
+                # print(f"Evaluating possible solution: {possible_solution}")
+                outputs.append(
+                    self.evaluate_single_solution_single_objective(
+                        site_indices=possible_solution,
+                        objective=objectives,
+                    ).return_solution_metrics()
+                )
+
+            evaluated_solutions = pd.DataFrame(outputs).sort_values(
+                [ranking, "weighted_average"]
+            )
+
+            # print("==Evaluated solution dataframe==")
+            # print(evaluated_solutions)
+
+            single_solution_metrics = SiteSolutionSet(
+                solution_df=evaluated_solutions,
+                site_problem=self,
+                objectives=objectives,
+                n_sites=i,
+            )
+
+            # print("Single Solution Set object created")
+            # print(single_solution_metrics)
+
+            # print(single_solution_metrics.show_solutions())
+
+            best_indices = single_solution_metrics.show_solutions().head(1)[
+                "site_indices"
+            ][0]
+
+            print(f"Best combination for {i} sites: {best_indices}")
+
+        best_solution_metrics = self.evaluate_single_solution_single_objective(
+            site_indices=best_indices,
+            objective=objectives,
+            threshold_for_coverage=threshold_for_coverage,
+        ).return_solution_metrics()
+
+        return [best_solution_metrics]
 
     def evaluate_n_sites(self, min_sites, max_sites):
         pass
