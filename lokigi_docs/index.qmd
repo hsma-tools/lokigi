@@ -6,6 +6,7 @@
 
 lokigi exists to make the process of providing decision support for healthcare problems with a geographical component easier.
 
+![](lokigi_image_showcase.drawio.png)
 
 <br>
 
