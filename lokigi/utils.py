@@ -512,3 +512,15 @@ def _too_similar_to_accepted(
             return True
 
     return False
+
+
+def _validate_capacity_constraint(self):
+    total_demand = self.demand_data[self._demand_data_demand_col].sum()
+    total_capacity = self.candidate_sites[self._candidate_sites_capacity_col].sum()
+
+    if total_demand > total_capacity:
+        raise ValueError(
+            f"Insufficient Capacity! Your region has {total_demand} patients "
+            f"but only {total_capacity} total slots. You need to add more "
+            "candidate sites or increase 'p'."
+        )

@@ -4,12 +4,11 @@ from lokigi.utils import (
     _load_spatial_or_tabular_data,
     _guess_crs,
     GEOPANDAS_EXTS,
-    _generate_all_combinations,
     _check_crs_match_pref,
     _convert_crs,
     SUPPORTED_OBJECTIVES,
     _get_ranking_by_objective,
-    _too_similar_to_accepted,
+    _validate_capacity_constraint,
 )
 
 from lokigi.site_solutions import EvaluatedCombination, SiteSolutionSet
@@ -17,8 +16,6 @@ from lokigi.site_solutions import EvaluatedCombination, SiteSolutionSet
 # Data manipulation imports
 import pandas as pd
 import geopandas
-import random
-import math
 
 # Plotting imports
 import contextily as cx
@@ -30,10 +27,6 @@ import matplotlib.pyplot as plt
 from warnings import warn
 import numpy as np
 from typing import Literal
-import heapq
-from tqdm.auto import tqdm
-from functools import lru_cache
-
 from .mixins.site_solvers import _brute_force, _greedy, _grasp
 
 
@@ -125,11 +118,51 @@ class SiteProblem(_brute_force, _greedy, _grasp):
 
     def add_demand(self, demand_df, demand_col, location_id_col, skip_cols=None):
         """
-        Adds a dataframe or geodataframe containing the demand observed
-        to the SiteProblem object.
+        Add demand data to the site problem and validate its structure.
 
-        df: Pandas DataFrame or Geopandas Geodataframe
-        Validates CRS and aligns patient data."""
+        This method processes an input DataFrame or GeoDataFrame (or path) containing
+        observed demand. It validates the presence of required columns and
+        aligns the spatial or tabular data for use within the SiteProblem
+        context.
+
+        Parameters
+        ----------
+        demand_df : pandas.DataFrame, geopandas.GeoDataFrame or str
+            The dataset containing demand information and location identifiers, or a local or web
+            path to its location.
+        demand_col : str
+            The name of the column in `demand_df` representing the quantity
+            of demand (e.g., patient counts, request volume, or other demand weighting).
+        location_id_col : str
+            The name of the column in `demand_df` used as a unique identifier
+            for demand locations.
+        skip_cols : list of str, optional
+            A list of column names to ignore during the data loading process.
+            Defaults to None.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        ValueError
+            If the required `demand_col` or `location_id_col` are missing
+            from the provided `demand_df`.
+
+        Notes
+        -----
+        The method updates several internal attributes:
+        - `self.demand_data`: Stores the processed DataFrame.
+        - `self._demand_data_type`: Stores whether the data is spatial or tabular.
+        - `self._demand_data_demand_col`: Maps the demand value column.
+        - `self._demand_data_id_col`: Maps the location identifier column.
+
+        See Also
+        --------
+        _load_spatial_or_tabular_data : Internal utility for data ingestion.
+        _validate_columns : Internal utility for schema verification.
+        """
         loaded_df, df_type = _load_spatial_or_tabular_data(
             demand_df, skip_cols=skip_cols
         )
@@ -153,9 +186,58 @@ class SiteProblem(_brute_force, _greedy, _grasp):
         self._demand_data_id_col = location_id_col
 
     def show_demand(self):
+        """
+        Returns a loaded demand dataframe
+        """
         return self.demand_data
 
     def add_region_geometry_layer(self, region_geometry_df, common_col):
+        """
+        Add demand data to the site problem and validate its structure.
+
+        This method processes an input DataFrame or GeoDataFrame (or path) containing
+        observed demand. It validates the presence of required columns and
+        aligns the spatial or tabular data for use within the SiteProblem
+        context.
+
+        If a preferred CRS has been passed and this dataframe is not of the preferred CRS,
+        this dataframe will be transformed on loading to the preferred CRS. If no preferred
+        CRS has been specified, no transformation will take place
+
+        Parameters
+        ----------
+        region_geometry_df : geopandas.GeoDataFrame or str
+            The dataset containing demand information and location identifiers, or a local or web
+            path to its location.
+        common_col : str
+            The name of the column in `region_geometry_df` that should be used when joining to
+            the demand data and travel matrix.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        ValueError
+            If the required `demand_col` or `location_id_col` are missing
+            from the provided `demand_df`.
+
+        TypeError if a non-geopandas dataframe is passed.
+
+        Notes
+        -----
+        The method updates several internal attributes:
+        - `self.demand_data`: Stores the processed DataFrame.
+        - `self._demand_data_type`: Stores whether the data is spatial or tabular.
+        - `self._demand_data_demand_col`: Maps the demand value column.
+        - `self._demand_data_id_col`: Maps the location identifier column.
+
+        See Also
+        --------
+        _load_spatial_or_tabular_data : Internal utility for data ingestion.
+        _validate_columns : Internal utility for schema verification.
+        """
 
         loaded_df, df_type = _load_spatial_or_tabular_data(region_geometry_df)
         if df_type != "geopandas":
@@ -173,11 +255,65 @@ class SiteProblem(_brute_force, _greedy, _grasp):
         self._region_geometry_layer_common_col = common_col
 
     def show_region_geometry_layer(self):
+        """
+        Returns a loaded region geometry geodataframe
+        """
         return self.region_geometry_layer
 
     def plot_region_geometry_layer(
-        self, interactive=False, plot_demand=False, **kwargs
+        self,
+        interactive=False,
+        plot_demand=False,
+        cmap="Blues",
+        tiles="CartoDB positron",
+        **kwargs,
     ):
+        """
+        Visualize the regional geometry layer, optionally overlaid with demand data.
+
+        This method produces either a static matplotlib plot or an interactive
+        Folium map (via Geopandas' .explore()). If demand plotting is enabled,
+        it performs an internal join between geometry and demand data to create
+        a choropleth map.
+
+        Parameters
+        ----------
+        interactive : bool, default False
+            If True, returns a folium.Map object using the 'explore' backend.
+            If False, returns a matplotlib.axes.Axes object.
+        plot_demand : bool, default False
+            If True, merges the geometry with the demand dataset and styles
+            the regions based on the demand column values.
+        cmap: str, default "Blues"
+            Colour map to be used for plotting demand. Ignored if plot_demand=False.
+        tiles: str, default "CartoDB positron"
+            Tiles to be used for background in map. Ignored if interactive = False.
+
+        **kwargs : dict
+            Additional keyword arguments passed to either
+            `geopandas.GeoDataFrame.plot` or `geopandas.GeoDataFrame.explore`.
+
+        Returns
+        -------
+        matplotlib.axes.Axes or folium.Map
+            The plotting object depending on the `interactive` parameter.
+
+        Raises
+        ------
+        ValueError
+            If `self.region_geometry_layer` has not been initialized.
+        ValueError
+            If `plot_demand` is True but `self.demand_data` is None.
+
+        Notes
+        -----
+        When `plot_demand` is True, the method performs a merge using:
+        - `self._region_geometry_layer_common_col` (left)
+        - `self._demand_data_id_col` (right)
+
+        Interactive maps default to the "CartoDB positron" tile set and
+        the "Blues" colormap for demand visualization.
+        """
         if self.region_geometry_layer is None:
             raise ValueError(
                 "No region geometry layer has been initialised."
@@ -201,9 +337,9 @@ class SiteProblem(_brute_force, _greedy, _grasp):
                     column=self._demand_data_demand_col,  # make choropleth based on demand col
                     tooltip=self._demand_data_demand_col,  # show demand col value in tooltip (on hover)
                     popup=True,  # show all values in popup (on click)
-                    cmap="Blues",  # use "Blues" matplotlib colormap
+                    cmap=cmap,  # use "Blues" matplotlib colormap
                     style_kwds=dict(color="black"),
-                    tiles="CartoDB positron",
+                    tiles=tiles,
                     **kwargs,
                 )
 
@@ -216,7 +352,7 @@ class SiteProblem(_brute_force, _greedy, _grasp):
                 return fig
 
         if interactive:
-            m = self.region_geometry_layer.explore(tiles="CartoDB positron", **kwargs)
+            m = self.region_geometry_layer.explore(tiles=tiles, **kwargs)
             return m
         else:
             fig = self.region_geometry_layer.plot(**kwargs)
@@ -234,7 +370,63 @@ class SiteProblem(_brute_force, _greedy, _grasp):
         capacity_col=None,
         skip_cols=None,
     ):
-        """Validates CRS and identifies potential new sites."""
+        """
+        Add candidate facility sites to the problem and handle spatial alignment.
+
+        This method ingests site data from either a standard DataFrame or a
+        GeoDataFrame. If tabular data is provided, it automatically converts
+        coordinates into point geometries. It also ensures the data matches the
+        object's preferred CRS, attempting to guess the CRS if it's not provided.
+
+        Parameters
+        ----------
+        candidate_site_df : pandas.DataFrame or geopandas.GeoDataFrame or str
+            The dataset containing potential site locations, or a local or web
+            path to its location.
+        candidate_id_col : str
+            The name of the column containing unique identifiers for each site.
+        required_sites_col : str, optional
+            The name of a boolean or binary column indicating if a site must be
+            included in the final solution. Defaults to None.
+        geometry_col : str, default "geometry"
+            The name of the geometry column (used if `candidate_site_df` is
+            already a GeoDataFrame or is a path to a geodataframe).
+        vertical_geometry_col : str, default "lat"
+            The column name for latitude/y-coordinates (used if input is tabular
+            or a path to a tabular file format like .csv).
+        horizontal_geometry_col : str, default "long"
+            The column name for longitude/x-coordinates (used if input is tabular
+            or a path to a tabular file format like .csv).
+        crs : str or pyproj.CRS, optional
+            The coordinate reference system of the input data. If None and the
+            input is tabular, the method will attempt to guess the CRS.
+        capacity_col : str, optional
+            The column name representing the capacity of each site. Defaults to None.
+        skip_cols : list of str, optional
+            A list of column names to ignore during the data loading process.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        ValueError
+            If required columns (ID, capacity, or geometry) are missing from the
+            input data.
+
+        Notes
+        -----
+        The method performs the following transformations:
+        1. Infers data type (spatial vs. tabular).
+        2. Validates schema based on the data type.
+        3. If tabular, converts to a `geopandas.GeoDataFrame` using the
+           specified horizontal and vertical coordinate columns.
+        4. Matches or converts the dataset to `self.preferred_crs`.
+
+        Updates internal state including `self.candidate_sites` and
+        `self.total_n_sites`.
+        """
         loaded_df, df_type = _load_spatial_or_tabular_data(
             candidate_site_df, skip_cols=skip_cols
         )
@@ -301,13 +493,52 @@ class SiteProblem(_brute_force, _greedy, _grasp):
         self.total_n_sites = len(self.candidate_sites)
 
     def show_sites(self):
+        """
+        Returns a loaded candidate site geodataframe
+
+        Returns
+        -------
+        geopandas.Geodataframe
+            A geopandas geodataframe containing the candidate sites
+
+        """
         return self.candidate_sites
 
     def plot_sites(self, add_basemap=True, show_labels=True, interactive=False):
         """
-        Adds a quick plot
+        Generate a visualization of the candidate facility sites.
+
+        This method provides a quick way to inspect site locations. It supports
+        both static matplotlib plots (with automatic label de-confliction)
+        and interactive Folium maps.
+
+        Parameters
+        ----------
+        add_basemap : bool, default True
+            If True, adds a background web map using `contextily`. Only
+            applicable for static plots (`interactive=False`).
+        show_labels : bool, default True
+            If True, adds text labels for each site using the candidate ID
+            column. Labels are automatically wrapped and positioned to
+            avoid overlap using `adjust_text`. Only applicable for static plots
+            (`interactive=False`)..
+        interactive : bool, default False
+            If True, returns an interactive folium map via the `.explore()`
+            method.
+
+        Returns
+        -------
+        matplotlib.axes.Axes or folium.Map
+            The plotting object. Returns an Axes object for static plots
+            or a Map object for interactive visualizations.
+
+        Notes
+        -----
+        Static plots use `adjust_text` to ensure that site labels remain
+        legible even in high-density areas. Labels are title-cased and
+        wrapped at a width of 15 characters.
         """
-        if not interactive or self._candidate_sites_type == "pandas":
+        if not interactive:
             ax = self.candidate_sites.plot()
 
             if show_labels:
@@ -328,10 +559,6 @@ class SiteProblem(_brute_force, _greedy, _grasp):
             m = self.candidate_sites.explore()
             return m
 
-    # def add_baseline(self, gdf, id_col):
-    #     """Loads 'status quo' sites to calculate the starting benchmark."""
-    #     pass
-
     def add_travel_matrix(
         self,
         travel_matrix_df,
@@ -341,7 +568,55 @@ class SiteProblem(_brute_force, _greedy, _grasp):
         from_unit=None,
         to_unit=None,
     ):
-        """Ensures the matrix indices match the demand/candidate IDs."""
+        """
+        Add a travel cost matrix to the problem and handle unit conversions.
+
+        This method integrates a matrix (typically time or distance) representing
+        the travel cost between demand locations and candidate sites. It can
+        automatically scale numeric columns if time unit conversion is required
+        (e.g., converting seconds to minutes).
+
+        Parameters
+        ----------
+        travel_matrix_df : pandas.DataFrame or geopandas.GeoDataFrame or str
+            The dataset containing travel costs, or a local or web
+            path to its location. Usually structured as an
+            origin-destination matrix or a long-format table.
+        source_col : str
+            The column name in `travel_matrix_df` that identifies the origin
+            points (should correspond to IDs in the demand or site data).
+        skip_cols : list of str, optional
+            A list of column names to ignore during data loading.
+        unit : str, optional
+            A label for the units used in the matrix (e.g., "miles", "km").
+            Used if no conversion is performed.
+        from_unit : {"seconds", "minutes", "hours"}, optional
+            The current time unit of the numeric values in the dataframe.
+        to_unit : {"seconds", "minutes", "hours"}, optional
+            The target time unit for the numeric values in the dataframe.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        ValueError
+            If the `source_col` is missing from the provided dataframe.
+        KeyError
+            If the `from_unit` to `to_unit` combination is not supported
+            by the internal conversion dictionary.
+
+        Notes
+        -----
+        If both `from_unit` and `to_unit` are provided, the method identifies
+        all numeric columns in the dataframe and applies the appropriate
+        multiplication factor. Supported conversions are limited to time-based
+        units (seconds, minutes, hours).
+
+        The resulting data is stored in `self.travel_matrix`, and the resolved
+        unit label is stored in `self._travel_matrix_unit`.
+        """
         loaded_df, df_type = _load_spatial_or_tabular_data(
             travel_matrix_df, skip_cols=skip_cols
         )
@@ -381,9 +656,54 @@ class SiteProblem(_brute_force, _greedy, _grasp):
         self._travel_matrix_source_col = source_col
 
     def show_travel_matrix(self):
+        """
+        Returns a loaded travel or cost matrix dataframe
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe containing the travel times, distances or other costs for
+            combinations of sources (rows) and destinations (columns)
+
+        """
         return self.travel_matrix
 
     def _create_joined_demand_travel_df(self, index_col):
+        """
+        Merge demand data with travel costs into a single master dataframe.
+
+        This internal method performs an inner join between the demand dataset
+        and the travel matrix. It ensures that the resulting object preserves
+        spatial properties if the demand data is a GeoDataFrame by managing
+        the merge order.
+
+        Parameters
+        ----------
+        index_col : str
+            The column name to be set as the index of the resulting merged
+            dataframe (typically the unique identifier for demand locations).
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        KeyError
+            If the inner join results in an empty dataframe. This usually
+            indicates a mismatch between the ID values in the demand data
+            and the source values in the travel matrix.
+
+        Notes
+        -----
+        The method logic is sensitive to the data types of the inputs:
+        - If `self.demand_data` is a GeoDataFrame, it is placed on the left
+          side of the join to ensure the output is also a GeoDataFrame.
+        - The join is performed on `self._demand_data_id_col` and
+          `self._travel_matrix_source_col`.
+
+        The merged result is stored in the `self.travel_and_demand_df` attribute.
+        """
         # If one is a geopandas dataframe, put that first in the merge call so that the
         # output object will also be a geodataframe
         if self._demand_data_type == "geopandas":
@@ -424,7 +744,60 @@ class SiteProblem(_brute_force, _greedy, _grasp):
         threshold_for_coverage=None,
     ):
         """
-        Evaluates a solution. User must provide either site_names OR site_indices.
+        Evaluate a specific set of facility sites against a single objective.
+
+        This method calculates the performance of a given facility configuration
+        (a 'solution'). It determines which demand points are assigned to which
+        sites based on minimum travel cost and calculates coverage metrics if a
+        threshold is provided.
+
+        Parameters
+        ----------
+        objective : str, default "p_median"
+            The name of the objective function to evaluate. Must be a value
+            defined in `SUPPORTED_OBJECTIVES`.
+        site_names : list of str, optional
+            A list of site identifiers (column names in the travel matrix)
+            representing the chosen solution.
+        site_indices : list of int, optional
+            A list of integer positions (column indices) representing the
+            chosen solution.
+        capacitated : bool, default False
+            Whether to consider site capacity constraints. Currently, only
+            `False` is supported.
+        threshold_for_coverage : float or int, optional
+            A distance or time value. Demand points with a minimum travel cost
+            lower than this value are flagged as 'covered'.
+
+        Returns
+        -------
+        EvaluatedCombination
+            A results container containing the objective type, resolved site
+            indices/names, and a detailed DataFrame of the demand assignments.
+
+        Raises
+        ------
+        ValueError
+            If an unsupported objective is passed, or if neither (or both)
+            `site_names` and `site_indices` are provided.
+        KeyError
+            If provided `site_names` do not exist in the travel matrix columns.
+        IndexError
+            If provided `site_indices` are out of the bounds of the travel matrix.
+        NotImplementedError
+            If `capacitated=True` is requested.
+
+        Notes
+        -----
+        The method assumes an uncapacitated assignment logic where every demand
+        point is assigned to its nearest (lowest cost) active facility.
+
+        If `self.travel_and_demand_df` has not been generated via a merge yet,
+        this method calls `_create_joined_demand_travel_df` automatically.
+
+        See Also
+        --------
+        EvaluatedCombination : The class used to wrap the output of this method.
         """
         # Check for valid objectives
         if isinstance(objective, list) and len(objective) > 1:
@@ -516,7 +889,7 @@ class SiteProblem(_brute_force, _greedy, _grasp):
             )
 
         else:
-            raise ValueError(
+            raise NotImplementedError(
                 "Capacitated solving not yet supported. Please rerun with capacitated=False."
             )
 
@@ -530,6 +903,31 @@ class SiteProblem(_brute_force, _greedy, _grasp):
         )
 
     def _setup_equal_demand_df(self):
+        """
+        Initialize a default demand dataset with uniform weights.
+
+        This internal method is used when no explicit demand data has been
+        provided. It creates a synthetic demand DataFrame based on the
+        unique source locations found in the travel matrix, assigning a
+        nominal demand value of 1 to every location.
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        This method updates the following internal attributes:
+        - `self.demand_data`: A new pandas DataFrame containing location IDs
+          and a demand column 'n'.
+        - `self._demand_data_type`: Set to "pandas".
+        - `self._demand_data_id_col`: Set to match the travel matrix source column.
+        - `self._demand_data_demand_col`: Set to "n".
+
+        This ensures that optimization objectives like p-median can still
+        function by minimizing average travel time across all known
+        locations equally.
+        """
         demand_data_temp = pd.DataFrame(
             self.travel_matrix[self._travel_matrix_source_col],
             columns=[self._travel_matrix_source_col],
@@ -542,6 +940,36 @@ class SiteProblem(_brute_force, _greedy, _grasp):
         self._demand_data_demand_col = "n"
 
     def _setup_sites_df_from_travel_matrix(self):
+        """
+        Generate a candidate sites DataFrame directly from travel matrix columns.
+
+        This internal method is invoked when no explicit candidate site data
+        has been provided. It extracts all destination column names from the
+        travel matrix (excluding the source/ID column) and treats them as
+        the available facility locations.
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        Because the travel matrix columns typically only contain names/IDs,
+        the resulting `self.candidate_sites` will not contain spatial
+        geometry (lat/long) or capacity information.
+
+        The following internal attributes are updated:
+        - `self.candidate_sites`: A DataFrame containing a 'site' column
+          and an integer index.
+        - `self._candidate_sites_type`: Set to "pandas".
+        - `self._candidate_sites_candidate_id_col`: Set to "site".
+        - `self.total_n_sites`: Set to the number of extracted columns.
+        - Spatial and capacity columns are explicitly set to `None`.
+
+        See Also
+        --------
+        _setup_equal_demand_df : The counterpart for generating default demand.
+        """
         sites_df_temp = pd.DataFrame(
             self.travel_matrix.columns.T.drop(self._demand_data_id_col),
             columns=["site"],
@@ -578,6 +1006,89 @@ class SiteProblem(_brute_force, _greedy, _grasp):
         random_seed=42,
         **kwargs,
     ):
+        """
+        Solve the site location problem using the specified objective and strategy.
+
+        This method validates the problem configuration, handles automatic setup of
+        missing demand or site data, and dispatches the optimization task to the
+        appropriate internal solver.
+
+        Parameters
+        ----------
+        p : int
+            The number of facilities to be located.
+        objectives : str or list of str, default "p_median"
+            The optimization objective(s). Currently, only single-objective
+            optimization is supported; if a list is provided, only the first
+            element is used. Supported: "p_median", "p_center", "mclp", etc.
+        capacitated : bool, default False
+            Whether to enforce site capacity constraints.
+            *Note: Currently not implemented.*
+        search_strategy : {"brute-force", "greedy", "grasp"}, default "brute-force"
+            The algorithm used to find the solution:
+            - "brute-force": Exhaustively checks all combinations (if p is small).
+            - "greedy": Iteratively adds the best performing site.
+            - "grasp": Greedy Randomized Adaptive Search Procedure.
+        brute_force_ignore_limit : bool, default False
+            (Brute Force only) If True, allows brute-force searching even if the number of
+            combinations is extremely high.
+        show_progress : bool, default True
+            If True, displays a progress bar during the optimization process.
+        brute_force_keep_best_n / brute_force_keep_worst_n : int, optional
+            (Brute Force only) The number of top or bottom results to retain during a
+            brute-force search.
+        max_value_cutoff : float, optional
+            The maximum allowable travel cost. Only applicable for hybrid
+            objective models.
+        threshold_for_coverage : float, optional
+            The distance or time threshold. Used as a hard filter for MCLP
+            objectives or as a scoring metric for others.
+        grasp_num_solutions : int, default 5
+            (GRASP only) The number of high-quality solutions to generate.
+        grasp_alpha : float, default 0.2
+            (GRASP only) The selection restriction parameter (0 is fully
+            greedy, 1 is fully random).
+        grasp_max_attempts : int or "default", default "default"
+            (GRASP only) Maximum iterations to find a valid solution.
+        grasp_min_sites_different : int, default 1
+            (GRASP only) Minimum number of sites that must differ between
+            generated solutions.
+        grasp_local_search_chance : float, default 0.8
+            (GRASP only) The probability (0.0 to 1.0) of performing a local
+            search to improve a found solution.
+        grasp_max_swap_count_local_search : int, default 10
+            (GRASP only) Maximum number of site swaps allowed during the
+            local search phase.
+        random_seed : int, default 42
+            (GRASP only) Seed for reproducibility in randomized strategies like GRASP.
+        **kwargs : dict
+            Additional arguments passed to the internal solver.
+
+        Returns
+        -------
+        SiteSolutionSet
+            An object containing the optimal sites, objective score, and
+            detailed assignment data for each provided solution.
+
+        Raises
+        ------
+        ValueError
+            If `capacitated` is True, if the travel matrix is missing, if an
+            unsupported objective/strategy is provided, or if `max_value_cutoff`
+            is used with an incompatible objective.
+
+        Warns
+        -----
+        UserWarning
+            If multi-objective lists are provided (only the first is taken).
+            If demand or site data is missing and must be auto-generated.
+
+        Notes
+        -----
+        If `demand_data` or `candidate_sites` have not been explicitly added
+        prior to calling `.solve()`, the method will automatically initialize
+        them based on the travel matrix.
+        """
 
         if capacitated:
             raise ValueError(
@@ -676,8 +1187,8 @@ class SiteProblem(_brute_force, _greedy, _grasp):
         p: int,
         objective="p_median",
         search_strategy="brute-force",
-        brute_force_ignore_limit=False,
         show_progress=False,
+        brute_force_ignore_limit=False,
         brute_force_keep_best_n=None,
         brute_force_keep_worst_n=None,
         max_value_cutoff=None,
@@ -690,6 +1201,75 @@ class SiteProblem(_brute_force, _greedy, _grasp):
         grasp_max_swap_count_local_search=10,
         random_seed=42,
     ):
+        """
+        Internal dispatcher for solving location-allocation problems.
+
+        This method routes the problem to the appropriate search algorithm
+        (Brute Force, Greedy, or GRASP) based on the specified strategy and
+        objective. It handles ranking logic and result sorting before
+        encapsulating outputs into a SiteSolutionSet.
+
+        Parameters
+        ----------
+        p : int
+            The number of facilities to be located.
+        objective : str, default "p_median"
+            The name of the objective function to optimize. Supported values
+            typically include "p_median", "p_center", and "mclp".
+        search_strategy : {"brute-force", "greedy", "grasp"}, default "brute-force"
+            The search algorithm to apply.
+        show_progress : bool, default False
+            If True, displays a progress bar during computation.
+        brute_force_ignore_limit : bool, default False
+            (Brute Force) If True, bypasses safety checks on the total number of
+            combinations for exhaustive searches.
+        brute_force_keep_best_n : int, optional
+            (Brute Force) The number of top-performing combinations to retain in
+            brute-force results.
+        brute_force_keep_worst_n : int, optional
+            (Brute Force) The number of lowest-performing combinations to retain in
+            brute-force results.
+        max_value_cutoff : float, optional
+            The maximum allowable travel cost, used only for hybrid
+            objective models.
+        threshold_for_coverage : float, optional
+            The maximum distance/time for a demand point to be considered
+            'covered'. Required for "mclp" objectives.
+        grasp_num_solutions : int, default 5
+            (GRASP) Number of candidate solutions to generate.
+        grasp_alpha : float, default 0.2
+            (GRASP) Threshold for the Restricted Candidate List (RCL).
+        grasp_max_attempts : int or "default", default "default"
+            (GRASP) Maximum number of iterations to find distinct solutions.
+        grasp_min_sites_different : int, default 1
+            (GRASP) Minimum site difference required between solutions
+            in the set.
+        grasp_local_search_chance : float, default 0.8
+            (GRASP) Probability of applying a local search (2-opt)
+            improvement phase.
+        grasp_max_swap_count_local_search : int, default 10
+            (GRASP) Maximum number of facility swaps per local search attempt.
+        random_seed : int, default 42
+            (GRASP) Seed for random number generation to ensure reproducibility.
+
+        Returns
+        -------
+        SiteSolutionSet
+            A collection of solutions found, sorted by the primary objective
+            ranking and weighted average costs.
+
+        Raises
+        ------
+        ValueError
+            If an unsupported objective or search strategy is provided.
+
+        Notes
+        -----
+        The method uses `_get_ranking_by_objective` to determine the primary
+        sorting column. For "mclp", results are sorted in descending order of
+        coverage (higher is better), while for other objectives, results are
+        sorted in ascending order of cost (lower is better).
+        """
 
         if objective not in SUPPORTED_OBJECTIVES:
             raise ValueError(
@@ -787,7 +1367,15 @@ class SiteProblem(_brute_force, _greedy, _grasp):
         pass
 
     def describe_models(self, available_only=True):
-        """Prints a menu of available optimization strategies for healthcare."""
+        """
+        Prints a menu of available optimization strategies for healthcare.
+
+        Parameters
+        ----------
+        available_only : bool
+            Whether to limit the printout to only the models that are currently
+            supported by the library rather than all methods
+        """
         if available_only:
             print("=== Supported Healthcare Location Models ===")
         else:
@@ -804,14 +1392,3 @@ class SiteProblem(_brute_force, _greedy, _grasp):
             if not available_only:
                 print(f"Status: {info['status']}")
         print("\nTo run a model, use: prob.solve_pmedian(p=3) or similar.")
-
-    def _validate_capacity_constraint(self):
-        total_demand = self.demand_data[self._demand_data_demand_col].sum()
-        total_capacity = self.candidate_sites[self._candidate_sites_capacity_col].sum()
-
-        if total_demand > total_capacity:
-            raise ValueError(
-                f"Insufficient Capacity! Your region has {total_demand} patients "
-                f"but only {total_capacity} total slots. You need to add more "
-                "candidate sites or increase 'p'."
-            )
