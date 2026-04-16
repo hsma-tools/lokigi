@@ -32,6 +32,7 @@ import numpy as np
 from typing import Literal
 import heapq
 from tqdm.auto import tqdm
+from functools import lru_cache
 
 # Warn if brute force will be slow
 BRUTE_FORCE_WARN_THRESHOLD = 75_000
@@ -574,6 +575,8 @@ class SiteProblem:
         grasp_alpha=0.2,
         grasp_max_attempts="default",
         grasp_min_sites_different=1,
+        grasp_local_search_chance=0.8,  # Chance that local searching will happen to improve found solution
+        grasp_max_swap_count_local_search=10,
         random_seed=42,
         **kwargs,
     ):
@@ -664,6 +667,8 @@ class SiteProblem:
                 grasp_min_sites_different=grasp_min_sites_different,
                 threshold_for_coverage=threshold_for_coverage,
                 random_seed=random_seed,
+                grasp_local_search_chance=grasp_local_search_chance,  # Chance that local searching will happen to improve found solution
+                grasp_max_swap_count_local_search=grasp_max_swap_count_local_search,
             )
         else:
             raise ValueError(f"Unknown objective '{objective}'.")
@@ -795,6 +800,8 @@ class SiteProblem:
         grasp_alpha=0.2,
         grasp_max_attempts="default",
         grasp_min_sites_different=1,
+        grasp_local_search_chance=0.8,  # Chance that local searching will happen to improve found solution
+        grasp_max_swap_count_local_search=10,
         random_seed=42,
     ):
 
@@ -877,6 +884,8 @@ class SiteProblem:
                 show_progress=show_progress,
                 random_seed=random_seed,
                 min_sites_different=grasp_min_sites_different,
+                local_search_chance=grasp_local_search_chance,  # Chance that local searching will happen to improve found solution
+                max_swap_count_local_search=grasp_max_swap_count_local_search,
             )
 
             return SiteSolutionSet(
@@ -970,7 +979,9 @@ class SiteProblem:
         random_seed: int = 42,
         max_attempts: int | str = "default",
         min_sites_different: int = 1,
-        is_minimization: bool = True,  # [NEW] Flag for sort order & thresholding
+        is_minimization: bool = True,  # Flag for sort order & thresholding
+        local_search_chance=0.8,  # Chance that local searching will happen to improve found solution
+        max_swap_count_local_search=10,
     ):
         """
         GRASP (Greedy Randomised Adaptive Search Procedure) for finding multiple
@@ -996,14 +1007,21 @@ class SiteProblem:
         # -------------------------------------------------------------------
         evaluation_cache = {}
 
-        def _get_cached_metrics(indices: list[int]):
-            sig = tuple(sorted(indices))
-            if sig not in evaluation_cache:
-                evaluation_cache[sig] = self.evaluate_single_solution_single_objective(
-                    site_indices=list(indices),
-                    objective=objectives,
-                ).return_solution_metrics()
-            return evaluation_cache[sig]
+        # def _get_cached_metrics(indices: list[int]):
+        #     sig = tuple(sorted(indices))
+        #     if sig not in evaluation_cache:
+        #         evaluation_cache[sig] = self.evaluate_single_solution_single_objective(
+        #             site_indices=list(indices),
+        #             objective=objectives,
+        #         ).return_solution_metrics()
+        #     return evaluation_cache[sig]
+
+        @lru_cache(maxsize=10000)
+        def _get_cached_metrics(indices_tuple: tuple):
+            return self.evaluate_single_solution_single_objective(
+                site_indices=list(indices_tuple),
+                objective=objectives,
+            ).return_solution_metrics()
 
         pbar = None
         if show_progress:
@@ -1037,9 +1055,7 @@ class SiteProblem:
                 candidate_scores: list[tuple[float, float, int]] = []
                 for site in remaining_sites:
                     candidate_indices = current_solution + [site]
-                    metrics = _get_cached_metrics(
-                        candidate_indices
-                    )  # [UPDATED] Use Cache
+                    metrics = _get_cached_metrics(tuple(sorted(candidate_indices)))
 
                     primary_score = metrics[ranking]
                     secondary_score = metrics["weighted_average"]
@@ -1055,8 +1071,8 @@ class SiteProblem:
                 value_range = abs(f_best - f_worst)
 
                 if value_range < 1e-9:
-                    rcl_size = max(1, int(len(candidate_scores) * alpha))
-                    rcl = [s for _, _, s in candidate_scores[:rcl_size]]
+                    # All candidates are tied; picking any of them is equally greedy.
+                    rcl = [s for _, _, s in candidate_scores]
                 else:
                     if is_minimization:
                         threshold = f_best + alpha * value_range
@@ -1083,48 +1099,55 @@ class SiteProblem:
             # LOCAL SEARCH PHASE (1-opt swap)
             # [UPDATED] Shifted to First-Improvement for massive speed gains.
             # ---------------------------------------------------------------
-            improved = True
-            while improved:
-                improved = False
+            # 20% of the time, keep the raw GRASP construction to ensure pool diversity
+            if rng.random() > (1 - local_search_chance):
+                improved = True
+                max_swaps = max_swap_count_local_search
+                swaps = 0
+                while improved and swaps < max_swaps:
+                    swaps += 1
+                    improved = False
 
-                current_metrics = _get_cached_metrics(current_solution)
-                current_primary = current_metrics[ranking]
-                current_secondary = current_metrics["weighted_average"]
+                    current_metrics = _get_cached_metrics(
+                        tuple(sorted(current_solution))
+                    )
+                    current_primary = current_metrics[ranking]
+                    current_secondary = current_metrics["weighted_average"]
 
-                outside_sites = [
-                    s for s in all_site_indices if s not in current_solution_set
-                ]
+                    outside_sites = [
+                        s for s in all_site_indices if s not in current_solution_set
+                    ]
 
-                for old_site in current_solution:
-                    for new_site in outside_sites:
-                        candidate = [s for s in current_solution if s != old_site] + [
-                            new_site
-                        ]
+                    for old_site in current_solution:
+                        for new_site in outside_sites:
+                            candidate = [
+                                s for s in current_solution if s != old_site
+                            ] + [new_site]
 
-                        swap_metrics = _get_cached_metrics(candidate)
-                        swap_primary = swap_metrics[ranking]
-                        swap_secondary = swap_metrics["weighted_average"]
+                            swap_metrics = _get_cached_metrics(tuple(sorted(candidate)))
+                            swap_primary = swap_metrics[ranking]
+                            swap_secondary = swap_metrics["weighted_average"]
 
-                        if is_minimization:
-                            is_better = (swap_primary, swap_secondary) < (
-                                current_primary,
-                                current_secondary,
-                            )
-                        else:
-                            is_better = (swap_primary, swap_secondary) > (
-                                current_primary,
-                                current_secondary,
-                            )
+                            if is_minimization:
+                                is_better = (swap_primary, swap_secondary) < (
+                                    current_primary,
+                                    current_secondary,
+                                )
+                            else:
+                                is_better = (swap_primary, swap_secondary) > (
+                                    current_primary,
+                                    current_secondary,
+                                )
 
-                        if is_better:
-                            # First-Improvement: Apply immediately, break loops, restart neighborhood
-                            current_solution = candidate
-                            current_solution_set = set(current_solution)
-                            improved = True
-                            break
+                            if is_better:
+                                # First-Improvement: Apply immediately, break loops, restart neighborhood
+                                current_solution = candidate
+                                current_solution_set = set(current_solution)
+                                improved = True
+                                break
 
-                    if improved:
-                        break  # Break outer loop to restart the `while improved` check
+                        if improved:
+                            break  # Break outer loop to restart the `while improved` check
 
             # ---------------------------------------------------------------
             # DIVERSITY CHECK

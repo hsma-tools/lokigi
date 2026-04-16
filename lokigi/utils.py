@@ -491,8 +491,10 @@ def _too_similar_to_accepted(
     """
     Returns True if new_set is too similar to any previously accepted solution.
     """
-    if min_jaccard_distance <= 0.0:
+    if min_jaccard_distance == 0.0:
         return new_set in accepted_sets
+    if min_jaccard_distance < 0:
+        raise ValueError("Minimum jaccard distance cannot be negative")
 
     p = len(new_set)
     for existing_set in accepted_sets:
