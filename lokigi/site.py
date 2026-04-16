@@ -27,10 +27,10 @@ import matplotlib.pyplot as plt
 from warnings import warn
 import numpy as np
 from typing import Literal
-from .mixins.site_solvers import _brute_force, _greedy, _grasp
+from .mixins.site_solvers import BruteForceMixin, GreedyMixin, GraspMixin
 
 
-class SiteProblem(_brute_force, _greedy, _grasp):
+class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
     """
     SiteProblem.solve_pmedian.__doc__ = f'''
     {SOLVER_DEFINITIONS['p_median']['goal']}
