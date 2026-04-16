@@ -102,6 +102,7 @@ class SiteSolutionSet:
     def plot_travel_time_distribution(
         self,
         top_n=1,
+        bottom_n=None,
         rank_on=None,
         secondary_ranking="max",
         title="default",
@@ -111,13 +112,21 @@ class SiteSolutionSet:
         **kwargs,
     ):
         if rank_on is not None:
-            solutions_filtered = (
-                self.solution_df.sort_values([rank_on, secondary_ranking])
-                .reset_index(drop=True)
-                .head(top_n)
-            )
+            solutions_sorted = self.solution_df.sort_values(
+                [rank_on, secondary_ranking]
+            ).reset_index(drop=True)
         else:
-            solutions_filtered = self.solution_df.reset_index(drop=True).head(top_n)
+            solutions_sorted = self.solution_df.reset_index(drop=True)
+
+        filtered_dfs = []
+
+        if top_n is not None:
+            filtered_dfs.append(solutions_sorted.head(top_n))
+
+        if bottom_n is not None:
+            filtered_dfs.append(temp_bottom=solutions_sorted.tail(top_n))
+
+        solutions_filtered = pd.concat(filtered_dfs)
 
         dfs = []
         if compare_to_best:
@@ -132,22 +141,22 @@ class SiteSolutionSet:
             df["90th_percentile"] = row["90th_percentile"]
             if compare_to_best:
                 df["min_cost_diff"] = df["min_cost"] - best_df["min_cost"].values
-
             dfs.append(df)
 
         dfs = pd.concat(dfs)
         dfs["label"] = (
             "Sites: "
             + dfs["site_indices"].astype(str)
-            + " | Weighted Average: "
+            + " | Weighted Avg: "
             + dfs["weighted_average"].round(2).astype(str)
-            + " |Unweighted Average: "
+            + " | Unweighted Avg: "
             + dfs["unweighted_average"].round(2).astype(str)
-            + " | 90th percentile: "
+            + " | P90: "
             + dfs["90th_percentile"].round(2).astype(str)
             + " | Max: "
             + dfs["max"].round(2).astype(str)
         )
+
         fig = px.histogram(
             dfs,
             x="min_cost_diff" if compare_to_best else "min_cost",
@@ -155,20 +164,107 @@ class SiteSolutionSet:
             nbins=30,
             histnorm="probability density",
             height=height,
+            color_discrete_sequence=["lightsteelblue"],
+            template="plotly_white",
             **kwargs,
         )
 
-        fig.for_each_annotation(
-            lambda a: a.update(
+        # --- Subplot title annotations ---
+        # Get the top of each subplot domain directly from the axes,
+        # rather than trusting the facet annotation's y position.
+        facet_annotations = [a for a in fig.layout.annotations if "label=" in a.text]
+
+        # Collect axis domains — facet_row creates yaxis, yaxis2, yaxis3 etc.
+        axis_tops = []
+        for i in range(1, top_n + 1):
+            axis_key = "yaxis" if i == 1 else f"yaxis{i}"
+            axis = fig.layout[axis_key]
+            if axis and axis.domain:
+                axis_tops.append(axis.domain[1])  # domain[1] is the top of the subplot
+
+        # Sort descending so axis_tops[0] = topmost subplot
+        axis_tops = sorted(axis_tops, reverse=True)
+
+        for i, a in enumerate(facet_annotations):
+            top = axis_tops[i] if i < len(axis_tops) else a.y
+            a.update(
                 text=a.text.replace("label=", ""),
                 textangle=0,
-                x=a.x - 0.98,  # small shift left
-                y=a.y + 0.092,  # move above subplot
+                xref="paper",
+                yref="paper",
+                x=0.0,
                 xanchor="left",
+                y=top,
                 yanchor="bottom",
+                font=dict(size=11),
             )
-        )
+        # --- vline annotations ---
+        if compare_to_best:
+            fig.add_vline(
+                x=0,
+                line_color="black",
+                line_width=2,
+                annotation_text="Best",
+                annotation_position="top right",
+                annotation_yshift=4,
+            )
+        else:
+            for i, (_, row) in enumerate(solutions_filtered.iterrows()):
+                subplot_row = top_n - i  # Plotly facet_row numbers bottom-to-top
 
+                # Weighted average — label sits at the top of the line
+                fig.add_vline(
+                    x=row["weighted_average"],
+                    line_dash="dash",
+                    line_color="darkolivegreen",
+                    row=subplot_row,
+                    col=1,
+                    annotation_text="Weighted<br>Average",
+                    annotation_position="top left",
+                    annotation_yshift=5,
+                    annotation_font_color="darkolivegreen",
+                )
+
+                # unweighted average — offset downward so it doesn't overlap WA
+                fig.add_vline(
+                    x=row["unweighted_average"],
+                    line_dash="dashdot",
+                    line_color="darkcyan",
+                    row=subplot_row,
+                    col=1,
+                    annotation_text="Unweighted<br>Average",
+                    annotation_position="top right",
+                    annotation_yshift=-10,
+                    annotation_font_color="darkcyan",
+                )
+
+                # 90th percentile — offset downward so it doesn't overlap WA
+                fig.add_vline(
+                    x=row["90th_percentile"],
+                    line_dash="dot",
+                    line_color="darkorange",
+                    row=subplot_row,
+                    col=1,
+                    annotation_text="P90",
+                    annotation_position="top right",
+                    annotation_yshift=-15,
+                    annotation_font_color="darkorange",
+                )
+
+                # 90th percentile — offset downward so it doesn't overlap WA
+                fig.add_vline(
+                    x=row["max"],
+                    line_dash="solid",
+                    line_color="tomato",
+                    row=subplot_row,
+                    col=1,
+                    annotation_text="Max",
+                    annotation_position="top right",
+                    annotation_yshift=-20,
+                    annotation_font_color="tomato",
+                )
+
+        # --- Title ---
         if title == "default":
             if rank_on is not None:
                 fig.update_layout(
@@ -181,39 +277,9 @@ class SiteSolutionSet:
         else:
             fig.update_layout(title=title)
 
-        if compare_to_best:
-            fig.add_vline(
-                x=0,
-                line_color="black",
-                line_width=2,
-                annotation_text="Best",
-            )
-        else:
-            for i, (_, row) in enumerate(solutions_filtered.iterrows()):
-                fig.add_vline(
-                    x=row["weighted_average"],
-                    line_dash="dash",
-                    annotation_text="WA",
-                    row=i + 1,
-                    col=1,
-                )
-
-                fig.add_vline(
-                    x=row["90th_percentile"],
-                    line_dash="dot",
-                    annotation_text="P90",
-                    row=i + 1,
-                    col=1,
-                )
-
+        # --- Height ---
         if height is None:
-            fig_height = max(300, height_per_plot * top_n)
-
-            fig.update_layout(height=fig_height)
-
-            # fig.update_layout(
-            #     margin=dict(t=80, b=40, l=40, r=40),
-            # )
+            fig.update_layout(height=max(300, height_per_plot * top_n))
 
         return fig
 
@@ -650,21 +716,37 @@ class SiteSolutionSet:
             "max",
             "proportion_within_coverage_threshold",
         ] = "max",
+        height=4,
+        show_points=True,
+        theme="whitegrid",
+        maxx=False,
+        maxy=True,
+        **kwargs,
     ):
         plot_obj = spv.pareto_plot(
             self.solution_df,
             x=x_axis,
             y=y_axis,
-            maxx=False,
-            maxy=True,
-            show_points=True,
-            height=4,
-            theme="whitegrid",
+            maxx=maxx,
+            maxy=maxy,
+            show_points=show_points,
+            height=height,
+            theme=theme,
+            **kwargs,
         )
 
         return plot_obj
 
-    def plot_all_metric_pareto_front(self):
+    def plot_all_metric_pareto_front(
+        self,
+        height=4,
+        show_points=True,
+        theme="whitegrid",
+        maxx=False,
+        maxy=True,
+        cols=3,
+        **kwargs,
+    ):
         metrics = [
             "weighted_average",
             "unweighted_average",
@@ -677,9 +759,9 @@ class SiteSolutionSet:
 
         metric_pairs = list(itertools.combinations(metrics, 2))
         num_plots = len(metric_pairs)
-        cols = 3
+        cols = cols
         rows = math.ceil(num_plots / cols)
-        fig, axes = plt.subplots(rows, cols, figsize=(cols * 5, rows * 4))
+        fig, axes = plt.subplots(rows, cols, figsize=(cols * height, rows * height))
         axes = axes.flatten()
 
         for idx, (x_metric, y_metric) in enumerate(metric_pairs):
@@ -688,11 +770,11 @@ class SiteSolutionSet:
                 self.solution_df,
                 x=x_metric,
                 y=y_metric,
-                maxx=False,
-                maxy=True,
-                show_points=True,
-                height=4,
-                theme="whitegrid",
+                maxx=maxx,
+                maxy=maxy,
+                show_points=show_points,
+                height=height,
+                theme=theme,
             )
             _ = plot_obj.on(ax).plot()
             ax.set_title(f"{y_metric} vs {x_metric}")
