@@ -9,6 +9,7 @@ from lokigi.utils import (
     _convert_crs,
     SUPPORTED_OBJECTIVES,
     _get_ranking_by_objective,
+    _too_similar_to_accepted,
 )
 
 from lokigi.site_solutions import EvaluatedCombination, SiteSolutionSet
@@ -17,6 +18,7 @@ from lokigi.site_solutions import EvaluatedCombination, SiteSolutionSet
 import pandas as pd
 import geopandas
 import random
+import math
 
 # Plotting imports
 import contextily as cx
@@ -571,6 +573,7 @@ class SiteProblem:
         grasp_num_solutions=5,
         grasp_alpha=0.2,
         grasp_max_attempts="default",
+        grasp_min_sites_different=1,
         random_seed=42,
         **kwargs,
     ):
@@ -615,10 +618,15 @@ class SiteProblem:
         if objective not in SUPPORTED_OBJECTIVES:
             raise ValueError(f"Unsupported objective ({objective}) passed.")
 
-        # if search_strategy not in ["brute-force", "greedy", "local"]:
-        #     raise ValueError(
-        #         f"Unsupported search strategy ({search_strategy}) passed. Please choose from 'brute-force', 'greedy', or 'local'."
-        #     )
+        if max_value_cutoff is not None and objective not in [
+            "hybrid_p_median",
+            "hybrid_simple_p_median",
+        ]:
+            raise ValueError(
+                f"A max value cutoff of {max_value_cutoff} has been provided for a model objective ({objective} that doesn't support it.)"
+                "Please rerun with hybrid_p_median or hybrid_simple_p_median."
+            )
+
         if search_strategy not in ["brute-force", "greedy", "grasp"]:
             raise ValueError(
                 f"Unsupported search strategy ({search_strategy}) passed. Only 'brute-force', 'greedy' and 'grasp' are currently supported."
@@ -633,7 +641,14 @@ class SiteProblem:
                 "Please rerun with hybrid_p_median or hybrid_simple_p_median."
             )
 
-        if objective in ["p_median", "p_center", "simple_p_median"]:
+        if objective in [
+            "p_median",
+            "p_center",
+            "simple_p_median",
+            "hybrid_p_median",
+            "hybrid_simple_p_median",
+            "mclp",
+        ]:
             return self._solve_pmedian_pcenter_mclp_problem(
                 p,
                 search_strategy=search_strategy,
@@ -642,40 +657,11 @@ class SiteProblem:
                 show_progress=show_progress,
                 brute_force_keep_best_n=brute_force_keep_best_n,
                 brute_force_keep_worst_n=brute_force_keep_worst_n,
-                grasp_num_solutions=grasp_num_solutions,
-                grasp_alpha=grasp_alpha,
-                grasp_max_attempts=grasp_max_attempts,
-                threshold_for_coverage=threshold_for_coverage,
-                random_seed=random_seed,
-            )
-        elif objective in ["hybrid_p_median", "hybrid_simple_p_median"]:
-            return self._solve_pmedian_pcenter_mclp_problem(
-                p,
-                search_strategy=search_strategy,
-                objective=objective,
-                brute_force_ignore_limit=brute_force_ignore_limit,
-                show_progress=show_progress,
-                brute_force_keep_best_n=brute_force_keep_best_n,
-                brute_force_keep_worst_n=brute_force_keep_worst_n,
-                grasp_num_solutions=grasp_num_solutions,
-                grasp_alpha=grasp_alpha,
-                grasp_max_attempts=grasp_max_attempts,
                 max_value_cutoff=max_value_cutoff,
-                threshold_for_coverage=threshold_for_coverage,
-                random_seed=random_seed,
-            )
-        elif objective in ["mclp"]:
-            return self._solve_pmedian_pcenter_mclp_problem(
-                p,
-                search_strategy=search_strategy,
-                objective=objective,
-                brute_force_ignore_limit=brute_force_ignore_limit,
-                show_progress=show_progress,
-                brute_force_keep_best_n=brute_force_keep_best_n,
-                brute_force_keep_worst_n=brute_force_keep_worst_n,
                 grasp_num_solutions=grasp_num_solutions,
                 grasp_alpha=grasp_alpha,
                 grasp_max_attempts=grasp_max_attempts,
+                grasp_min_sites_different=grasp_min_sites_different,
                 threshold_for_coverage=threshold_for_coverage,
                 random_seed=random_seed,
             )
@@ -808,20 +794,13 @@ class SiteProblem:
         grasp_num_solutions=5,
         grasp_alpha=0.2,
         grasp_max_attempts="default",
+        grasp_min_sites_different=1,
+        random_seed=42,
     ):
 
         if objective not in SUPPORTED_OBJECTIVES:
             raise ValueError(
                 "Unsupported objective passed to _solve_pmedian_pcenter_mclp_problem. Please contact a developer."
-            )
-
-        if max_value_cutoff is not None and objective not in [
-            "hybrid_p_median",
-            "hybrid_simple_p_median",
-        ]:
-            raise ValueError(
-                f"A max value cutoff of {max_value_cutoff} has been provided for a model objective ({objective} that doesn't support it.)"
-                "Please rerun with hybrid_p_median or hybrid_simple_p_median."
             )
 
         ranking = _get_ranking_by_objective(objective=objective)
@@ -896,6 +875,8 @@ class SiteProblem:
                 alpha=grasp_alpha,
                 max_attempts=grasp_max_attempts,
                 show_progress=show_progress,
+                random_seed=random_seed,
+                min_sites_different=grasp_min_sites_different,
             )
 
             return SiteSolutionSet(
@@ -982,100 +963,204 @@ class SiteProblem:
         self,
         p: int,
         objectives,
-        num_solutions: int = 5,  # NEW: Target number of solutions to return
+        num_solutions: int = 5,
         show_progress: bool = False,
         threshold_for_coverage=None,
         alpha: float = 0.2,
         random_seed: int = 42,
-        max_attempts="default",
+        max_attempts: int | str = "default",
+        min_sites_different: int = 1,
+        is_minimization: bool = True,  # [NEW] Flag for sort order & thresholding
     ):
+        """
+        GRASP (Greedy Randomised Adaptive Search Procedure) for finding multiple
+        near-optimal facility location solutions.
+        """
         rng = random.Random(random_seed)
         ranking = _get_ranking_by_objective(objective=objectives)
+        all_site_indices = list(range(self.total_n_sites))
+
+        min_jaccard_distance = float(min_sites_different) / float(p)
+
+        total_combinations = math.comb(self.total_n_sites, p)
+        if max_attempts == "default":
+            max_attempts = min(num_solutions * 20, total_combinations)
 
         final_solutions_metrics = []
-        seen_combinations = set()
-
+        accepted_solution_sets: list[set] = []
         attempts = 0
-        # Safeguard to prevent infinite loops if the solution space is small
-        if max_attempts == "default":
-            max_attempts = num_solutions * 20
 
-        # Set up a progress bar for the number of solutions found
+        # -------------------------------------------------------------------
+        # [NEW] CACHING: Memoize evaluations to prevent redundant compute.
+        # Uses a tuple of sorted indices as a canonical, hashable key.
+        # -------------------------------------------------------------------
+        evaluation_cache = {}
+
+        def _get_cached_metrics(indices: list[int]):
+            sig = tuple(sorted(indices))
+            if sig not in evaluation_cache:
+                evaluation_cache[sig] = self.evaluate_single_solution_single_objective(
+                    site_indices=list(indices),
+                    objective=objectives,
+                ).return_solution_metrics()
+            return evaluation_cache[sig]
+
         pbar = None
         if show_progress:
-            pbar = tqdm(total=num_solutions, desc="Finding unique solutions")
+            from tqdm import tqdm
 
-        # Outer loop: keep building solutions until we hit the target
+            pbar = tqdm(
+                total=num_solutions,
+                desc=f"Finding {num_solutions} diverse solutions (max {max_attempts} attempts)",
+            )
+
         while len(final_solutions_metrics) < num_solutions and attempts < max_attempts:
+            attempt_rng = random.Random(rng.randint(0, 2**32 - 1))
             attempts += 1
-            best_indices = []
 
-            # --- Inner loop: Construct a single solution of size p ---
-            for i in range(1, p + 1):
-                # print(f"Loop {i} (Attempt {attempts})")
-                possible_combinations = _generate_all_combinations(
-                    n_facilities=self.total_n_sites,
-                    p=i,
-                    site_problem=self,
-                    force_include_indices=None if i == 1 else list(best_indices),
+            # ---------------------------------------------------------------
+            # CONSTRUCTION PHASE
+            # ---------------------------------------------------------------
+            current_solution: list[int] = []
+            current_solution_set: set[int] = set()
+            construction_failed = False
+
+            for step in range(p):
+                remaining_sites = [
+                    s for s in all_site_indices if s not in current_solution_set
+                ]
+
+                if not remaining_sites:
+                    construction_failed = True
+                    break
+
+                candidate_scores: list[tuple[float, float, int]] = []
+                for site in remaining_sites:
+                    candidate_indices = current_solution + [site]
+                    metrics = _get_cached_metrics(
+                        candidate_indices
+                    )  # [UPDATED] Use Cache
+
+                    primary_score = metrics[ranking]
+                    secondary_score = metrics["weighted_average"]
+                    candidate_scores.append((primary_score, secondary_score, site))
+
+                # [UPDATED] Sort and construct RCL based on minimization vs maximization
+                candidate_scores.sort(
+                    key=lambda x: (x[0], x[1]), reverse=not is_minimization
                 )
 
-                outputs = []
+                f_best = candidate_scores[0][0]
+                f_worst = candidate_scores[-1][0]
+                value_range = abs(f_best - f_worst)
 
-                for possible_solution in possible_combinations:
-                    outputs.append(
-                        self.evaluate_single_solution_single_objective(
-                            site_indices=possible_solution,
-                            objective=objectives,
-                        ).return_solution_metrics()
-                    )
+                if value_range < 1e-9:
+                    rcl_size = max(1, int(len(candidate_scores) * alpha))
+                    rcl = [s for _, _, s in candidate_scores[:rcl_size]]
+                else:
+                    if is_minimization:
+                        threshold = f_best + alpha * value_range
+                        rcl = [
+                            s for score, _, s in candidate_scores if score <= threshold
+                        ]
+                    else:
+                        threshold = f_best - alpha * value_range
+                        rcl = [
+                            s for score, _, s in candidate_scores if score >= threshold
+                        ]
 
-                evaluated_solutions = pd.DataFrame(outputs).sort_values(
-                    [ranking, "weighted_average"]
-                )
+                if not rcl:
+                    rcl = [candidate_scores[0][2]]
 
-                single_solution_metrics = SiteSolutionSet(
-                    solution_df=evaluated_solutions,
-                    site_problem=self,
-                    objectives=objectives,
-                    n_sites=i,
-                )
+                chosen_site = attempt_rng.choice(rcl)
+                current_solution.append(chosen_site)
+                current_solution_set.add(chosen_site)
 
-                solutions_df = single_solution_metrics.show_solutions()
+            if construction_failed:
+                continue
 
-                # Determine the size of the Restricted Candidate List (RCL)
-                rcl_size = max(1, int(len(solutions_df) * alpha))
-                rcl_df = solutions_df.head(rcl_size)
+            # ---------------------------------------------------------------
+            # LOCAL SEARCH PHASE (1-opt swap)
+            # [UPDATED] Shifted to First-Improvement for massive speed gains.
+            # ---------------------------------------------------------------
+            improved = True
+            while improved:
+                improved = False
 
-                # Randomly select one solution's indices from the RCL
-                best_indices = rng.choice(rcl_df["site_indices"].tolist())
+                current_metrics = _get_cached_metrics(current_solution)
+                current_primary = current_metrics[ranking]
+                current_secondary = current_metrics["weighted_average"]
 
-            # --- Construction Complete ---
-            # Sort the indices into a tuple to reliably check for uniqueness
-            solution_signature = tuple(sorted(best_indices))
+                outside_sites = [
+                    s for s in all_site_indices if s not in current_solution_set
+                ]
 
-            # Only process and save the solution if we haven't seen it yet
-            if solution_signature not in seen_combinations:
-                seen_combinations.add(solution_signature)
+                for old_site in current_solution:
+                    for new_site in outside_sites:
+                        candidate = [s for s in current_solution if s != old_site] + [
+                            new_site
+                        ]
 
-                best_solution_metrics = self.evaluate_single_solution_single_objective(
-                    site_indices=best_indices,
-                    objective=objectives,
-                    threshold_for_coverage=threshold_for_coverage,
-                ).return_solution_metrics()
+                        swap_metrics = _get_cached_metrics(candidate)
+                        swap_primary = swap_metrics[ranking]
+                        swap_secondary = swap_metrics["weighted_average"]
 
-                final_solutions_metrics.append(best_solution_metrics)
+                        if is_minimization:
+                            is_better = (swap_primary, swap_secondary) < (
+                                current_primary,
+                                current_secondary,
+                            )
+                        else:
+                            is_better = (swap_primary, swap_secondary) > (
+                                current_primary,
+                                current_secondary,
+                            )
 
-                if pbar:
-                    pbar.update(1)
+                        if is_better:
+                            # First-Improvement: Apply immediately, break loops, restart neighborhood
+                            current_solution = candidate
+                            current_solution_set = set(current_solution)
+                            improved = True
+                            break
+
+                    if improved:
+                        break  # Break outer loop to restart the `while improved` check
+
+            # ---------------------------------------------------------------
+            # DIVERSITY CHECK
+            # ---------------------------------------------------------------
+            if _too_similar_to_accepted(
+                current_solution_set, accepted_solution_sets, min_jaccard_distance
+            ):
+                continue
+
+            current_solution.sort()
+
+            # Accept the solution
+            final_metrics = self.evaluate_single_solution_single_objective(
+                site_indices=current_solution,
+                objective=objectives,
+                threshold_for_coverage=threshold_for_coverage,  # Applied only at the end
+            ).return_solution_metrics()
+
+            accepted_solution_sets.append(current_solution_set)
+            final_solutions_metrics.append(final_metrics)
+
+            if pbar:
+                pbar.update(1)
 
         if pbar:
             pbar.close()
 
-        # Warn the user if the algorithm maxed out before finding enough unique combos
         if len(final_solutions_metrics) < num_solutions:
-            print(
-                f"Warning: Solution space exhausted. Could only find {len(final_solutions_metrics)} unique solutions after {max_attempts} attempts."
+            from warnings import warn
+
+            warn(
+                f"GRASP exhausted attempt budget ({max_attempts} attempts) before finding "
+                f"{num_solutions} sufficiently diverse solutions. "
+                f"Returning {len(final_solutions_metrics)} solutions.",
+                UserWarning,
+                stacklevel=2,
             )
 
         return final_solutions_metrics

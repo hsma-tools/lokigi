@@ -481,3 +481,32 @@ def _get_ranking_by_objective(objective):
         return "max"
     elif objective in ["mclp"]:
         return "proportion_within_coverage_threshold"
+
+
+def _too_similar_to_accepted(
+    new_set: set,
+    accepted_sets: list[set],
+    min_jaccard_distance: float,
+) -> bool:
+    """
+    Returns True if new_set is too similar to any previously accepted solution.
+    """
+    if min_jaccard_distance <= 0.0:
+        return new_set in accepted_sets
+
+    p = len(new_set)
+    for existing_set in accepted_sets:
+        intersection = len(new_set & existing_set)
+
+        # [UPDATED] Fixed-size sets math optimization
+        union = (2 * p) - intersection
+
+        if union == 0:
+            continue
+
+        similarity = intersection / union
+        distance = 1.0 - similarity
+        if distance < min_jaccard_distance:
+            return True
+
+    return False
