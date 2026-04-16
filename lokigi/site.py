@@ -16,6 +16,7 @@ from lokigi.site_solutions import EvaluatedCombination, SiteSolutionSet
 # Data manipulation imports
 import pandas as pd
 import geopandas
+import random
 
 # Plotting imports
 import contextily as cx
@@ -560,13 +561,17 @@ class SiteProblem:
         p: int,
         objectives: str = "p_median",
         capacitated=False,  # Not yet implemented
-        search_strategy: Literal["brute-force", "greedy"] = "brute-force",
-        ignore_brute_force_limit=False,
-        show_brute_force_progress=False,
-        keep_best_n=None,
-        keep_worst_n=None,
+        search_strategy: Literal["brute-force", "greedy", "grasp"] = "brute-force",
+        brute_force_ignore_limit=False,
+        show_progress=True,
+        brute_force_keep_best_n=None,
+        brute_force_keep_worst_n=None,
         max_value_cutoff=None,  # only used for hybrid
-        threshold_for_coverage=None,  # only used for mclp or lscp
+        threshold_for_coverage=None,  # used for filtering in mclp or lscp, used for scoring in others
+        grasp_num_solutions=5,
+        grasp_alpha=0.2,
+        grasp_max_attempts="default",
+        random_seed=42,
         **kwargs,
     ):
 
@@ -614,9 +619,9 @@ class SiteProblem:
         #     raise ValueError(
         #         f"Unsupported search strategy ({search_strategy}) passed. Please choose from 'brute-force', 'greedy', or 'local'."
         #     )
-        if search_strategy not in ["brute-force", "greedy"]:
+        if search_strategy not in ["brute-force", "greedy", "grasp"]:
             raise ValueError(
-                f"Unsupported search strategy ({search_strategy}) passed. Only 'brute-force' is currently supported."
+                f"Unsupported search strategy ({search_strategy}) passed. Only 'brute-force', 'greedy' and 'grasp' are currently supported."
             )
 
         if max_value_cutoff is not None and objective not in [
@@ -632,57 +637,67 @@ class SiteProblem:
             return self._solve_pmedian_pcenter_mclp_problem(
                 p,
                 search_strategy=search_strategy,
-                ignore_brute_force_limit=ignore_brute_force_limit,
-                show_brute_force_progress=show_brute_force_progress,
-                keep_best_n=keep_best_n,
-                keep_worst_n=keep_worst_n,
                 objective=objective,
+                brute_force_ignore_limit=brute_force_ignore_limit,
+                show_progress=show_progress,
+                brute_force_keep_best_n=brute_force_keep_best_n,
+                brute_force_keep_worst_n=brute_force_keep_worst_n,
+                grasp_num_solutions=grasp_num_solutions,
+                grasp_alpha=grasp_alpha,
+                grasp_max_attempts=grasp_max_attempts,
                 threshold_for_coverage=threshold_for_coverage,
+                random_seed=random_seed,
             )
         elif objective in ["hybrid_p_median", "hybrid_simple_p_median"]:
             return self._solve_pmedian_pcenter_mclp_problem(
                 p,
                 search_strategy=search_strategy,
-                ignore_brute_force_limit=ignore_brute_force_limit,
-                show_brute_force_progress=show_brute_force_progress,
-                keep_best_n=keep_best_n,
-                keep_worst_n=keep_worst_n,
                 objective=objective,
+                brute_force_ignore_limit=brute_force_ignore_limit,
+                show_progress=show_progress,
+                brute_force_keep_best_n=brute_force_keep_best_n,
+                brute_force_keep_worst_n=brute_force_keep_worst_n,
+                grasp_num_solutions=grasp_num_solutions,
+                grasp_alpha=grasp_alpha,
+                grasp_max_attempts=grasp_max_attempts,
                 max_value_cutoff=max_value_cutoff,
                 threshold_for_coverage=threshold_for_coverage,
+                random_seed=random_seed,
             )
         elif objective in ["mclp"]:
             return self._solve_pmedian_pcenter_mclp_problem(
                 p,
                 search_strategy=search_strategy,
-                ignore_brute_force_limit=ignore_brute_force_limit,
-                show_brute_force_progress=show_brute_force_progress,
-                keep_best_n=keep_best_n,
-                keep_worst_n=keep_worst_n,
                 objective=objective,
+                brute_force_ignore_limit=brute_force_ignore_limit,
+                show_progress=show_progress,
+                brute_force_keep_best_n=brute_force_keep_best_n,
+                brute_force_keep_worst_n=brute_force_keep_worst_n,
+                grasp_num_solutions=grasp_num_solutions,
+                grasp_alpha=grasp_alpha,
+                grasp_max_attempts=grasp_max_attempts,
                 threshold_for_coverage=threshold_for_coverage,
+                random_seed=random_seed,
             )
         else:
-            raise ValueError(
-                f"Unknown objective '{objective}'. Currently supported: 'p_median'."
-            )
+            raise ValueError(f"Unknown objective '{objective}'.")
 
     def _brute_force(
         self,
         p: int,
         objectives,
-        ignore_brute_force_limit: bool = False,
-        show_brute_force_progress: bool = False,
-        keep_best_n=None,
-        keep_worst_n=None,
+        brute_force_ignore_limit: bool = False,
+        show_progress: bool = False,
+        brute_force_keep_best_n=None,
+        brute_force_keep_worst_n=None,
         rank_best_n_on="weighted_average",
         max_value_cutoff=None,
         threshold_for_coverage=None,
     ):
 
-        if keep_best_n is not None:
+        if brute_force_keep_best_n is not None:
             top_n_heap = []  # To store the smallest scores (best)
-        if keep_worst_n is not None:
+        if brute_force_keep_worst_n is not None:
             bottom_n_heap = []  # To store the largest scores (worst)
 
         possible_combinations = _generate_all_combinations(
@@ -690,7 +705,7 @@ class SiteProblem:
         )
 
         if len(possible_combinations) > BRUTE_FORCE_LIMIT:
-            if not ignore_brute_force_limit:
+            if not brute_force_ignore_limit:
                 raise MemoryError(
                     f"You are trying to evaluate {len(possible_combinations):,d} combinations via brute force. The limit is {BRUTE_FORCE_LIMIT:,d}. Please try a different solver."
                 )
@@ -705,11 +720,11 @@ class SiteProblem:
 
         outputs = []
 
-        if show_brute_force_progress:
+        if show_progress:
             possible_combinations = tqdm(possible_combinations)
 
         for possible_solution in possible_combinations:
-            if keep_best_n is None and keep_worst_n is None:
+            if brute_force_keep_best_n is None and brute_force_keep_worst_n is None:
                 # Keep all results
                 single_solution_metrics = (
                     self.evaluate_single_solution_single_objective(
@@ -738,38 +753,43 @@ class SiteProblem:
                 if max_value_cutoff is None or (
                     max_value_cutoff is not None and max_value <= max_value_cutoff
                 ):
-                    if keep_best_n is not None:
-                        if len(top_n_heap) < keep_best_n and max_value <= max:
+                    if brute_force_keep_best_n is not None:
+                        if (
+                            len(top_n_heap) < brute_force_keep_best_n
+                            and max_value <= max
+                        ):
                             heapq.heappush(top_n_heap, (-score, metrics))
                         elif -score > top_n_heap[0][0]:
                             heapq.heapreplace(top_n_heap, (-score, metrics))
 
                     # --- Logic for Bottom N (Largest Scores) ---
                     # Standard Min-Heap to keep the largest values
-                    if keep_worst_n is not None:
-                        if len(bottom_n_heap) < keep_best_n:
+                    if brute_force_keep_worst_n is not None:
+                        if len(bottom_n_heap) < brute_force_keep_best_n:
                             heapq.heappush(bottom_n_heap, (score, metrics))
                         elif score > bottom_n_heap[0][0]:
                             heapq.heapreplace(bottom_n_heap, (score, metrics))
 
-        if keep_best_n is None and keep_worst_n is None:
+        if brute_force_keep_best_n is None and brute_force_keep_worst_n is None:
             return outputs
         else:
             # Reconstruct the 'outputs' list
             # Extract dictionaries from heaps and sort them
-            if keep_best_n is not None:
+            if brute_force_keep_best_n is not None:
                 best_list = [
                     item[1]
                     for item in sorted(top_n_heap, key=lambda x: x[0], reverse=True)
                 ]
-            if keep_worst_n is not None:
+            if brute_force_keep_worst_n is not None:
                 worst_list = [
                     item[1] for item in sorted(bottom_n_heap, key=lambda x: x[0])
                 ]
 
-            if keep_best_n is not None and keep_worst_n is None:
+            if brute_force_keep_best_n is not None and brute_force_keep_worst_n is None:
                 return best_list
-            elif keep_worst_n is not None and keep_best_n is None:
+            elif (
+                brute_force_keep_worst_n is not None and brute_force_keep_best_n is None
+            ):
                 return worst_list
             else:
                 return best_list + worst_list
@@ -779,12 +799,15 @@ class SiteProblem:
         p: int,
         objective="p_median",
         search_strategy="brute-force",
-        ignore_brute_force_limit=False,
-        show_brute_force_progress=False,
-        keep_best_n=None,
-        keep_worst_n=None,
+        brute_force_ignore_limit=False,
+        show_progress=False,
+        brute_force_keep_best_n=None,
+        brute_force_keep_worst_n=None,
         max_value_cutoff=None,
         threshold_for_coverage=None,  # only used for mclp
+        grasp_num_solutions=5,
+        grasp_alpha=0.2,
+        grasp_max_attempts="default",
     ):
 
         if objective not in SUPPORTED_OBJECTIVES:
@@ -808,16 +831,16 @@ class SiteProblem:
         else:
             max_value_cutoff = None
 
-        if search_strategy not in ["brute-force", "greedy"]:
+        if search_strategy not in ["brute-force", "greedy", "grasp"]:
             raise ValueError(f"Approach {search_strategy} not yet supported.")
         if search_strategy == "brute-force":
             outputs = self._brute_force(
                 p=p,
                 objectives=objective,
-                ignore_brute_force_limit=ignore_brute_force_limit,
-                show_brute_force_progress=show_brute_force_progress,
-                keep_best_n=keep_best_n,
-                keep_worst_n=keep_worst_n,
+                brute_force_ignore_limit=brute_force_ignore_limit,
+                show_progress=show_progress,
+                brute_force_keep_best_n=brute_force_keep_best_n,
+                brute_force_keep_worst_n=brute_force_keep_worst_n,
                 rank_best_n_on=ranking,
                 max_value_cutoff=max_value_cutoff,
                 threshold_for_coverage=threshold_for_coverage,
@@ -847,7 +870,32 @@ class SiteProblem:
             # Note that coverage threshold will only be used for assessing coverage, not for
             # filtering out solutions, when using greedy search strategy
             outputs = self._greedy(
-                p=p, objectives=objective, threshold_for_coverage=threshold_for_coverage
+                p=p,
+                objectives=objective,
+                show_progress=show_progress,
+                threshold_for_coverage=threshold_for_coverage,
+            )
+
+            return SiteSolutionSet(
+                solution_df=pd.DataFrame(outputs).sort_values(
+                    [ranking, "weighted_average"]
+                ),
+                site_problem=self,
+                objectives=objective,
+                n_sites=p,
+            )
+
+        if search_strategy == "grasp":
+            # Note that coverage threshold will only be used for assessing coverage, not for
+            # filtering out solutions, when using greedy search strategy
+            outputs = self._grasp(
+                p=p,
+                objectives=objective,
+                threshold_for_coverage=threshold_for_coverage,
+                num_solutions=grasp_num_solutions,
+                alpha=grasp_alpha,
+                max_attempts=grasp_max_attempts,
+                show_progress=show_progress,
             )
 
             return SiteSolutionSet(
@@ -876,7 +924,7 @@ class SiteProblem:
             loop_iterations = tqdm(loop_iterations)
 
         for i in loop_iterations:
-            print(f"Loop {i}")
+            # print(f"Loop {i}")
             possible_combinations = _generate_all_combinations(
                 n_facilities=self.total_n_sites,
                 p=i,
@@ -913,14 +961,14 @@ class SiteProblem:
 
             # print("Single Solution Set object created")
             # print(single_solution_metrics)
-
             # print(single_solution_metrics.show_solutions())
 
             best_indices = single_solution_metrics.show_solutions().head(1)[
                 "site_indices"
             ][0]
 
-            print(f"Best combination for {i} sites: {best_indices}")
+            if show_progress:
+                print(f"Best combination for {i} sites: {best_indices}")
 
         best_solution_metrics = self.evaluate_single_solution_single_objective(
             site_indices=best_indices,
@@ -930,31 +978,110 @@ class SiteProblem:
 
         return [best_solution_metrics]
 
+    def _grasp(
+        self,
+        p: int,
+        objectives,
+        num_solutions: int = 5,  # NEW: Target number of solutions to return
+        show_progress: bool = False,
+        threshold_for_coverage=None,
+        alpha: float = 0.2,
+        random_seed: int = 42,
+        max_attempts="default",
+    ):
+        rng = random.Random(random_seed)
+        ranking = _get_ranking_by_objective(objective=objectives)
+
+        final_solutions_metrics = []
+        seen_combinations = set()
+
+        attempts = 0
+        # Safeguard to prevent infinite loops if the solution space is small
+        if max_attempts == "default":
+            max_attempts = num_solutions * 20
+
+        # Set up a progress bar for the number of solutions found
+        pbar = None
+        if show_progress:
+            pbar = tqdm(total=num_solutions, desc="Finding unique solutions")
+
+        # Outer loop: keep building solutions until we hit the target
+        while len(final_solutions_metrics) < num_solutions and attempts < max_attempts:
+            attempts += 1
+            best_indices = []
+
+            # --- Inner loop: Construct a single solution of size p ---
+            for i in range(1, p + 1):
+                # print(f"Loop {i} (Attempt {attempts})")
+                possible_combinations = _generate_all_combinations(
+                    n_facilities=self.total_n_sites,
+                    p=i,
+                    site_problem=self,
+                    force_include_indices=None if i == 1 else list(best_indices),
+                )
+
+                outputs = []
+
+                for possible_solution in possible_combinations:
+                    outputs.append(
+                        self.evaluate_single_solution_single_objective(
+                            site_indices=possible_solution,
+                            objective=objectives,
+                        ).return_solution_metrics()
+                    )
+
+                evaluated_solutions = pd.DataFrame(outputs).sort_values(
+                    [ranking, "weighted_average"]
+                )
+
+                single_solution_metrics = SiteSolutionSet(
+                    solution_df=evaluated_solutions,
+                    site_problem=self,
+                    objectives=objectives,
+                    n_sites=i,
+                )
+
+                solutions_df = single_solution_metrics.show_solutions()
+
+                # Determine the size of the Restricted Candidate List (RCL)
+                rcl_size = max(1, int(len(solutions_df) * alpha))
+                rcl_df = solutions_df.head(rcl_size)
+
+                # Randomly select one solution's indices from the RCL
+                best_indices = rng.choice(rcl_df["site_indices"].tolist())
+
+            # --- Construction Complete ---
+            # Sort the indices into a tuple to reliably check for uniqueness
+            solution_signature = tuple(sorted(best_indices))
+
+            # Only process and save the solution if we haven't seen it yet
+            if solution_signature not in seen_combinations:
+                seen_combinations.add(solution_signature)
+
+                best_solution_metrics = self.evaluate_single_solution_single_objective(
+                    site_indices=best_indices,
+                    objective=objectives,
+                    threshold_for_coverage=threshold_for_coverage,
+                ).return_solution_metrics()
+
+                final_solutions_metrics.append(best_solution_metrics)
+
+                if pbar:
+                    pbar.update(1)
+
+        if pbar:
+            pbar.close()
+
+        # Warn the user if the algorithm maxed out before finding enough unique combos
+        if len(final_solutions_metrics) < num_solutions:
+            print(
+                f"Warning: Solution space exhausted. Could only find {len(final_solutions_metrics)} unique solutions after {max_attempts} attempts."
+            )
+
+        return final_solutions_metrics
+
     def evaluate_n_sites(self, min_sites, max_sites):
         pass
-
-    # def solve_lscp(self, p, num_options=10, capacitated=False):
-    #     """
-    #     """
-    #     pass
-
-    # def solve_mclp(self, p, num_options=10, capacitated=False):
-    #     """
-    #     """
-    #     pass
-
-    # def solve_pcentre(self, p, num_options=10, capacitated=False):
-    #     """
-    #     """
-    #     pass
-
-    # def solve_equity_efficiency(self, p, num_options=10):
-    #     """
-    #     Balances average travel time (efficiency) against worst-case travel
-    #     time (equity). Returns a Pareto front of trade-off solutions.
-    #     """
-    #     return self.solve(p=p, objectives=["p_median", "p_centre"],
-    #                     num_options=num_options)
 
     def describe_models(self, available_only=True):
         """Prints a menu of available optimization strategies for healthcare."""
