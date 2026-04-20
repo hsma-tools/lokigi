@@ -1,0 +1,2630 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.37">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Advanced Algorithms - Greedy Search and Greedy Randomized Adaptive Search Procedure (GRASP) – lokigi</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script><script src="../../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../../">
+<script src="../../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-dark-d0ae9245876894da5ac7e18953ecc5cc.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../../site_libs/bootstrap/bootstrap-656931bf671e9b74ba634a267e0883f8.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../../site_libs/bootstrap/bootstrap-dark-8a3535ece23e9ca595eba58e65e584e3.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.min.js" integrity="sha384-c9c+LnTbwQ3aujuU7ULEPVvgLs+Fn6fJUvIGTsuu1ZcCf11fiEubah0ttpca4ntM sha384-6V1/AdqZRWk1KAlWbKBlGhN7VG4iE/yAZcO6NZPMF8od0vukrvr0tg4qY6NSrItx" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+<script>
+window.PlotlyConfig = {MathJaxConfig: 'local'};
+if (window.MathJax && window.MathJax.Hub && window.MathJax.Hub.Config) {window.MathJax.Hub.Config({SVG: {font: "STIX-Web"}});}
+</script>
+<script type="module">import "https://cdn.plot.ly/plotly-3.4.0.min"</script>
+
+<script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@*/dist/embed-amd.js" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+
+<link rel="stylesheet" href="../../../lokigi_docs/resources/styles.css">
+</head>
+
+<body class="nav-fixed quarto-dark"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = true;
+    const darkModeDefault = authorPrefersDark;
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../../index.html">
+    <span class="navbar-title">lokigi</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../../lokigi_docs/index.html"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../../lokigi_docs/getting_started.html"> 
+<span class="menu-text">Getting Started</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../../examples/examples.html"> 
+<span class="menu-text">Examples</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/hsma-tools/lokigi/"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://pypi.org/project/lokigi/"> <i class="bi bi-box-fill" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#greedy-search" id="toc-greedy-search" class="nav-link active" data-scroll-target="#greedy-search">Greedy Search</a></li>
+  <li><a href="#greedy-search-on-a-larger-problem" id="toc-greedy-search-on-a-larger-problem" class="nav-link" data-scroll-target="#greedy-search-on-a-larger-problem">Greedy search on a larger problem</a></li>
+  <li><a href="#grasp" id="toc-grasp" class="nav-link" data-scroll-target="#grasp">GRASP</a>
+  <ul class="collapse">
+  <li><a href="#other-grasp-parameters" id="toc-other-grasp-parameters" class="nav-link" data-scroll-target="#other-grasp-parameters">Other GRASP parameters</a></li>
+  <li><a href="#grasp-on-our-smaller-problem---does-it-find-the-known-optimal-solution-in-this-case" id="toc-grasp-on-our-smaller-problem---does-it-find-the-known-optimal-solution-in-this-case" class="nav-link" data-scroll-target="#grasp-on-our-smaller-problem---does-it-find-the-known-optimal-solution-in-this-case">GRASP on our smaller problem - does it find the known optimal solution in this case?</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Advanced Algorithms - Greedy Search and Greedy Randomized Adaptive Search Procedure (GRASP)</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>Brute force algorithms are effective up to a certain point, but it can quickly become impossible to evaluate all possible combinations of sites as the possible number of combinations grows very quickly.</p>
+<p>For example, let’s imagine you have 30 possible places to put a site, but you only want 1 site. That’s 30 combinations to try.</p>
+<p>If you want 2 sites from those 30 possibilities, that’s 435 combinations to try.</p>
+<p>3 sites from those 30 possibilities is 4060 combinations…</p>
+<p>4 is 27,405 combinations…</p>
+<p>5 is 142,506 combinations…</p>
+<p>6 is 75,287,520 combinations!</p>
+<div id="8a7a4626" class="cell" data-execution_count="1">
+<div class="cell-output cell-output-display" data-execution_count="1">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">n_sites_to_include</th>
+<th data-quarto-table-cell-role="th">total_n_sites</th>
+<th data-quarto-table-cell-role="th">combinations</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>1</td>
+<td>30</td>
+<td>30</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>2</td>
+<td>30</td>
+<td>435</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>3</td>
+<td>30</td>
+<td>4060</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">3</th>
+<td>4</td>
+<td>30</td>
+<td>27405</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">4</th>
+<td>5</td>
+<td>30</td>
+<td>142506</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">5</th>
+<td>6</td>
+<td>30</td>
+<td>593775</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">6</th>
+<td>7</td>
+<td>30</td>
+<td>2035800</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">7</th>
+<td>8</td>
+<td>30</td>
+<td>5852925</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">8</th>
+<td>9</td>
+<td>30</td>
+<td>14307150</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">9</th>
+<td>10</td>
+<td>30</td>
+<td>30045015</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">10</th>
+<td>11</td>
+<td>30</td>
+<td>54627300</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">11</th>
+<td>12</td>
+<td>30</td>
+<td>86493225</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">12</th>
+<td>13</td>
+<td>30</td>
+<td>119759850</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">13</th>
+<td>14</td>
+<td>30</td>
+<td>145422675</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">14</th>
+<td>15</td>
+<td>30</td>
+<td>155117520</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">15</th>
+<td>16</td>
+<td>30</td>
+<td>145422675</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">16</th>
+<td>17</td>
+<td>30</td>
+<td>119759850</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">17</th>
+<td>18</td>
+<td>30</td>
+<td>86493225</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">18</th>
+<td>19</td>
+<td>30</td>
+<td>54627300</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">19</th>
+<td>20</td>
+<td>30</td>
+<td>30045015</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">20</th>
+<td>21</td>
+<td>30</td>
+<td>14307150</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">21</th>
+<td>22</td>
+<td>30</td>
+<td>5852925</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">22</th>
+<td>23</td>
+<td>30</td>
+<td>2035800</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">23</th>
+<td>24</td>
+<td>30</td>
+<td>593775</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">24</th>
+<td>25</td>
+<td>30</td>
+<td>142506</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">25</th>
+<td>26</td>
+<td>30</td>
+<td>27405</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">26</th>
+<td>27</td>
+<td>30</td>
+<td>4060</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">27</th>
+<td>28</td>
+<td>30</td>
+<td>435</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">28</th>
+<td>29</td>
+<td>30</td>
+<td>30</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>For our 30 site problem, if we want a total of 15 sites, we can see that’s nearly 160 <strong>million</strong> combinations to evaluate.</p>
+<div id="105720d0" class="cell" data-execution_count="2">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># echo: false</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> plotly.express <span class="im">as</span> px</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>px.bar(combos_df, x<span class="op">=</span><span class="st">"n_sites_to_include"</span>, y<span class="op">=</span><span class="st">"combinations"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>            <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_SVG"></script><script>if (window.MathJax && window.MathJax.Hub && window.MathJax.Hub.Config) {window.MathJax.Hub.Config({SVG: {font: "STIX-Web"}});}</script>                <script>window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.4.0.min.js" integrity="sha256-KEmPoupLpFyGMyGAiOsiNDbKDKAvxXAn/W+oQa0ZAfk=" crossorigin="anonymous"></script>                <div id="9063e8ee-3ed6-442e-886f-545f0f5d98e9" class="plotly-graph-div" style="height:525px; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("9063e8ee-3ed6-442e-886f-545f0f5d98e9")) {                    Plotly.newPlot(                        "9063e8ee-3ed6-442e-886f-545f0f5d98e9",                        [{"hovertemplate":"n_sites_to_include=%{x}\u003cbr\u003ecombinations=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"","marker":{"color":"#636efa","pattern":{"shape":""}},"name":"","orientation":"v","showlegend":false,"textposition":"auto","x":{"dtype":"i1","bdata":"AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0="},"xaxis":"x","y":{"dtype":"i4","bdata":"HgAAALMBAADcDwAADWsAAKosAgBvDwkAWBAfAP1OWQBOT9oAV3PKAeSLQQMpyCcF6mMjB1P5qgjQ5z4JU\u002fmqCOpjIwcpyCcF5ItBA1dzygFOT9oA\u002fU5ZAFgQHwBvDwkAqiwCAA1rAADcDwAAswEAAB4AAAA="},"yaxis":"y","type":"bar"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"},"margin":{"b":0,"l":0,"r":0,"t":30}}},"xaxis":{"anchor":"y","domain":[0.0,1.0],"title":{"text":"n_sites_to_include"}},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"combinations"}},"legend":{"tracegroupgap":0},"barmode":"relative"},                        {"responsive": true}                    ).then(function(){
+                            
+var gd = document.getElementById('9063e8ee-3ed6-442e-886f-545f0f5d98e9');
+var x = new MutationObserver(function (mutations, observer) {{
+        var display = window.getComputedStyle(gd).display;
+        if (!display || display === 'none') {{
+            console.log([gd, 'removed!']);
+            Plotly.purge(gd);
+            observer.disconnect();
+        }}
+}});
+
+// Listen for the removal of the full notebook cells
+var notebookContainer = gd.closest('#notebook-container');
+if (notebookContainer) {{
+    x.observe(notebookContainer, {childList: true});
+}}
+
+// Listen for the clearing of the current output cell
+var outputEl = gd.closest('.output');
+if (outputEl) {{
+    x.observe(outputEl, {childList: true});
+}}
+
+                        })                };            </script>        </div>
+</div>
+</div>
+<p>While we can handle the memory implications of trying to evaluate that many combinations using the <code>keep_best_n</code> and <code>keep_worst_n</code> arguments in .solve() so we’re not storing every single result, it’s still going to take an extremely long time to evaluate that many solutions.</p>
+<p>Instead, we can turn to some different possible solutions, which we’ll explore in these notebooks.</p>
+<section id="greedy-search" class="level2">
+<h2 class="anchored" data-anchor-id="greedy-search">Greedy Search</h2>
+<p>Greedy search works quite simply.</p>
+<p>Let’s imagine we wanted to find a good solution to our n=15 problem.</p>
+<p>We’d start by working out the best solution for 1 site (i.e.&nbsp;what single site gives us the best result).</p>
+<p>We’d then take work out the best possible combination of 2 sites - where 1 site must be the site we found from the first round.</p>
+<p>Then we keep going, repeating this process all the way up to the final number of sites.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Because the greedy algorithm is short-sighted - it always takes the best possible next move - it will find a ‘good’ solution, but it may well not find the ‘best’ solution - or even one of the best.</p>
+<p>We describe this as ‘getting stuck in a local optimum’.</p>
+</div>
+</div>
+<div id="3e2400ee" class="cell" data-execution_count="3">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.site <span class="im">import</span> SiteProblem</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>problem_small <span class="op">=</span> SiteProblem()</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>problem_small.add_sites(</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"../../../sample_data/brighton_sites_named.geojson"</span>,</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    candidate_id_col<span class="op">=</span><span class="st">"site"</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>problem_small.add_travel_matrix(</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    travel_matrix_df<span class="op">=</span><span class="st">"../../../sample_data/brighton_travel_matrix_driving_named.csv"</span>,</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    source_col<span class="op">=</span><span class="st">"LSOA"</span>,</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    from_unit<span class="op">=</span><span class="st">"seconds"</span>,</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    to_unit<span class="op">=</span><span class="st">"minutes"</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>problem_small.add_region_geometry_layer(</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    <span class="st">"https://github.com/hsma-programme/h6_3d_facility_location_problems/raw/refs/heads/main/h6_3d_facility_location_problems/example_code/LSOA_2011_Boundaries_Super_Generalised_Clipped_BSC_EW_V4.geojson"</span>,</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="co"># "../../../sample_data/LSOA_2011_Boundaries_Super_Generalised_Clipped_BSC_EW_V4.geojson",</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    common_col<span class="op">=</span><span class="st">"LSOA11NM"</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="20b92e15" class="cell" data-execution_count="4">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>solution_small_greedy <span class="op">=</span> problem_small.solve(p<span class="op">=</span><span class="dv">3</span>, search_strategy<span class="op">=</span><span class="st">"greedy"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>/__w/lokigi/lokigi/lokigi/site.py:1107: UserWarning: No demand data was provided. Demand from all regions has been assumed to be equal.If you wish to override this, run .add_demand() to add your site dataframe before running .solve() again.You can use the .show_demand_format() to see the expected format beforehand.
+  warn(</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<script type="application/vnd.jupyter.widget-view+json">
+{"model_id":"7f6c504107d045f9bd909b33f56c49df","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+</script>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Best combination for 1 sites: [5]
+Best combination for 2 sites: [2 5]
+Best combination for 3 sites: [2 3 5]</code></pre>
+</div>
+</div>
+<div id="be6ec0ec" class="cell" data-execution_count="5">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>solution_small_greedy</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="5">
+<pre><code>&lt;lokigi.site_solutions.SiteSolutionSet at 0x7f9d90e93d70&gt;</code></pre>
+</div>
+</div>
+<div id="ae5d8af2" class="cell" data-execution_count="6">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>solution_small_greedy.return_best_combination_details()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="6">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">index</th>
+<th data-quarto-table-cell-role="th">site_names</th>
+<th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average</th>
+<th data-quarto-table-cell-role="th">unweighted_average</th>
+<th data-quarto-table-cell-role="th">90th_percentile</th>
+<th data-quarto-table-cell-role="th">max</th>
+<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">problem_df</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>0</td>
+<td>None</td>
+<td>[2, 3, 5]</td>
+<td>None</td>
+<td>5.357941</td>
+<td>5.357941</td>
+<td>8.055933</td>
+<td>16.688833</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div id="fc0ace35" class="cell" data-execution_count="7">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>solution_small_greedy.plot_best_combination()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="greedy_and_grasp_files/figure-html/cell-8-output-1.png" width="822" height="519" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Let’s now compare this with the best solution from our brute force approach.</p>
+<div id="5a084e25" class="cell" data-execution_count="8">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>solution_small_brute_force <span class="op">=</span> problem_small.solve(p<span class="op">=</span><span class="dv">3</span>, search_strategy<span class="op">=</span><span class="st">"brute-force"</span>)</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>solution_small_brute_force.plot_best_combination()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<script type="application/vnd.jupyter.widget-view+json">
+{"model_id":"09ac4be5d9644b9f8897307133ad5115","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+</script>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="greedy_and_grasp_files/figure-html/cell-9-output-2.png" width="822" height="519" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Let’s see if the solution differs with different objectives.</p>
+<div id="eb96ecba" class="cell" data-execution_count="9">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>solution_small_greedy_p_center <span class="op">=</span> problem_small.solve(p<span class="op">=</span><span class="dv">3</span>, search_strategy<span class="op">=</span><span class="st">"greedy"</span>, objectives<span class="op">=</span><span class="st">"p_center"</span>)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>solution_small_greedy_p_center.plot_best_combination()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<script type="application/vnd.jupyter.widget-view+json">
+{"model_id":"a401373d6a4c48dd9597e135393176be","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+</script>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Best combination for 1 sites: [2]
+Best combination for 2 sites: [2 3]
+Best combination for 3 sites: [2 3 5]</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="greedy_and_grasp_files/figure-html/cell-10-output-3.png" width="822" height="519" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<div id="551052ac" class="cell" data-execution_count="10">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>solution_small_greedy_mclp <span class="op">=</span> problem_small.solve(p<span class="op">=</span><span class="dv">3</span>, search_strategy<span class="op">=</span><span class="st">"greedy"</span>, objectives<span class="op">=</span><span class="st">"mclp"</span>, threshold_for_coverage<span class="op">=</span><span class="dv">8</span>)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>solution_small_greedy_mclp.plot_best_combination()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<script type="application/vnd.jupyter.widget-view+json">
+{"model_id":"5e236e82a71b4eb5b404f77cb4add454","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+</script>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Best combination for 1 sites: [5]
+Best combination for 2 sites: [2 5]
+Best combination for 3 sites: [2 3 5]</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="greedy_and_grasp_files/figure-html/cell-11-output-3.png" width="822" height="536" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Interestingly, when we compare our MCLP problem (maximising coverage location problem) and p-center (minimising the maximum travel distance), we end up with the same result, but the order the sites were added in changed!</p>
+<p>For MCLP, the best single-site combination is site index 5 (which corresponds to site 6 due to Python’s zero indexing), with site indices 2 and 3 being added in the second and third pass respectively.</p>
+<p>In contrast, for p-center, it’s site index 2 (corresponding to site 3 - Tulip) that’s the best for a single site solution.</p>
+</section>
+<section id="greedy-search-on-a-larger-problem" class="level2">
+<h2 class="anchored" data-anchor-id="greedy-search-on-a-larger-problem">Greedy search on a larger problem</h2>
+<p>For the problem we’ve been working with so far, greedy search isn’t really that useful as there are a small enough number of sites that for any value of p, we can brute force (evaluate every single possible combination) without difficulty.</p>
+<p>The value of the greedy search becomes much more apparent when we look at a bigger problem.</p>
+<div id="bb59fa37" class="cell" data-execution_count="11">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>problem <span class="op">=</span> SiteProblem()</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>problem.add_demand(<span class="st">"https://github.com/health-data-science-OR/healthcare-logistics/blob/master/optimisation/data/sh_demand.csv"</span>, demand_col<span class="op">=</span><span class="st">"n_patients"</span>, location_id_col<span class="op">=</span><span class="st">"sector"</span>)</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>problem.add_travel_matrix(<span class="st">"https://github.com/health-data-science-OR/healthcare-logistics/blob/master/optimisation/data/clinic_car_travel_time.csv"</span>, source_col<span class="op">=</span><span class="st">"sector"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="86342cbd" class="cell" data-execution_count="12">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>problem.total_n_sites</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>With a total of 28 sites, if we were to solve for 10 sites, we would need to evaluate…</p>
+<div id="5b4e9716" class="cell" data-execution_count="13">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span><span class="bu">int</span>(math.factorial(<span class="dv">30</span>)<span class="op">/</span>(math.factorial(<span class="dv">30</span><span class="op">-</span><span class="dv">10</span>) <span class="op">*</span> math.factorial(<span class="dv">10</span>)))<span class="sc">:,d}</span><span class="ss">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>30,045,015</code></pre>
+</div>
+</div>
+<p>sites. That’s a lot of sites!</p>
+<p>However, using the greedy algorithm, we can get a solution we can be reasonably confident is somewhat decent fairly quickly.</p>
+<p>While we can’t pass in a maximum travel time threshold for our greedy algorithm, we can pass in the <code>threshold_for_coverage</code> parameter to calculate the proportion of regions that meet a given target travel time.</p>
+<div id="0b595723" class="cell" data-execution_count="14">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>solution_greedy <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">10</span>, search_strategy<span class="op">=</span><span class="st">"greedy"</span>, threshold_for_coverage<span class="op">=</span><span class="dv">10</span>)</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>solution_greedy</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>/__w/lokigi/lokigi/lokigi/site.py:1115: UserWarning: No candidate site dataframe was given.
+Sites names have been taken from the columns of your travel matrix: clinic_1, clinic_2, clinic_3, clinic_4, clinic_5, clinic_6, clinic_7, clinic_8, clinic_9, clinic_10, clinic_11, clinic_12, clinic_13, clinic_14, clinic_15, clinic_16, clinic_17, clinic_18, clinic_19, clinic_20, clinic_21, clinic_22, clinic_23, clinic_24, clinic_25, clinic_26, clinic_27, clinic_28.
+If you wish to override this, run .add_sites() to add your site dataframe before running .solve() again.
+You can use the .show_sites_format() to see the expected format beforehand.
+  warn(</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<script type="application/vnd.jupyter.widget-view+json">
+{"model_id":"b9887ea75bd14df88f0b42f3e059cc6d","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+</script>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Best combination for 1 sites: [3]
+Best combination for 2 sites: [3 7]
+Best combination for 3 sites: [ 3  7 11]
+Best combination for 4 sites: [ 3  4  7 11]
+Best combination for 5 sites: [ 3  4  7  8 11]
+Best combination for 6 sites: [ 3  4  7  8 10 11]
+Best combination for 7 sites: [ 3  4  7  8 10 11 22]
+Best combination for 8 sites: [ 3  4  7  8 10 11 17 22]
+Best combination for 9 sites: [ 3  4  7  8 10 11 17 22 24]
+Best combination for 10 sites: [ 3  4  7  8 10 11 15 17 22 24]</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="14">
+<pre><code>&lt;lokigi.site_solutions.SiteSolutionSet at 0x7f9d701bc740&gt;</code></pre>
+</div>
+</div>
+<div id="80125e3f" class="cell" data-execution_count="15">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>solution_greedy.show_solutions()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="15">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">site_names</th>
+<th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average</th>
+<th data-quarto-table-cell-role="th">unweighted_average</th>
+<th data-quarto-table-cell-role="th">90th_percentile</th>
+<th data-quarto-table-cell-role="th">max</th>
+<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">problem_df</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>None</td>
+<td>[3, 4, 7, 8, 10, 11, 15, 17, 22, 24]</td>
+<td>10</td>
+<td>6.81</td>
+<td>10.0</td>
+<td>19.43</td>
+<td>32.37</td>
+<td>0.61</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_4&nbsp;&nbsp;clinic_5&nbsp;&nbsp;clini...</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</section>
+<section id="grasp" class="level2">
+<h2 class="anchored" data-anchor-id="grasp">GRASP</h2>
+<p>As we can see from the above, while we can now tackle much larger problems than before, we get a single deterministic output from the greedy search problem. This isn’t ideal - we can’t provide multiple near-optimum solutions to our stakeholders, and we have no idea how good our solution is - is it stuck in a local optimum a long way from the global optimum?</p>
+<p>Enter GRASP - Greedy Randomised Adaptive Search Procedure.</p>
+<div id="f8a76a45" class="cell" data-execution_count="16">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>solution <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">10</span>, search_strategy<span class="op">=</span><span class="st">"grasp"</span>, threshold_for_coverage<span class="op">=</span><span class="dv">10</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Finding 5 diverse solutions (max 100 attempts):   0%|          | 0/5 [00:00&lt;?, ?it/s]
+Finding 5 diverse solutions (max 100 attempts):  20%|██        | 1/5 [00:00&lt;00:03,  1.26it/s]
+Finding 5 diverse solutions (max 100 attempts):  40%|████      | 2/5 [00:02&lt;00:04,  1.52s/it]
+Finding 5 diverse solutions (max 100 attempts):  60%|██████    | 3/5 [00:05&lt;00:03,  2.00s/it]
+Finding 5 diverse solutions (max 100 attempts):  80%|████████  | 4/5 [00:08&lt;00:02,  2.48s/it]
+Finding 5 diverse solutions (max 100 attempts): 100%|██████████| 5/5 [00:11&lt;00:00,  2.59s/it]
+Finding 5 diverse solutions (max 100 attempts): 100%|██████████| 5/5 [00:11&lt;00:00,  2.28s/it]</code></pre>
+</div>
+</div>
+<div id="343cdc74" class="cell" data-execution_count="17">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>solution.show_solutions()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="17">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">site_names</th>
+<th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average</th>
+<th data-quarto-table-cell-role="th">unweighted_average</th>
+<th data-quarto-table-cell-role="th">90th_percentile</th>
+<th data-quarto-table-cell-role="th">max</th>
+<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">problem_df</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>None</td>
+<td>[3, 4, 5, 8, 10, 11, 15, 17, 22, 24]</td>
+<td>10</td>
+<td>6.79</td>
+<td>9.89</td>
+<td>18.68</td>
+<td>32.37</td>
+<td>0.62</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_4&nbsp;&nbsp;clinic_5&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>None</td>
+<td>[3, 4, 5, 8, 9, 11, 12, 17, 22, 24]</td>
+<td>10</td>
+<td>6.86</td>
+<td>10.09</td>
+<td>20.35</td>
+<td>32.37</td>
+<td>0.62</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_4&nbsp;&nbsp;clinic_5&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>None</td>
+<td>[3, 4, 5, 8, 9, 11, 12, 17, 22, 27]</td>
+<td>10</td>
+<td>6.88</td>
+<td>10.06</td>
+<td>20.11</td>
+<td>32.37</td>
+<td>0.61</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_4&nbsp;&nbsp;clinic_5&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">3</th>
+<td>None</td>
+<td>[0, 4, 5, 8, 9, 11, 12, 17, 22, 27]</td>
+<td>10</td>
+<td>6.91</td>
+<td>10.21</td>
+<td>20.11</td>
+<td>32.37</td>
+<td>0.60</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_1&nbsp;&nbsp;clinic_5&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">4</th>
+<td>None</td>
+<td>[0, 4, 7, 8, 9, 10, 11, 17, 22, 27]</td>
+<td>10</td>
+<td>7.00</td>
+<td>10.38</td>
+<td>20.58</td>
+<td>32.37</td>
+<td>0.58</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_1&nbsp;&nbsp;clinic_5&nbsp;&nbsp;clini...</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>Let’s compare this to the best solution found by the pure greedy algorithm:</p>
+<div id="7196878c" class="cell" data-execution_count="18">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>solution_greedy.show_solutions()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="18">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">site_names</th>
+<th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average</th>
+<th data-quarto-table-cell-role="th">unweighted_average</th>
+<th data-quarto-table-cell-role="th">90th_percentile</th>
+<th data-quarto-table-cell-role="th">max</th>
+<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">problem_df</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>None</td>
+<td>[3, 4, 7, 8, 10, 11, 15, 17, 22, 24]</td>
+<td>10</td>
+<td>6.81</td>
+<td>10.0</td>
+<td>19.43</td>
+<td>32.37</td>
+<td>0.61</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_4&nbsp;&nbsp;clinic_5&nbsp;&nbsp;clini...</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>Interestingly this doesn’t show up in our top 5 solutions found with GRASP, and is between the top two solutions that were found! So it’s worth considering whether to run both.</p>
+<p>We can try to run GRASP with a higher number of maximum iterations and a slightly higher alpha to get a more diverse solution pool. In the interests of it not taking forever to regenerate this documentation, below we show a screenshot of the outputs when we’ve run GRASP for much longer.</p>
+<div id="1107b6ef" class="cell" data-execution_count="19">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>solution_grasp_big <span class="op">=</span> problem.solve(</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>    p<span class="op">=</span><span class="dv">10</span>, search_strategy<span class="op">=</span><span class="st">"grasp"</span>, threshold_for_coverage<span class="op">=</span><span class="dv">10</span>, grasp_alpha<span class="op">=</span><span class="fl">0.6</span>,</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>    grasp_max_attempts<span class="op">=</span><span class="dv">50000</span>, grasp_num_solutions<span class="op">=</span><span class="dv">50</span></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Finding 50 diverse solutions (max 50000 attempts):   0%|          | 0/50 [00:00&lt;?, ?it/s]
+Finding 50 diverse solutions (max 50000 attempts):   2%|▏         | 1/50 [00:00&lt;00:47,  1.02it/s]
+Finding 50 diverse solutions (max 50000 attempts):   4%|▍         | 2/50 [00:04&lt;01:45,  2.20s/it]
+Finding 50 diverse solutions (max 50000 attempts):   6%|▌         | 3/50 [00:05&lt;01:34,  2.02s/it]
+Finding 50 diverse solutions (max 50000 attempts):   8%|▊         | 4/50 [00:06&lt;01:08,  1.49s/it]
+Finding 50 diverse solutions (max 50000 attempts):  10%|█         | 5/50 [00:09&lt;01:30,  2.01s/it]
+Finding 50 diverse solutions (max 50000 attempts):  12%|█▏        | 6/50 [00:11&lt;01:29,  2.04s/it]
+Finding 50 diverse solutions (max 50000 attempts):  14%|█▍        | 7/50 [00:16&lt;02:06,  2.94s/it]
+Finding 50 diverse solutions (max 50000 attempts):  16%|█▌        | 8/50 [00:16&lt;01:31,  2.19s/it]
+Finding 50 diverse solutions (max 50000 attempts):  18%|█▊        | 9/50 [00:18&lt;01:28,  2.15s/it]
+Finding 50 diverse solutions (max 50000 attempts):  20%|██        | 10/50 [00:26&lt;02:27,  3.69s/it]
+Finding 50 diverse solutions (max 50000 attempts):  22%|██▏       | 11/50 [00:28&lt;02:05,  3.22s/it]
+Finding 50 diverse solutions (max 50000 attempts):  24%|██▍       | 12/50 [00:31&lt;02:02,  3.23s/it]
+Finding 50 diverse solutions (max 50000 attempts):  26%|██▌       | 13/50 [00:36&lt;02:19,  3.76s/it]
+Finding 50 diverse solutions (max 50000 attempts):  28%|██▊       | 14/50 [00:37&lt;01:48,  3.00s/it]
+Finding 50 diverse solutions (max 50000 attempts):  30%|███       | 15/50 [00:49&lt;03:17,  5.63s/it]
+Finding 50 diverse solutions (max 50000 attempts):  32%|███▏      | 16/50 [00:53&lt;02:51,  5.03s/it]
+Finding 50 diverse solutions (max 50000 attempts):  34%|███▍      | 17/50 [00:54&lt;02:12,  4.03s/it]
+Finding 50 diverse solutions (max 50000 attempts):  36%|███▌      | 18/50 [00:56&lt;01:47,  3.35s/it]
+Finding 50 diverse solutions (max 50000 attempts):  38%|███▊      | 19/50 [00:59&lt;01:37,  3.15s/it]
+Finding 50 diverse solutions (max 50000 attempts):  40%|████      | 20/50 [01:01&lt;01:26,  2.87s/it]
+Finding 50 diverse solutions (max 50000 attempts):  42%|████▏     | 21/50 [01:02&lt;01:02,  2.17s/it]
+Finding 50 diverse solutions (max 50000 attempts):  44%|████▍     | 22/50 [01:02&lt;00:47,  1.69s/it]
+Finding 50 diverse solutions (max 50000 attempts):  46%|████▌     | 23/50 [01:03&lt;00:36,  1.37s/it]
+Finding 50 diverse solutions (max 50000 attempts):  48%|████▊     | 24/50 [01:07&lt;01:00,  2.33s/it]
+Finding 50 diverse solutions (max 50000 attempts):  50%|█████     | 25/50 [01:10&lt;01:03,  2.53s/it]
+Finding 50 diverse solutions (max 50000 attempts):  52%|█████▏    | 26/50 [01:12&lt;00:52,  2.18s/it]
+Finding 50 diverse solutions (max 50000 attempts):  54%|█████▍    | 27/50 [01:14&lt;00:50,  2.20s/it]
+Finding 50 diverse solutions (max 50000 attempts):  56%|█████▌    | 28/50 [01:15&lt;00:40,  1.85s/it]
+Finding 50 diverse solutions (max 50000 attempts):  58%|█████▊    | 29/50 [01:15&lt;00:30,  1.46s/it]
+Finding 50 diverse solutions (max 50000 attempts):  60%|██████    | 30/50 [01:21&lt;00:50,  2.54s/it]
+Finding 50 diverse solutions (max 50000 attempts):  62%|██████▏   | 31/50 [01:22&lt;00:42,  2.24s/it]
+Finding 50 diverse solutions (max 50000 attempts):  64%|██████▍   | 32/50 [01:29&lt;01:06,  3.68s/it]
+Finding 50 diverse solutions (max 50000 attempts):  66%|██████▌   | 33/50 [01:32&lt;00:56,  3.33s/it]
+Finding 50 diverse solutions (max 50000 attempts):  68%|██████▊   | 34/50 [01:39&lt;01:12,  4.53s/it]
+Finding 50 diverse solutions (max 50000 attempts):  70%|███████   | 35/50 [01:43&lt;01:05,  4.34s/it]
+Finding 50 diverse solutions (max 50000 attempts):  72%|███████▏  | 36/50 [01:45&lt;00:50,  3.63s/it]
+Finding 50 diverse solutions (max 50000 attempts):  74%|███████▍  | 37/50 [01:45&lt;00:35,  2.73s/it]
+Finding 50 diverse solutions (max 50000 attempts):  76%|███████▌  | 38/50 [01:51&lt;00:43,  3.61s/it]
+Finding 50 diverse solutions (max 50000 attempts):  78%|███████▊  | 39/50 [01:52&lt;00:32,  2.92s/it]
+Finding 50 diverse solutions (max 50000 attempts):  80%|████████  | 40/50 [01:54&lt;00:24,  2.42s/it]
+Finding 50 diverse solutions (max 50000 attempts):  82%|████████▏ | 41/50 [01:56&lt;00:20,  2.26s/it]
+Finding 50 diverse solutions (max 50000 attempts):  84%|████████▍ | 42/50 [01:57&lt;00:16,  2.04s/it]
+Finding 50 diverse solutions (max 50000 attempts):  86%|████████▌ | 43/50 [02:00&lt;00:15,  2.17s/it]
+Finding 50 diverse solutions (max 50000 attempts):  88%|████████▊ | 44/50 [02:03&lt;00:14,  2.45s/it]
+Finding 50 diverse solutions (max 50000 attempts):  90%|█████████ | 45/50 [02:08&lt;00:16,  3.21s/it]
+Finding 50 diverse solutions (max 50000 attempts):  92%|█████████▏| 46/50 [02:09&lt;00:10,  2.55s/it]
+Finding 50 diverse solutions (max 50000 attempts):  94%|█████████▍| 47/50 [02:09&lt;00:05,  1.99s/it]
+Finding 50 diverse solutions (max 50000 attempts):  96%|█████████▌| 48/50 [02:10&lt;00:03,  1.55s/it]
+Finding 50 diverse solutions (max 50000 attempts):  98%|█████████▊| 49/50 [02:14&lt;00:02,  2.44s/it]
+Finding 50 diverse solutions (max 50000 attempts): 100%|██████████| 50/50 [02:17&lt;00:00,  2.62s/it]
+Finding 50 diverse solutions (max 50000 attempts): 100%|██████████| 50/50 [02:17&lt;00:00,  2.76s/it]</code></pre>
+</div>
+</div>
+<div id="7b567587" class="cell" data-execution_count="20">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>solution_grasp_big.show_solutions().head(<span class="dv">10</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="20">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">site_names</th>
+<th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average</th>
+<th data-quarto-table-cell-role="th">unweighted_average</th>
+<th data-quarto-table-cell-role="th">90th_percentile</th>
+<th data-quarto-table-cell-role="th">max</th>
+<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">problem_df</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>None</td>
+<td>[3, 4, 5, 8, 10, 11, 15, 17, 22, 24]</td>
+<td>10</td>
+<td>6.79</td>
+<td>9.89</td>
+<td>18.68</td>
+<td>32.37</td>
+<td>0.62</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_4&nbsp;&nbsp;clinic_5&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>None</td>
+<td>[3, 4, 7, 8, 10, 11, 15, 17, 22, 24]</td>
+<td>10</td>
+<td>6.81</td>
+<td>10.00</td>
+<td>19.43</td>
+<td>32.37</td>
+<td>0.61</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_4&nbsp;&nbsp;clinic_5&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>None</td>
+<td>[3, 4, 5, 8, 10, 11, 15, 17, 22, 27]</td>
+<td>10</td>
+<td>6.82</td>
+<td>9.89</td>
+<td>18.21</td>
+<td>32.37</td>
+<td>0.61</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_4&nbsp;&nbsp;clinic_5&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">3</th>
+<td>None</td>
+<td>[1, 3, 4, 5, 8, 10, 11, 15, 17, 22]</td>
+<td>10</td>
+<td>6.82</td>
+<td>9.90</td>
+<td>18.30</td>
+<td>32.37</td>
+<td>0.61</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_2&nbsp;&nbsp;clinic_4&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">4</th>
+<td>None</td>
+<td>[3, 4, 5, 8, 10, 11, 14, 17, 22, 24]</td>
+<td>10</td>
+<td>6.83</td>
+<td>9.88</td>
+<td>19.45</td>
+<td>32.37</td>
+<td>0.62</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_4&nbsp;&nbsp;clinic_5&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">5</th>
+<td>None</td>
+<td>[3, 4, 6, 7, 8, 10, 11, 17, 22, 24]</td>
+<td>10</td>
+<td>6.83</td>
+<td>10.09</td>
+<td>20.08</td>
+<td>32.37</td>
+<td>0.61</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_4&nbsp;&nbsp;clinic_5&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">6</th>
+<td>None</td>
+<td>[0, 3, 4, 5, 8, 10, 11, 17, 22, 27]</td>
+<td>10</td>
+<td>6.84</td>
+<td>10.06</td>
+<td>20.11</td>
+<td>32.37</td>
+<td>0.60</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_1&nbsp;&nbsp;clinic_4&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">7</th>
+<td>None</td>
+<td>[0, 1, 3, 4, 5, 8, 10, 11, 17, 22]</td>
+<td>10</td>
+<td>6.84</td>
+<td>10.08</td>
+<td>20.11</td>
+<td>32.37</td>
+<td>0.60</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_1&nbsp;&nbsp;clinic_2&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">8</th>
+<td>None</td>
+<td>[3, 4, 7, 8, 10, 11, 14, 17, 22, 24]</td>
+<td>10</td>
+<td>6.84</td>
+<td>9.95</td>
+<td>19.53</td>
+<td>32.37</td>
+<td>0.61</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_4&nbsp;&nbsp;clinic_5&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">9</th>
+<td>None</td>
+<td>[3, 4, 5, 7, 8, 10, 11, 17, 22, 24]</td>
+<td>10</td>
+<td>6.85</td>
+<td>10.14</td>
+<td>20.44</td>
+<td>32.37</td>
+<td>0.61</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_4&nbsp;&nbsp;clinic_5&nbsp;&nbsp;clini...</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<section id="other-grasp-parameters" class="level3">
+<h3 class="anchored" data-anchor-id="other-grasp-parameters">Other GRASP parameters</h3>
+<p>We can change the number of sites that must differ to force a more diverse pool of solutions.</p>
+<div id="8c393773" class="cell" data-execution_count="21">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>solution_grasp_big_more_diverse <span class="op">=</span> problem.solve(</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>    p<span class="op">=</span><span class="dv">10</span>, search_strategy<span class="op">=</span><span class="st">"grasp"</span>, threshold_for_coverage<span class="op">=</span><span class="dv">10</span>, grasp_alpha<span class="op">=</span><span class="fl">0.6</span>,</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>    grasp_max_attempts<span class="op">=</span><span class="dv">50000</span>, grasp_num_solutions<span class="op">=</span><span class="dv">30</span>,</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>    grasp_min_sites_different<span class="op">=</span><span class="dv">4</span>, <span class="co"># set this value - default is 1</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Finding 30 diverse solutions (max 50000 attempts):   0%|          | 0/30 [00:00&lt;?, ?it/s]
+Finding 30 diverse solutions (max 50000 attempts):   3%|▎         | 1/30 [00:00&lt;00:28,  1.03it/s]
+Finding 30 diverse solutions (max 50000 attempts):   7%|▋         | 2/30 [00:04&lt;01:01,  2.19s/it]
+Finding 30 diverse solutions (max 50000 attempts):  10%|█         | 3/30 [00:06&lt;01:02,  2.32s/it]
+Finding 30 diverse solutions (max 50000 attempts):  13%|█▎        | 4/30 [00:09&lt;01:06,  2.55s/it]
+Finding 30 diverse solutions (max 50000 attempts):  17%|█▋        | 5/30 [00:11&lt;00:59,  2.40s/it]
+Finding 30 diverse solutions (max 50000 attempts):  20%|██        | 6/30 [00:18&lt;01:35,  3.96s/it]
+Finding 30 diverse solutions (max 50000 attempts):  23%|██▎       | 7/30 [00:25&lt;01:54,  4.98s/it]
+Finding 30 diverse solutions (max 50000 attempts):  27%|██▋       | 8/30 [00:28&lt;01:33,  4.25s/it]
+Finding 30 diverse solutions (max 50000 attempts):  30%|███       | 9/30 [00:31&lt;01:22,  3.93s/it]
+Finding 30 diverse solutions (max 50000 attempts):  33%|███▎      | 10/30 [00:49&lt;02:44,  8.25s/it]
+Finding 30 diverse solutions (max 50000 attempts):  37%|███▋      | 11/30 [00:53&lt;02:09,  6.84s/it]
+Finding 30 diverse solutions (max 50000 attempts):  40%|████      | 12/30 [00:56&lt;01:44,  5.81s/it]
+Finding 30 diverse solutions (max 50000 attempts):  43%|████▎     | 13/30 [00:59&lt;01:22,  4.87s/it]
+Finding 30 diverse solutions (max 50000 attempts):  47%|████▋     | 14/30 [01:01&lt;01:04,  4.04s/it]
+Finding 30 diverse solutions (max 50000 attempts):  50%|█████     | 15/30 [01:01&lt;00:44,  2.99s/it]
+Finding 30 diverse solutions (max 50000 attempts):  53%|█████▎    | 16/30 [01:02&lt;00:31,  2.28s/it]
+Finding 30 diverse solutions (max 50000 attempts):  57%|█████▋    | 17/30 [01:07&lt;00:41,  3.16s/it]
+Finding 30 diverse solutions (max 50000 attempts):  60%|██████    | 18/30 [01:10&lt;00:37,  3.10s/it]
+Finding 30 diverse solutions (max 50000 attempts):  63%|██████▎   | 19/30 [01:14&lt;00:35,  3.24s/it]
+Finding 30 diverse solutions (max 50000 attempts):  67%|██████▋   | 20/30 [01:15&lt;00:27,  2.73s/it]
+Finding 30 diverse solutions (max 50000 attempts):  70%|███████   | 21/30 [01:31&lt;01:00,  6.71s/it]
+Finding 30 diverse solutions (max 50000 attempts):  73%|███████▎  | 22/30 [01:55&lt;01:34, 11.84s/it]
+Finding 30 diverse solutions (max 50000 attempts):  77%|███████▋  | 23/30 [01:59&lt;01:06,  9.48s/it]
+Finding 30 diverse solutions (max 50000 attempts):  80%|████████  | 24/30 [02:02&lt;00:45,  7.57s/it]
+Finding 30 diverse solutions (max 50000 attempts):  83%|████████▎ | 25/30 [02:09&lt;00:36,  7.31s/it]
+Finding 30 diverse solutions (max 50000 attempts):  87%|████████▋ | 26/30 [02:09&lt;00:21,  5.28s/it]
+Finding 30 diverse solutions (max 50000 attempts):  90%|█████████ | 27/30 [02:14&lt;00:15,  5.04s/it]
+Finding 30 diverse solutions (max 50000 attempts):  93%|█████████▎| 28/30 [02:17&lt;00:08,  4.45s/it]
+Finding 30 diverse solutions (max 50000 attempts):  97%|█████████▋| 29/30 [02:34&lt;00:08,  8.11s/it]
+Finding 30 diverse solutions (max 50000 attempts): 100%|██████████| 30/30 [02:39&lt;00:00,  7.29s/it]
+Finding 30 diverse solutions (max 50000 attempts): 100%|██████████| 30/30 [02:39&lt;00:00,  5.32s/it]</code></pre>
+</div>
+</div>
+<div id="950f9a5e" class="cell" data-execution_count="22">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>solution_grasp_big_more_diverse.show_solutions().head(<span class="dv">10</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="22">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">site_names</th>
+<th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average</th>
+<th data-quarto-table-cell-role="th">unweighted_average</th>
+<th data-quarto-table-cell-role="th">90th_percentile</th>
+<th data-quarto-table-cell-role="th">max</th>
+<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">problem_df</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>None</td>
+<td>[3, 4, 6, 7, 8, 10, 11, 17, 22, 24]</td>
+<td>10</td>
+<td>6.83</td>
+<td>10.09</td>
+<td>20.08</td>
+<td>32.37</td>
+<td>0.61</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_4&nbsp;&nbsp;clinic_5&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>None</td>
+<td>[0, 3, 4, 5, 8, 10, 11, 17, 22, 27]</td>
+<td>10</td>
+<td>6.84</td>
+<td>10.06</td>
+<td>20.11</td>
+<td>32.37</td>
+<td>0.60</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_1&nbsp;&nbsp;clinic_4&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>None</td>
+<td>[3, 4, 5, 8, 9, 11, 12, 17, 22, 24]</td>
+<td>10</td>
+<td>6.86</td>
+<td>10.09</td>
+<td>20.35</td>
+<td>32.37</td>
+<td>0.62</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_4&nbsp;&nbsp;clinic_5&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">3</th>
+<td>None</td>
+<td>[0, 1, 2, 4, 6, 8, 10, 11, 17, 22]</td>
+<td>10</td>
+<td>6.98</td>
+<td>10.20</td>
+<td>20.12</td>
+<td>32.37</td>
+<td>0.59</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_1&nbsp;&nbsp;clinic_2&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">4</th>
+<td>None</td>
+<td>[1, 3, 4, 5, 8, 10, 11, 15, 22, 24]</td>
+<td>10</td>
+<td>7.04</td>
+<td>10.48</td>
+<td>18.62</td>
+<td>32.37</td>
+<td>0.56</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_2&nbsp;&nbsp;clinic_4&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">5</th>
+<td>None</td>
+<td>[0, 1, 4, 7, 8, 10, 11, 13, 14, 22]</td>
+<td>10</td>
+<td>7.07</td>
+<td>10.17</td>
+<td>18.66</td>
+<td>32.37</td>
+<td>0.59</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_1&nbsp;&nbsp;clinic_2&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">6</th>
+<td>None</td>
+<td>[2, 4, 5, 8, 10, 11, 13, 14, 22, 24]</td>
+<td>10</td>
+<td>7.08</td>
+<td>10.06</td>
+<td>19.45</td>
+<td>32.37</td>
+<td>0.63</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_3&nbsp;&nbsp;clinic_5&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">7</th>
+<td>None</td>
+<td>[0, 2, 4, 7, 11, 12, 17, 21, 22, 24]</td>
+<td>10</td>
+<td>7.17</td>
+<td>10.47</td>
+<td>20.58</td>
+<td>32.37</td>
+<td>0.58</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_1&nbsp;&nbsp;clinic_3&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">8</th>
+<td>None</td>
+<td>[3, 4, 5, 6, 10, 11, 13, 21, 22, 27]</td>
+<td>10</td>
+<td>7.18</td>
+<td>10.12</td>
+<td>19.96</td>
+<td>32.37</td>
+<td>0.60</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_4&nbsp;&nbsp;clinic_5&nbsp;&nbsp;clini...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">9</th>
+<td>None</td>
+<td>[0, 1, 4, 6, 7, 8, 9, 11, 12, 17]</td>
+<td>10</td>
+<td>7.22</td>
+<td>10.87</td>
+<td>22.03</td>
+<td>32.37</td>
+<td>0.56</td>
+<td>sector sector_x&nbsp;&nbsp;clinic_1&nbsp;&nbsp;clinic_2&nbsp;&nbsp;clini...</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>We can also change the chance of a local search taking place.</p>
+<div id="6403019b" class="cell" data-execution_count="23">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>solution_grasp_less_local_searching <span class="op">=</span> problem.solve(</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>    p<span class="op">=</span><span class="dv">10</span>, search_strategy<span class="op">=</span><span class="st">"grasp"</span>, threshold_for_coverage<span class="op">=</span><span class="dv">10</span>, grasp_alpha<span class="op">=</span><span class="fl">0.6</span>,</span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>    grasp_max_attempts<span class="op">=</span><span class="dv">50000</span>, grasp_num_solutions<span class="op">=</span><span class="dv">20</span>,</span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>    grasp_local_search_chance<span class="op">=</span><span class="fl">0.4</span> <span class="co"># set this value - default is 0.8</span></span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Finding 20 diverse solutions (max 50000 attempts):   0%|          | 0/20 [00:00&lt;?, ?it/s]
+Finding 20 diverse solutions (max 50000 attempts):   5%|▌         | 1/20 [00:00&lt;00:18,  1.01it/s]
+Finding 20 diverse solutions (max 50000 attempts):  10%|█         | 2/20 [00:01&lt;00:14,  1.22it/s]
+Finding 20 diverse solutions (max 50000 attempts):  15%|█▌        | 3/20 [00:03&lt;00:25,  1.49s/it]
+Finding 20 diverse solutions (max 50000 attempts):  20%|██        | 4/20 [00:04&lt;00:18,  1.18s/it]
+Finding 20 diverse solutions (max 50000 attempts):  25%|██▌       | 5/20 [00:05&lt;00:14,  1.00it/s]
+Finding 20 diverse solutions (max 50000 attempts):  30%|███       | 6/20 [00:06&lt;00:12,  1.12it/s]
+Finding 20 diverse solutions (max 50000 attempts):  35%|███▌      | 7/20 [00:09&lt;00:21,  1.62s/it]
+Finding 20 diverse solutions (max 50000 attempts):  40%|████      | 8/20 [00:11&lt;00:23,  1.95s/it]
+Finding 20 diverse solutions (max 50000 attempts):  45%|████▌     | 9/20 [00:12&lt;00:16,  1.52s/it]
+Finding 20 diverse solutions (max 50000 attempts):  50%|█████     | 10/20 [00:14&lt;00:16,  1.67s/it]
+Finding 20 diverse solutions (max 50000 attempts):  55%|█████▌    | 11/20 [00:16&lt;00:15,  1.74s/it]
+Finding 20 diverse solutions (max 50000 attempts):  60%|██████    | 12/20 [00:16&lt;00:11,  1.40s/it]
+Finding 20 diverse solutions (max 50000 attempts):  65%|██████▌   | 13/20 [00:17&lt;00:08,  1.18s/it]
+Finding 20 diverse solutions (max 50000 attempts):  70%|███████   | 14/20 [00:18&lt;00:05,  1.00it/s]
+Finding 20 diverse solutions (max 50000 attempts):  75%|███████▌  | 15/20 [00:18&lt;00:04,  1.11it/s]
+Finding 20 diverse solutions (max 50000 attempts):  80%|████████  | 16/20 [00:19&lt;00:03,  1.09it/s]
+Finding 20 diverse solutions (max 50000 attempts):  85%|████████▌ | 17/20 [00:21&lt;00:03,  1.27s/it]
+Finding 20 diverse solutions (max 50000 attempts):  90%|█████████ | 18/20 [00:24&lt;00:03,  1.64s/it]
+Finding 20 diverse solutions (max 50000 attempts):  95%|█████████▌| 19/20 [00:27&lt;00:02,  2.03s/it]
+Finding 20 diverse solutions (max 50000 attempts): 100%|██████████| 20/20 [00:27&lt;00:00,  1.60s/it]
+Finding 20 diverse solutions (max 50000 attempts): 100%|██████████| 20/20 [00:27&lt;00:00,  1.40s/it]</code></pre>
+</div>
+</div>
+<p>And we can also change the maximum number of swaps that will happen in the local search stage, ensuring a diverse range of solutions is explored, which is particularly important for larger questions.</p>
+<div id="338eb059" class="cell" data-execution_count="24">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb36"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>solution_grasp_less_local_searching <span class="op">=</span> problem.solve(</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>    p<span class="op">=</span><span class="dv">10</span>, search_strategy<span class="op">=</span><span class="st">"grasp"</span>, threshold_for_coverage<span class="op">=</span><span class="dv">10</span>, grasp_alpha<span class="op">=</span><span class="fl">0.6</span>,</span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>    grasp_max_attempts<span class="op">=</span><span class="dv">50000</span>, grasp_num_solutions<span class="op">=</span><span class="dv">20</span>,</span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>    grasp_max_swap_count_local_search<span class="op">=</span><span class="dv">50</span> <span class="co"># set this value - default is 10</span></span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Finding 20 diverse solutions (max 50000 attempts):   0%|          | 0/20 [00:00&lt;?, ?it/s]
+Finding 20 diverse solutions (max 50000 attempts):   5%|▌         | 1/20 [00:00&lt;00:15,  1.26it/s]
+Finding 20 diverse solutions (max 50000 attempts):  10%|█         | 2/20 [00:05&lt;00:52,  2.92s/it]
+Finding 20 diverse solutions (max 50000 attempts):  15%|█▌        | 3/20 [00:07&lt;00:43,  2.55s/it]
+Finding 20 diverse solutions (max 50000 attempts):  20%|██        | 4/20 [00:13&lt;01:02,  3.90s/it]
+Finding 20 diverse solutions (max 50000 attempts):  25%|██▌       | 5/20 [00:18&lt;01:03,  4.24s/it]
+Finding 20 diverse solutions (max 50000 attempts):  30%|███       | 6/20 [00:18&lt;00:41,  2.99s/it]
+Finding 20 diverse solutions (max 50000 attempts):  35%|███▌      | 7/20 [00:28&lt;01:05,  5.08s/it]
+Finding 20 diverse solutions (max 50000 attempts):  40%|████      | 8/20 [00:34&lt;01:07,  5.61s/it]
+Finding 20 diverse solutions (max 50000 attempts):  45%|████▌     | 9/20 [00:55&lt;01:53, 10.29s/it]
+Finding 20 diverse solutions (max 50000 attempts):  50%|█████     | 10/20 [00:59&lt;01:22,  8.27s/it]
+Finding 20 diverse solutions (max 50000 attempts):  55%|█████▌    | 11/20 [01:02&lt;01:00,  6.72s/it]
+Finding 20 diverse solutions (max 50000 attempts):  60%|██████    | 12/20 [01:04&lt;00:43,  5.45s/it]
+Finding 20 diverse solutions (max 50000 attempts):  65%|██████▌   | 13/20 [01:05&lt;00:27,  3.97s/it]
+Finding 20 diverse solutions (max 50000 attempts):  70%|███████   | 14/20 [01:06&lt;00:17,  2.96s/it]
+Finding 20 diverse solutions (max 50000 attempts):  75%|███████▌  | 15/20 [01:10&lt;00:16,  3.35s/it]
+Finding 20 diverse solutions (max 50000 attempts):  80%|████████  | 16/20 [01:12&lt;00:12,  3.14s/it]
+Finding 20 diverse solutions (max 50000 attempts):  85%|████████▌ | 17/20 [01:19&lt;00:12,  4.04s/it]
+Finding 20 diverse solutions (max 50000 attempts):  90%|█████████ | 18/20 [01:33&lt;00:14,  7.01s/it]
+Finding 20 diverse solutions (max 50000 attempts):  95%|█████████▌| 19/20 [01:35&lt;00:05,  5.64s/it]
+Finding 20 diverse solutions (max 50000 attempts): 100%|██████████| 20/20 [01:41&lt;00:00,  5.80s/it]
+Finding 20 diverse solutions (max 50000 attempts): 100%|██████████| 20/20 [01:41&lt;00:00,  5.08s/it]</code></pre>
+</div>
+</div>
+</section>
+<section id="grasp-on-our-smaller-problem---does-it-find-the-known-optimal-solution-in-this-case" class="level3">
+<h3 class="anchored" data-anchor-id="grasp-on-our-smaller-problem---does-it-find-the-known-optimal-solution-in-this-case">GRASP on our smaller problem - does it find the known optimal solution in this case?</h3>
+<p>Let’s also try this out on our smaller problem from earlier - do we find the optimal solution here too?</p>
+<div id="b9458369" class="cell" data-execution_count="25">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb38"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>solution_small_grasp <span class="op">=</span> problem_small.solve(p<span class="op">=</span><span class="dv">3</span>, search_strategy<span class="op">=</span><span class="st">"grasp"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Finding 5 diverse solutions (max 20 attempts):   0%|          | 0/5 [00:00&lt;?, ?it/s]
+Finding 5 diverse solutions (max 20 attempts):  40%|████      | 2/5 [00:00&lt;00:00, 21.60it/s]
+/__w/lokigi/lokigi/lokigi/site.py:1343: UserWarning: GRASP exhausted attempt budget (20 attempts) before finding 5 sufficiently diverse solutions. Returning 2 solutions.
+  outputs = self._grasp(</code></pre>
+</div>
+</div>
+<div id="d4235536" class="cell" data-execution_count="26">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb40"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>solution_small_grasp.show_solutions()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="26">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">site_names</th>
+<th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average</th>
+<th data-quarto-table-cell-role="th">unweighted_average</th>
+<th data-quarto-table-cell-role="th">90th_percentile</th>
+<th data-quarto-table-cell-role="th">max</th>
+<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">problem_df</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>None</td>
+<td>[2, 3, 5]</td>
+<td>None</td>
+<td>5.36</td>
+<td>5.36</td>
+<td>8.06</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>None</td>
+<td>[2, 3, 4]</td>
+<td>None</td>
+<td>5.45</td>
+<td>5.45</td>
+<td>8.50</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div id="89fb919a" class="cell" data-execution_count="27">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb41"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>solution_small_grasp.plot_best_combination()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="greedy_and_grasp_files/figure-html/cell-28-output-1.png" width="822" height="519" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>It gets quite stuck with the default alpha value, finding only two solutions! Let’s turn up the alpha and see if we can get some more varied solutions out.</p>
+<div id="1bb3b3dd" class="cell" data-execution_count="28">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb42"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>solution_small_grasp_higher_alpha <span class="op">=</span> problem_small.solve(</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>    p<span class="op">=</span><span class="dv">3</span>, search_strategy<span class="op">=</span><span class="st">"grasp"</span>,</span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>    grasp_alpha<span class="op">=</span><span class="fl">0.4</span>, grasp_max_attempts<span class="op">=</span><span class="dv">500</span></span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Finding 5 diverse solutions (max 500 attempts):   0%|          | 0/5 [00:00&lt;?, ?it/s]
+Finding 5 diverse solutions (max 500 attempts):  40%|████      | 2/5 [00:00&lt;00:00, 18.72it/s]
+Finding 5 diverse solutions (max 500 attempts):  40%|████      | 2/5 [00:00&lt;00:00, 16.50it/s]
+/__w/lokigi/lokigi/lokigi/site.py:1343: UserWarning: GRASP exhausted attempt budget (500 attempts) before finding 5 sufficiently diverse solutions. Returning 2 solutions.
+  outputs = self._grasp(</code></pre>
+</div>
+</div>
+<div id="5730a83f" class="cell" data-execution_count="29">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb44"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>solution_small_grasp_higher_alpha.show_solutions()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="29">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">site_names</th>
+<th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average</th>
+<th data-quarto-table-cell-role="th">unweighted_average</th>
+<th data-quarto-table-cell-role="th">90th_percentile</th>
+<th data-quarto-table-cell-role="th">max</th>
+<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">problem_df</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>None</td>
+<td>[2, 3, 5]</td>
+<td>None</td>
+<td>5.36</td>
+<td>5.36</td>
+<td>8.06</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>None</td>
+<td>[2, 3, 4]</td>
+<td>None</td>
+<td>5.45</td>
+<td>5.45</td>
+<td>8.50</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>It looks like we need to make our alpha higher again!</p>
+<div id="c2438d04" class="cell" data-execution_count="30">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb45"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>solution_small_grasp_even_higher_alpha <span class="op">=</span> problem_small.solve(</span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>    p<span class="op">=</span><span class="dv">3</span>, search_strategy<span class="op">=</span><span class="st">"grasp"</span>,</span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>    grasp_alpha<span class="op">=</span><span class="fl">0.6</span>, grasp_max_attempts<span class="op">=</span><span class="dv">100000</span>,</span>
+<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a>    grasp_min_sites_different<span class="op">=</span><span class="dv">1</span></span>
+<span id="cb45-5"><a href="#cb45-5" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Finding 5 diverse solutions (max 100000 attempts):   0%|          | 0/5 [00:00&lt;?, ?it/s]
+Finding 5 diverse solutions (max 100000 attempts):  60%|██████    | 3/5 [00:00&lt;00:00, 22.90it/s]
+Finding 5 diverse solutions (max 100000 attempts): 100%|██████████| 5/5 [00:00&lt;00:00, 35.00it/s]</code></pre>
+</div>
+</div>
+<div id="a46b956c" class="cell" data-execution_count="31">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb47"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a>solution_small_grasp_even_higher_alpha.show_solutions()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="31">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">site_names</th>
+<th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average</th>
+<th data-quarto-table-cell-role="th">unweighted_average</th>
+<th data-quarto-table-cell-role="th">90th_percentile</th>
+<th data-quarto-table-cell-role="th">max</th>
+<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">problem_df</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>None</td>
+<td>[2, 3, 5]</td>
+<td>None</td>
+<td>5.36</td>
+<td>5.36</td>
+<td>8.06</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>None</td>
+<td>[2, 3, 4]</td>
+<td>None</td>
+<td>5.45</td>
+<td>5.45</td>
+<td>8.50</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>None</td>
+<td>[1, 2, 3]</td>
+<td>None</td>
+<td>5.59</td>
+<td>5.59</td>
+<td>9.00</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">3</th>
+<td>None</td>
+<td>[1, 3, 5]</td>
+<td>None</td>
+<td>6.64</td>
+<td>6.64</td>
+<td>11.58</td>
+<td>22.86</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">4</th>
+<td>None</td>
+<td>[3, 4, 5]</td>
+<td>None</td>
+<td>6.73</td>
+<td>6.73</td>
+<td>12.26</td>
+<td>21.71</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>Let’s compare this with the best solutions from the brute force approach.</p>
+<div id="5da508c8" class="cell" data-execution_count="32">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb48"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a>solution_small_brute_force.show_solutions().head(<span class="dv">15</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="32">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">site_names</th>
+<th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average</th>
+<th data-quarto-table-cell-role="th">unweighted_average</th>
+<th data-quarto-table-cell-role="th">90th_percentile</th>
+<th data-quarto-table-cell-role="th">max</th>
+<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">problem_df</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>None</td>
+<td>[2, 3, 5]</td>
+<td>None</td>
+<td>5.36</td>
+<td>5.36</td>
+<td>8.06</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>None</td>
+<td>[2, 3, 4]</td>
+<td>None</td>
+<td>5.45</td>
+<td>5.45</td>
+<td>8.50</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>None</td>
+<td>[1, 2, 3]</td>
+<td>None</td>
+<td>5.59</td>
+<td>5.59</td>
+<td>9.00</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">3</th>
+<td>None</td>
+<td>[0, 2, 3]</td>
+<td>None</td>
+<td>5.67</td>
+<td>5.67</td>
+<td>9.36</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">4</th>
+<td>None</td>
+<td>[0, 2, 5]</td>
+<td>None</td>
+<td>6.21</td>
+<td>6.21</td>
+<td>9.33</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">5</th>
+<td>None</td>
+<td>[2, 4, 5]</td>
+<td>None</td>
+<td>6.29</td>
+<td>6.29</td>
+<td>9.26</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">6</th>
+<td>None</td>
+<td>[1, 2, 5]</td>
+<td>None</td>
+<td>6.31</td>
+<td>6.31</td>
+<td>9.45</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">7</th>
+<td>None</td>
+<td>[0, 2, 4]</td>
+<td>None</td>
+<td>6.32</td>
+<td>6.32</td>
+<td>9.70</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">8</th>
+<td>None</td>
+<td>[0, 1, 2]</td>
+<td>None</td>
+<td>6.39</td>
+<td>6.39</td>
+<td>9.77</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">9</th>
+<td>None</td>
+<td>[1, 3, 5]</td>
+<td>None</td>
+<td>6.64</td>
+<td>6.64</td>
+<td>11.58</td>
+<td>22.86</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">10</th>
+<td>None</td>
+<td>[3, 4, 5]</td>
+<td>None</td>
+<td>6.73</td>
+<td>6.73</td>
+<td>12.26</td>
+<td>21.71</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">11</th>
+<td>None</td>
+<td>[1, 3, 4]</td>
+<td>None</td>
+<td>6.76</td>
+<td>6.76</td>
+<td>11.32</td>
+<td>21.71</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">12</th>
+<td>None</td>
+<td>[0, 3, 4]</td>
+<td>None</td>
+<td>6.81</td>
+<td>6.81</td>
+<td>12.26</td>
+<td>21.71</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">13</th>
+<td>None</td>
+<td>[0, 1, 3]</td>
+<td>None</td>
+<td>6.92</td>
+<td>6.92</td>
+<td>11.93</td>
+<td>23.92</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">14</th>
+<td>None</td>
+<td>[1, 2, 4]</td>
+<td>None</td>
+<td>7.46</td>
+<td>7.46</td>
+<td>11.57</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>We can see it found the - best - second best - 3rd best - 10th best - and 11th best solutions</p>
+<p>Let’s go with an even higher alpha and ask for it to find more solutions.</p>
+<div id="2332a6c1" class="cell" data-execution_count="33">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb49"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>solution_small_grasp_higher_alpha_more_sols <span class="op">=</span> problem_small.solve(</span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>    p<span class="op">=</span><span class="dv">3</span>, search_strategy<span class="op">=</span><span class="st">"grasp"</span>,</span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a>    grasp_alpha<span class="op">=</span><span class="fl">0.95</span>, grasp_max_attempts<span class="op">=</span><span class="dv">50000</span>,</span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a>    grasp_num_solutions<span class="op">=</span><span class="dv">20</span></span>
+<span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Finding 20 diverse solutions (max 50000 attempts):   0%|          | 0/20 [00:00&lt;?, ?it/s]
+Finding 20 diverse solutions (max 50000 attempts):  15%|█▌        | 3/20 [00:00&lt;00:00, 22.93it/s]
+Finding 20 diverse solutions (max 50000 attempts):  75%|███████▌  | 15/20 [00:01&lt;00:00,  7.56it/s]
+/__w/lokigi/lokigi/lokigi/site.py:1343: UserWarning: GRASP exhausted attempt budget (50000 attempts) before finding 20 sufficiently diverse solutions. Returning 15 solutions.
+  outputs = self._grasp(</code></pre>
+</div>
+</div>
+<div id="203eb640" class="cell" data-execution_count="34">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb51"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a>solution_small_grasp_higher_alpha_more_sols.show_solutions()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="34">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">site_names</th>
+<th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average</th>
+<th data-quarto-table-cell-role="th">unweighted_average</th>
+<th data-quarto-table-cell-role="th">90th_percentile</th>
+<th data-quarto-table-cell-role="th">max</th>
+<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">problem_df</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>None</td>
+<td>[2, 3, 5]</td>
+<td>None</td>
+<td>5.36</td>
+<td>5.36</td>
+<td>8.06</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>None</td>
+<td>[2, 3, 4]</td>
+<td>None</td>
+<td>5.45</td>
+<td>5.45</td>
+<td>8.50</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>None</td>
+<td>[1, 2, 3]</td>
+<td>None</td>
+<td>5.59</td>
+<td>5.59</td>
+<td>9.00</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">3</th>
+<td>None</td>
+<td>[0, 2, 3]</td>
+<td>None</td>
+<td>5.67</td>
+<td>5.67</td>
+<td>9.36</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">4</th>
+<td>None</td>
+<td>[0, 2, 5]</td>
+<td>None</td>
+<td>6.21</td>
+<td>6.21</td>
+<td>9.33</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">5</th>
+<td>None</td>
+<td>[2, 4, 5]</td>
+<td>None</td>
+<td>6.29</td>
+<td>6.29</td>
+<td>9.26</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">6</th>
+<td>None</td>
+<td>[1, 2, 5]</td>
+<td>None</td>
+<td>6.31</td>
+<td>6.31</td>
+<td>9.45</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">7</th>
+<td>None</td>
+<td>[0, 2, 4]</td>
+<td>None</td>
+<td>6.32</td>
+<td>6.32</td>
+<td>9.70</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">8</th>
+<td>None</td>
+<td>[0, 1, 2]</td>
+<td>None</td>
+<td>6.39</td>
+<td>6.39</td>
+<td>9.77</td>
+<td>16.69</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">9</th>
+<td>None</td>
+<td>[1, 3, 5]</td>
+<td>None</td>
+<td>6.64</td>
+<td>6.64</td>
+<td>11.58</td>
+<td>22.86</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">10</th>
+<td>None</td>
+<td>[3, 4, 5]</td>
+<td>None</td>
+<td>6.73</td>
+<td>6.73</td>
+<td>12.26</td>
+<td>21.71</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">11</th>
+<td>None</td>
+<td>[1, 3, 4]</td>
+<td>None</td>
+<td>6.76</td>
+<td>6.76</td>
+<td>11.32</td>
+<td>21.71</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">12</th>
+<td>None</td>
+<td>[0, 3, 4]</td>
+<td>None</td>
+<td>6.81</td>
+<td>6.81</td>
+<td>12.26</td>
+<td>21.71</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">13</th>
+<td>None</td>
+<td>[0, 1, 3]</td>
+<td>None</td>
+<td>6.92</td>
+<td>6.92</td>
+<td>11.93</td>
+<td>23.92</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">14</th>
+<td>None</td>
+<td>[0, 1, 5]</td>
+<td>None</td>
+<td>7.54</td>
+<td>7.54</td>
+<td>11.90</td>
+<td>22.86</td>
+<td>0.0</td>
+<td>LSOA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L...</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>With an even higher alpha, we could choose to run for longer periods and be confident we’re exploring a good range of the solution space without the computational overhead of the brute force method.</p>
+
+
+</section>
+</section>
+
+<a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
+<script type="application/vnd.jupyter.widget-state+json">
+{"state":{"031a2c77fea04e1292c19adbcaf3f7dc":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"03ec4da37250484ca48a8aa7f0923a48":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"062e521da8fa40c6a8c8ef8ca0eb7b4e":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"0936466e9e5a4a199a21e74dedb53d44":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"09ac4be5d9644b9f8897307133ad5115":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_af56cde2b6924f9ca4dd3614d9de594b","IPY_MODEL_8af7a7fd5e0f40d8bc226641af741a0f","IPY_MODEL_611d2a38aa4c4ce896d1040c035dcf90"],"layout":"IPY_MODEL_55e5bde2bbb44a3daf1937ce375818c2","tabbable":null,"tooltip":null}},"138f16eb52d2497a8d1f63fb6a23d4fe":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"14d69ee941fe4a988f22b65554fc3b30":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_749445595d824d72a2c0d38871b7ef3c","max":3,"min":0,"orientation":"horizontal","style":"IPY_MODEL_17dc7d28bfe44792858d5bbdaf265d30","tabbable":null,"tooltip":null,"value":3}},"17dc7d28bfe44792858d5bbdaf265d30":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"1853e8b13d73425f919daac9743a9b6a":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"1d0ad342cef64281b976e018aeef1550":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"22d14514cb97439899ee1425bce2a147":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"2655499c25b84892b42bcb5a05247e06":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"2924cc22504b42998b3dbc1e5545f29e":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"2d588e4e8424467390cbad8ee8ff8419":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"2f09c33ae5da40a0ae4f0862ac612903":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"38784f2f6add4ce5acc13345943150e2":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"3bb159d34f8c4fa0a45fc004b990918d":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"40584c5c57e94b19b57e2aa005dff297":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_cbde18e15dee4538928b67164ba765fe","placeholder":"​","style":"IPY_MODEL_062e521da8fa40c6a8c8ef8ca0eb7b4e","tabbable":null,"tooltip":null,"value":" 10/10 [00:51&lt;00:00, 12.59s/it]"}},"4235be324c07495980130442334ba472":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"443372ff734343d9aa1e586ed275f8be":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"460dada480a946afb33e45e2f76be30e":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"4808f5215c1c4486b2b255380ebeb585":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"55e5bde2bbb44a3daf1937ce375818c2":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"5e236e82a71b4eb5b404f77cb4add454":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_8f5f33a494d04dd8b8a177324d217ad3","IPY_MODEL_14d69ee941fe4a988f22b65554fc3b30","IPY_MODEL_74d165a33c9544b8b0d42a0d02e4d8b0"],"layout":"IPY_MODEL_7b1a55f6712946a5a2e96709ca654de1","tabbable":null,"tooltip":null}},"611d2a38aa4c4ce896d1040c035dcf90":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_031a2c77fea04e1292c19adbcaf3f7dc","placeholder":"​","style":"IPY_MODEL_dfbf1c94627541aeb45b6061a04354b3","tabbable":null,"tooltip":null,"value":" 20/20 [00:00&lt;00:00, 254.42it/s]"}},"6abc34f510384a0caae8d43017d52bab":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"749445595d824d72a2c0d38871b7ef3c":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"74d165a33c9544b8b0d42a0d02e4d8b0":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_4808f5215c1c4486b2b255380ebeb585","placeholder":"​","style":"IPY_MODEL_38784f2f6add4ce5acc13345943150e2","tabbable":null,"tooltip":null,"value":" 3/3 [00:00&lt;00:00, 51.58it/s]"}},"79e2b303b9d348e3a40910887e4fd599":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_982a06a0bebf4334a90d2eeb6c1a86e0","placeholder":"​","style":"IPY_MODEL_2924cc22504b42998b3dbc1e5545f29e","tabbable":null,"tooltip":null,"value":"100%"}},"7b1a55f6712946a5a2e96709ca654de1":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"7dd99e5269f344fb9835e151a8e3bee5":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"7f6c504107d045f9bd909b33f56c49df":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_edef3fb483734e2eaf0e4f3d1c091c16","IPY_MODEL_bf0193b8d961469e93f2bea1f989b790","IPY_MODEL_c29db95afedf46c8ab034502c67bf449"],"layout":"IPY_MODEL_c844d7f371424d2aa55fb768d998e7f3","tabbable":null,"tooltip":null}},"8914f2f0b4554f26999f91753c8889cf":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"8af7a7fd5e0f40d8bc226641af741a0f":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_03ec4da37250484ca48a8aa7f0923a48","max":20,"min":0,"orientation":"horizontal","style":"IPY_MODEL_f2f69bd8002d40e0a376ce73f95d5830","tabbable":null,"tooltip":null,"value":20}},"8f5f33a494d04dd8b8a177324d217ad3":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_7dd99e5269f344fb9835e151a8e3bee5","placeholder":"​","style":"IPY_MODEL_2f09c33ae5da40a0ae4f0862ac612903","tabbable":null,"tooltip":null,"value":"100%"}},"982a06a0bebf4334a90d2eeb6c1a86e0":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"a401373d6a4c48dd9597e135393176be":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_79e2b303b9d348e3a40910887e4fd599","IPY_MODEL_c9c25a6144084e98b1884898849c2277","IPY_MODEL_ad0b070c6ab24d2bbedd45ae7d0842a7"],"layout":"IPY_MODEL_3bb159d34f8c4fa0a45fc004b990918d","tabbable":null,"tooltip":null}},"ad0b070c6ab24d2bbedd45ae7d0842a7":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_2d588e4e8424467390cbad8ee8ff8419","placeholder":"​","style":"IPY_MODEL_6abc34f510384a0caae8d43017d52bab","tabbable":null,"tooltip":null,"value":" 3/3 [00:00&lt;00:00, 46.52it/s]"}},"af56cde2b6924f9ca4dd3614d9de594b":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_22d14514cb97439899ee1425bce2a147","placeholder":"​","style":"IPY_MODEL_ed8e006cbe154a709f3f77a83646155b","tabbable":null,"tooltip":null,"value":"100%"}},"b9887ea75bd14df88f0b42f3e059cc6d":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_d75f6e232dd54f36a2e9151a4d32ecaa","IPY_MODEL_d3d5b03228934e1baf8f8bbe14c1d072","IPY_MODEL_40584c5c57e94b19b57e2aa005dff297"],"layout":"IPY_MODEL_460dada480a946afb33e45e2f76be30e","tabbable":null,"tooltip":null}},"bb8f9a4efbce401595fda9a2583e2402":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"bf0193b8d961469e93f2bea1f989b790":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_1853e8b13d73425f919daac9743a9b6a","max":3,"min":0,"orientation":"horizontal","style":"IPY_MODEL_4235be324c07495980130442334ba472","tabbable":null,"tooltip":null,"value":3}},"c29db95afedf46c8ab034502c67bf449":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_cc1b04336fe244b5b37db85bf8dacdf9","placeholder":"​","style":"IPY_MODEL_0936466e9e5a4a199a21e74dedb53d44","tabbable":null,"tooltip":null,"value":" 3/3 [00:00&lt;00:00, 50.08it/s]"}},"c56ae04032b343c88e553fd1dec2358e":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"c844d7f371424d2aa55fb768d998e7f3":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"c9c25a6144084e98b1884898849c2277":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_bb8f9a4efbce401595fda9a2583e2402","max":3,"min":0,"orientation":"horizontal","style":"IPY_MODEL_2655499c25b84892b42bcb5a05247e06","tabbable":null,"tooltip":null,"value":3}},"cbde18e15dee4538928b67164ba765fe":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"cc1b04336fe244b5b37db85bf8dacdf9":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"d3d5b03228934e1baf8f8bbe14c1d072":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_1d0ad342cef64281b976e018aeef1550","max":10,"min":0,"orientation":"horizontal","style":"IPY_MODEL_443372ff734343d9aa1e586ed275f8be","tabbable":null,"tooltip":null,"value":10}},"d75f6e232dd54f36a2e9151a4d32ecaa":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_e673c1964bf5428d821f5ca028880e84","placeholder":"​","style":"IPY_MODEL_c56ae04032b343c88e553fd1dec2358e","tabbable":null,"tooltip":null,"value":"100%"}},"dfbf1c94627541aeb45b6061a04354b3":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"e673c1964bf5428d821f5ca028880e84":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"ed8e006cbe154a709f3f77a83646155b":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"edef3fb483734e2eaf0e4f3d1c091c16":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_8914f2f0b4554f26999f91753c8889cf","placeholder":"​","style":"IPY_MODEL_138f16eb52d2497a8d1f63fb6a23d4fe","tabbable":null,"tooltip":null,"value":"100%"}},"f2f69bd8002d40e0a376ce73f95d5830":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}}},"version_major":2,"version_minor":0}
+</script>
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/hsma-tools\.github\.io\/lokigi\/");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+<p><a href="https://www.hsma.co.uk/"><img src="../../../lokigi_docs/assets/hsma_logo.png" class="img-fluid" width="150"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <a href="https://arc-swp.nihr.ac.uk/"><img src="../../../lokigi_docs/assets/nihr_logo.png" class="img-fluid" width="250"></a><br><br> <em>This work is independent research supported by the National Institute for Health and Care Research Applied Research Collaboration South West Peninsula.<br> The views expressed in this publication are those of the author(s) and not necessarily those of the National Institute for Health and Care Research or the Department of Health and Social Care.</em> <br><br></p>
+</div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>

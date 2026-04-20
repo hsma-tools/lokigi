@@ -2,58 +2,62 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/location/simple/simple.html</loc>
-    <lastmod>2026-04-15T14:15:57.289Z</lastmod>
+    <lastmod>2026-04-20T11:01:50.033Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/location/no_geometry/no_geometry.html</loc>
-    <lastmod>2026-04-15T14:14:09.534Z</lastmod>
+    <lastmod>2026-04-20T10:59:36.492Z</lastmod>
   </url>
   <url>
-    <loc>https://hsma-tools.github.io/lokigi/examples/location/larger_problems/larger_problems.html</loc>
-    <lastmod>2026-04-15T14:12:47.707Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/site.SiteSolutionSet.html</loc>
-    <lastmod>2026-04-15T14:12:50.872Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/site.EvaluatedCombination.html</loc>
-    <lastmod>2026-04-15T14:12:50.871Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/lokigi_docs/structure.html</loc>
-    <lastmod>2026-04-15T14:12:47.848Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/lokigi_docs/getting_started.html</loc>
-    <lastmod>2026-04-15T14:12:47.846Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/examples/examples.html</loc>
-    <lastmod>2026-04-15T14:12:47.698Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/lokigi_docs/index.html</loc>
-    <lastmod>2026-04-15T14:12:47.846Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/index.html</loc>
-    <lastmod>2026-04-15T14:12:50.840Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/site.SiteProblem.html</loc>
-    <lastmod>2026-04-15T14:12:50.869Z</lastmod>
+    <loc>https://hsma-tools.github.io/lokigi/examples/location/larger_problems/larger_problems_brute_force.html</loc>
+    <lastmod>2026-04-20T10:48:47.741Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/location/existing_sites/existing_sites.html</loc>
-    <lastmod>2026-04-15T14:13:52.497Z</lastmod>
+    <lastmod>2026-04-20T10:50:02.047Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/site.SiteProblem.html</loc>
+    <lastmod>2026-04-20T10:48:51.747Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/index.html</loc>
+    <lastmod>2026-04-20T10:48:51.654Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/lokigi_docs/index.html</loc>
+    <lastmod>2026-04-20T10:48:47.908Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/examples/examples.html</loc>
+    <lastmod>2026-04-20T10:48:47.715Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/lokigi_docs/getting_started.html</loc>
+    <lastmod>2026-04-20T10:48:47.908Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/lokigi_docs/structure.html</loc>
+    <lastmod>2026-04-20T10:48:47.932Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/site.EvaluatedCombination.html</loc>
+    <lastmod>2026-04-20T10:48:51.750Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/site.SiteSolutionSet.html</loc>
+    <lastmod>2026-04-20T10:48:51.752Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/examples/location/greedy_and_grasp/greedy_and_grasp.html</loc>
+    <lastmod>2026-04-20T10:58:31.865Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/location/mclp/mclp.html</loc>
-    <lastmod>2026-04-15T14:12:47.721Z</lastmod>
+    <lastmod>2026-04-20T10:59:14.086Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/location/p_median_and_p_center_variants/p_median_and_p_center_variants.html</loc>
-    <lastmod>2026-04-15T14:14:59.227Z</lastmod>
+    <lastmod>2026-04-20T11:00:38.604Z</lastmod>
   </url>
 </urlset>
