@@ -31,6 +31,8 @@ website:
         href: lokigi_docs/getting_started.qmd
       - text: "Examples"
         href: examples/examples.qmd
+      - text: "API Reference"
+        href: reference/index.qmd
     right:
       - icon: github
         href: https://github.com/hsma-tools/lokigi/
