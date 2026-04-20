@@ -178,10 +178,15 @@ pip install lokigi
 
 ## What does the name mean?
 
-**lokigi** is the [Esperanto](https://en.wikipedia.org/wiki/Esperanto) ![](assets/Flag_of_Esperanto.svg.png){height=30px} word for "to show".
-It can also be read as the backronym: "Visual Interactive Dynamics and Integrated Graphical Insights" - whichever floats your boat.
+**lokigi** is the [Esperanto](https://en.wikipedia.org/wiki/Esperanto) ![](assets/Flag_of_Esperanto.svg.png){height=30px} for 'to locate' or 'to place'
+
+It can also be read as the backronym 'Location Optimisation: K-best solution Inspection, Generation & Insights' - whichever floats your boat.
 
 <br>
+
+## How to cite lokigi
+
+Coming soon!
 
 ## Acknowledgements
 
