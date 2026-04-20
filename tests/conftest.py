@@ -14,6 +14,7 @@ def brighton_problem():
         demand_col="demand",
         location_id_col="LSOA",
     )
+
     problem.add_sites("sample_data/brighton_sites.geojson", candidate_id_col="site")
 
     problem.add_travel_matrix(

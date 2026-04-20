@@ -15,6 +15,66 @@ from typing import Literal
 
 
 class EvaluatedCombination:
+    """
+    Container for results and summary metrics of an evaluated site combination.
+
+    This class stores the outcome of evaluating a candidate solution (i.e.,
+    a set of selected sites) against a demand dataset, and computes a range
+    of summary statistics based on the minimum cost (e.g., travel time or
+    distance) from demand locations to the selected sites.
+
+    Parameters
+    ----------
+    solution_type : str
+        Label describing the type of solution (e.g., optimisation method or scenario).
+    site_names : list of str
+        Names of the selected sites in the solution.
+    site_indices : list of int
+        Indices of the selected sites corresponding to the original site list.
+    evaluated_combination_df : pandas.DataFrame
+        DataFrame containing evaluation results for each demand point. Must include:
+        - "min_cost": Minimum cost from each demand point to the selected sites.
+        - "within_threshold": Boolean indicator of whether the demand point is
+          within the specified coverage threshold.
+        - A demand column specified by ``site_problem._demand_data_demand_col``.
+    site_problem : object
+        Object containing problem configuration and metadata, including the name
+        of the demand column via ``_demand_data_demand_col``.
+    coverage_threshold : float, optional
+        Threshold used to determine whether a demand point is considered covered.
+        If provided, used to compute the proportion of demand points within coverage.
+
+    Attributes
+    ----------
+    solution_type : str
+        Type or label of the solution.
+    site_names : list of str
+        Names of the selected sites.
+    site_indices : list of int
+        Indices of the selected sites.
+    evaluated_combination_df : pandas.DataFrame
+        DataFrame containing per-demand-point evaluation results.
+    site_problem : object
+        Problem definition object.
+    coverage_threshold : float or None
+        Coverage threshold used in evaluation.
+
+    weighted_average : float
+        Demand-weighted average of the minimum cost.
+    unweighted_average : float
+        Simple (unweighted) average of the minimum cost.
+    percentile_90th : float
+        90th percentile of the minimum cost distribution.
+    max : float
+        Maximum minimum cost across all demand points.
+    proportion_within_coverage_threshold : float
+        Proportion of demand points that fall within the coverage threshold.
+
+    Notes
+    -----
+    The weighted average is computed using demand values as weights.
+    """
+
     def __init__(
         self,
         solution_type,
@@ -64,40 +124,184 @@ class EvaluatedCombination:
 
 
 class SiteSolutionSet:
+    """
+    Container for a set of evaluated site selection solutions.
+
+    This class stores and provides convenient access to a collection of
+    candidate solutions from a brute-force or heuristic search,
+    along with their associated evaluation metrics. It supports returning
+    and plotting details of the best-performing solutions.
+
+    Parameters
+    ----------
+    solution_df : pandas.DataFrame
+        DataFrame containing one row per evaluated solution. Typically includes:
+        - "site_indices": Indices of selected sites for the solution.
+        - One or more objective/metric columns (e.g., "weighted_average",
+          "unweighted_average", "90th_percentile", etc.).
+        The DataFrame is reset to a zero-based index upon initialisation.
+    site_problem : object
+        The originating problem instance used to generate and evaluate
+        the solutions.
+    objectives : str or list of str
+        Objective(s) used to evaluate and rank the solutions (e.g.,
+        "weighted_average", "mclp").
+    n_sites : int, optional
+        Number of sites selected in each solution (e.g., ``p`` in a p-median
+        or p-center problem).
+
+    Attributes
+    ----------
+    solution_df : pandas.DataFrame
+        DataFrame of evaluated solutions with metrics.
+    site_problem : object
+        Problem definition associated with the solutions.
+    objectives : str or list of str
+        Objective(s) used in evaluation.
+    n_sites : int or None
+        Number of sites in each solution.
+
+    Notes
+    -----
+    Solutions are typically pre-sorted before being passed to this class
+    (e.g., by objective value and tie-breakers). The optional ``rank_on``
+    argument in methods allows overriding this ordering dynamically.
+
+    The structure of ``solution_df`` is assumed to be consistent with the
+    outputs of the optimisation or search routine that generated it.
+    """
+
     def __init__(self, solution_df, site_problem, objectives, n_sites=None):
+        """
+        Initialise a SiteSolutionSet instance.
+
+        Parameters
+        ----------
+        solution_df : pandas.DataFrame
+            DataFrame containing evaluated solutions. Each row represents a
+            candidate solution and typically includes columns such as
+            "site_indices", "site_names", and one or more objective metrics.
+            The index is reset to a zero-based integer index on initialisation.
+        site_problem : object
+            The originating problem instance used to generate and evaluate
+            the solutions.
+        objectives : str or list of str
+            Objective(s) used to evaluate the solutions.
+        n_sites : int, optional
+            Number of sites selected in each solution.
+
+        Notes
+        -----
+        The input DataFrame is copied with its index reset to ensure consistent
+        positional indexing for downstream operations.
+        """
         self.solution_df = solution_df.reset_index(drop=True)
         self.site_problem = site_problem
         self.objectives = objectives
         self.n_sites = n_sites
 
     def show_solutions(self, rounding=2):
-        return round(self.solution_df, rounding)
+        """
+        Return the solution DataFrame with rounded values.
+
+        Parameters
+        ----------
+        rounding : int, default=2
+            Number of decimal places to round numeric columns to.
+
+        Returns
+        -------
+        pandas.DataFrame
+            The solution DataFrame with numeric values rounded to the specified
+            precision.
+
+        Notes
+        -----
+        This method does not modify the underlying DataFrame; it returns a
+        rounded copy.
+        """
+        if rounding is None:
+            return self.solution_df
+        else:
+            return round(self.solution_df, rounding)
 
     def return_best_combination_details(self, rank_on=None, top_n=1):
+        """
+        Return details of the top-ranked solution(s).
+
+        Parameters
+        ----------
+        rank_on : str, optional
+            Column name to sort the solutions by. If provided, solutions are
+            sorted in ascending order before selecting the top entries.
+            If None, the existing order of ``solution_df``, which is based on the
+            objective selected, is used.
+        top_n : int, default=1
+            Number of top solutions to return.
+
+        Returns
+        -------
+        pandas.DataFrame
+            DataFrame containing the top ``top_n`` solutions, including all
+            available columns. The index is reset in the returned DataFrame.
+
+        Notes
+        -----
+        Sorting is performed in ascending order, so lower values are assumed
+        to represent better solutions for the specified ranking metric.
+        """
         if rank_on is not None:
             return self.solution_df.sort_values(rank_on).head(top_n).reset_index()
         else:
             return self.solution_df.head(top_n).reset_index()
 
     def return_best_combination_site_indices(self, rank_on=None):
+        """
+        Return the site indices for the best-performing solution.
+
+        Parameters
+        ----------
+        rank_on : str, optional
+            Column name to sort the solutions by. If provided, the solution
+            with the lowest value in this column is selected.
+            If None, the existing order of ``solution_df``, which is based on the
+            objective selected, is used.
+
+        Returns
+        -------
+        object
+            The value of the "site_indices" column for the best solution.
+            Typically a list or array of site indices.
+
+        """
         if rank_on is not None:
-            return (
-                self.solution_df.sort_values(rank_on)
-                .head(1)["site_indices"]
-                .reset_index()[0]
-            )
+            return self.solution_df.sort_values(rank_on)["site_indices"].iloc[0]
         else:
-            return self.solution_df.head(1)["site_indices"].reset_index()[0]
+            return self.solution_df["site_indices"].iloc[0]
 
     def return_best_combination_site_names(self, rank_on=None):
+        """
+        Return the site names for the best-performing solution.
+
+        Parameters
+        ----------
+        rank_on : str, optional
+            Column name to sort the solutions by. If provided, the solution
+            with the lowest value in this column is selected.
+            If None, the existing order of ``solution_df``, which is based on the
+            objective selected, is used.
+
+        Returns
+        -------
+        object
+            The value of the "site_indices" column for the best solution.
+            Typically a list or array of site indices.
+
+        """
         if rank_on is not None:
-            return (
-                self.solution_df.sort_values(rank_on)
-                .head(1)["site_names"]
-                .reset_index()[0]
-            )
+            return self.solution_df.sort_values(rank_on)["site_names"].iloc[0]
         else:
-            return self.solution_df.head(1)["site_names"].reset_index()[0]
+            return self.solution_df["site_names"].iloc[0]
 
     def plot_travel_time_distribution(
         self,
@@ -111,6 +315,68 @@ class SiteSolutionSet:
         compare_to_best=False,
         **kwargs,
     ):
+        """
+        Plot travel time distributions for selected solutions.
+
+        This method generates faceted histograms of travel time (or cost)
+        distributions for the top and/or bottom-performing solutions in the
+        solution set. Each subplot corresponds to a single solution and includes
+        summary statistics annotations.
+
+        Parameters
+        ----------
+        top_n : int, optional, default=1
+            Number of top-ranked solutions to include. If ``rank_on`` is provided,
+            solutions are sorted before selection; otherwise, the existing order,
+            which is based on the objective chosen for solving, is used.
+        bottom_n : int, optional
+            Number of bottom-ranked solutions to include. If provided, these are
+            appended to the selected top solutions.
+        rank_on : str, optional
+            Column name used to rank solutions. Sorting is performed in ascending
+            order using this column, with ``secondary_ranking`` as a tie-breaker.
+            If None, no additional sorting is applied.
+        secondary_ranking : str, default="max"
+            Secondary column used for tie-breaking when sorting by ``rank_on``.
+        title : str, default="default"
+            Title for the plot. If "default", an automatic title is generated
+            based on ranking and objectives.
+        height : int, optional
+            Total height of the figure in pixels. If None, height is determined
+            dynamically using ``height_per_plot``.
+        height_per_plot : int, default=250
+            Height allocated per subplot when ``height`` is not specified.
+        compare_to_best : bool, default=False
+            If True, plots the difference in travel time relative to the best
+            solution (i.e., ``min_cost_diff``). Adds a vertical reference line
+            at zero. If False, plots absolute travel times (``min_cost``).
+        **kwargs
+            Additional keyword arguments passed to ``plotly.express.histogram``.
+
+        Returns
+        -------
+        plotly.graph_objects.Figure
+            A Plotly figure containing faceted histograms of travel time
+            distributions for the selected solutions.
+
+        Notes
+        -----
+        When ``compare_to_best=True``, the best solution (first in the filtered
+        set) is used as the reference for computing differences.
+
+        Subplots are arranged using ``facet_row``, with annotations adjusted
+        manually to align with subplot domains.
+
+        Vertical reference lines are added for key metrics when
+        ``compare_to_best=False``:
+        - Weighted average
+        - Unweighted average
+        - 90th percentile
+        - Maximum
+
+        The method assumes that lower values of the ranking metric correspond
+        to better solutions.
+        """
         if rank_on is not None:
             solutions_sorted = self.solution_df.sort_values(
                 [rank_on, secondary_ranking]
@@ -124,13 +390,13 @@ class SiteSolutionSet:
             filtered_dfs.append(solutions_sorted.head(top_n))
 
         if bottom_n is not None:
-            filtered_dfs.append(temp_bottom=solutions_sorted.tail(top_n))
+            filtered_dfs.append(temp_bottom=solutions_sorted.tail(bottom_n))
 
-        solutions_filtered = pd.concat(filtered_dfs)
+        solutions_filtered = pd.concat(filtered_dfs).drop_duplicates()
 
         dfs = []
         if compare_to_best:
-            best_df = solutions_filtered.head(1)["problem_df"][0]
+            best_df = solutions_filtered["problem_df"].iloc[0]
 
         for index, row in solutions_filtered.iterrows():
             df = row["problem_df"].copy()
@@ -174,9 +440,14 @@ class SiteSolutionSet:
         # rather than trusting the facet annotation's y position.
         facet_annotations = [a for a in fig.layout.annotations if "label=" in a.text]
 
+        num_plots = len(solutions_filtered)
+
         # Collect axis domains — facet_row creates yaxis, yaxis2, yaxis3 etc.
         axis_tops = []
-        for i in range(1, top_n + 1):
+        for i in range(
+            1,
+            num_plots + 1,
+        ):
             axis_key = "yaxis" if i == 1 else f"yaxis{i}"
             axis = fig.layout[axis_key]
             if axis and axis.domain:
@@ -297,6 +568,77 @@ class SiteSolutionSet:
         chosen_site_colour="magenta",
         unchosen_site_colour="grey",
     ):
+        """
+        Plot a map of the best-performing site combination.
+
+        This method visualises the spatial performance of the best solution in
+        the solution set, including travel costs, site allocations, or coverage
+        relative to a threshold. Regions are coloured according to the selected
+        metric, and candidate site locations can be overlaid.
+
+        Parameters
+        ----------
+        rank_on : str, optional
+            Column name used to rank solutions. If provided, the solution with
+            the lowest value in this column is selected. If None, the first row
+            of ``solution_df`` is used.
+        title : str or None, default="default"
+            Title for the plot. If "default", an automatic title is generated
+            based on the objective and solution metrics. If a string is provided,
+            it may be evaluated using ``_safe_evaluate`` with access to the
+            selected solution. If None, no title is set.
+        show_all_locations : bool, default=True
+            If True, plots all candidate site locations in addition to the
+            selected sites.
+        plot_site_allocation : bool, default=False
+            If True, regions are coloured by the assigned (nearest) site.
+            Overrides other colouring options.
+        plot_regions_not_meeting_threshold : bool, default=False
+            If True, regions are coloured based on whether they fall within
+            the coverage threshold. Overrides default cost-based colouring.
+        cmap : str or matplotlib colormap, optional
+            Colormap used for plotting. If None, a default is chosen:
+            - Sequential colormap ("Blues") for cost-based plots
+            - Qualitative colormap ("Set2") for site allocation plots
+        chosen_site_colour : str, default="magenta"
+            Colour used to plot selected site locations.
+        unchosen_site_colour : str, default="grey"
+            Colour used to plot unselected candidate site locations.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            The matplotlib Axes object containing the generated plot.
+
+        Raises
+        ------
+        ValueError
+            If the region geometry layer has not been initialised in the
+            ``site_problem`` instance.
+
+        Notes
+        -----
+        The method requires a valid ``region_geometry_layer`` to be present in
+        ``site_problem``. This should be added prior to calling this method.
+
+        The plot is generated using GeoPandas and includes a basemap via
+        ``contextily.add_basemap``.
+
+        Depending on the flags provided, regions are coloured by:
+        - "min_cost" (default): travel time/distance to the nearest site
+        - "selected_site": assigned site (categorical)
+        - "within_threshold": whether the region meets the coverage threshold
+
+        When plotting site locations, only GeoPandas-based candidate sites
+        are currently supported.
+
+        Titles are dynamically generated based on the objective type and may
+        include metrics such as weighted/unweighted averages, maximum cost,
+        and coverage proportion.
+
+        The method assumes that lower values of the ranking metric correspond
+        to better solutions.
+        """
         if self.site_problem.region_geometry_layer is None:
             raise ValueError(
                 "The region data has not been initialised in the problem class."
@@ -437,6 +779,97 @@ class SiteSolutionSet:
         n_cols=None,
         n_rows=None,
     ):
+        """
+        Plot maps for the top-performing site combinations.
+
+        This method generates a grid of subplots visualising the spatial
+        performance of the top ``n_best`` solutions. Each subplot represents
+        a single solution, showing either travel costs, site allocations, or
+        coverage relative to a threshold. Candidate site locations can also
+        be overlaid.
+
+        Parameters
+        ----------
+        n_best : int, default=10
+            Number of top solutions to plot. If greater than the number of
+            available solutions, all solutions are plotted.
+        rank_on : str, optional
+            Column name used to rank solutions. If provided, solutions are
+            sorted in ascending order and the top ``n_best`` are selected.
+            If None, the existing order of ``solution_df`` is used.
+        title : str or None, optional
+            Title applied to each subplot. If provided, overrides
+            ``subplot_title``. If None, subplot titles are controlled by
+            ``subplot_title``.
+        subplot_title : str or None, default="default"
+            Title for each subplot. If "default", an automatic title is
+            generated based on the objective and solution metrics. If a
+            string is provided, it may be evaluated using
+            ``_safe_evaluate`` with access to the selected solution.
+            If None, no subplot titles are shown.
+        show_all_locations : bool, default=True
+            If True, plots all candidate site locations in addition to the
+            selected sites.
+        plot_site_allocation : bool, default=False
+            If True, regions are coloured by the assigned (nearest) site.
+            Overrides other colouring options.
+        plot_regions_not_meeting_threshold : bool, default=False
+            If True, regions are coloured based on whether they fall within
+            the coverage threshold. Overrides default cost-based colouring.
+        cmap : str or matplotlib colormap, optional
+            Colormap used for plotting. If None, a default is chosen:
+            - Sequential colormap (e.g., "Blues") for cost-based plots
+            - Qualitative colormap (e.g., "Set2") for site allocation plots
+        chosen_site_colour : str, default="magenta"
+            Colour used to plot selected site locations.
+        unchosen_site_colour : str, default="grey"
+            Colour used to plot unselected candidate site locations.
+        n_cols : int, optional
+            Number of columns in the subplot grid. If None, determined
+            automatically.
+        n_rows : int, optional
+            Number of rows in the subplot grid. If None, determined
+            automatically.
+
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+            The matplotlib Figure object containing all subplots.
+        ax : matplotlib.axes.Axes
+            The last Axes object created in the plotting loop.
+
+        Raises
+        ------
+        ValueError
+            If the region geometry layer has not been initialised in the
+            ``site_problem`` instance.
+
+        Notes
+        -----
+        The method requires a valid ``region_geometry_layer`` to be present in
+        ``site_problem``. This should be added prior to calling this method.
+
+        Subplots are arranged in a grid determined by ``n_best``, ``n_cols``,
+        and ``n_rows``. If neither ``n_cols`` nor ``n_rows`` is provided, a
+        default layout with up to 5 columns is used.
+
+        Depending on the flags provided, regions are coloured by:
+        - "min_cost" (default): travel time/distance to the nearest site
+        - "selected_site": assigned site (categorical)
+        - "within_threshold": whether the region meets the coverage threshold
+
+        When plotting cost-based maps, a consistent global colour scale is
+        applied across all subplots.
+
+        When plotting categorical site allocations, a consistent colour
+        mapping is constructed across all subplots to ensure comparability.
+
+        A shared legend or colourbar is added to the figure depending on the
+        plotting mode.
+
+        The method assumes that lower values of the ranking metric correspond
+        to better solutions.
+        """
         if n_best > len(self.solution_df):
             n_best = len(self.solution_df)
 
@@ -653,6 +1086,51 @@ class SiteSolutionSet:
         rank_on=None,
         title="default",
     ):
+        """
+        Plot a bar chart of the top-performing site combinations.
+
+        This method visualises the performance of the top ``n_best`` solutions
+        using a bar chart, where each bar represents a solution and its value
+        corresponds to the selected metric (e.g., weighted average travel time).
+
+        Parameters
+        ----------
+        y_axis : str, default="weighted_average"
+            Column name representing the metric to plot on the y-axis.
+            This should correspond to a column in ``solution_df``.
+        n_best : int, optional, default=10
+            Number of top solutions to include in the plot. If None, all
+            solutions are included.
+        interactive : bool, default=True
+            If True, generates an interactive Plotly bar chart. If False,
+            generates a static Matplotlib bar chart.
+        rank_on : str, optional
+            Column name used to rank solutions. If provided, solutions are
+            sorted in ascending order before selecting the top ``n_best``.
+            If None, the existing order of ``solution_df`` is used.
+        title : str or None, default="default"
+            Title for the plot. If "default", an automatic title is generated
+            based on the ranking metric or objective. If None, no title is set.
+            Otherwise, the provided string is used as the title.
+
+        Returns
+        -------
+        plotly.graph_objects.Figure or matplotlib.figure.Figure
+            The generated bar chart. Returns a Plotly Figure if
+            ``interactive=True``, otherwise a Matplotlib Figure.
+
+        Notes
+        -----
+        The x-axis represents the selected site combinations (``site_indices``),
+        which are converted to strings for display.
+
+        When ``interactive=True``, Plotly Express is used to generate the chart.
+        When ``interactive=False``, a Matplotlib figure is created and returned.
+
+        The method assumes that lower values of the ranking metric correspond
+        to better solutions when ``rank_on`` is specified.
+        """
+
         if rank_on is not None:
             df = self.solution_df.sort_values(rank_on)
         else:
@@ -661,6 +1139,7 @@ class SiteSolutionSet:
             df = df.head(n_best)
 
         if interactive:
+            df = df.copy()
             df["site_indices"] = df["site_indices"].astype("str")
             if rank_on is not None:
                 title = f"Top {n_best} Solutions by {rank_on.replace('_', ' ').title()}"
@@ -719,10 +1198,68 @@ class SiteSolutionSet:
         height=4,
         show_points=True,
         theme="whitegrid",
-        maxx=False,
-        maxy=True,
+        maxx=None,
+        maxy=None,
         **kwargs,
     ):
+        """
+        Plot a Pareto front for two selected solution metrics.
+
+        This method generates a Pareto front visualisation comparing two
+        performance metrics across all evaluated solutions. It highlights
+        the trade-offs between objectives and optionally displays all points
+        alongside the Pareto-optimal frontier.
+
+        Parameters
+        ----------
+        x_axis : {"weighted_average", "unweighted_average", "90th_percentile", \
+                "max", "proportion_within_coverage_threshold"}, \
+                default="weighted_average"
+            Column name representing the metric to plot on the x-axis.
+        y_axis : {"weighted_average", "unweighted_average", "90th_percentile", \
+                "max", "proportion_within_coverage_threshold"}, \
+                default="max"
+            Column name representing the metric to plot on the y-axis.
+        height : float, default=4
+            Height of the plot in inches.
+        show_points : bool, default=True
+            If True, all solutions are plotted as points in addition to the
+            Pareto front.
+        theme : str, default="whitegrid"
+            Visual theme passed to the underlying plotting function.
+        maxx : bool, default=None
+            If True, the Pareto front is computed assuming the x-axis metric
+            is to be maximised. If False, it is minimised.
+            If None, the function automatically infers the value based on
+            the metric.
+        maxy : bool, default=None
+            If True, the Pareto front is computed assuming the y-axis metric
+            is to be maximised. If False, it is minimised.
+            If None, the function automatically infers the value based on
+            the metric.
+        **kwargs
+            Additional keyword arguments passed to ``spv.pareto_plot``.
+
+        Returns
+        -------
+        object
+            A Pareto plot object returned by ``spv.pareto_plot``. This is
+            typically a wrapper that can be rendered or further customised.
+
+        Notes
+        -----
+        The method relies on the external ``spv.pareto_plot`` function for
+        computation and visualisation of the Pareto front.
+
+        The interpretation of "optimal" depends on the ``maxx`` and ``maxy``
+        flags, which determine whether each axis is treated as a maximisation
+        or minimisation objective.
+        """
+        if maxx is None:
+            maxx = x_axis == "proportion_within_coverage_threshold"
+        if maxy is None:
+            maxy = y_axis == "proportion_within_coverage_threshold"
+
         plot_obj = spv.pareto_plot(
             self.solution_df,
             x=x_axis,
@@ -742,11 +1279,66 @@ class SiteSolutionSet:
         height=4,
         show_points=True,
         theme="whitegrid",
-        maxx=False,
-        maxy=True,
+        maxx=None,
+        maxy=None,
         cols=3,
         **kwargs,
     ):
+        """
+        Plot Pareto fronts for all pairs of solution metrics.
+
+        This method generates a grid of subplots, each showing the Pareto
+        front for a pairwise combination of performance metrics. It provides
+        a comprehensive view of trade-offs between all available objectives.
+
+        Parameters
+        ----------
+        height : float, default=4
+            Height (in inches) allocated to each subplot.
+        show_points : bool, default=True
+            If True, all solutions are plotted as points in addition to the
+            Pareto front in each subplot.
+        theme : str, default="whitegrid"
+            Visual theme passed to the underlying plotting function.
+        maxx : bool or None, default=None
+            If True, x-axis metrics are treated as maximisation objectives
+            when computing Pareto fronts. If False, they are minimised.
+            If None, the direction is inferred per metric.
+        maxy : bool or None, default=None
+            If True, y-axis metrics are treated as maximisation objectives
+            when computing Pareto fronts. If False, they are minimised.
+            If None, the direction is inferred per metric.
+        cols : int, default=3
+            Number of columns in the subplot grid.
+        **kwargs
+            Additional keyword arguments passed to ``spv.pareto_plot``.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            The matplotlib Figure containing all Pareto front subplots.
+
+        Notes
+        -----
+        The method constructs all pairwise combinations of the following metrics:
+        - "weighted_average"
+        - "unweighted_average"
+        - "90th_percentile"
+        - "max"
+        - "proportion_within_coverage_threshold" (included only if available)
+
+        Each subplot visualises the Pareto front for a pair of metrics using
+        the ``spv.pareto_plot`` function.
+
+        Subplots are arranged in a grid with a specified number of columns,
+        and rows are determined automatically.
+
+        Any unused subplot axes (if the grid is larger than required) are
+        removed from the figure.
+
+        The figure is closed before returning to prevent duplicate display
+        in some environments (e.g., Jupyter notebooks).
+        """
         metrics = [
             "weighted_average",
             "unweighted_average",
@@ -766,15 +1358,26 @@ class SiteSolutionSet:
 
         for idx, (x_metric, y_metric) in enumerate(metric_pairs):
             ax = axes[idx]
+            current_maxx = (
+                (x_metric == "proportion_within_coverage_threshold")
+                if maxx is None
+                else maxx
+            )
+            current_maxy = (
+                (y_metric == "proportion_within_coverage_threshold")
+                if maxy is None
+                else maxy
+            )
             plot_obj = spv.pareto_plot(
                 self.solution_df,
                 x=x_metric,
                 y=y_metric,
-                maxx=maxx,
-                maxy=maxy,
+                maxx=current_maxx,
+                maxy=current_maxy,
                 show_points=show_points,
                 height=height,
                 theme=theme,
+                **kwargs,
             )
             _ = plot_obj.on(ax).plot()
             ax.set_title(f"{y_metric} vs {x_metric}")

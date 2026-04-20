@@ -32,14 +32,57 @@ from .mixins.site_solvers import BruteForceMixin, GreedyMixin, GraspMixin
 
 class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
     """
-    SiteProblem.solve_pmedian.__doc__ = f'''
-    {SOLVER_DEFINITIONS['p_median']['goal']}
+    Facility location optimization for healthcare site planning.
 
-    Healthcare Context:
-    {SOLVER_DEFINITIONS['p_median']['healthcare_context']}
+    A comprehensive toolkit for solving spatial optimization problems in healthcare
+    service delivery. This class supports multiple location-allocation models
+    including p-median, p-center, and maximal covering location problems (MCLP),
+    with various solution strategies from exact brute-force to heuristic methods.
 
-    Trade-offs:
-    {SOLVER_DEFINITIONS['p_median']['trade_off']}
+    The class handles the complete workflow from data ingestion (demand patterns,
+    candidate sites, travel costs) through optimization to solution evaluation,
+    with built-in support for geographic data and spatial visualizations.
+
+    Parameters
+    ----------
+    preferred_crs : str, default "EPSG:27700"
+        The coordinate reference system for spatial data. All geographic inputs
+        will be transformed to this CRS. Defaults to British National Grid.
+    debug_mode : bool, default True
+        If True, enables verbose output during optimization and data processing.
+
+    Attributes
+    ----------
+    demand_data : pandas.DataFrame or geopandas.GeoDataFrame or None
+        Patient or service demand locations with associated weights.
+    candidate_sites : geopandas.GeoDataFrame or None
+        Potential facility locations available for optimization.
+    travel_matrix : pandas.DataFrame or None
+        Cost matrix (time/distance) between demand points and candidate sites.
+    region_geometry_layer : geopandas.GeoDataFrame or None
+        Optional geographic boundaries for visualization (e.g., LSOA polygons).
+    travel_and_demand_df : pandas.DataFrame or geopandas.GeoDataFrame or None
+        Internal merged dataset combining demand and travel cost data.
+    total_n_sites : int or None
+        Total number of candidate facilities available for optimization.
+
+    Notes
+    -----
+    The class implements three inheritance mixins providing different solution
+    strategies:
+
+    - BruteForceMixin: Exhaustive enumeration for small problems
+    - GreedyMixin: Fast constructive heuristic for larger problems
+    - GraspMixin: Randomized adaptive search with local optimization
+
+    Supported optimization objectives:
+
+    - 'simple_p_median': Minimize total unweighted travel distance/time
+    - 'hybrid_simple_p_median': Simple p-median with maximum distance/time constraint
+    - 'p_median': Minimize total weighted travel distance/time
+    - 'hybrid_p_median': P-median with maximum distance/time constraint
+    - 'p_center': Minimize maximum travel distance/time
+    - 'mclp': Maximize coverage within a distance/time threshold
     """
 
     def __init__(self, preferred_crs="EPSG:27700", debug_mode=True):
