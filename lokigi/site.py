@@ -1077,7 +1077,7 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
             unsupported objective/strategy is provided, or if `max_value_cutoff`
             is used with an incompatible objective.
 
-        Warns
+        Raises
         -----
         UserWarning
             If multi-objective lists are provided (only the first is taken).
