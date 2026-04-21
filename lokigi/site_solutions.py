@@ -392,7 +392,20 @@ class SiteSolutionSet:
         if bottom_n is not None:
             filtered_dfs.append(temp_bottom=solutions_sorted.tail(bottom_n))
 
-        solutions_filtered = pd.concat(filtered_dfs).drop_duplicates()
+        solutions_filtered = pd.concat(filtered_dfs)
+
+        # Convert columns to be compared to tuples to allow dupliate detection
+        solutions_filtered["site_indices_comp"] = solutions_filtered[
+            "site_indices"
+        ].apply(lambda x: tuple(x) if isinstance(x, np.ndarray) else x)
+
+        solutions_filtered["site_names_comp"] = solutions_filtered["site_names"].apply(
+            lambda x: tuple(x) if isinstance(x, np.ndarray) else x
+        )
+
+        solutions_filtered = solutions_filtered.drop_duplicates(
+            subset=["site_indices_comp", "site_names_comp"]
+        )
 
         dfs = []
         if compare_to_best:
