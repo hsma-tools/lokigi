@@ -1,6 +1,6 @@
 ---
 title: "Examples Gallery"
-subtitle: "Explore what's possible with vidigi through these hands-on examples."
+subtitle: "Explore what's possible with lokigi through these hands-on examples."
 toc: true
 listing:
   - id: sites-problem-basic
