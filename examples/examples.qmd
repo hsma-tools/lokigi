@@ -3,17 +3,31 @@ title: "Examples Gallery"
 subtitle: "Explore what's possible with vidigi through these hands-on examples."
 toc: true
 listing:
-  - id: single-objective-site
+  - id: sites-problem-basic
     contents:
       - "location/simple/simple.ipynb"
       - "location/existing_sites/existing_sites.ipynb"
       - "location/no_geometry/no_geometry.ipynb"
-      - "location/larger_problems/larger_problems.ipynb"
+    type: grid
+    sort: false
+    grid-columns: 3
+    template: ../lokigi_docs/resources/listing.ejs
+
+  - id: sites-problem-type
+    contents:
       - "location/p_median_and_p_center_variants/p_median_and_p_center_variants.ipynb"
       - "location/mclp/mclp.ipynb"
+    type: grid
+    sort: false
+    grid-columns: 3
+    template: ../lokigi_docs/resources/listing.ejs
+
+  - id: sites-solver-type
+    contents:
+      - "location/larger_problems/larger_problems_brute_force.ipynb"
       - "location/greedy_and_grasp/greedy_and_grasp.ipynb"
     type: grid
-    sort: "title"
+    sort: false
     grid-columns: 3
     template: ../lokigi_docs/resources/listing.ejs
 
@@ -23,5 +37,21 @@ listing:
 
 Examples relating to optimizing the combination of sites to meet a single objective - for example, minimising the average travel time of individuals to a site.
 
-::: {#single-objective-site}
+### Basic site problem examples
+
+::: {#sites-problem-basic}
+:::
+
+
+### Different Problem Types
+
+::: {#sites-problem-type}
+:::
+
+
+### Advanced Solver Options
+
+When a problem is too big for evaluating and storing every combination, lokigi offers other options.
+
+::: {#sites-solver-type}
 :::
