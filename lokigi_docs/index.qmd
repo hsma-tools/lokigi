@@ -71,6 +71,18 @@ lokigi exists to make the process of providing decision support for healthcare p
 Focussing on solving discrete facility location problems — problems where you need to make the best decision from a range of candidate locations — lokigi provides tools to structure your problem, run optimization algorithms, and communicate the results effectively.
 
 
+:::{.callout-warning}
+Lokigi is currently in an alpha state. We would not recommend using it for projects just yet as the test suite is limited and more validation needs to be undertaken in general.
+
+However, we would welcome your input on the design, usability and features of the project. Please raise issues [over on GitHub]().
+:::
+
+:::{.callout-important}
+Breaking changes to the API may occur with minor releases prior to v1.0 release.
+
+All breaking changes past v1.0 will incur major version changes.
+:::
+
 ```{=html}
 
 <section id="image-carousel" class="splide" aria-label="Beautiful Images">

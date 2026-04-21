@@ -1095,7 +1095,9 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
             (GRASP only) Maximum iterations to find a valid solution.
         grasp_min_sites_different : int, default 1
             (GRASP only) Minimum number of sites that must differ between
-            generated solutions.
+            generated solutions. Useful for generating a more diverse
+            solution pool, though you may need to increase the max_attempts
+            at the same time.
         grasp_local_search_chance : float, default 0.8
             (GRASP only) The probability (0.0 to 1.0) of performing a local
             search to improve a found solution.
