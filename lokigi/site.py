@@ -111,6 +111,12 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
         self._region_geometry_layer_type = None
         self._region_geometry_layer_common_col = None
 
+        self.equity_data = None
+        self._equity_data_type = None
+        self._equity_data_equity_col = None
+        self._equity_data_common_col = None
+        self._equity_data_label = None
+
         # self.baseline_sites = None  # Current existing clinics
         # self._baseline_sites_type = None
 
@@ -234,14 +240,112 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
         """
         return self.demand_data
 
+    def add_equity_data(
+        self,
+        equity_data,
+        equity_col,
+        common_col,
+        label,
+        continuous_measure=False,
+        n_bins=10,
+        reverse=False,
+    ):
+        """
+        Add a dataframe containing equity data into your problem.
+
+        This method associates demand points with an equity metric (such as
+        the Index of Multiple Deprivation). If a continuous measure is provided,
+        it is automatically discretized into deciles (or maximum possible quantiles)
+        to facilitate categorical plotting and comparative equity analysis.
+
+        Parameters
+        ----------
+        equity_data : str, pandas.DataFrame, or geopandas.GeoDataFrame
+            The input data containing the equity metrics. Can be a filepath
+            or an already loaded dataframe object.
+        equity_col : str
+            The name of the column in `equity_data` containing the equity
+            values or categories to be used.
+        common_col : str
+            The name of the ID column used to join this data to the primary
+            demand/spatial data in the SiteProblem.
+        label : str
+            A human-readable label for the equity metric (e.g., 'IMD Decile',
+            'Age Group'). This is used internally for auto-generating plot
+            titles and table headers.
+        continuous_measure : bool, default False
+            If True, treats `equity_col` as continuous numerical data and
+            uses quantile-based discretization to convert it into deciles (1-10).
+            The raw continuous data is preserved in a new column named
+            `{equity_col}_raw`.
+        reverse : bool, default False
+            Only applicable if `continuous_measure` is True. By default (False),
+            lower continuous values are assigned to lower deciles (e.g., 1).
+            If True, the mapping is inverted so that lower continuous values
+            are assigned to the highest deciles.
+
+        Raises
+        ------
+        ValueError
+            If `continuous_measure` is True but the data cannot be meaningfully
+            binned due to too many identical values.
+
+        Notes
+        -----
+        When `continuous_measure` is True, `pandas.qcut` is used with
+        `duplicates='drop'`. If the data is highly skewed with duplicate values,
+        this may result in fewer than 10 bins. The method handles this dynamically
+        to ensure the resulting categories always start at 1.
+        """
+        loaded_df, df_type = _load_spatial_or_tabular_data(equity_data)
+
+        if continuous_measure:
+            loaded_df[f"{equity_col}_raw"] = loaded_df[equity_col]
+
+            # We use qcut to split into 10 even groups (or whatever the user passes, but we'll
+            # strongly recommend deciles).
+            # labels=False returns 0-9, so we add 1 to get 1-10 for 'deciles'.
+            try:
+                bins = pd.qcut(
+                    loaded_df[f"{equity_col}_raw"],
+                    n_bins,
+                    labels=False,
+                    duplicates="drop",
+                )
+
+                if reverse:
+                    # Dynamically invert based on the actual number of bins created
+                    max_bin = bins.max()
+                    loaded_df[equity_col] = (max_bin - bins) + 1
+                else:
+                    loaded_df[equity_col] = bins + 1
+            except ValueError as e:
+                print(
+                    f"Warning: Could not create {n_bins} distinct categories for {equity_col}. "
+                    "Check if the data has too many identical values."
+                )
+                raise e
+
+        cols_to_include = [common_col, equity_col]
+        if continuous_measure:
+            cols_to_include.append(f"{equity_col}_raw")
+
+        self.equity_data = loaded_df[cols_to_include]
+        self._equity_data_type = "pandas"  # We drop any geometry data here
+        self._equity_data_equity_col = equity_col
+        self._equity_data_common_col = common_col
+        self._equity_data_label = label
+
+    def show_equity_data(self):
+        return self.equity_data
+
     def add_region_geometry_layer(self, region_geometry_df, common_col):
         """
-        Add demand data to the site problem and validate its structure.
+        Add a region geodataframe to the site problem and validate its structure.
 
-        This method processes an input DataFrame or GeoDataFrame (or path) containing
-        observed demand. It validates the presence of required columns and
-        aligns the spatial or tabular data for use within the SiteProblem
-        context.
+        This method processes an input GeoDataFrame (or path) containing
+        geometry data for the region of interest. It validates the presence of
+        required columns and aligns the data for use within the SiteProblem context.
 
         If a preferred CRS has been passed and this dataframe is not of the preferred CRS,
         this dataframe will be transformed on loading to the preferred CRS. If no preferred
@@ -307,8 +411,12 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
         self,
         interactive=False,
         plot_demand=False,
+        plot_equity=False,
         cmap="Blues",
         tiles="CartoDB positron",
+        plot_region_of_interest_only=False,
+        edgecolor="black",
+        linewidth=0.5,
         **kwargs,
     ):
         """
@@ -368,6 +476,11 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
                 "Please run `.add_demand()` first or change the `plot_demand` parameter to False."
             )
 
+        if plot_demand and plot_equity:
+            raise ValueError(
+                "Cannot plot both demand and equity. Please set one option to False."
+            )
+
         if plot_demand:
             plotting_df = self.region_geometry_layer.merge(
                 self.demand_data,
@@ -389,13 +502,80 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
                 return m
             else:
                 fig = plotting_df.plot(
-                    column=self._demand_data_demand_col, legend=True, **kwargs
+                    column=self._demand_data_demand_col,
+                    legend=True,
+                    cmap=cmap,
+                    edgecolor=edgecolor,
+                    linewidth=linewidth,
+                    **kwargs,
                 )
 
                 return fig
 
+        if plot_equity:
+            plotting_df = pd.merge(
+                self.region_geometry_layer,
+                self.equity_data,
+                left_on=self._region_geometry_layer_common_col,
+                right_on=self._equity_data_common_col,
+            )
+
+            if plot_region_of_interest_only:
+                if self.demand_data is None:
+                    warn(
+                        "No demand data provided so cannot restrict to region of interest."
+                    )
+
+                plotting_df = plotting_df.merge(
+                    self.demand_data[[self._demand_data_id_col]],
+                    left_on=self._region_geometry_layer_common_col,
+                    right_on=self._demand_data_id_col,
+                    how="inner",
+                )
+
+            if interactive:
+                m = plotting_df.explore(
+                    column=self._equity_data_equity_col,  # make choropleth based on demand col
+                    tooltip=self._equity_data_equity_col,  # show demand col value in tooltip (on hover)
+                    popup=True,  # show all values in popup (on click)
+                    cmap=cmap,  # use "Blues" matplotlib colormap
+                    style_kwds=dict(color="black"),
+                    tiles=tiles,
+                    **kwargs,
+                )
+
+                return m
+            else:
+                fig = plotting_df.plot(
+                    column=self._equity_data_equity_col,
+                    legend=True,
+                    cmap=cmap,
+                    edgecolor=edgecolor,
+                    linewidth=linewidth,
+                    **kwargs,
+                )
+
+                return fig
+
+        if plot_region_of_interest_only:
+            if self.demand_data is None:
+                warn(
+                    "No demand data provided so cannot restrict to region of interest."
+                )
+
+            plotting_df = plotting_df.merge(
+                self.demand_data[[self._demand_data_id_col]],
+                left_on=self._region_geometry_layer_common_col,
+                right_on=self._demand_data_id_col,
+                how="inner",
+            )
+        else:
+            plotting_df = self.region_geometry_layer
+
         if interactive:
-            m = self.region_geometry_layer.explore(tiles=tiles, **kwargs)
+            m = self.region_geometry_layer.explore(
+                tiles=tiles, edgecolor=edgecolor, linewidth=linewidth, **kwargs
+            )
             return m
         else:
             fig = self.region_geometry_layer.plot(**kwargs)
