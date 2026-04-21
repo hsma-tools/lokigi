@@ -54,9 +54,11 @@ This is a grid of travel times - or another 'cost' parameter that you want to op
 
 The **rows** should represent where people would start their journey from.
 
-The first **column**
+The first **column** should contain the names of the places people would start their journey from. In location problems in a UK context, we often use something like LSOA or MSOA.
 
-The remaining **columns** should represent where people would end their journey - i.e. all of your candidate sites.
+The remaining **columns** should represent where people would end their journey - i.e. all of your candidate sites. Here we will use names to represent each site; we can pass in exact coordinates or other details in a different step.
+
+The values in each cell within your grid would be the cost parameter: the travel time, distance, or another option like CO2 emissions.
 
 Here is an example dataset in the correct format.
 
@@ -95,6 +97,12 @@ problem.add_travel_matrix(
 3.  We can optionally convert the values in our travel matrix. This travel matrix records travel times in seconds, so we use that as our 'from_unit'...
 4.  ... and we would prefer to display our times in minutes, so we provide that as the 'to' unit.
 
+:::{.callout-tip}
+If we weren't doing a conversion, we can just pass the 'unit' parameter to describe the unit used in our dataset, and this will then be picked up when we're plotting our solution, so it's worth specifying here.
+
+If we're doing a conversion, we don't need to pass the 'unit' parameter too as lokigi will automatically set this using the 'to_unit'.
+:::
+
 Let's now view our dataset.
 
 ```{python}
@@ -105,12 +113,14 @@ problem.show_travel_matrix().head()
 We can see that we the travel times for every LSOA to 6 possible sites.
 
 ::: callout-note
-At present, lokigi assumes you always want to **minimize** the cost - i.e. you want people to travel the **shortest** distance or have the **shortest** travel time, or undertake journeys that emit the **least** amount of CO_2.
+At present, lokigi assumes you **always** want to **minimize** the cost parameter - i.e. you want people to travel the **shortest** distance or have the **shortest** travel time, or undertake journeys that emit the **least** amount of CO2.
 
 If you need lokigi to be able to support **maximising** a cost objective, please raise an issue on the repository: <https://github.com/hsma-tools/lokigi/issues>
 :::
 
 ::: callout-tip
+Lokigi doesn't handle generating travel/cost matrices. It assumes you have already got this data to feed into it.
+
 Interested in generating your own travel matrices in this format?
 
 Check out the ["Lookup Up Travel Times Using APIs"](https://geographic.hsma.co.uk/mtt_travel_time_apis.html) chapter of the HSMA geographic book.
@@ -300,7 +310,7 @@ A more detailed breakdown of the allowed data is provided below.
 +--------------------+--------------------------------------------------------------+--------------------+----------------------------------------------------+---------------------------------------------------------------------------------------------+--------------------------------------------------------+--------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------+
 | Input Data         | Relevant Functions + mandatory parameters                    | Optional/Mandatory | Accepted Formats                                   | Required Columns                                                                            | Required Rows                                          | Cell Contents                                                                  | Commonalities                                                                                             |
 +====================+==============================================================+====================+====================================================+=============================================================================================+========================================================+================================================================================+===========================================================================================================+
-| Travel/Cost Matrix | `.add_travel_matrix(travel_matrix_df, source_col)`           | Mandatory          | - Pandas dataframe                                 | One column should represent the                                                             | 'Sources' (regions people are travelling from) as rows | Cells are a figure to optimize on - e.g. travel time, distance, CO_2 emissions | The 'destinations' column should have destinations in the same format as the region_geometry              |
+| Travel/Cost Matrix | `.add_travel_matrix(travel_matrix_df, source_col)`           | Mandatory          | - Pandas dataframe                                 | One column should represent the                                                             | 'Sources' (regions people are travelling from) as rows | Cells are a figure to optimize on - e.g. travel time, distance, CO2 emissions | The 'destinations' column should have destinations in the same format as the region_geometry              |
 |                    |                                                              |                    |                                                    |                                                                                             |                                                        |                                                                                |                                                                                                           |
 |                    | `show_travel_matrix()`                                       |                    | - Path to csv, parquet                             | The remaining columns should be 'Destinations' (places people are travelling to) as columns |                                                        |                                                                                | The sources should match up with the site names used in the site locations dataset (if provided)          |
 +--------------------+--------------------------------------------------------------+--------------------+----------------------------------------------------+---------------------------------------------------------------------------------------------+--------------------------------------------------------+--------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------+
