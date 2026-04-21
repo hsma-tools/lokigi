@@ -400,8 +400,145 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    site_problem,</span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    coverage_threshold<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Container for results and summary metrics of an evaluated site combination.</p>
+<p>This class stores the outcome of evaluating a candidate solution (i.e., a set of selected sites) against a demand dataset, and computes a range of summary statistics based on the minimum cost (e.g., travel time or distance) from demand locations to the selected sites.</p>
+<section id="parameters" class="level2 doc-section doc-section-parameters">
+<h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 6%">
+<col style="width: 4%">
+<col style="width: 85%">
+<col style="width: 3%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>solution_type</td>
+<td>str</td>
+<td>Label describing the type of solution (e.g., optimisation method or scenario).</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td>site_names</td>
+<td>list of str</td>
+<td>Names of the selected sites in the solution.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td>site_indices</td>
+<td>list of int</td>
+<td>Indices of the selected sites corresponding to the original site list.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td>evaluated_combination_df</td>
+<td>pandas.DataFrame</td>
+<td>DataFrame containing evaluation results for each demand point. Must include: - “min_cost”: Minimum cost from each demand point to the selected sites. - “within_threshold”: Boolean indicator of whether the demand point is within the specified coverage threshold. - A demand column specified by <code>site_problem._demand_data_demand_col</code>.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td>site_problem</td>
+<td>object</td>
+<td>Object containing problem configuration and metadata, including the name of the demand column via <code>_demand_data_demand_col</code>.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td>coverage_threshold</td>
+<td>float</td>
+<td>Threshold used to determine whether a demand point is considered covered. If provided, used to compute the proportion of demand points within coverage.</td>
+<td><code>None</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="attributes" class="level2 doc-section doc-section-attributes">
+<h2 class="doc-section doc-section-attributes anchored" data-anchor-id="attributes">Attributes</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 30%">
+<col style="width: 14%">
+<col style="width: 55%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>solution_type</td>
+<td>str</td>
+<td>Type or label of the solution.</td>
+</tr>
+<tr class="even">
+<td>site_names</td>
+<td>list of str</td>
+<td>Names of the selected sites.</td>
+</tr>
+<tr class="odd">
+<td>site_indices</td>
+<td>list of int</td>
+<td>Indices of the selected sites.</td>
+</tr>
+<tr class="even">
+<td>evaluated_combination_df</td>
+<td>pandas.DataFrame</td>
+<td>DataFrame containing per-demand-point evaluation results.</td>
+</tr>
+<tr class="odd">
+<td>site_problem</td>
+<td>object</td>
+<td>Problem definition object.</td>
+</tr>
+<tr class="even">
+<td>coverage_threshold</td>
+<td>float or None</td>
+<td>Coverage threshold used in evaluation.</td>
+</tr>
+<tr class="odd">
+<td>weighted_average</td>
+<td>float</td>
+<td>Demand-weighted average of the minimum cost.</td>
+</tr>
+<tr class="even">
+<td>unweighted_average</td>
+<td>float</td>
+<td>Simple (unweighted) average of the minimum cost.</td>
+</tr>
+<tr class="odd">
+<td>percentile_90th</td>
+<td>float</td>
+<td>90th percentile of the minimum cost distribution.</td>
+</tr>
+<tr class="even">
+<td>max</td>
+<td>float</td>
+<td>Maximum minimum cost across all demand points.</td>
+</tr>
+<tr class="odd">
+<td>proportion_within_coverage_threshold</td>
+<td>float</td>
+<td>Proportion of demand points that fall within the coverage threshold.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="notes" class="level2 doc-section doc-section-notes">
+<h2 class="doc-section doc-section-notes anchored" data-anchor-id="notes">Notes</h2>
+<p>The weighted average is computed using demand values as weights.</p>
 
 
+</section>
 </section>
 
 <a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->

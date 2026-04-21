@@ -393,9 +393,109 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="lokigi.site.SiteProblem" class="level1">
 <h1>site.SiteProblem</h1>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem(preferred_crs<span class="op">=</span><span class="st">'EPSG:27700'</span>, debug_mode<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>SiteProblem.solve_pmedian.__doc__ = f’’’ {SOLVER_DEFINITIONS[‘p_median’][‘goal’]}</p>
-<p>Healthcare Context: {SOLVER_DEFINITIONS[‘p_median’][‘healthcare_context’]}</p>
-<p>Trade-offs: {SOLVER_DEFINITIONS[‘p_median’][‘trade_off’]}</p>
+<p>Facility location optimization for healthcare site planning.</p>
+<p>A comprehensive toolkit for solving spatial optimization problems in healthcare service delivery. This class supports multiple location-allocation models including p-median, p-center, and maximal covering location problems (MCLP), with various solution strategies from exact brute-force to heuristic methods.</p>
+<p>The class handles the complete workflow from data ingestion (demand patterns, candidate sites, travel costs) through optimization to solution evaluation, with built-in support for geographic data and spatial visualizations.</p>
+<section id="parameters" class="level2 doc-section doc-section-parameters">
+<h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 8%">
+<col style="width: 4%">
+<col style="width: 78%">
+<col style="width: 8%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>preferred_crs</td>
+<td>str</td>
+<td>The coordinate reference system for spatial data. All geographic inputs will be transformed to this CRS. Defaults to British National Grid.</td>
+<td><code>"EPSG:27700"</code></td>
+</tr>
+<tr class="even">
+<td>debug_mode</td>
+<td>bool</td>
+<td>If True, enables verbose output during optimization and data processing.</td>
+<td><code>True</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="attributes" class="level2 doc-section doc-section-attributes">
+<h2 class="doc-section doc-section-attributes anchored" data-anchor-id="attributes">Attributes</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 15%">
+<col style="width: 35%">
+<col style="width: 49%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>demand_data</td>
+<td>pandas.DataFrame or geopandas.GeoDataFrame or None</td>
+<td>Patient or service demand locations with associated weights.</td>
+</tr>
+<tr class="even">
+<td>candidate_sites</td>
+<td>geopandas.GeoDataFrame or None</td>
+<td>Potential facility locations available for optimization.</td>
+</tr>
+<tr class="odd">
+<td>travel_matrix</td>
+<td>pandas.DataFrame or None</td>
+<td>Cost matrix (time/distance) between demand points and candidate sites.</td>
+</tr>
+<tr class="even">
+<td>region_geometry_layer</td>
+<td>geopandas.GeoDataFrame or None</td>
+<td>Optional geographic boundaries for visualization (e.g., LSOA polygons).</td>
+</tr>
+<tr class="odd">
+<td>travel_and_demand_df</td>
+<td>pandas.DataFrame or geopandas.GeoDataFrame or None</td>
+<td>Internal merged dataset combining demand and travel cost data.</td>
+</tr>
+<tr class="even">
+<td>total_n_sites</td>
+<td>int or None</td>
+<td>Total number of candidate facilities available for optimization.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="notes" class="level2 doc-section doc-section-notes">
+<h2 class="doc-section doc-section-notes anchored" data-anchor-id="notes">Notes</h2>
+<p>The class implements three inheritance mixins providing different solution strategies:</p>
+<ul>
+<li>BruteForceMixin: Exhaustive enumeration for small problems</li>
+<li>GreedyMixin: Fast constructive heuristic for larger problems</li>
+<li>GraspMixin: Randomized adaptive search with local optimization</li>
+</ul>
+<p>Supported optimization objectives:</p>
+<ul>
+<li>‘simple_p_median’: Minimize total unweighted travel distance/time</li>
+<li>‘hybrid_simple_p_median’: Simple p-median with maximum distance/time constraint</li>
+<li>‘p_median’: Minimize total weighted travel distance/time</li>
+<li>‘hybrid_p_median’: P-median with maximum distance/time constraint</li>
+<li>‘p_center’: Minimize maximum travel distance/time</li>
+<li>‘mclp’: Maximize coverage within a distance/time threshold</li>
+</ul>
+</section>
 <section id="methods" class="level2">
 <h2 class="anchored" data-anchor-id="methods">Methods</h2>
 <table class="caption-top table">
@@ -478,8 +578,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Add demand data to the site problem and validate its structure.</p>
 <p>This method processes an input DataFrame or GeoDataFrame (or path) containing observed demand. It validates the presence of required columns and aligns the spatial or tabular data for use within the SiteProblem context.</p>
-<section id="parameters" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h4>
+<section id="parameters-1" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-1">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 7%">
@@ -566,8 +666,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="notes" class="level4 doc-section doc-section-notes">
-<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes">Notes</h4>
+<section id="notes-1" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-1">Notes</h4>
 <p>The method updates several internal attributes: - <code>self.demand_data</code>: Stores the processed DataFrame. - <code>self._demand_data_type</code>: Stores whether the data is spatial or tabular. - <code>self._demand_data_demand_col</code>: Maps the demand value column. - <code>self._demand_data_id_col</code>: Maps the location identifier column.</p>
 </section>
 <section id="see-also" class="level4 doc-section doc-section-see-also">
@@ -581,8 +681,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Add demand data to the site problem and validate its structure.</p>
 <p>This method processes an input DataFrame or GeoDataFrame (or path) containing observed demand. It validates the presence of required columns and aligns the spatial or tabular data for use within the SiteProblem context.</p>
 <p>If a preferred CRS has been passed and this dataframe is not of the preferred CRS, this dataframe will be transformed on loading to the preferred CRS. If no preferred CRS has been specified, no transformation will take place</p>
-<section id="parameters-1" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-1">Parameters</h4>
+<section id="parameters-2" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 10%">
@@ -662,8 +762,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="notes-1" class="level4 doc-section doc-section-notes">
-<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-1">Notes</h4>
+<section id="notes-2" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-2">Notes</h4>
 <p>The method updates several internal attributes: - <code>self.demand_data</code>: Stores the processed DataFrame. - <code>self._demand_data_type</code>: Stores whether the data is spatial or tabular. - <code>self._demand_data_demand_col</code>: Maps the demand value column. - <code>self._demand_data_id_col</code>: Maps the location identifier column.</p>
 </section>
 <section id="see-also-1" class="level4 doc-section doc-section-see-also">
@@ -686,8 +786,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Add candidate facility sites to the problem and handle spatial alignment.</p>
 <p>This method ingests site data from either a standard DataFrame or a GeoDataFrame. If tabular data is provided, it automatically converts coordinates into point geometries. It also ensures the data matches the object’s preferred CRS, attempting to guess the CRS if it’s not provided.</p>
-<section id="parameters-2" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
+<section id="parameters-3" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-3">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 11%">
@@ -804,8 +904,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="notes-2" class="level4 doc-section doc-section-notes">
-<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-2">Notes</h4>
+<section id="notes-3" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-3">Notes</h4>
 <p>The method performs the following transformations: 1. Infers data type (spatial vs.&nbsp;tabular). 2. Validates schema based on the data type. 3. If tabular, converts to a <code>geopandas.GeoDataFrame</code> using the specified horizontal and vertical coordinate columns. 4. Matches or converts the dataset to <code>self.preferred_crs</code>.</p>
 <p>Updates internal state including <code>self.candidate_sites</code> and <code>self.total_n_sites</code>.</p>
 </section>
@@ -822,8 +922,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Add a travel cost matrix to the problem and handle unit conversions.</p>
 <p>This method integrates a matrix (typically time or distance) representing the travel cost between demand locations and candidate sites. It can automatically scale numeric columns if time unit conversion is required (e.g., converting seconds to minutes).</p>
-<section id="parameters-3" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-3">Parameters</h4>
+<section id="parameters-4" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-4">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 7%">
@@ -927,8 +1027,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="notes-3" class="level4 doc-section doc-section-notes">
-<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-3">Notes</h4>
+<section id="notes-4" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-4">Notes</h4>
 <p>If both <code>from_unit</code> and <code>to_unit</code> are provided, the method identifies all numeric columns in the dataframe and applies the appropriate multiplication factor. Supported conversions are limited to time-based units (seconds, minutes, hours).</p>
 <p>The resulting data is stored in <code>self.travel_matrix</code>, and the resolved unit label is stored in <code>self._travel_matrix_unit</code>.</p>
 </section>
@@ -937,8 +1037,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="lokigi.site.SiteProblem.describe_models">describe_models</h3>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.describe_models(available_only<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Prints a menu of available optimization strategies for healthcare.</p>
-<section id="parameters-4" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-4">Parameters</h4>
+<section id="parameters-5" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-5">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 10%">
@@ -976,8 +1076,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Evaluate a specific set of facility sites against a single objective.</p>
 <p>This method calculates the performance of a given facility configuration (a ‘solution’). It determines which demand points are assigned to which sites based on minimum travel cost and calculates coverage metrics if a threshold is provided.</p>
-<section id="parameters-5" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-5">Parameters</h4>
+<section id="parameters-6" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-6">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 14%">
@@ -1090,8 +1190,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="notes-4" class="level4 doc-section doc-section-notes">
-<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-4">Notes</h4>
+<section id="notes-5" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-5">Notes</h4>
 <p>The method assumes an uncapacitated assignment logic where every demand point is assigned to its nearest (lowest cost) active facility.</p>
 <p>If <code>self.travel_and_demand_df</code> has not been generated via a merge yet, this method calls <code>_create_joined_demand_travel_df</code> automatically.</p>
 </section>
@@ -1111,8 +1211,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Visualize the regional geometry layer, optionally overlaid with demand data.</p>
 <p>This method produces either a static matplotlib plot or an interactive Folium map (via Geopandas’ .explore()). If demand plotting is enabled, it performs an internal join between geometry and demand data to create a choropleth map.</p>
-<section id="parameters-6" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-6">Parameters</h4>
+<section id="parameters-7" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-7">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 8%">
@@ -1215,8 +1315,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="notes-5" class="level4 doc-section doc-section-notes">
-<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-5">Notes</h4>
+<section id="notes-6" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-6">Notes</h4>
 <p>When <code>plot_demand</code> is True, the method performs a merge using: - <code>self._region_geometry_layer_common_col</code> (left) - <code>self._demand_data_id_col</code> (right)</p>
 <p>Interactive maps default to the “CartoDB positron” tile set and the “Blues” colormap for demand visualization.</p>
 </section>
@@ -1230,8 +1330,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Generate a visualization of the candidate facility sites.</p>
 <p>This method provides a quick way to inspect site locations. It supports both static matplotlib plots (with automatic label de-confliction) and interactive Folium maps.</p>
-<section id="parameters-7" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-7">Parameters</h4>
+<section id="parameters-8" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-8">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 5%">
@@ -1293,8 +1393,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="notes-6" class="level4 doc-section doc-section-notes">
-<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-6">Notes</h4>
+<section id="notes-7" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-7">Notes</h4>
 <p>Static plots use <code>adjust_text</code> to ensure that site labels remain legible even in high-density areas. Labels are title-cased and wrapped at a width of 15 characters.</p>
 </section>
 </section>
@@ -1400,8 +1500,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb16-20"><a href="#cb16-20" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Solve the site location problem using the specified objective and strategy.</p>
 <p>This method validates the problem configuration, handles automatic setup of missing demand or site data, and dispatches the optimization task to the appropriate internal solver.</p>
-<section id="parameters-8" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-8">Parameters</h4>
+<section id="parameters-9" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-9">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 11%">
@@ -1493,7 +1593,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td>grasp_min_sites_different</td>
 <td>int</td>
-<td>(GRASP only) Minimum number of sites that must differ between generated solutions.</td>
+<td>(GRASP only) Minimum number of sites that must differ between generated solutions. Useful for generating a more diverse solution pool, though you may need to increase the max_attempts at the same time.</td>
 <td><code>1</code></td>
 </tr>
 <tr class="even">
@@ -1595,8 +1695,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="notes-7" class="level4 doc-section doc-section-notes">
-<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-7">Notes</h4>
+<section id="notes-8" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-8">Notes</h4>
 <p>If <code>demand_data</code> or <code>candidate_sites</code> have not been explicitly added prior to calling <code>.solve()</code>, the method will automatically initialize them based on the travel matrix.</p>
 
 

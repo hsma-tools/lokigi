@@ -393,8 +393,1157 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="lokigi.site.SiteSolutionSet" class="level1">
 <h1>site.SiteSolutionSet</h1>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet(solution_df, site_problem, objectives, n_sites<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Container for a set of evaluated site selection solutions.</p>
+<p>This class stores and provides convenient access to a collection of candidate solutions from a brute-force or heuristic search, along with their associated evaluation metrics. It supports returning and plotting details of the best-performing solutions.</p>
+<section id="parameters" class="level2 doc-section doc-section-parameters">
+<h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 3%">
+<col style="width: 5%">
+<col style="width: 87%">
+<col style="width: 3%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>solution_df</td>
+<td>pandas.DataFrame</td>
+<td>DataFrame containing one row per evaluated solution. Typically includes: - “site_indices”: Indices of selected sites for the solution. - One or more objective/metric columns (e.g., “weighted_average”, “unweighted_average”, “90th_percentile”, etc.). The DataFrame is reset to a zero-based index upon initialisation.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td>site_problem</td>
+<td>object</td>
+<td>The originating problem instance used to generate and evaluate the solutions.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td>objectives</td>
+<td>str or list of str</td>
+<td>Objective(s) used to evaluate and rank the solutions (e.g., “weighted_average”, “mclp”).</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td>n_sites</td>
+<td>int</td>
+<td>Number of sites selected in each solution (e.g., <code>p</code> in a p-median or p-center problem).</td>
+<td><code>None</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="attributes" class="level2 doc-section doc-section-attributes">
+<h2 class="doc-section doc-section-attributes anchored" data-anchor-id="attributes">Attributes</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 16%">
+<col style="width: 23%">
+<col style="width: 60%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>solution_df</td>
+<td>pandas.DataFrame</td>
+<td>DataFrame of evaluated solutions with metrics.</td>
+</tr>
+<tr class="even">
+<td>site_problem</td>
+<td>object</td>
+<td>Problem definition associated with the solutions.</td>
+</tr>
+<tr class="odd">
+<td>objectives</td>
+<td>str or list of str</td>
+<td>Objective(s) used in evaluation.</td>
+</tr>
+<tr class="even">
+<td>n_sites</td>
+<td>int or None</td>
+<td>Number of sites in each solution.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="notes" class="level2 doc-section doc-section-notes">
+<h2 class="doc-section doc-section-notes anchored" data-anchor-id="notes">Notes</h2>
+<p>Solutions are typically pre-sorted before being passed to this class (e.g., by objective value and tie-breakers). The optional <code>rank_on</code> argument in methods allows overriding this ordering dynamically.</p>
+<p>The structure of <code>solution_df</code> is assumed to be consistent with the outputs of the optimisation or search routine that generated it.</p>
+</section>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="#lokigi.site.SiteSolutionSet.plot_all_metric_pareto_front">plot_all_metric_pareto_front</a></td>
+<td>Plot Pareto fronts for all pairs of solution metrics.</td>
+</tr>
+<tr class="even">
+<td><a href="#lokigi.site.SiteSolutionSet.plot_best_combination">plot_best_combination</a></td>
+<td>Plot a map of the best-performing site combination.</td>
+</tr>
+<tr class="odd">
+<td><a href="#lokigi.site.SiteSolutionSet.plot_n_best_combinations">plot_n_best_combinations</a></td>
+<td>Plot maps for the top-performing site combinations.</td>
+</tr>
+<tr class="even">
+<td><a href="#lokigi.site.SiteSolutionSet.plot_n_best_combinations_bar">plot_n_best_combinations_bar</a></td>
+<td>Plot a bar chart of the top-performing site combinations.</td>
+</tr>
+<tr class="odd">
+<td><a href="#lokigi.site.SiteSolutionSet.plot_simple_pareto_front">plot_simple_pareto_front</a></td>
+<td>Plot a Pareto front for two selected solution metrics.</td>
+</tr>
+<tr class="even">
+<td><a href="#lokigi.site.SiteSolutionSet.plot_travel_time_distribution">plot_travel_time_distribution</a></td>
+<td>Plot travel time distributions for selected solutions.</td>
+</tr>
+<tr class="odd">
+<td><a href="#lokigi.site.SiteSolutionSet.return_best_combination_details">return_best_combination_details</a></td>
+<td>Return details of the top-ranked solution(s).</td>
+</tr>
+<tr class="even">
+<td><a href="#lokigi.site.SiteSolutionSet.return_best_combination_site_indices">return_best_combination_site_indices</a></td>
+<td>Return the site indices for the best-performing solution.</td>
+</tr>
+<tr class="odd">
+<td><a href="#lokigi.site.SiteSolutionSet.return_best_combination_site_names">return_best_combination_site_names</a></td>
+<td>Return the site names for the best-performing solution.</td>
+</tr>
+<tr class="even">
+<td><a href="#lokigi.site.SiteSolutionSet.show_solutions">show_solutions</a></td>
+<td>Return the solution DataFrame with rounded values.</td>
+</tr>
+</tbody>
+</table>
+<section id="lokigi.site.SiteSolutionSet.plot_all_metric_pareto_front" class="level3">
+<h3 class="anchored" data-anchor-id="lokigi.site.SiteSolutionSet.plot_all_metric_pareto_front">plot_all_metric_pareto_front</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet.plot_all_metric_pareto_front(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    height<span class="op">=</span><span class="dv">4</span>,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    show_points<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    theme<span class="op">=</span><span class="st">'whitegrid'</span>,</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    maxx<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    maxy<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    cols<span class="op">=</span><span class="dv">3</span>,</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Plot Pareto fronts for all pairs of solution metrics.</p>
+<p>This method generates a grid of subplots, each showing the Pareto front for a pairwise combination of performance metrics. It provides a comprehensive view of trade-offs between all available objectives.</p>
+<section id="parameters-1" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-1">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 6%">
+<col style="width: 6%">
+<col style="width: 80%">
+<col style="width: 7%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>height</td>
+<td>float</td>
+<td>Height (in inches) allocated to each subplot.</td>
+<td><code>4</code></td>
+</tr>
+<tr class="even">
+<td>show_points</td>
+<td>bool</td>
+<td>If True, all solutions are plotted as points in addition to the Pareto front in each subplot.</td>
+<td><code>True</code></td>
+</tr>
+<tr class="odd">
+<td>theme</td>
+<td>str</td>
+<td>Visual theme passed to the underlying plotting function.</td>
+<td><code>"whitegrid"</code></td>
+</tr>
+<tr class="even">
+<td>maxx</td>
+<td>bool or None</td>
+<td>If True, x-axis metrics are treated as maximisation objectives when computing Pareto fronts. If False, they are minimised. If None, the direction is inferred per metric.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td>maxy</td>
+<td>bool or None</td>
+<td>If True, y-axis metrics are treated as maximisation objectives when computing Pareto fronts. If False, they are minimised. If None, the direction is inferred per metric.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td>cols</td>
+<td>int</td>
+<td>Number of columns in the subplot grid.</td>
+<td><code>3</code></td>
+</tr>
+<tr class="odd">
+<td>**kwargs</td>
+<td></td>
+<td>Additional keyword arguments passed to <code>spv.pareto_plot</code>.</td>
+<td><code>{}</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns">Returns</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 8%">
+<col style="width: 27%">
+<col style="width: 64%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td></td>
+<td>matplotlib.figure.Figure</td>
+<td>The matplotlib Figure containing all Pareto front subplots.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="notes-1" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-1">Notes</h4>
+<p>The method constructs all pairwise combinations of the following metrics: - “weighted_average” - “unweighted_average” - “90th_percentile” - “max” - “proportion_within_coverage_threshold” (included only if available)</p>
+<p>Each subplot visualises the Pareto front for a pair of metrics using the <code>spv.pareto_plot</code> function.</p>
+<p>Subplots are arranged in a grid with a specified number of columns, and rows are determined automatically.</p>
+<p>Any unused subplot axes (if the grid is larger than required) are removed from the figure.</p>
+<p>The figure is closed before returning to prevent duplicate display in some environments (e.g., Jupyter notebooks).</p>
+</section>
+</section>
+<section id="lokigi.site.SiteSolutionSet.plot_best_combination" class="level3">
+<h3 class="anchored" data-anchor-id="lokigi.site.SiteSolutionSet.plot_best_combination">plot_best_combination</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet.plot_best_combination(</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    rank_on<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">'default'</span>,</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    show_all_locations<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    plot_site_allocation<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    plot_regions_not_meeting_threshold<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    cmap<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    chosen_site_colour<span class="op">=</span><span class="st">'black'</span>,</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    unchosen_site_colour<span class="op">=</span><span class="st">'grey'</span>,</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    legend_loc<span class="op">=</span><span class="st">'upper right'</span>,</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Plot a map of the best-performing site combination.</p>
+<p>This method visualises the spatial performance of the best solution in the solution set, including travel costs, site allocations, or coverage relative to a threshold. Regions are coloured according to the selected metric, and candidate site locations can be overlaid.</p>
+<section id="parameters-2" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 11%">
+<col style="width: 8%">
+<col style="width: 75%">
+<col style="width: 5%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>rank_on</td>
+<td>str</td>
+<td>Column name used to rank solutions. If provided, the solution with the lowest value in this column is selected. If None, the first row of <code>solution_df</code> is used.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td>title</td>
+<td>str or None</td>
+<td>Title for the plot. If “default”, an automatic title is generated based on the objective and solution metrics. If a string is provided, it may be evaluated using <code>_safe_evaluate</code> with access to the selected solution. If None, no title is set.</td>
+<td><code>"default"</code></td>
+</tr>
+<tr class="odd">
+<td>show_all_locations</td>
+<td>bool</td>
+<td>If True, plots all candidate site locations in addition to the selected sites.</td>
+<td><code>True</code></td>
+</tr>
+<tr class="even">
+<td>plot_site_allocation</td>
+<td>bool</td>
+<td>If True, regions are coloured by the assigned (nearest) site. Overrides other colouring options.</td>
+<td><code>False</code></td>
+</tr>
+<tr class="odd">
+<td>plot_regions_not_meeting_threshold</td>
+<td>bool</td>
+<td>If True, regions are coloured based on whether they fall within the coverage threshold. Overrides default cost-based colouring.</td>
+<td><code>False</code></td>
+</tr>
+<tr class="even">
+<td>cmap</td>
+<td>str or matplotlib colormap</td>
+<td>Colormap used for plotting. If None, a default is chosen: - Sequential colormap (“Blues”) for cost-based plots - Qualitative colormap (“Set2”) for site allocation plots</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td>chosen_site_colour</td>
+<td>str</td>
+<td>Colour used to plot selected site locations.</td>
+<td><code>"black"</code></td>
+</tr>
+<tr class="even">
+<td>unchosen_site_colour</td>
+<td>str</td>
+<td>Colour used to plot unselected candidate site locations.</td>
+<td><code>"grey"</code></td>
+</tr>
+<tr class="odd">
+<td>legend_loc</td>
+<td></td>
+<td>Adjust position of the legend within the main plot. Accepts standard matplotlib positioning strings.</td>
+<td><code>'upper right'</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns-1" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-1">Returns</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 8%">
+<col style="width: 24%">
+<col style="width: 66%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td></td>
+<td>matplotlib.axes.Axes</td>
+<td>The matplotlib Axes object containing the generated plot.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="raises" class="level4 doc-section doc-section-raises">
+<h4 class="doc-section doc-section-raises anchored" data-anchor-id="raises">Raises</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 7%">
+<col style="width: 11%">
+<col style="width: 81%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td></td>
+<td>ValueError</td>
+<td>If the region geometry layer has not been initialised in the <code>site_problem</code> instance.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="notes-2" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-2">Notes</h4>
+<p>The method requires a valid <code>region_geometry_layer</code> to be present in <code>site_problem</code>. This should be added prior to calling this method.</p>
+<p>The plot is generated using GeoPandas and includes a basemap via <code>contextily.add_basemap</code>.</p>
+<p>Depending on the flags provided, regions are coloured by: - “min_cost” (default): travel time/distance to the nearest site - “selected_site”: assigned site (categorical) - “within_threshold”: whether the region meets the coverage threshold</p>
+<p>When plotting site locations, only GeoPandas-based candidate sites are currently supported.</p>
+<p>Titles are dynamically generated based on the objective type and may include metrics such as weighted/unweighted averages, maximum cost, and coverage proportion.</p>
+<p>The method assumes that lower values of the ranking metric correspond to better solutions.</p>
+</section>
+</section>
+<section id="lokigi.site.SiteSolutionSet.plot_n_best_combinations" class="level3">
+<h3 class="anchored" data-anchor-id="lokigi.site.SiteSolutionSet.plot_n_best_combinations">plot_n_best_combinations</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet.plot_n_best_combinations(</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    n_best<span class="op">=</span><span class="dv">10</span>,</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    rank_on<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    subplot_title<span class="op">=</span><span class="st">'default'</span>,</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    show_all_locations<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    plot_site_allocation<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    plot_regions_not_meeting_threshold<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    cmap<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    chosen_site_colour<span class="op">=</span><span class="st">'black'</span>,</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    unchosen_site_colour<span class="op">=</span><span class="st">'grey'</span>,</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    n_cols<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    n_rows<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    fig_size_multiplier<span class="op">=</span><span class="dv">6</span>,</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Plot maps for the top-performing site combinations.</p>
+<p>This method generates a grid of subplots visualising the spatial performance of the top <code>n_best</code> solutions. Each subplot represents a single solution, showing either travel costs, site allocations, or coverage relative to a threshold. Candidate site locations can also be overlaid.</p>
+<section id="parameters-3" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-3">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 10%">
+<col style="width: 8%">
+<col style="width: 77%">
+<col style="width: 3%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>n_best</td>
+<td>int</td>
+<td>Number of top solutions to plot. If greater than the number of available solutions, all solutions are plotted.</td>
+<td><code>10</code></td>
+</tr>
+<tr class="even">
+<td>rank_on</td>
+<td>str</td>
+<td>Column name used to rank solutions. If provided, solutions are sorted in ascending order and the top <code>n_best</code> are selected. If None, the existing order of <code>solution_df</code> is used.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td>title</td>
+<td>str or None</td>
+<td>Title applied to each subplot. If provided, overrides <code>subplot_title</code>. If None, subplot titles are controlled by <code>subplot_title</code>.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td>subplot_title</td>
+<td>str or None</td>
+<td>Title for each subplot. If “default”, an automatic title is generated based on the objective and solution metrics. If a string is provided, it may be evaluated using <code>_safe_evaluate</code> with access to the selected solution. If None, no subplot titles are shown.</td>
+<td><code>"default"</code></td>
+</tr>
+<tr class="odd">
+<td>show_all_locations</td>
+<td>bool</td>
+<td>If True, plots all candidate site locations in addition to the selected sites.</td>
+<td><code>True</code></td>
+</tr>
+<tr class="even">
+<td>plot_site_allocation</td>
+<td>bool</td>
+<td>If True, regions are coloured by the assigned (nearest) site. Overrides other colouring options.</td>
+<td><code>False</code></td>
+</tr>
+<tr class="odd">
+<td>plot_regions_not_meeting_threshold</td>
+<td>bool</td>
+<td>If True, regions are coloured based on whether they fall within the coverage threshold. Overrides default cost-based colouring.</td>
+<td><code>False</code></td>
+</tr>
+<tr class="even">
+<td>cmap</td>
+<td>str or matplotlib colormap</td>
+<td>Colormap used for plotting. If None, a default is chosen: - Sequential colormap (e.g., “Blues”) for cost-based plots - Qualitative colormap (e.g., “Set2”) for site allocation plots</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td>chosen_site_colour</td>
+<td>str</td>
+<td>Colour used to plot selected site locations.</td>
+<td><code>"black"</code></td>
+</tr>
+<tr class="even">
+<td>unchosen_site_colour</td>
+<td>str</td>
+<td>Colour used to plot unselected candidate site locations.</td>
+<td><code>"grey"</code></td>
+</tr>
+<tr class="odd">
+<td>n_cols</td>
+<td>int</td>
+<td>Number of columns in the subplot grid. If None, determined automatically.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td>n_rows</td>
+<td>int</td>
+<td>Number of rows in the subplot grid. If None, determined automatically.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td>fig_size_multiplier</td>
+<td></td>
+<td>Factor to adjust overall plot size</td>
+<td><code>6</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns-2" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-2">Returns</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 8%">
+<col style="width: 29%">
+<col style="width: 61%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>fig</td>
+<td>matplotlib.figure.Figure</td>
+<td>The matplotlib Figure object containing all subplots.</td>
+</tr>
+<tr class="even">
+<td>ax</td>
+<td>matplotlib.axes.Axes</td>
+<td>The last Axes object created in the plotting loop.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="raises-1" class="level4 doc-section doc-section-raises">
+<h4 class="doc-section doc-section-raises anchored" data-anchor-id="raises-1">Raises</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 7%">
+<col style="width: 11%">
+<col style="width: 81%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td></td>
+<td>ValueError</td>
+<td>If the region geometry layer has not been initialised in the <code>site_problem</code> instance.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="notes-3" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-3">Notes</h4>
+<p>The method requires a valid <code>region_geometry_layer</code> to be present in <code>site_problem</code>. This should be added prior to calling this method.</p>
+<p>Subplots are arranged in a grid determined by <code>n_best</code>, <code>n_cols</code>, and <code>n_rows</code>. If neither <code>n_cols</code> nor <code>n_rows</code> is provided, a default layout with up to 5 columns is used.</p>
+<p>Depending on the flags provided, regions are coloured by: - “min_cost” (default): travel time/distance to the nearest site - “selected_site”: assigned site (categorical) - “within_threshold”: whether the region meets the coverage threshold</p>
+<p>When plotting cost-based maps, a consistent global colour scale is applied across all subplots.</p>
+<p>When plotting categorical site allocations, a consistent colour mapping is constructed across all subplots to ensure comparability.</p>
+<p>A shared legend or colourbar is added to the figure depending on the plotting mode.</p>
+<p>The method assumes that lower values of the ranking metric correspond to better solutions.</p>
+</section>
+</section>
+<section id="lokigi.site.SiteSolutionSet.plot_n_best_combinations_bar" class="level3">
+<h3 class="anchored" data-anchor-id="lokigi.site.SiteSolutionSet.plot_n_best_combinations_bar">plot_n_best_combinations_bar</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet.plot_n_best_combinations_bar(</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    y_axis<span class="op">=</span><span class="st">'weighted_average'</span>,</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    n_best<span class="op">=</span><span class="dv">10</span>,</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    interactive<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    rank_on<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">'default'</span>,</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Plot a bar chart of the top-performing site combinations.</p>
+<p>This method visualises the performance of the top <code>n_best</code> solutions using a bar chart, where each bar represents a solution and its value corresponds to the selected metric (e.g., weighted average travel time).</p>
+<section id="parameters-4" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-4">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 5%">
+<col style="width: 5%">
+<col style="width: 79%">
+<col style="width: 9%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>y_axis</td>
+<td>str</td>
+<td>Column name representing the metric to plot on the y-axis. This should correspond to a column in <code>solution_df</code>.</td>
+<td><code>"weighted_average"</code></td>
+</tr>
+<tr class="even">
+<td>n_best</td>
+<td>int</td>
+<td>Number of top solutions to include in the plot. If None, all solutions are included.</td>
+<td><code>10</code></td>
+</tr>
+<tr class="odd">
+<td>interactive</td>
+<td>bool</td>
+<td>If True, generates an interactive Plotly bar chart. If False, generates a static Matplotlib bar chart.</td>
+<td><code>True</code></td>
+</tr>
+<tr class="even">
+<td>rank_on</td>
+<td>str</td>
+<td>Column name used to rank solutions. If provided, solutions are sorted in ascending order before selecting the top <code>n_best</code>. If None, the existing order of <code>solution_df</code> is used.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td>title</td>
+<td>str or None</td>
+<td>Title for the plot. If “default”, an automatic title is generated based on the ranking metric or objective. If None, no title is set. Otherwise, the provided string is used as the title.</td>
+<td><code>"default"</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns-3" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-3">Returns</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 4%">
+<col style="width: 33%">
+<col style="width: 61%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td></td>
+<td>plotly.graph_objects.Figure or matplotlib.figure.Figure</td>
+<td>The generated bar chart. Returns a Plotly Figure if <code>interactive=True</code>, otherwise a Matplotlib Figure.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="notes-4" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-4">Notes</h4>
+<p>The x-axis represents the selected site combinations (<code>site_indices</code>), which are converted to strings for display.</p>
+<p>When <code>interactive=True</code>, Plotly Express is used to generate the chart. When <code>interactive=False</code>, a Matplotlib figure is created and returned.</p>
+<p>The method assumes that lower values of the ranking metric correspond to better solutions when <code>rank_on</code> is specified.</p>
+</section>
+</section>
+<section id="lokigi.site.SiteSolutionSet.plot_simple_pareto_front" class="level3">
+<h3 class="anchored" data-anchor-id="lokigi.site.SiteSolutionSet.plot_simple_pareto_front">plot_simple_pareto_front</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet.plot_simple_pareto_front(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    x_axis<span class="op">=</span><span class="st">'weighted_average'</span>,</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    y_axis<span class="op">=</span><span class="st">'max'</span>,</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    height<span class="op">=</span><span class="dv">4</span>,</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    show_points<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    theme<span class="op">=</span><span class="st">'whitegrid'</span>,</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    maxx<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    maxy<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Plot a Pareto front for two selected solution metrics.</p>
+<p>This method generates a Pareto front visualisation comparing two performance metrics across all evaluated solutions. It highlights the trade-offs between objectives and optionally displays all points alongside the Pareto-optimal frontier.</p>
+<section id="parameters-5" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-5">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 3%">
+<col style="width: 31%">
+<col style="width: 57%">
+<col style="width: 6%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>x_axis</td>
+<td>(weighted_average, unweighted_average, '90th_percentile', max, proportion_within_coverage_threshold)</td>
+<td>Column name representing the metric to plot on the x-axis.</td>
+<td><code>"weighted_average"</code></td>
+</tr>
+<tr class="even">
+<td>y_axis</td>
+<td>(weighted_average, unweighted_average, '90th_percentile', max, proportion_within_coverage_threshold)</td>
+<td>Column name representing the metric to plot on the y-axis.</td>
+<td><code>"weighted_average"</code></td>
+</tr>
+<tr class="odd">
+<td>height</td>
+<td>float</td>
+<td>Height of the plot in inches.</td>
+<td><code>4</code></td>
+</tr>
+<tr class="even">
+<td>show_points</td>
+<td>bool</td>
+<td>If True, all solutions are plotted as points in addition to the Pareto front.</td>
+<td><code>True</code></td>
+</tr>
+<tr class="odd">
+<td>theme</td>
+<td>str</td>
+<td>Visual theme passed to the underlying plotting function.</td>
+<td><code>"whitegrid"</code></td>
+</tr>
+<tr class="even">
+<td>maxx</td>
+<td>bool</td>
+<td>If True, the Pareto front is computed assuming the x-axis metric is to be maximised. If False, it is minimised. If None, the function automatically infers the value based on the metric.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td>maxy</td>
+<td>bool</td>
+<td>If True, the Pareto front is computed assuming the y-axis metric is to be maximised. If False, it is minimised. If None, the function automatically infers the value based on the metric.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td>**kwargs</td>
+<td></td>
+<td>Additional keyword arguments passed to <code>spv.pareto_plot</code>.</td>
+<td><code>{}</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns-4" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-4">Returns</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 5%">
+<col style="width: 5%">
+<col style="width: 88%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td></td>
+<td>object</td>
+<td>A Pareto plot object returned by <code>spv.pareto_plot</code>. This is typically a wrapper that can be rendered or further customised.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="notes-5" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-5">Notes</h4>
+<p>The method relies on the external <code>spv.pareto_plot</code> function for computation and visualisation of the Pareto front.</p>
+<p>The interpretation of “optimal” depends on the <code>maxx</code> and <code>maxy</code> flags, which determine whether each axis is treated as a maximisation or minimisation objective.</p>
+</section>
+</section>
+<section id="lokigi.site.SiteSolutionSet.plot_travel_time_distribution" class="level3">
+<h3 class="anchored" data-anchor-id="lokigi.site.SiteSolutionSet.plot_travel_time_distribution">plot_travel_time_distribution</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet.plot_travel_time_distribution(</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    top_n<span class="op">=</span><span class="dv">1</span>,</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    bottom_n<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    rank_on<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    secondary_ranking<span class="op">=</span><span class="st">'max'</span>,</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">'default'</span>,</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    height<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    height_per_plot<span class="op">=</span><span class="dv">250</span>,</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    compare_to_best<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Plot travel time distributions for selected solutions.</p>
+<p>This method generates faceted histograms of travel time (or cost) distributions for the top and/or bottom-performing solutions in the solution set. Each subplot corresponds to a single solution and includes summary statistics annotations.</p>
+<section id="parameters-6" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-6">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 7%">
+<col style="width: 3%">
+<col style="width: 83%">
+<col style="width: 5%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>top_n</td>
+<td>int</td>
+<td>Number of top-ranked solutions to include. If <code>rank_on</code> is provided, solutions are sorted before selection; otherwise, the existing order, which is based on the objective chosen for solving, is used.</td>
+<td><code>1</code></td>
+</tr>
+<tr class="even">
+<td>bottom_n</td>
+<td>int</td>
+<td>Number of bottom-ranked solutions to include. If provided, these are appended to the selected top solutions.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td>rank_on</td>
+<td>str</td>
+<td>Column name used to rank solutions. Sorting is performed in ascending order using this column, with <code>secondary_ranking</code> as a tie-breaker. If None, no additional sorting is applied.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td>secondary_ranking</td>
+<td>str</td>
+<td>Secondary column used for tie-breaking when sorting by <code>rank_on</code>.</td>
+<td><code>"max"</code></td>
+</tr>
+<tr class="odd">
+<td>title</td>
+<td>str</td>
+<td>Title for the plot. If “default”, an automatic title is generated based on ranking and objectives.</td>
+<td><code>"default"</code></td>
+</tr>
+<tr class="even">
+<td>height</td>
+<td>int</td>
+<td>Total height of the figure in pixels. If None, height is determined dynamically using <code>height_per_plot</code>.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td>height_per_plot</td>
+<td>int</td>
+<td>Height allocated per subplot when <code>height</code> is not specified.</td>
+<td><code>250</code></td>
+</tr>
+<tr class="even">
+<td>compare_to_best</td>
+<td>bool</td>
+<td>If True, plots the difference in travel time relative to the best solution (i.e., <code>min_cost_diff</code>). Adds a vertical reference line at zero. If False, plots absolute travel times (<code>min_cost</code>).</td>
+<td><code>False</code></td>
+</tr>
+<tr class="odd">
+<td>**kwargs</td>
+<td></td>
+<td>Additional keyword arguments passed to <code>plotly.express.histogram</code>.</td>
+<td><code>{}</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns-5" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-5">Returns</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 5%">
+<col style="width: 20%">
+<col style="width: 73%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td></td>
+<td>plotly.graph_objects.Figure</td>
+<td>A Plotly figure containing faceted histograms of travel time distributions for the selected solutions.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="notes-6" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-6">Notes</h4>
+<p>When <code>compare_to_best=True</code>, the best solution (first in the filtered set) is used as the reference for computing differences.</p>
+<p>Subplots are arranged using <code>facet_row</code>, with annotations adjusted manually to align with subplot domains.</p>
+<p>Vertical reference lines are added for key metrics when <code>compare_to_best=False</code>: - Weighted average - Unweighted average - 90th percentile - Maximum</p>
+<p>The method assumes that lower values of the ranking metric correspond to better solutions.</p>
+</section>
+</section>
+<section id="lokigi.site.SiteSolutionSet.return_best_combination_details" class="level3">
+<h3 class="anchored" data-anchor-id="lokigi.site.SiteSolutionSet.return_best_combination_details">return_best_combination_details</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet.return_best_combination_details(rank_on<span class="op">=</span><span class="va">None</span>, top_n<span class="op">=</span><span class="dv">1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Return details of the top-ranked solution(s).</p>
+<section id="parameters-7" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-7">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 3%">
+<col style="width: 3%">
+<col style="width: 88%">
+<col style="width: 4%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>rank_on</td>
+<td>str</td>
+<td>Column name to sort the solutions by. If provided, solutions are sorted in ascending order before selecting the top entries. If None, the existing order of <code>solution_df</code>, which is based on the objective selected, is used.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td>top_n</td>
+<td>int</td>
+<td>Number of top solutions to return.</td>
+<td><code>1</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns-6" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-6">Returns</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 5%">
+<col style="width: 11%">
+<col style="width: 83%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td></td>
+<td>pandas.DataFrame</td>
+<td>DataFrame containing the top <code>top_n</code> solutions, including all available columns. The index is reset in the returned DataFrame.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="notes-7" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-7">Notes</h4>
+<p>Sorting is performed in ascending order, so lower values are assumed to represent better solutions for the specified ranking metric.</p>
+</section>
+</section>
+<section id="lokigi.site.SiteSolutionSet.return_best_combination_site_indices" class="level3">
+<h3 class="anchored" data-anchor-id="lokigi.site.SiteSolutionSet.return_best_combination_site_indices">return_best_combination_site_indices</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet.return_best_combination_site_indices(rank_on<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Return the site indices for the best-performing solution.</p>
+<section id="parameters-8" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-8">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 3%">
+<col style="width: 3%">
+<col style="width: 88%">
+<col style="width: 4%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>rank_on</td>
+<td>str</td>
+<td>Column name to sort the solutions by. If provided, the solution with the lowest value in this column is selected. If None, the existing order of <code>solution_df</code>, which is based on the objective selected, is used.</td>
+<td><code>None</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns-7" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-7">Returns</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 6%">
+<col style="width: 6%">
+<col style="width: 86%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td></td>
+<td>object</td>
+<td>The value of the “site_indices” column for the best solution. Typically a list or array of site indices.</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="lokigi.site.SiteSolutionSet.return_best_combination_site_names" class="level3">
+<h3 class="anchored" data-anchor-id="lokigi.site.SiteSolutionSet.return_best_combination_site_names">return_best_combination_site_names</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet.return_best_combination_site_names(rank_on<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Return the site names for the best-performing solution.</p>
+<section id="parameters-9" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-9">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 3%">
+<col style="width: 3%">
+<col style="width: 88%">
+<col style="width: 4%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>rank_on</td>
+<td>str</td>
+<td>Column name to sort the solutions by. If provided, the solution with the lowest value in this column is selected. If None, the existing order of <code>solution_df</code>, which is based on the objective selected, is used.</td>
+<td><code>None</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns-8" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-8">Returns</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 6%">
+<col style="width: 6%">
+<col style="width: 86%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td></td>
+<td>object</td>
+<td>The value of the “site_indices” column for the best solution. Typically a list or array of site indices.</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="lokigi.site.SiteSolutionSet.show_solutions" class="level3">
+<h3 class="anchored" data-anchor-id="lokigi.site.SiteSolutionSet.show_solutions">show_solutions</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet.show_solutions(rounding<span class="op">=</span><span class="dv">2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Return the solution DataFrame with rounded values.</p>
+<section id="parameters-10" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-10">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 11%">
+<col style="width: 9%">
+<col style="width: 65%">
+<col style="width: 13%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>rounding</td>
+<td>int</td>
+<td>Number of decimal places to round numeric columns to.</td>
+<td><code>2</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns-9" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-9">Returns</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 7%">
+<col style="width: 16%">
+<col style="width: 75%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td></td>
+<td>pandas.DataFrame</td>
+<td>The solution DataFrame with numeric values rounded to the specified precision.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="notes-8" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-8">Notes</h4>
+<p>This method does not modify the underlying DataFrame; it returns a rounded copy.</p>
 
 
+</section>
+</section>
+</section>
 </section>
 
 <a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
