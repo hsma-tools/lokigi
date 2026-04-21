@@ -895,6 +895,31 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
 
         # Filter and calculate
         try:
+            # Facility filtering code modified from
+            # https://github.com/health-data-science-OR/healthcare-logistics/blob/8d03b890a8ce861b64f6f834710dc50f2d85f68e/optimisation/metapy/evolutionary/evolutionary.py#L722
+            # Credit for original code to Dr Tom Monks
+            # Licence reproduced below in line with reuse conditions
+            # MIT License
+            #
+            # Copyright (c) 2020 health-data-science-OR
+            #
+            # Permission is hereby granted, free of charge, to any person obtaining a copy
+            # of this software and associated documentation files (the "Software"), to deal
+            # in the Software without restriction, including without limitation the rights
+            # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+            # copies of the Software, and to permit persons to whom the Software is
+            # furnished to do so, subject to the following conditions:
+            #
+            # The above copyright notice and this permission notice shall be included in all
+            # copies or substantial portions of the Software.
+            #
+            # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+            # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+            # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+            # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+            # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+            # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+            # SOFTWARE.
             # We use .iloc because we now have guaranteed integer positions
             active_facilities = self.travel_and_demand_df.iloc[
                 :, resolved_indices
