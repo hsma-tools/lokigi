@@ -2,12 +2,13 @@
   {
     "listing": "/examples/examples.html",
     "items": [
-      "/examples/location/greedy_and_grasp/greedy_and_grasp.html",
       "/examples/location/simple/simple.html",
-      "/examples/location/p_median_and_p_center_variants/p_median_and_p_center_variants.html",
       "/examples/location/existing_sites/existing_sites.html",
       "/examples/location/no_geometry/no_geometry.html",
-      "/examples/location/mclp/mclp.html"
+      "/examples/location/p_median_and_p_center_variants/p_median_and_p_center_variants.html",
+      "/examples/location/mclp/mclp.html",
+      "/examples/location/larger_problems/larger_problems_brute_force.html",
+      "/examples/location/greedy_and_grasp/greedy_and_grasp.html"
     ]
   }
 ]

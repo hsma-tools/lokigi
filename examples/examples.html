@@ -77,7 +77,7 @@ ul.task-list li input[type="checkbox"] {
 <script>
 
   window.document.addEventListener("DOMContentLoaded", function (_event) {
-    const listingTargetEl = window.document.querySelector('#listing-single-objective-site .list');
+    const listingTargetEl = window.document.querySelector('#listing-sites-problem-basic .list');
     if (!listingTargetEl) {
       // No listing discovered, do not attach.
       return; 
@@ -90,7 +90,63 @@ ul.task-list li input[type="checkbox"] {
     };
 
     window['quarto-listings'] = window['quarto-listings'] || {};
-    window['quarto-listings']['listing-single-objective-site'] = new List('listing-single-objective-site', options);
+    window['quarto-listings']['listing-sites-problem-basic'] = new List('listing-sites-problem-basic', options);
+
+    if (window['quarto-listing-loaded']) {
+      window['quarto-listing-loaded']();
+    }
+  });
+
+  window.addEventListener('hashchange',() => {
+    if (window['quarto-listing-loaded']) {
+      window['quarto-listing-loaded']();
+    }
+  })
+  
+
+  window.document.addEventListener("DOMContentLoaded", function (_event) {
+    const listingTargetEl = window.document.querySelector('#listing-sites-problem-type .list');
+    if (!listingTargetEl) {
+      // No listing discovered, do not attach.
+      return; 
+    }
+
+    const options = {
+      valueNames: ['listing-project','listing-website','listing-quartodoc','listing-format','listing-engines','listing-language','listing-title','listing-image','listing-toc','listing-execute','listing-path','listing-outputHref','listing-author','listing-description','listing-filename','listing-file-modified','listing-reading-time','listing-word-count',{ data: ['index'] },{ data: ['categories'] },{ data: ['listing-file-modified-sort'] },{ data: ['listing-reading-time-sort'] },{ data: ['listing-word-count-sort'] }],
+      
+      searchColumns: ["listing-project","listing-website","listing-quartodoc","listing-format","listing-engines","listing-language","listing-title","listing-image","listing-toc","listing-execute","listing-path","listing-outputHref","listing-author","listing-description","listing-filename","listing-file-modified","listing-reading-time","listing-word-count"],
+    };
+
+    window['quarto-listings'] = window['quarto-listings'] || {};
+    window['quarto-listings']['listing-sites-problem-type'] = new List('listing-sites-problem-type', options);
+
+    if (window['quarto-listing-loaded']) {
+      window['quarto-listing-loaded']();
+    }
+  });
+
+  window.addEventListener('hashchange',() => {
+    if (window['quarto-listing-loaded']) {
+      window['quarto-listing-loaded']();
+    }
+  })
+  
+
+  window.document.addEventListener("DOMContentLoaded", function (_event) {
+    const listingTargetEl = window.document.querySelector('#listing-sites-solver-type .list');
+    if (!listingTargetEl) {
+      // No listing discovered, do not attach.
+      return; 
+    }
+
+    const options = {
+      valueNames: ['listing-project','listing-website','listing-quartodoc','listing-format','listing-engines','listing-language','listing-title','listing-image','listing-toc','listing-execute','listing-path','listing-outputHref','listing-author','listing-description','listing-filename','listing-file-modified','listing-reading-time','listing-word-count',{ data: ['index'] },{ data: ['categories'] },{ data: ['listing-file-modified-sort'] },{ data: ['listing-reading-time-sort'] },{ data: ['listing-word-count-sort'] }],
+      
+      searchColumns: ["listing-project","listing-website","listing-quartodoc","listing-format","listing-engines","listing-language","listing-title","listing-image","listing-toc","listing-execute","listing-path","listing-outputHref","listing-author","listing-description","listing-filename","listing-file-modified","listing-reading-time","listing-word-count"],
+    };
+
+    window['quarto-listings'] = window['quarto-listings'] || {};
+    window['quarto-listings']['listing-sites-solver-type'] = new List('listing-sites-solver-type', options);
 
     if (window['quarto-listing-loaded']) {
       window['quarto-listing-loaded']();
@@ -360,7 +416,12 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#single-objective-location-optimization" id="toc-single-objective-location-optimization" class="nav-link active" data-scroll-target="#single-objective-location-optimization">Single Objective Location Optimization</a></li>
+  <li><a href="#single-objective-location-optimization" id="toc-single-objective-location-optimization" class="nav-link active" data-scroll-target="#single-objective-location-optimization">Single Objective Location Optimization</a>
+  <ul class="collapse">
+  <li><a href="#basic-site-problem-examples" id="toc-basic-site-problem-examples" class="nav-link" data-scroll-target="#basic-site-problem-examples">Basic site problem examples</a></li>
+  <li><a href="#different-problem-types" id="toc-different-problem-types" class="nav-link" data-scroll-target="#different-problem-types">Different Problem Types</a></li>
+  <li><a href="#advanced-solver-options" id="toc-advanced-solver-options" class="nav-link" data-scroll-target="#advanced-solver-options">Advanced Solver Options</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -391,34 +452,13 @@ window.Quarto = {
 <section id="single-objective-location-optimization" class="level2">
 <h2 class="anchored" data-anchor-id="single-objective-location-optimization">Single Objective Location Optimization</h2>
 <p>Examples relating to optimizing the combination of sites to meet a single objective - for example, minimising the average travel time of individuals to a site.</p>
-<div id="listing-single-objective-site" class="quarto-listing quarto-listing-container-custom">
+<section id="basic-site-problem-examples" class="level3">
+<h3 class="anchored" data-anchor-id="basic-site-problem-examples">Basic site problem examples</h3>
+<div id="listing-sites-problem-basic" class="quarto-listing quarto-listing-container-custom">
 <div class="list grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 450px)); gap: 20px;">
 
   
-    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1776771288570" data-listing-reading-time-sort="5" data-listing-word-count-sort="942">
-          <div class="main-card-content">
-            
-              <a href="../examples/location/greedy_and_grasp/greedy_and_grasp.html">
-                <img class="card-img" src="../examples/location/greedy_and_grasp/image.png" alt="Advanced Algorithms - Greedy Search and Greedy Randomized Adaptive Search Procedure (GRASP)">
-              </a>
-              
-
-              <div class="listing-title">
-                <h5 class="no-anchor card-title listing-title">Advanced Algorithms - Greedy Search and Greedy Randomized Adaptive Search Procedure (GRASP)</h5>
-            </div>
-
-            
-
-              </div>
-
-                <div class="details-listing">
-                  <button class="link-listing-button"><a href="../examples/location/greedy_and_grasp/greedy_and_grasp.html"><i class="fa fa-info-circle"></i> Details </a></button>
-                </div>
-
-              </div>
-
-            
-    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1776771288832" data-listing-reading-time-sort="2" data-listing-word-count-sort="350">
+    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1776773689674" data-listing-reading-time-sort="2" data-listing-word-count-sort="350">
           <div class="main-card-content">
             
               <a href="../examples/location/simple/simple.html">
@@ -441,30 +481,7 @@ window.Quarto = {
               </div>
 
             
-    <div class="custom-grid-card border-2 rounded-3" data-index="2" data-listing-file-modified-sort="1776771288648" data-listing-reading-time-sort="3" data-listing-word-count-sort="453">
-          <div class="main-card-content">
-            
-              <a href="../examples/location/p_median_and_p_center_variants/p_median_and_p_center_variants.html">
-                <img class="card-img" src="../examples/location/p_median_and_p_center_variants/image.png" alt="P-center, P-median, and p-median variants">
-              </a>
-              
-
-              <div class="listing-title">
-                <h5 class="no-anchor card-title listing-title">P-center, P-median, and p-median variants</h5>
-            </div>
-
-            
-
-              </div>
-
-                <div class="details-listing">
-                  <button class="link-listing-button"><a href="../examples/location/p_median_and_p_center_variants/p_median_and_p_center_variants.html"><i class="fa fa-info-circle"></i> Details </a></button>
-                </div>
-
-              </div>
-
-            
-    <div class="custom-grid-card border-2 rounded-3" data-index="3" data-listing-file-modified-sort="1776771288544" data-listing-reading-time-sort="2" data-listing-word-count-sort="368">
+    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1776773689413" data-listing-reading-time-sort="2" data-listing-word-count-sort="368">
           <div class="main-card-content">
             
               <a href="../examples/location/existing_sites/existing_sites.html">
@@ -487,7 +504,7 @@ window.Quarto = {
               </div>
 
             
-    <div class="custom-grid-card border-2 rounded-3" data-index="4" data-listing-file-modified-sort="1776771288596" data-listing-reading-time-sort="3" data-listing-word-count-sort="495">
+    <div class="custom-grid-card border-2 rounded-3" data-index="2" data-listing-file-modified-sort="1776773689466" data-listing-reading-time-sort="3" data-listing-word-count-sort="495">
           <div class="main-card-content">
             
               <a href="../examples/location/no_geometry/no_geometry.html">
@@ -510,7 +527,41 @@ window.Quarto = {
               </div>
 
             
-    <div class="custom-grid-card border-2 rounded-3" data-index="5" data-listing-file-modified-sort="1776771288591" data-listing-reading-time-sort="4" data-listing-word-count-sort="768">
+          </div>
+
+<div class="listing-no-matching d-none">No matching items</div>
+</div>
+</section>
+<section id="different-problem-types" class="level3">
+<h3 class="anchored" data-anchor-id="different-problem-types">Different Problem Types</h3>
+<div id="listing-sites-problem-type" class="quarto-listing quarto-listing-container-custom">
+<div class="list grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 450px)); gap: 20px;">
+
+  
+    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1776773689517" data-listing-reading-time-sort="3" data-listing-word-count-sort="453">
+          <div class="main-card-content">
+            
+              <a href="../examples/location/p_median_and_p_center_variants/p_median_and_p_center_variants.html">
+                <img class="card-img" src="../examples/location/p_median_and_p_center_variants/image.png" alt="P-center, P-median, and p-median variants">
+              </a>
+              
+
+              <div class="listing-title">
+                <h5 class="no-anchor card-title listing-title">P-center, P-median, and p-median variants</h5>
+            </div>
+
+            
+
+              </div>
+
+                <div class="details-listing">
+                  <button class="link-listing-button"><a href="../examples/location/p_median_and_p_center_variants/p_median_and_p_center_variants.html"><i class="fa fa-info-circle"></i> Details </a></button>
+                </div>
+
+              </div>
+
+            
+    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1776773689460" data-listing-reading-time-sort="4" data-listing-word-count-sort="768">
           <div class="main-card-content">
             
               <a href="../examples/location/mclp/mclp.html">
@@ -537,9 +588,68 @@ window.Quarto = {
 
 <div class="listing-no-matching d-none">No matching items</div>
 </div>
+</section>
+<section id="advanced-solver-options" class="level3">
+<h3 class="anchored" data-anchor-id="advanced-solver-options">Advanced Solver Options</h3>
+<p>When a problem is too big for evaluating and storing every combination, lokigi offers other options.</p>
+<div id="listing-sites-solver-type" class="quarto-listing quarto-listing-container-custom">
+<div class="list grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 450px)); gap: 20px;">
+
+  
+    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1776773689443" data-listing-reading-time-sort="3" data-listing-word-count-sort="476">
+          <div class="main-card-content">
+            
+              <a href="../examples/location/larger_problems/larger_problems_brute_force.html">
+                <img class="card-img" src="../examples/location/larger_problems/image.png" alt="Solving larger problems - the limits of brute force">
+              </a>
+              
+
+              <div class="listing-title">
+                <h5 class="no-anchor card-title listing-title">Solving larger problems - the limits of brute force</h5>
+            </div>
+
+            
+
+              </div>
+
+                <div class="details-listing">
+                  <button class="link-listing-button"><a href="../examples/location/larger_problems/larger_problems_brute_force.html"><i class="fa fa-info-circle"></i> Details </a></button>
+                </div>
+
+              </div>
+
+            
+    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1776773689439" data-listing-reading-time-sort="5" data-listing-word-count-sort="942">
+          <div class="main-card-content">
+            
+              <a href="../examples/location/greedy_and_grasp/greedy_and_grasp.html">
+                <img class="card-img" src="../examples/location/greedy_and_grasp/image.png" alt="Advanced Algorithms - Greedy Search and Greedy Randomized Adaptive Search Procedure (GRASP)">
+              </a>
+              
+
+              <div class="listing-title">
+                <h5 class="no-anchor card-title listing-title">Advanced Algorithms - Greedy Search and Greedy Randomized Adaptive Search Procedure (GRASP)</h5>
+            </div>
+
+            
+
+              </div>
+
+                <div class="details-listing">
+                  <button class="link-listing-button"><a href="../examples/location/greedy_and_grasp/greedy_and_grasp.html"><i class="fa fa-info-circle"></i> Details </a></button>
+                </div>
+
+              </div>
+
+            
+          </div>
+
+<div class="listing-no-matching d-none">No matching items</div>
+</div>
 
 
 
+</section>
 </section>
 
 <a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
