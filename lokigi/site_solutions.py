@@ -5,6 +5,7 @@ from lokigi.mixins.site_solution_plots import (
     NonMapPlotsMixin,
     ParetoPlotsMixin,
     DistributionPlotsMixin,
+    EquityPlotsMixin,
 )
 
 
@@ -144,7 +145,11 @@ class EvaluatedCombination:
 
 
 class SiteSolutionSet(
-    MapsMixin, NonMapPlotsMixin, ParetoPlotsMixin, DistributionPlotsMixin
+    MapsMixin,
+    NonMapPlotsMixin,
+    ParetoPlotsMixin,
+    DistributionPlotsMixin,
+    EquityPlotsMixin,
 ):
     """
     Container for a set of evaluated site selection solutions.

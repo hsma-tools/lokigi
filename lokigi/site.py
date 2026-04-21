@@ -121,6 +121,7 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
         # self._baseline_sites_type = None
 
         self.travel_and_demand_df = None
+        self._joined_demand_travel_df_key_col = None
 
         if debug_mode:
             self._verbose = True
@@ -893,7 +894,7 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
 
     def _create_joined_demand_travel_df(self, index_col):
         """
-        Merge demand data with travel costs into a single master dataframe.
+        Merge demand data with travel costs and (if present) equity data into a single master dataframe.
 
         This internal method performs an inner join between the demand dataset
         and the travel matrix. It ensures that the resulting object preserves
@@ -930,26 +931,28 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
         # If one is a geopandas dataframe, put that first in the merge call so that the
         # output object will also be a geodataframe
         if self._demand_data_type == "geopandas":
-            self.travel_and_demand_df = pd.merge(
+            travel_and_demand_df = pd.merge(
                 self.demand_data,
                 self.travel_matrix,
                 left_on=self._demand_data_id_col,
                 right_on=self._travel_matrix_source_col,
                 how="inner",
-            ).set_index(index_col)
+            )
+
+            self._joined_demand_travel_df_key_col = self._demand_data_id_col
 
         else:
-            self.travel_and_demand_df = pd.merge(
+            travel_and_demand_df = pd.merge(
                 self.travel_matrix,
                 self.demand_data,
                 left_on=self._travel_matrix_source_col,
                 right_on=self._demand_data_id_col,
                 how="inner",
-            ).set_index(index_col)
+            )
 
-            self.travel_and_demand_df = self.travel_and_demand_df
+            self._joined_demand_travel_df_key_col = self._travel_matrix_source_col
 
-        if len(self.travel_and_demand_df) == 0:
+        if len(travel_and_demand_df) == 0:
             raise KeyError(
                 "Warning: merging the travel matrix and demand data has failed."
                 f"This may be because there are no common values found in the {self._travel_matrix_source_col}"
@@ -957,6 +960,8 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
                 f"column in the travel dataframe and the {self._demand_data_id_col} column in the"
                 f"demand dataframe (sample values: {self.demand_data.head(5)[self._demand_data_id_col]})"
             )
+
+        self.travel_and_demand_df = travel_and_demand_df.set_index(index_col)
 
     def evaluate_single_solution_single_objective(
         self,
@@ -1139,6 +1144,14 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
         else:
             raise NotImplementedError(
                 "Capacitated solving not yet supported. Please rerun with capacitated=False."
+            )
+
+        if self.equity_data is not None:
+            active_facilities = pd.merge(
+                active_facilities,
+                self.equity_data,
+                left_on=self._joined_demand_travel_df_key_col,
+                right_on=self._equity_data_common_col,
             )
 
         return EvaluatedCombination(

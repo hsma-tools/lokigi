@@ -3,6 +3,8 @@ import contextily as cx
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.colors import ListedColormap
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import Normalize
 from warnings import warn
 import numpy as np
 import math
@@ -10,7 +12,7 @@ import plotly.express as px
 from lokigi.utils import _safe_evaluate
 import sweetpareto.vis as spv
 import itertools
-from typing import Literal
+from typing import Literal, Optional
 
 
 class ParetoPlotsMixin:
@@ -1221,3 +1223,359 @@ class DistributionPlotsMixin:
             fig.update_layout(height=max(300, height_per_plot * top_n))
 
         return fig
+
+
+class EquityPlotsMixin:
+    def check_solution_equity(
+        self,
+        solution_rank=1,
+        return_plot=False,
+        interactive=True,
+        title="default",
+        show_average=True,
+        plot_solution_metric_as_line="weighted_average",
+        rank_on=None,
+        ax=None,
+        colour_mode: Optional[Literal["gradient", "above_below_avg"]] = None,
+    ):
+        """
+        Summarise and optionally plot equity metrics for a selected solution.
+
+        This method computes the mean minimum cost (``min_cost``) grouped by the
+        configured equity category for a given solution. It can return either the
+        aggregated data or a visualisation using Plotly (interactive) or Matplotlib
+        (static).
+
+        Parameters
+        ----------
+        solution_rank : int, default=1
+            Rank of the solution to evaluate (1-indexed).
+        return_plot : bool, default=False
+            If True, return a plot instead of the summary DataFrame.
+        title : str, default="default"
+            Title for the plot. If "default", a title is generated automatically.
+        show_average : bool, default=True
+            If True, display the overall average of ``min_cost`` as a horizontal
+            dotted line on the plot.
+        rank_on : str or None, optional
+            Column name used to rank solutions before selecting the specified
+            ``solution_rank``. If None, the existing order is used.
+        interactive : bool, default=True
+            If True, return an interactive Plotly figure. If False, return a
+            Matplotlib figure.
+        ax : matplotlib.axes.Axes or None, optional
+            Existing Matplotlib axes to plot on when ``interactive=False``.
+            If None, a new figure and axes are created.
+
+        Returns
+        -------
+        pandas.DataFrame or plotly.graph_objs._figure.Figure or matplotlib.figure.Figure
+            If ``return_plot=False``, returns a DataFrame with mean ``min_cost`` per
+            equity group. Otherwise, returns a Plotly or Matplotlib figure depending
+            on the ``interactive`` flag.
+
+        Notes
+        -----
+        - The equity grouping column is defined by
+        ``self.site_problem._equity_data_equity_col``.
+        - The plotted metric is the mean of ``min_cost`` within each group.
+        - When using Matplotlib with a provided ``ax``, the plot is drawn onto the
+        supplied axes and the corresponding figure is returned.
+        """
+        if rank_on is not None:
+            plotting_row = self.solution_df.sort_values(rank_on).iloc[solution_rank - 1]
+        else:
+            plotting_row = self.solution_df.iloc[solution_rank - 1]
+
+        summary_equity_df = (
+            plotting_row["problem_df"]
+            .groupby(self.site_problem._equity_data_equity_col)["min_cost"]
+            .agg("mean")
+            .round(2)
+            .reset_index()
+        )
+
+        if not return_plot:
+            return summary_equity_df
+        else:
+            if title == "default":
+                title = f"Solution equity - by {self.site_problem._equity_data_label}\nSolution Rank {solution_rank} (Site Indices {plotting_row.site_indices}) "
+
+            if show_average:
+                avg_value = plotting_row[plot_solution_metric_as_line]
+
+            if interactive:
+                import plotly.express as px
+
+                if colour_mode == "gradient":
+                    fig = px.bar(
+                        summary_equity_df,
+                        x=self.site_problem._equity_data_equity_col,
+                        y="min_cost",
+                        color="min_cost",
+                        color_continuous_scale=[
+                            "#a8e6a3",
+                            "#f28b82",
+                        ],  # soft green → soft red
+                        title=title,
+                    )
+
+                elif colour_mode == "above_below_avg":
+                    avg_value = summary_equity_df["min_cost"].mean()
+                    summary_equity_df["_above_avg"] = (
+                        summary_equity_df["min_cost"] > avg_value
+                    )
+
+                    fig = px.bar(
+                        summary_equity_df,
+                        x=self.site_problem._equity_data_equity_col,
+                        y="min_cost",
+                        color="_above_avg",
+                        color_discrete_map={
+                            True: "#f28b82",  # red
+                            False: "#a8e6a3",  # green
+                        },
+                        title=title,
+                    )
+
+                else:
+                    fig = px.bar(
+                        summary_equity_df,
+                        x=self.site_problem._equity_data_equity_col,
+                        y="min_cost",
+                        title=title,
+                    )
+
+                if show_average:
+                    fig.add_hline(
+                        y=avg_value,
+                        line_dash="dot",
+                        annotation_text=f"Avg: {avg_value:.2f}",
+                        annotation_position="top right",
+                    )
+
+                return fig
+            else:
+                import matplotlib.pyplot as plt
+
+                if ax is None:
+                    fig, ax = plt.subplots()
+                else:
+                    fig = ax.figure
+
+                x_vals = summary_equity_df[self.site_problem._equity_data_equity_col]
+                y_vals = summary_equity_df["min_cost"]
+
+                if colour_mode == "gradient":
+                    norm = plt.Normalize(y_vals.min(), y_vals.max())
+                    cmap = plt.cm.RdYlGn_r  # green (low) → red (high)
+                    colors = cmap(norm(y_vals))
+
+                elif colour_mode == "above_below_avg":
+                    avg_value = y_vals.mean()
+                    colors = ["#f28b82" if v > avg_value else "#a8e6a3" for v in y_vals]
+
+                else:
+                    colors = None
+
+                ax.bar(x_vals, y_vals, color=colors)
+
+                ax.set_title(title)
+                ax.set_xlabel(self.site_problem._equity_data_equity_col)
+                ax.set_ylabel("min_cost")
+
+                if show_average:
+                    ax.axhline(
+                        y=avg_value,
+                        linestyle=":",
+                        label=f"Avg: {avg_value:.2f}",
+                    )
+                    ax.legend()
+
+                ax.set_xticks(x_vals)
+                ax.tick_params(axis="x", rotation=0)
+                plt.tight_layout()
+
+                return fig
+
+    def plot_top_n_solution_equity(
+        self,
+        n=4,
+        rank_on=None,
+        show_average=True,
+        plot_solution_metric_as_line="weighted_average",
+        colour_mode: Optional[Literal["gradient", "above_below_avg"]] = None,
+        cols=2,
+        figsize_multiplier=5,
+    ):
+        """
+        Plot equity summaries for the top N solutions in a grid of subplots.
+
+        This method generates a series of bar plots showing the distribution of
+        mean minimum cost (``min_cost``) across equity groups for the top-ranked
+        solutions. It reuses ``check_solution_equity`` to ensure consistent
+        computation and styling.
+
+        Parameters
+        ----------
+        n : int, default=4
+            Number of top-ranked solutions to plot.
+        rank_on : str or None, optional
+            Column name used to rank solutions before selecting the top ``n``.
+            If None, the existing order is used.
+        show_average : bool, default=True
+            If True, display the overall average of ``min_cost`` as a horizontal
+            dotted line on each subplot.
+        cols : int, default=2
+            Number of subplot columns. The number of rows is determined automatically.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            A Matplotlib figure containing the grid of subplots.
+
+        Notes
+        -----
+        - Subplots are arranged row-wise based on the specified number of columns.
+        - Any unused subplot axes are removed if ``n`` does not fill the grid.
+        - All plots are generated using the non-interactive (Matplotlib) mode of
+        ``check_solution_equity``.
+        - Each subplot corresponds to a solution ranked from 1 to ``n``.
+        """
+        import matplotlib.pyplot as plt
+        import math
+
+        rows = math.ceil(n / cols)
+
+        fig, axes = plt.subplots(
+            rows, cols, figsize=(figsize_multiplier * cols, figsize_multiplier * rows)
+        )
+        axes = axes.flatten() if n > 1 else [axes]
+
+        for i in range(n):
+            self.check_solution_equity(
+                solution_rank=i + 1,
+                return_plot=True,
+                rank_on=rank_on,
+                interactive=False,
+                show_average=show_average,
+                plot_solution_metric_as_line=plot_solution_metric_as_line,
+                colour_mode=colour_mode,
+                ax=axes[i],
+            )
+
+        # Remove unused axes if n doesn't fill grid
+        for j in range(n, len(axes)):
+            fig.delaxes(axes[j])
+
+        plt.tight_layout()
+
+        return fig
+
+    def plot_solution_by_equity():
+        pass
+
+    def plot_combination_by_equity(
+        self,
+        solution_rank=1,
+        rank_on=None,
+        ncols=3,
+        cmap="Blues",
+        share_colorbar=True,
+        outline_color="grey",
+        figsize_multiplier=4,
+        **kwargs,
+    ):
+        equity_col = self.site_problem._equity_data_equity_col
+
+        groups = sorted(self.solution_df["problem_df"][0][equity_col].dropna().unique())
+
+        n = len(groups)
+        nrows = math.ceil(n / ncols)
+
+        fig, axes = plt.subplots(
+            nrows,
+            ncols,
+            figsize=(figsize_multiplier * ncols, figsize_multiplier * nrows),
+        )
+        axes = axes.flatten()
+
+        if rank_on is not None:
+            plotting_row = self.solution_df.sort_values(rank_on).iloc[solution_rank - 1]
+        else:
+            plotting_row = self.solution_df.iloc[solution_rank - 1]
+
+        nearest_site_travel_gdf = pd.merge(
+            self.site_problem.region_geometry_layer,
+            plotting_row["problem_df"],
+            left_on=self.site_problem._region_geometry_layer_common_col,
+            right_on=self.site_problem._demand_data_id_col,
+        )
+
+        # ---- Shared color scale ----
+        if share_colorbar:
+            vmin = nearest_site_travel_gdf["min_cost"].min()
+            vmax = nearest_site_travel_gdf["min_cost"].max()
+        else:
+            vmin = vmax = None
+
+        for i, group in enumerate(groups):
+            ax = axes[i]
+
+            subset = nearest_site_travel_gdf[
+                nearest_site_travel_gdf[equity_col] == group
+            ]
+
+            remainder = nearest_site_travel_gdf[
+                nearest_site_travel_gdf[equity_col] != group
+            ]
+
+            # ---- Plot background (other regions as outlines) ----
+            remainder.plot(
+                ax=ax,
+                facecolor="none",
+                edgecolor=outline_color,
+                linewidth=0.5,
+                alpha=0.7,
+            )
+
+            # ---- Plot main subset ----
+            subset.plot(
+                column="min_cost",
+                cmap=cmap,
+                linewidth=0.5,
+                edgecolor="black",
+                ax=ax,
+                vmin=vmin,
+                vmax=vmax,
+            )
+
+            ax.set_title(f"{equity_col}: {group}")
+
+            cx.add_basemap(
+                ax,
+                crs=nearest_site_travel_gdf.crs.to_string(),
+            )
+
+            ax.axis("off")
+
+        # ---- Remove unused axes ----
+        for j in range(len(groups), len(axes)):
+            fig.delaxes(axes[j])
+
+        # ---- Shared colorbar ----
+        if share_colorbar:
+            norm = Normalize(vmin=vmin, vmax=vmax)
+            sm = ScalarMappable(cmap=cmap, norm=norm)
+            sm.set_array([])
+
+            cbar = fig.colorbar(
+                sm,
+                ax=axes[: len(groups)],
+                orientation="vertical",
+                fraction=0.03,
+                pad=0.02,
+            )
+            cbar.set_label("min_cost")
+
+        return fig, axes
