@@ -8,7 +8,8 @@
       "/examples/location/p_median_and_p_center_variants/p_median_and_p_center_variants.html",
       "/examples/location/mclp/mclp.html",
       "/examples/location/larger_problems/larger_problems_brute_force.html",
-      "/examples/location/greedy_and_grasp/greedy_and_grasp.html"
+      "/examples/location/greedy_and_grasp/greedy_and_grasp.html",
+      "/examples/location/equity/equity.html"
     ]
   }
 ]

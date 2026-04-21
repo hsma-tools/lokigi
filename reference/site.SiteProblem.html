@@ -511,58 +511,62 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Add demand data to the site problem and validate its structure.</td>
 </tr>
 <tr class="even">
-<td><a href="#lokigi.site.SiteProblem.add_region_geometry_layer">add_region_geometry_layer</a></td>
-<td>Add demand data to the site problem and validate its structure.</td>
+<td><a href="#lokigi.site.SiteProblem.add_equity_data">add_equity_data</a></td>
+<td>Add a dataframe containing equity data into your problem.</td>
 </tr>
 <tr class="odd">
+<td><a href="#lokigi.site.SiteProblem.add_region_geometry_layer">add_region_geometry_layer</a></td>
+<td>Add a region geodataframe to the site problem and validate its structure.</td>
+</tr>
+<tr class="even">
 <td><a href="#lokigi.site.SiteProblem.add_sites">add_sites</a></td>
 <td>Add candidate facility sites to the problem and handle spatial alignment.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#lokigi.site.SiteProblem.add_travel_matrix">add_travel_matrix</a></td>
 <td>Add a travel cost matrix to the problem and handle unit conversions.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#lokigi.site.SiteProblem.describe_models">describe_models</a></td>
 <td>Prints a menu of available optimization strategies for healthcare.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#lokigi.site.SiteProblem.evaluate_single_solution_single_objective">evaluate_single_solution_single_objective</a></td>
 <td>Evaluate a specific set of facility sites against a single objective.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#lokigi.site.SiteProblem.plot_region_geometry_layer">plot_region_geometry_layer</a></td>
 <td>Visualize the regional geometry layer, optionally overlaid with demand data.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#lokigi.site.SiteProblem.plot_sites">plot_sites</a></td>
 <td>Generate a visualization of the candidate facility sites.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#lokigi.site.SiteProblem.show_demand">show_demand</a></td>
 <td>Returns a loaded demand dataframe</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#lokigi.site.SiteProblem.show_demand_format">show_demand_format</a></td>
 <td>Prints the expected structure for the demand DataFrame.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#lokigi.site.SiteProblem.show_region_geometry_layer">show_region_geometry_layer</a></td>
 <td>Returns a loaded region geometry geodataframe</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#lokigi.site.SiteProblem.show_sites">show_sites</a></td>
 <td>Returns a loaded candidate site geodataframe</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#lokigi.site.SiteProblem.show_travel_format">show_travel_format</a></td>
 <td>Prints the expected structure for the travel/cost matrix DataFrame.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#lokigi.site.SiteProblem.show_travel_matrix">show_travel_matrix</a></td>
 <td>Returns a loaded travel or cost matrix dataframe</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#lokigi.site.SiteProblem.solve">solve</a></td>
 <td>Solve the site location problem using the specified objective and strategy.</td>
 </tr>
@@ -675,14 +679,113 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>_load_spatial_or_tabular_data : Internal utility for data ingestion. _validate_columns : Internal utility for schema verification.</p>
 </section>
 </section>
-<section id="lokigi.site.SiteProblem.add_region_geometry_layer" class="level3">
-<h3 class="anchored" data-anchor-id="lokigi.site.SiteProblem.add_region_geometry_layer">add_region_geometry_layer</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.add_region_geometry_layer(region_geometry_df, common_col)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Add demand data to the site problem and validate its structure.</p>
-<p>This method processes an input DataFrame or GeoDataFrame (or path) containing observed demand. It validates the presence of required columns and aligns the spatial or tabular data for use within the SiteProblem context.</p>
-<p>If a preferred CRS has been passed and this dataframe is not of the preferred CRS, this dataframe will be transformed on loading to the preferred CRS. If no preferred CRS has been specified, no transformation will take place</p>
+<section id="lokigi.site.SiteProblem.add_equity_data" class="level3">
+<h3 class="anchored" data-anchor-id="lokigi.site.SiteProblem.add_equity_data">add_equity_data</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.add_equity_data(</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    equity_data,</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    equity_col,</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    common_col,</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    label,</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    continuous_measure<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    n_bins<span class="op">=</span><span class="dv">10</span>,</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    reverse<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Add a dataframe containing equity data into your problem.</p>
+<p>This method associates demand points with an equity metric (such as the Index of Multiple Deprivation). If a continuous measure is provided, it is automatically discretized into deciles (or maximum possible quantiles) to facilitate categorical plotting and comparative equity analysis.</p>
 <section id="parameters-2" class="level4 doc-section doc-section-parameters">
 <h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 6%">
+<col style="width: 15%">
+<col style="width: 74%">
+<col style="width: 3%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>equity_data</td>
+<td>str, pandas.DataFrame, or geopandas.GeoDataFrame</td>
+<td>The input data containing the equity metrics. Can be a filepath or an already loaded dataframe object.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td>equity_col</td>
+<td>str</td>
+<td>The name of the column in <code>equity_data</code> containing the equity values or categories to be used.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td>common_col</td>
+<td>str</td>
+<td>The name of the ID column used to join this data to the primary demand/spatial data in the SiteProblem.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td>label</td>
+<td>str</td>
+<td>A human-readable label for the equity metric (e.g., ‘IMD Decile’, ‘Age Group’). This is used internally for auto-generating plot titles and table headers.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td>continuous_measure</td>
+<td>bool</td>
+<td>If True, treats <code>equity_col</code> as continuous numerical data and uses quantile-based discretization to convert it into deciles (1-10). The raw continuous data is preserved in a new column named <code>{equity_col}_raw</code>.</td>
+<td><code>False</code></td>
+</tr>
+<tr class="even">
+<td>reverse</td>
+<td>bool</td>
+<td>Only applicable if <code>continuous_measure</code> is True. By default (False), lower continuous values are assigned to lower deciles (e.g., 1). If True, the mapping is inverted so that lower continuous values are assigned to the highest deciles.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="raises-1" class="level4 doc-section doc-section-raises">
+<h4 class="doc-section doc-section-raises anchored" data-anchor-id="raises-1">Raises</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 6%">
+<col style="width: 9%">
+<col style="width: 84%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td></td>
+<td>ValueError</td>
+<td>If <code>continuous_measure</code> is True but the data cannot be meaningfully binned due to too many identical values.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="notes-2" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-2">Notes</h4>
+<p>When <code>continuous_measure</code> is True, <code>pandas.qcut</code> is used with <code>duplicates='drop'</code>. If the data is highly skewed with duplicate values, this may result in fewer than 10 bins. The method handles this dynamically to ensure the resulting categories always start at 1.</p>
+</section>
+</section>
+<section id="lokigi.site.SiteProblem.add_region_geometry_layer" class="level3">
+<h3 class="anchored" data-anchor-id="lokigi.site.SiteProblem.add_region_geometry_layer">add_region_geometry_layer</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.add_region_geometry_layer(region_geometry_df, common_col)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Add a region geodataframe to the site problem and validate its structure.</p>
+<p>This method processes an input GeoDataFrame (or path) containing geometry data for the region of interest. It validates the presence of required columns and aligns the data for use within the SiteProblem context.</p>
+<p>If a preferred CRS has been passed and this dataframe is not of the preferred CRS, this dataframe will be transformed on loading to the preferred CRS. If no preferred CRS has been specified, no transformation will take place</p>
+<section id="parameters-3" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-3">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 10%">
@@ -733,8 +836,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="raises-1" class="level4 doc-section doc-section-raises">
-<h4 class="doc-section doc-section-raises anchored" data-anchor-id="raises-1">Raises</h4>
+<section id="raises-2" class="level4 doc-section doc-section-raises">
+<h4 class="doc-section doc-section-raises anchored" data-anchor-id="raises-2">Raises</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 5%">
@@ -762,8 +865,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="notes-2" class="level4 doc-section doc-section-notes">
-<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-2">Notes</h4>
+<section id="notes-3" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-3">Notes</h4>
 <p>The method updates several internal attributes: - <code>self.demand_data</code>: Stores the processed DataFrame. - <code>self._demand_data_type</code>: Stores whether the data is spatial or tabular. - <code>self._demand_data_demand_col</code>: Maps the demand value column. - <code>self._demand_data_id_col</code>: Maps the location identifier column.</p>
 </section>
 <section id="see-also-1" class="level4 doc-section doc-section-see-also">
@@ -773,21 +876,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="lokigi.site.SiteProblem.add_sites" class="level3">
 <h3 class="anchored" data-anchor-id="lokigi.site.SiteProblem.add_sites">add_sites</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.add_sites(</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    candidate_site_df,</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    candidate_id_col,</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    required_sites_col<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    geometry_col<span class="op">=</span><span class="st">'geometry'</span>,</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    vertical_geometry_col<span class="op">=</span><span class="st">'lat'</span>,</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    horizontal_geometry_col<span class="op">=</span><span class="st">'long'</span>,</span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    crs<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    capacity_col<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    skip_cols<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.add_sites(</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    candidate_site_df,</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    candidate_id_col,</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    required_sites_col<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    geometry_col<span class="op">=</span><span class="st">'geometry'</span>,</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    vertical_geometry_col<span class="op">=</span><span class="st">'lat'</span>,</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    horizontal_geometry_col<span class="op">=</span><span class="st">'long'</span>,</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    crs<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    capacity_col<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    skip_cols<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Add candidate facility sites to the problem and handle spatial alignment.</p>
 <p>This method ingests site data from either a standard DataFrame or a GeoDataFrame. If tabular data is provided, it automatically converts coordinates into point geometries. It also ensures the data matches the object’s preferred CRS, attempting to guess the CRS if it’s not provided.</p>
-<section id="parameters-3" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-3">Parameters</h4>
+<section id="parameters-4" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-4">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 11%">
@@ -880,8 +983,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="raises-2" class="level4 doc-section doc-section-raises">
-<h4 class="doc-section doc-section-raises anchored" data-anchor-id="raises-2">Raises</h4>
+<section id="raises-3" class="level4 doc-section doc-section-raises">
+<h4 class="doc-section doc-section-raises anchored" data-anchor-id="raises-3">Raises</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 7%">
@@ -904,26 +1007,26 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="notes-3" class="level4 doc-section doc-section-notes">
-<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-3">Notes</h4>
+<section id="notes-4" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-4">Notes</h4>
 <p>The method performs the following transformations: 1. Infers data type (spatial vs.&nbsp;tabular). 2. Validates schema based on the data type. 3. If tabular, converts to a <code>geopandas.GeoDataFrame</code> using the specified horizontal and vertical coordinate columns. 4. Matches or converts the dataset to <code>self.preferred_crs</code>.</p>
 <p>Updates internal state including <code>self.candidate_sites</code> and <code>self.total_n_sites</code>.</p>
 </section>
 </section>
 <section id="lokigi.site.SiteProblem.add_travel_matrix" class="level3">
 <h3 class="anchored" data-anchor-id="lokigi.site.SiteProblem.add_travel_matrix">add_travel_matrix</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.add_travel_matrix(</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    travel_matrix_df,</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    source_col,</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    skip_cols<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    unit<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    from_unit<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    to_unit<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.add_travel_matrix(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    travel_matrix_df,</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    source_col,</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    skip_cols<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    unit<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    from_unit<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    to_unit<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Add a travel cost matrix to the problem and handle unit conversions.</p>
 <p>This method integrates a matrix (typically time or distance) representing the travel cost between demand locations and candidate sites. It can automatically scale numeric columns if time unit conversion is required (e.g., converting seconds to minutes).</p>
-<section id="parameters-4" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-4">Parameters</h4>
+<section id="parameters-5" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-5">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 7%">
@@ -998,8 +1101,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="raises-3" class="level4 doc-section doc-section-raises">
-<h4 class="doc-section doc-section-raises anchored" data-anchor-id="raises-3">Raises</h4>
+<section id="raises-4" class="level4 doc-section doc-section-raises">
+<h4 class="doc-section doc-section-raises anchored" data-anchor-id="raises-4">Raises</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 6%">
@@ -1027,18 +1130,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="notes-4" class="level4 doc-section doc-section-notes">
-<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-4">Notes</h4>
+<section id="notes-5" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-5">Notes</h4>
 <p>If both <code>from_unit</code> and <code>to_unit</code> are provided, the method identifies all numeric columns in the dataframe and applies the appropriate multiplication factor. Supported conversions are limited to time-based units (seconds, minutes, hours).</p>
 <p>The resulting data is stored in <code>self.travel_matrix</code>, and the resolved unit label is stored in <code>self._travel_matrix_unit</code>.</p>
 </section>
 </section>
 <section id="lokigi.site.SiteProblem.describe_models" class="level3">
 <h3 class="anchored" data-anchor-id="lokigi.site.SiteProblem.describe_models">describe_models</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.describe_models(available_only<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.describe_models(available_only<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Prints a menu of available optimization strategies for healthcare.</p>
-<section id="parameters-5" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-5">Parameters</h4>
+<section id="parameters-6" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-6">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 10%">
@@ -1067,17 +1170,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="lokigi.site.SiteProblem.evaluate_single_solution_single_objective" class="level3">
 <h3 class="anchored" data-anchor-id="lokigi.site.SiteProblem.evaluate_single_solution_single_objective">evaluate_single_solution_single_objective</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.evaluate_single_solution_single_objective(</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    objective<span class="op">=</span><span class="st">'p_median'</span>,</span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    site_names<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    site_indices<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    capacitated<span class="op">=</span><span class="va">False</span>,</span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    threshold_for_coverage<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.evaluate_single_solution_single_objective(</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    objective<span class="op">=</span><span class="st">'p_median'</span>,</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    site_names<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    site_indices<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    capacitated<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    threshold_for_coverage<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Evaluate a specific set of facility sites against a single objective.</p>
 <p>This method calculates the performance of a given facility configuration (a ‘solution’). It determines which demand points are assigned to which sites based on minimum travel cost and calculates coverage metrics if a threshold is provided.</p>
-<section id="parameters-6" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-6">Parameters</h4>
+<section id="parameters-7" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-7">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 14%">
@@ -1151,8 +1254,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="raises-4" class="level4 doc-section doc-section-raises">
-<h4 class="doc-section doc-section-raises anchored" data-anchor-id="raises-4">Raises</h4>
+<section id="raises-5" class="level4 doc-section doc-section-raises">
+<h4 class="doc-section doc-section-raises anchored" data-anchor-id="raises-5">Raises</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 5%">
@@ -1190,8 +1293,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="notes-5" class="level4 doc-section doc-section-notes">
-<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-5">Notes</h4>
+<section id="notes-6" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-6">Notes</h4>
 <p>The method assumes an uncapacitated assignment logic where every demand point is assigned to its nearest (lowest cost) active facility.</p>
 <p>If <code>self.travel_and_demand_df</code> has not been generated via a merge yet, this method calls <code>_create_joined_demand_travel_df</code> automatically.</p>
 </section>
@@ -1202,17 +1305,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="lokigi.site.SiteProblem.plot_region_geometry_layer" class="level3">
 <h3 class="anchored" data-anchor-id="lokigi.site.SiteProblem.plot_region_geometry_layer">plot_region_geometry_layer</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.plot_region_geometry_layer(</span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    interactive<span class="op">=</span><span class="va">False</span>,</span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    plot_demand<span class="op">=</span><span class="va">False</span>,</span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    cmap<span class="op">=</span><span class="st">'Blues'</span>,</span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    tiles<span class="op">=</span><span class="st">'CartoDB positron'</span>,</span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.plot_region_geometry_layer(</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    interactive<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    plot_demand<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    plot_equity<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    cmap<span class="op">=</span><span class="st">'Blues'</span>,</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    tiles<span class="op">=</span><span class="st">'CartoDB positron'</span>,</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    plot_region_of_interest_only<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    edgecolor<span class="op">=</span><span class="st">'black'</span>,</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>    linewidth<span class="op">=</span><span class="fl">0.5</span>,</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Visualize the regional geometry layer, optionally overlaid with demand data.</p>
 <p>This method produces either a static matplotlib plot or an interactive Folium map (via Geopandas’ .explore()). If demand plotting is enabled, it performs an internal join between geometry and demand data to create a choropleth map.</p>
-<section id="parameters-7" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-7">Parameters</h4>
+<section id="parameters-8" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-8">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 8%">
@@ -1286,8 +1393,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="raises-5" class="level4 doc-section doc-section-raises">
-<h4 class="doc-section doc-section-raises anchored" data-anchor-id="raises-5">Raises</h4>
+<section id="raises-6" class="level4 doc-section doc-section-raises">
+<h4 class="doc-section doc-section-raises anchored" data-anchor-id="raises-6">Raises</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 10%">
@@ -1315,23 +1422,23 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="notes-6" class="level4 doc-section doc-section-notes">
-<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-6">Notes</h4>
+<section id="notes-7" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-7">Notes</h4>
 <p>When <code>plot_demand</code> is True, the method performs a merge using: - <code>self._region_geometry_layer_common_col</code> (left) - <code>self._demand_data_id_col</code> (right)</p>
 <p>Interactive maps default to the “CartoDB positron” tile set and the “Blues” colormap for demand visualization.</p>
 </section>
 </section>
 <section id="lokigi.site.SiteProblem.plot_sites" class="level3">
 <h3 class="anchored" data-anchor-id="lokigi.site.SiteProblem.plot_sites">plot_sites</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.plot_sites(</span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    add_basemap<span class="op">=</span><span class="va">True</span>,</span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    show_labels<span class="op">=</span><span class="va">True</span>,</span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    interactive<span class="op">=</span><span class="va">False</span>,</span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.plot_sites(</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    add_basemap<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    show_labels<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    interactive<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Generate a visualization of the candidate facility sites.</p>
 <p>This method provides a quick way to inspect site locations. It supports both static matplotlib plots (with automatic label de-confliction) and interactive Folium maps.</p>
-<section id="parameters-8" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-8">Parameters</h4>
+<section id="parameters-9" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-9">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 5%">
@@ -1393,29 +1500,29 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="notes-7" class="level4 doc-section doc-section-notes">
-<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-7">Notes</h4>
+<section id="notes-8" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-8">Notes</h4>
 <p>Static plots use <code>adjust_text</code> to ensure that site labels remain legible even in high-density areas. Labels are title-cased and wrapped at a width of 15 characters.</p>
 </section>
 </section>
 <section id="lokigi.site.SiteProblem.show_demand" class="level3">
 <h3 class="anchored" data-anchor-id="lokigi.site.SiteProblem.show_demand">show_demand</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.show_demand()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.show_demand()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Returns a loaded demand dataframe</p>
 </section>
 <section id="lokigi.site.SiteProblem.show_demand_format" class="level3">
 <h3 class="anchored" data-anchor-id="lokigi.site.SiteProblem.show_demand_format">show_demand_format</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.show_demand_format()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.show_demand_format()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Prints the expected structure for the demand DataFrame.</p>
 </section>
 <section id="lokigi.site.SiteProblem.show_region_geometry_layer" class="level3">
 <h3 class="anchored" data-anchor-id="lokigi.site.SiteProblem.show_region_geometry_layer">show_region_geometry_layer</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.show_region_geometry_layer()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.show_region_geometry_layer()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Returns a loaded region geometry geodataframe</p>
 </section>
 <section id="lokigi.site.SiteProblem.show_sites" class="level3">
 <h3 class="anchored" data-anchor-id="lokigi.site.SiteProblem.show_sites">show_sites</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.show_sites()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.show_sites()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Returns a loaded candidate site geodataframe</p>
 <section id="returns-7" class="level4 doc-section doc-section-returns">
 <h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-7">Returns</h4>
@@ -1444,12 +1551,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="lokigi.site.SiteProblem.show_travel_format" class="level3">
 <h3 class="anchored" data-anchor-id="lokigi.site.SiteProblem.show_travel_format">show_travel_format</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.show_travel_format()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.show_travel_format()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Prints the expected structure for the travel/cost matrix DataFrame.</p>
 </section>
 <section id="lokigi.site.SiteProblem.show_travel_matrix" class="level3">
 <h3 class="anchored" data-anchor-id="lokigi.site.SiteProblem.show_travel_matrix">show_travel_matrix</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.show_travel_matrix()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.show_travel_matrix()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Returns a loaded travel or cost matrix dataframe</p>
 <section id="returns-8" class="level4 doc-section doc-section-returns">
 <h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-8">Returns</h4>
@@ -1478,30 +1585,30 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="lokigi.site.SiteProblem.solve" class="level3">
 <h3 class="anchored" data-anchor-id="lokigi.site.SiteProblem.solve">solve</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.solve(</span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>    p,</span>
-<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>    objectives<span class="op">=</span><span class="st">'p_median'</span>,</span>
-<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>    capacitated<span class="op">=</span><span class="va">False</span>,</span>
-<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>    search_strategy<span class="op">=</span><span class="st">'brute-force'</span>,</span>
-<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>    brute_force_ignore_limit<span class="op">=</span><span class="va">False</span>,</span>
-<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>    show_progress<span class="op">=</span><span class="va">True</span>,</span>
-<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>    brute_force_keep_best_n<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>    brute_force_keep_worst_n<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>    max_value_cutoff<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>    threshold_for_coverage<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>    grasp_num_solutions<span class="op">=</span><span class="dv">5</span>,</span>
-<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>    grasp_alpha<span class="op">=</span><span class="fl">0.2</span>,</span>
-<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a>    grasp_max_attempts<span class="op">=</span><span class="st">'default'</span>,</span>
-<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a>    grasp_min_sites_different<span class="op">=</span><span class="dv">1</span>,</span>
-<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a>    grasp_local_search_chance<span class="op">=</span><span class="fl">0.8</span>,</span>
-<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a>    grasp_max_swap_count_local_search<span class="op">=</span><span class="dv">10</span>,</span>
-<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a>    random_seed<span class="op">=</span><span class="dv">42</span>,</span>
-<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
-<span id="cb16-20"><a href="#cb16-20" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.solve(</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>    p,</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>    objectives<span class="op">=</span><span class="st">'p_median'</span>,</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>    capacitated<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    search_strategy<span class="op">=</span><span class="st">'brute-force'</span>,</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>    brute_force_ignore_limit<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>    show_progress<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>    brute_force_keep_best_n<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>    brute_force_keep_worst_n<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>    max_value_cutoff<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>    threshold_for_coverage<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>    grasp_num_solutions<span class="op">=</span><span class="dv">5</span>,</span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>    grasp_alpha<span class="op">=</span><span class="fl">0.2</span>,</span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>    grasp_max_attempts<span class="op">=</span><span class="st">'default'</span>,</span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>    grasp_min_sites_different<span class="op">=</span><span class="dv">1</span>,</span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a>    grasp_local_search_chance<span class="op">=</span><span class="fl">0.8</span>,</span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a>    grasp_max_swap_count_local_search<span class="op">=</span><span class="dv">10</span>,</span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a>    random_seed<span class="op">=</span><span class="dv">42</span>,</span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Solve the site location problem using the specified objective and strategy.</p>
 <p>This method validates the problem configuration, handles automatic setup of missing demand or site data, and dispatches the optimization task to the appropriate internal solver.</p>
-<section id="parameters-9" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-9">Parameters</h4>
+<section id="parameters-10" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-10">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 11%">
@@ -1647,8 +1754,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="raises-6" class="level4 doc-section doc-section-raises">
-<h4 class="doc-section doc-section-raises anchored" data-anchor-id="raises-6">Raises</h4>
+<section id="raises-7" class="level4 doc-section doc-section-raises">
+<h4 class="doc-section doc-section-raises anchored" data-anchor-id="raises-7">Raises</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 4%">
@@ -1671,8 +1778,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="raises-7" class="level4 doc-section doc-section-raises">
-<h4 class="doc-section doc-section-raises anchored" data-anchor-id="raises-7">Raises</h4>
+<section id="raises-8" class="level4 doc-section doc-section-raises">
+<h4 class="doc-section doc-section-raises anchored" data-anchor-id="raises-8">Raises</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 5%">
@@ -1695,8 +1802,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="notes-8" class="level4 doc-section doc-section-notes">
-<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-8">Notes</h4>
+<section id="notes-9" class="level4 doc-section doc-section-notes">
+<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-9">Notes</h4>
 <p>If <code>demand_data</code> or <code>candidate_sites</code> have not been explicitly added prior to calling <code>.solve()</code>, the method will automatically initialize them based on the travel matrix.</p>
 
 
