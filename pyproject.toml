@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "lokigi"
 version = "0.1.0"
-description = "A package for creating animated visualisations of queues and pathways from historical data or simulations"
+description = "A package for generating, ranking, analysing and visualising the best candidate solutions for discrete facility location problems"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
