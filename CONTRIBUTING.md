@@ -9,6 +9,18 @@ This document contains guidance for working on this repository. Please be respec
 
 <br>
 
+
+## Useful tips
+- any new plotting methods added to site_solutions.py should be placed in lokigi.mixins.site_solution_plots.py
+    - first check whether your new method needs a brand new mixin class, or whether it fits logically into one of the existing mixins
+        - if setting an entirely new mixin class up, make sure to then update the setup of SiteSolutionSet to import and use your new mixin class
+    - you will then need to update _quarto.yml to pick up your new plotting method in the SiteSolutionSet section of the documentation
+
+- any new solvers added to site.py should be placed in lokigi.mixins.site_solvers.py as a new class.
+    - make sure to then update the setup of SiteProblem to import and use your new mixin class
+    - you will then need to update _quarto.yml to pick up your new solver in the dev section of the documentation
+    - hook up your solver to SiteProblem._solve_pmedian_pcenter_mclp_problem
+
 ## Updating the list of contributors
 
 Any contributors to the repository should be recognised via `all-contributors`. If your name or contributions are missing from the README, or if you contributed in ways not captured by the current role emojis, then please feel free to update these. There are two ways to do this:

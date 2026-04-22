@@ -5,9 +5,12 @@ website:
     - reference/index.qmd
     - contents:
       - reference/site.SiteProblem.qmd
-      - reference/site.EvaluatedCombination.qmd
       - reference/site.SiteSolutionSet.qmd
       section: Location Optimization Problem Classes
+    - contents:
+      - reference/site.EvaluatedCombination.qmd
+      - reference/mixins.site_solvers.qmd
+      section: Location Optimization Problem Classes (Developer)
     id: reference
     style: floating
   - id: dummy-sidebar

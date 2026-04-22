@@ -76,7 +76,6 @@ quartodoc:
       contents:
         - name: site.SiteProblem
           children: separate
-        - name: site.EvaluatedCombination
         - name: site.SiteSolutionSet
           children: separate
           members:
@@ -96,6 +95,18 @@ quartodoc:
             - check_solution_equity
             - plot_top_n_solution_equity
             - plot_combination_by_equity
+    - title: Location Optimization Problem Classes (Developer)
+      desc: "Classes and methods which may be of interest to those looking to extend and enhance lokigi's functionality"
+      contents:
+        - name: site.EvaluatedCombination
+          children: separate
+        - name: mixins.site_solvers
+          children: separate
+          members:
+          - BruteForceMixin._brute_force
+          - GreedyMixin._greedy
+          - GraspMixin._grasp
+
     # - title: lokigi boundary classes
     #   desc: ""
     #   contents:
