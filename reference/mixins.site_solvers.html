@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>site.siteproblem – lokigi</title>
+<title>mixins.site_solvers – lokigi</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -22,41 +22,6 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
-}
-/* CSS for syntax highlighting */
-html { -webkit-text-size-adjust: 100%; }
-pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
-pre > code.sourceCode > span:empty { height: 1.2em; }
-.sourceCode { overflow: visible; }
-code.sourceCode > span { color: inherit; text-decoration: inherit; }
-div.sourceCode { margin: 1em 0; }
-pre.sourceCode { margin: 0; }
-@media screen {
-div.sourceCode { overflow: auto; }
-}
-@media print {
-pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
-}
-pre.numberSource code
-  { counter-reset: source-line 0; }
-pre.numberSource code > span
-  { position: relative; left: -4em; counter-increment: source-line; }
-pre.numberSource code > span > a:first-child::before
-  { content: counter(source-line);
-    position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; display: inline-block;
-    -webkit-touch-callout: none; -webkit-user-select: none;
-    -khtml-user-select: none; -moz-user-select: none;
-    -ms-user-select: none; user-select: none;
-    padding: 0 4px; width: 4em;
-  }
-pre.numberSource { margin-left: 3em;  padding-left: 4px; }
-div.sourceCode
-  {   }
-@media screen {
-pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -330,7 +295,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/site.SiteProblem.html">Location Optimization Problem Classes</a></li><li class="breadcrumb-item"><a href="../reference/site.SiteProblem.html">site.SiteProblem</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/site.EvaluatedCombination.html">Location Optimization Problem Classes (Developer)</a></li><li class="breadcrumb-item"><a href="../reference/mixins.site_solvers.html">mixins.site_solvers</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -359,7 +324,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/site.SiteProblem.html" class="sidebar-item-text sidebar-link active">
+  <a href="../reference/site.SiteProblem.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">site.SiteProblem</span></a>
   </div>
 </li>
@@ -388,7 +353,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/mixins.site_solvers.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/mixins.site_solvers.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">mixins.site_solvers</span></a>
   </div>
 </li>
@@ -401,120 +366,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <!-- margin-sidebar -->
     
 <!-- main -->
-<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/site.SiteProblem.html">Location Optimization Problem Classes</a></li><li class="breadcrumb-item"><a href="../reference/site.SiteProblem.html">site.SiteProblem</a></li></ol></nav></header>
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/site.EvaluatedCombination.html">Location Optimization Problem Classes (Developer)</a></li><li class="breadcrumb-item"><a href="../reference/mixins.site_solvers.html">mixins.site_solvers</a></li></ol></nav></header>
 
 
 
 
 
-<section id="lokigi.site.SiteProblem" class="level1">
-<h1>site.SiteProblem</h1>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem(preferred_crs<span class="op">=</span><span class="st">'EPSG:27700'</span>, debug_mode<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Facility location optimization for healthcare site planning.</p>
-<p>A comprehensive toolkit for solving spatial optimization problems in healthcare service delivery. This class supports multiple location-allocation models including p-median, p-center, and maximal covering location problems (MCLP), with various solution strategies from exact brute-force to heuristic methods.</p>
-<p>The class handles the complete workflow from data ingestion (demand patterns, candidate sites, travel costs) through optimization to solution evaluation, with built-in support for geographic data and spatial visualizations.</p>
-<section id="parameters" class="level2 doc-section doc-section-parameters">
-<h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 8%">
-<col style="width: 4%">
-<col style="width: 78%">
-<col style="width: 8%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-<th>Default</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>preferred_crs</td>
-<td>str</td>
-<td>The coordinate reference system for spatial data. All geographic inputs will be transformed to this CRS. Defaults to British National Grid.</td>
-<td><code>"EPSG:27700"</code></td>
-</tr>
-<tr class="even">
-<td>debug_mode</td>
-<td>bool</td>
-<td>If True, enables verbose output during optimization and data processing.</td>
-<td><code>True</code></td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="attributes" class="level2 doc-section doc-section-attributes">
-<h2 class="doc-section doc-section-attributes anchored" data-anchor-id="attributes">Attributes</h2>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 15%">
-<col style="width: 35%">
-<col style="width: 49%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>demand_data</td>
-<td>pandas.DataFrame or geopandas.GeoDataFrame or None</td>
-<td>Patient or service demand locations with associated weights.</td>
-</tr>
-<tr class="even">
-<td>candidate_sites</td>
-<td>geopandas.GeoDataFrame or None</td>
-<td>Potential facility locations available for optimization.</td>
-</tr>
-<tr class="odd">
-<td>travel_matrix</td>
-<td>pandas.DataFrame or None</td>
-<td>Cost matrix (time/distance) between demand points and candidate sites.</td>
-</tr>
-<tr class="even">
-<td>region_geometry_layer</td>
-<td>geopandas.GeoDataFrame or None</td>
-<td>Optional geographic boundaries for visualization (e.g., LSOA polygons).</td>
-</tr>
-<tr class="odd">
-<td>travel_and_demand_df</td>
-<td>pandas.DataFrame or geopandas.GeoDataFrame or None</td>
-<td>Internal merged dataset combining demand and travel cost data.</td>
-</tr>
-<tr class="even">
-<td>total_n_sites</td>
-<td>int or None</td>
-<td>Total number of candidate facilities available for optimization.</td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="notes" class="level2 doc-section doc-section-notes">
-<h2 class="doc-section doc-section-notes anchored" data-anchor-id="notes">Notes</h2>
-<p>The class implements three inheritance mixins providing different solution strategies:</p>
-<ul>
-<li>BruteForceMixin: Exhaustive enumeration for small problems</li>
-<li>GreedyMixin: Fast constructive heuristic for larger problems</li>
-<li>GraspMixin: Randomized adaptive search with local optimization</li>
-</ul>
-<p>Supported optimization objectives:</p>
-<ul>
-<li>‘simple_p_median’: Minimize total unweighted travel distance/time</li>
-<li>‘hybrid_simple_p_median’: Simple p-median with maximum distance/time constraint</li>
-<li>‘p_median’: Minimize total weighted travel distance/time</li>
-<li>‘hybrid_p_median’: P-median with maximum distance/time constraint</li>
-<li>‘p_center’: Minimize maximum travel distance/time</li>
-<li>‘mclp’: Maximize coverage within a distance/time threshold</li>
-</ul>
-</section>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<section id="lokigi.mixins.site_solvers" class="level1">
+<h1>mixins.site_solvers</h1>
+<p><code>mixins.site_solvers</code></p>
+<section id="functions" class="level2">
+<h2 class="anchored" data-anchor-id="functions">Functions</h2>
 <table class="caption-top table">
 <thead>
 <tr class="header">
@@ -524,68 +386,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td><a href="../reference/lokigi.site.SiteProblem.add_demand.html#lokigi.site.SiteProblem.add_demand">add_demand</a></td>
-<td>Add demand data to the site problem and validate its structure.</td>
+<td><a href="../reference/lokigi.mixins.site_solvers.BruteForceMixin._brute_force.html#lokigi.mixins.site_solvers.BruteForceMixin._brute_force">BruteForceMixin._brute_force</a></td>
+<td></td>
 </tr>
 <tr class="even">
-<td><a href="../reference/lokigi.site.SiteProblem.add_equity_data.html#lokigi.site.SiteProblem.add_equity_data">add_equity_data</a></td>
-<td>Add a dataframe containing equity data into your problem.</td>
+<td><a href="../reference/lokigi.mixins.site_solvers.GreedyMixin._greedy.html#lokigi.mixins.site_solvers.GreedyMixin._greedy">GreedyMixin._greedy</a></td>
+<td></td>
 </tr>
 <tr class="odd">
-<td><a href="../reference/lokigi.site.SiteProblem.add_region_geometry_layer.html#lokigi.site.SiteProblem.add_region_geometry_layer">add_region_geometry_layer</a></td>
-<td>Add a region geodataframe to the site problem and validate its structure.</td>
-</tr>
-<tr class="even">
-<td><a href="../reference/lokigi.site.SiteProblem.add_sites.html#lokigi.site.SiteProblem.add_sites">add_sites</a></td>
-<td>Add candidate facility sites to the problem and handle spatial alignment.</td>
-</tr>
-<tr class="odd">
-<td><a href="../reference/lokigi.site.SiteProblem.add_travel_matrix.html#lokigi.site.SiteProblem.add_travel_matrix">add_travel_matrix</a></td>
-<td>Add a travel cost matrix to the problem and handle unit conversions.</td>
-</tr>
-<tr class="even">
-<td><a href="../reference/lokigi.site.SiteProblem.describe_models.html#lokigi.site.SiteProblem.describe_models">describe_models</a></td>
-<td>Prints a menu of available optimization strategies for healthcare.</td>
-</tr>
-<tr class="odd">
-<td><a href="../reference/lokigi.site.SiteProblem.evaluate_single_solution_single_objective.html#lokigi.site.SiteProblem.evaluate_single_solution_single_objective">evaluate_single_solution_single_objective</a></td>
-<td>Evaluate a specific set of facility sites against a single objective.</td>
-</tr>
-<tr class="even">
-<td><a href="../reference/lokigi.site.SiteProblem.plot_region_geometry_layer.html#lokigi.site.SiteProblem.plot_region_geometry_layer">plot_region_geometry_layer</a></td>
-<td>Visualize the regional geometry layer, optionally overlaid with demand data.</td>
-</tr>
-<tr class="odd">
-<td><a href="../reference/lokigi.site.SiteProblem.plot_sites.html#lokigi.site.SiteProblem.plot_sites">plot_sites</a></td>
-<td>Generate a visualization of the candidate facility sites.</td>
-</tr>
-<tr class="even">
-<td><a href="../reference/lokigi.site.SiteProblem.show_demand.html#lokigi.site.SiteProblem.show_demand">show_demand</a></td>
-<td>Returns a loaded demand dataframe</td>
-</tr>
-<tr class="odd">
-<td><a href="../reference/lokigi.site.SiteProblem.show_demand_format.html#lokigi.site.SiteProblem.show_demand_format">show_demand_format</a></td>
-<td>Prints the expected structure for the demand DataFrame.</td>
-</tr>
-<tr class="even">
-<td><a href="../reference/lokigi.site.SiteProblem.show_region_geometry_layer.html#lokigi.site.SiteProblem.show_region_geometry_layer">show_region_geometry_layer</a></td>
-<td>Returns a loaded region geometry geodataframe</td>
-</tr>
-<tr class="odd">
-<td><a href="../reference/lokigi.site.SiteProblem.show_sites.html#lokigi.site.SiteProblem.show_sites">show_sites</a></td>
-<td>Returns a loaded candidate site geodataframe</td>
-</tr>
-<tr class="even">
-<td><a href="../reference/lokigi.site.SiteProblem.show_travel_format.html#lokigi.site.SiteProblem.show_travel_format">show_travel_format</a></td>
-<td>Prints the expected structure for the travel/cost matrix DataFrame.</td>
-</tr>
-<tr class="odd">
-<td><a href="../reference/lokigi.site.SiteProblem.show_travel_matrix.html#lokigi.site.SiteProblem.show_travel_matrix">show_travel_matrix</a></td>
-<td>Returns a loaded travel or cost matrix dataframe</td>
-</tr>
-<tr class="even">
-<td><a href="../reference/lokigi.site.SiteProblem.solve.html#lokigi.site.SiteProblem.solve">solve</a></td>
-<td>Solve the site location problem using the specified objective and strategy.</td>
+<td><a href="../reference/lokigi.mixins.site_solvers.GraspMixin._grasp.html#lokigi.mixins.site_solvers.GraspMixin._grasp">GraspMixin._grasp</a></td>
+<td>GRASP (Greedy Randomised Adaptive Search Procedure) for finding multiple</td>
 </tr>
 </tbody>
 </table>
