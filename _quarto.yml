@@ -55,6 +55,10 @@ quartodoc:
   dir: reference
   out_index: index.qmd
   package: lokigi
+  options:
+    include_inherited: true
+    include_imports: true
+    dynamic: true
 
   # Write the API structure to this file
   sidebar:
@@ -70,9 +74,28 @@ quartodoc:
     - title: Location Optimization Problem Classes
       desc: ""
       contents:
-        - site.SiteProblem
-        - site.EvaluatedCombination
-        - site.SiteSolutionSet
+        - name: site.SiteProblem
+          children: separate
+        - name: site.EvaluatedCombination
+        - name: site.SiteSolutionSet
+          children: separate
+          members:
+            # Note that every new method must be manually listed here
+            # due to the use of mixins and them not being picked up if
+            # not explicitly included
+            - show_solutions
+            - return_best_combination_details
+            - return_best_combination_site_indices
+            - return_best_combination_site_names
+            - plot_simple_pareto_front
+            - plot_all_metric_pareto_front
+            - plot_n_best_combinations_bar
+            - plot_best_combination
+            - plot_n_best_combinations
+            - plot_travel_time_distribution
+            - check_solution_equity
+            - plot_top_n_solution_equity
+            - plot_combination_by_equity
     # - title: lokigi boundary classes
     #   desc: ""
     #   contents:
