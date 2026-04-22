@@ -495,263 +495,61 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td><a href="#lokigi.site.SiteSolutionSet.return_best_combination_details">return_best_combination_details</a></td>
-<td>Return details of the top-ranked solution(s).</td>
-</tr>
-<tr class="even">
-<td><a href="#lokigi.site.SiteSolutionSet.return_best_combination_site_indices">return_best_combination_site_indices</a></td>
-<td>Return the site indices for the best-performing solution.</td>
-</tr>
-<tr class="odd">
-<td><a href="#lokigi.site.SiteSolutionSet.return_best_combination_site_names">return_best_combination_site_names</a></td>
-<td>Return the site names for the best-performing solution.</td>
-</tr>
-<tr class="even">
-<td><a href="#lokigi.site.SiteSolutionSet.show_solutions">show_solutions</a></td>
+<td><a href="../reference/lokigi.site.SiteSolutionSet.show_solutions.html#lokigi.site.SiteSolutionSet.show_solutions">show_solutions</a></td>
 <td>Return the solution DataFrame with rounded values.</td>
 </tr>
-</tbody>
-</table>
-<section id="lokigi.site.SiteSolutionSet.return_best_combination_details" class="level3">
-<h3 class="anchored" data-anchor-id="lokigi.site.SiteSolutionSet.return_best_combination_details">return_best_combination_details</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet.return_best_combination_details(rank_on<span class="op">=</span><span class="va">None</span>, top_n<span class="op">=</span><span class="dv">1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Return details of the top-ranked solution(s).</p>
-<section id="parameters-1" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-1">Parameters</h4>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 3%">
-<col style="width: 3%">
-<col style="width: 88%">
-<col style="width: 4%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-<th>Default</th>
+<tr class="even">
+<td><a href="../reference/lokigi.site.SiteSolutionSet.return_best_combination_details.html#lokigi.site.SiteSolutionSet.return_best_combination_details">return_best_combination_details</a></td>
+<td>Return details of the top-ranked solution(s).</td>
 </tr>
-</thead>
-<tbody>
 <tr class="odd">
-<td>rank_on</td>
-<td>str</td>
-<td>Column name to sort the solutions by. If provided, solutions are sorted in ascending order before selecting the top entries. If None, the existing order of <code>solution_df</code>, which is based on the objective selected, is used.</td>
-<td><code>None</code></td>
+<td><a href="../reference/lokigi.site.SiteSolutionSet.return_best_combination_site_indices.html#lokigi.site.SiteSolutionSet.return_best_combination_site_indices">return_best_combination_site_indices</a></td>
+<td>Return the site indices for the best-performing solution.</td>
 </tr>
 <tr class="even">
-<td>top_n</td>
-<td>int</td>
-<td>Number of top solutions to return.</td>
-<td><code>1</code></td>
+<td><a href="../reference/lokigi.site.SiteSolutionSet.return_best_combination_site_names.html#lokigi.site.SiteSolutionSet.return_best_combination_site_names">return_best_combination_site_names</a></td>
+<td>Return the site names for the best-performing solution.</td>
 </tr>
-</tbody>
-</table>
-</section>
-<section id="returns" class="level4 doc-section doc-section-returns">
-<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns">Returns</h4>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 5%">
-<col style="width: 11%">
-<col style="width: 83%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
 <tr class="odd">
+<td><a href="../reference/lokigi.site.SiteSolutionSet.plot_simple_pareto_front.html#lokigi.site.SiteSolutionSet.plot_simple_pareto_front">plot_simple_pareto_front</a></td>
+<td>Plot a Pareto front for two selected solution metrics.</td>
+</tr>
+<tr class="even">
+<td><a href="../reference/lokigi.site.SiteSolutionSet.plot_all_metric_pareto_front.html#lokigi.site.SiteSolutionSet.plot_all_metric_pareto_front">plot_all_metric_pareto_front</a></td>
+<td>Plot Pareto fronts for all pairs of solution metrics.</td>
+</tr>
+<tr class="odd">
+<td><a href="../reference/lokigi.site.SiteSolutionSet.plot_n_best_combinations_bar.html#lokigi.site.SiteSolutionSet.plot_n_best_combinations_bar">plot_n_best_combinations_bar</a></td>
+<td>Plot a bar chart of the top-performing site combinations.</td>
+</tr>
+<tr class="even">
+<td><a href="../reference/lokigi.site.SiteSolutionSet.plot_best_combination.html#lokigi.site.SiteSolutionSet.plot_best_combination">plot_best_combination</a></td>
+<td>Plot a map of the best-performing site combination.</td>
+</tr>
+<tr class="odd">
+<td><a href="../reference/lokigi.site.SiteSolutionSet.plot_n_best_combinations.html#lokigi.site.SiteSolutionSet.plot_n_best_combinations">plot_n_best_combinations</a></td>
+<td>Plot maps for the top-performing site combinations.</td>
+</tr>
+<tr class="even">
+<td><a href="../reference/lokigi.site.SiteSolutionSet.plot_travel_time_distribution.html#lokigi.site.SiteSolutionSet.plot_travel_time_distribution">plot_travel_time_distribution</a></td>
+<td>Plot travel time distributions for selected solutions.</td>
+</tr>
+<tr class="odd">
+<td><a href="../reference/lokigi.site.SiteSolutionSet.check_solution_equity.html#lokigi.site.SiteSolutionSet.check_solution_equity">check_solution_equity</a></td>
+<td>Summarise and optionally plot equity metrics for a selected solution.</td>
+</tr>
+<tr class="even">
+<td><a href="../reference/lokigi.site.SiteSolutionSet.plot_top_n_solution_equity.html#lokigi.site.SiteSolutionSet.plot_top_n_solution_equity">plot_top_n_solution_equity</a></td>
+<td>Plot equity summaries for the top N solutions in a grid of subplots.</td>
+</tr>
+<tr class="odd">
+<td><a href="../reference/lokigi.site.SiteSolutionSet.plot_combination_by_equity.html#lokigi.site.SiteSolutionSet.plot_combination_by_equity">plot_combination_by_equity</a></td>
 <td></td>
-<td>pandas.DataFrame</td>
-<td>DataFrame containing the top <code>top_n</code> solutions, including all available columns. The index is reset in the returned DataFrame.</td>
 </tr>
 </tbody>
 </table>
-</section>
-<section id="notes-1" class="level4 doc-section doc-section-notes">
-<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-1">Notes</h4>
-<p>Sorting is performed in ascending order, so lower values are assumed to represent better solutions for the specified ranking metric.</p>
-</section>
-</section>
-<section id="lokigi.site.SiteSolutionSet.return_best_combination_site_indices" class="level3">
-<h3 class="anchored" data-anchor-id="lokigi.site.SiteSolutionSet.return_best_combination_site_indices">return_best_combination_site_indices</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet.return_best_combination_site_indices(rank_on<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Return the site indices for the best-performing solution.</p>
-<section id="parameters-2" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 3%">
-<col style="width: 3%">
-<col style="width: 88%">
-<col style="width: 4%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-<th>Default</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>rank_on</td>
-<td>str</td>
-<td>Column name to sort the solutions by. If provided, the solution with the lowest value in this column is selected. If None, the existing order of <code>solution_df</code>, which is based on the objective selected, is used.</td>
-<td><code>None</code></td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="returns-1" class="level4 doc-section doc-section-returns">
-<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-1">Returns</h4>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 6%">
-<col style="width: 6%">
-<col style="width: 86%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td></td>
-<td>object</td>
-<td>The value of the “site_indices” column for the best solution. Typically a list or array of site indices.</td>
-</tr>
-</tbody>
-</table>
-</section>
-</section>
-<section id="lokigi.site.SiteSolutionSet.return_best_combination_site_names" class="level3">
-<h3 class="anchored" data-anchor-id="lokigi.site.SiteSolutionSet.return_best_combination_site_names">return_best_combination_site_names</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet.return_best_combination_site_names(rank_on<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Return the site names for the best-performing solution.</p>
-<section id="parameters-3" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-3">Parameters</h4>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 3%">
-<col style="width: 3%">
-<col style="width: 88%">
-<col style="width: 4%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-<th>Default</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>rank_on</td>
-<td>str</td>
-<td>Column name to sort the solutions by. If provided, the solution with the lowest value in this column is selected. If None, the existing order of <code>solution_df</code>, which is based on the objective selected, is used.</td>
-<td><code>None</code></td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="returns-2" class="level4 doc-section doc-section-returns">
-<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-2">Returns</h4>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 6%">
-<col style="width: 6%">
-<col style="width: 86%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td></td>
-<td>object</td>
-<td>The value of the “site_indices” column for the best solution. Typically a list or array of site indices.</td>
-</tr>
-</tbody>
-</table>
-</section>
-</section>
-<section id="lokigi.site.SiteSolutionSet.show_solutions" class="level3">
-<h3 class="anchored" data-anchor-id="lokigi.site.SiteSolutionSet.show_solutions">show_solutions</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet.show_solutions(rounding<span class="op">=</span><span class="dv">2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Return the solution DataFrame with rounded values.</p>
-<section id="parameters-4" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-4">Parameters</h4>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 11%">
-<col style="width: 9%">
-<col style="width: 65%">
-<col style="width: 13%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-<th>Default</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>rounding</td>
-<td>int</td>
-<td>Number of decimal places to round numeric columns to.</td>
-<td><code>2</code></td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="returns-3" class="level4 doc-section doc-section-returns">
-<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-3">Returns</h4>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 7%">
-<col style="width: 16%">
-<col style="width: 75%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td></td>
-<td>pandas.DataFrame</td>
-<td>The solution DataFrame with numeric values rounded to the specified precision.</td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="notes-2" class="level4 doc-section doc-section-notes">
-<h4 class="doc-section doc-section-notes anchored" data-anchor-id="notes-2">Notes</h4>
-<p>This method does not modify the underlying DataFrame; it returns a rounded copy.</p>
 
 
-</section>
-</section>
 </section>
 </section>
 
