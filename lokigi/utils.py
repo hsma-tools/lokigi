@@ -9,7 +9,8 @@ from pathlib import Path
 from urllib.parse import urlparse
 import requests
 from io import BytesIO
-
+import textwrap
+from warnings import warn
 
 PANDAS_EXTS = [".csv", ".parquet", ".xlsx", ".xls"]
 GEOPANDAS_EXTS = [".shp", ".geojson", ".gpkg"]
@@ -136,10 +137,13 @@ def _check_crs_match(gdf_1, gdf_2, strict=False):
     """
     Check that the coordinate reference system of two geodataframes is the same and warn if it is not
     """
-    if strict:
-        assert gdf_1.crs == gdf_2.crs, f"CRS Mismatch. {gdf_1.crs} vs {gdf_2.crs}."
-    else:
-        return gdf_1.crs == gdf_2.crs
+    try:
+        if strict:
+            assert gdf_1.crs == gdf_2.crs, f"CRS Mismatch. {gdf_1.crs} vs {gdf_2.crs}."
+        else:
+            return gdf_1.crs == gdf_2.crs
+    except AttributeError:
+        warn(f"Could not check crs. CRS 1: {gdf_1.crs}. CRS 2: {gdf_2.crs}")
 
 
 def _check_crs_match_pref(gdf, pref, strict=False):
@@ -224,6 +228,8 @@ def _guess_crs(
 
     if verbose:
         print(f"Guessed CRS: {crs} ({reason})")
+
+    return crs
 
 
 def _convert_crs(df, target_crs):
@@ -524,3 +530,9 @@ def _validate_capacity_constraint(self):
             f"but only {total_capacity} total slots. You need to add more "
             "candidate sites or increase 'p'."
         )
+
+
+def _wrap_label(text, width):
+    if width is None or not isinstance(text, str):
+        return text
+    return "\n".join(textwrap.wrap(text, width=width))

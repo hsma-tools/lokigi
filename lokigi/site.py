@@ -706,7 +706,7 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
         if not _check_crs_match_pref(loaded_df, self.preferred_crs):
             loaded_df = _convert_crs(loaded_df, target_crs=self.preferred_crs)
 
-        loaded_df = loaded_df.reset_index(drop=False, names="index")
+        loaded_df = loaded_df.reset_index(drop=False, names="canonical_site_index")
 
         self.candidate_sites = loaded_df
         self._candidate_sites_type = df_type
@@ -1052,31 +1052,73 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
         if self.travel_and_demand_df is None:
             self._create_joined_demand_travel_df(index_col=self._demand_data_id_col)
 
-        # Resolve to indices based on the chosen input
-        if site_names:
-            try:
-                # Use .get_indexer to find positions of a list of labels
-                # This returns integer positions for the provided names
-                resolved_indices = self.travel_and_demand_df.columns.get_indexer(
-                    site_names
+        try:
+            # We need to make sure that we use IDs and names completely consistently throughout.
+            # 1. Resolve site_indices to actual Site IDs (names)
+            if site_indices is not None:
+                # Use .iloc to get the actual ID/Name from the master site list
+                resolved_names = self.candidate_sites[
+                    self.candidate_sites["canonical_site_index"].isin(site_indices)
+                ][self._candidate_sites_candidate_id_col].tolist()
+                # print(f"Site indices provided. Resolved names: {resolved_names}")
+
+                if not resolved_names:
+                    raise IndexError(
+                        f"Indices {site_indices} not found in candidate sites."
+                    )
+            else:
+                # print(f"Name provided. Resolved names: {site_names}")
+                resolved_names = site_names
+
+            # 2. Map those names to the Travel Matrix column positions
+            resolved_matrix_indices = self.travel_and_demand_df.columns.get_indexer(
+                resolved_names
+            )
+
+            # print(f"Resolved matrix indices: {resolved_matrix_indices}")
+
+            if -1 in resolved_matrix_indices:
+                missing = [
+                    resolved_names[i]
+                    for i, idx in enumerate(resolved_matrix_indices)
+                    if idx == -1
+                ]
+                raise KeyError(f"Sites not found in travel matrix: {missing}")
+
+            # 3. SMART SORTING:
+            if site_indices is not None:
+                original_indices = site_indices
+            else:
+                # Derive indices from candidate_sites using the resolved names
+                original_indices = (
+                    self.candidate_sites.set_index(
+                        self._candidate_sites_candidate_id_col
+                    )
+                    .loc[resolved_names]["canonical_site_index"]
+                    .tolist()
                 )
 
-                # Check if any names were not found (get_indexer returns -1 for missing)
-                if -1 in resolved_indices:
-                    missing = [
-                        site_names[i]
-                        for i, idx in enumerate(resolved_indices)
-                        if idx == -1
-                    ]
-                    raise KeyError(
-                        f"The following site names were not found: {missing}"
-                    )
-            except Exception as e:
-                raise ValueError(f"Error mapping site names: {e}")
+            # Zip (Original Index, Site Name, Matrix Column Position)
+            combined = list(
+                zip(original_indices, resolved_names, resolved_matrix_indices)
+            )
 
-        else:
-            # User provided site_indices directly
-            resolved_indices = site_indices
+            # Sort by the original positional index
+            combined.sort(key=lambda x: x[0])
+
+            # Unpack
+            final_indices = [x[0] for x in combined]
+            final_names = [x[1] for x in combined]
+            final_matrix_cols = [x[2] for x in combined]
+
+            # print(f"Final indices: {final_indices}")
+            # print(f"Final names: {final_names}")
+            # print(f"Final matrix cols: {final_matrix_cols}")
+
+        except Exception as e:
+            if isinstance(e, (IndexError, KeyError)):
+                raise
+            raise ValueError(f"Error mapping site names: {e}")
 
         # Filter and calculate
         try:
@@ -1107,13 +1149,14 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
             # SOFTWARE.
             # We use .iloc because we now have guaranteed integer positions
             active_facilities = self.travel_and_demand_df.iloc[
-                :, resolved_indices
+                :, final_matrix_cols
             ].copy()
+
         except IndexError:
             max_idx = self.travel_and_demand_df.shape[1] - 1
             raise IndexError(
                 f"Index out of bounds. Your travel data has indices 0 to {max_idx}. "
-                f"You provided indices: {site_indices}"
+                f"You provided indices: {max_idx}"
             )
 
         if not capacitated:
@@ -1156,8 +1199,8 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
 
         return EvaluatedCombination(
             objective,
-            site_indices=resolved_indices,
-            site_names=site_names,
+            site_indices=final_indices,
+            site_names=final_names,
             evaluated_combination_df=active_facilities,
             site_problem=self,
             coverage_threshold=threshold_for_coverage,

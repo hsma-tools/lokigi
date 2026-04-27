@@ -13,6 +13,8 @@ from lokigi.utils import _safe_evaluate
 import sweetpareto.vis as spv
 import itertools
 from typing import Literal, Optional
+import textwrap
+from lokigi.utils import _wrap_label
 
 
 class ParetoPlotsMixin:
@@ -342,6 +344,13 @@ class MapsMixin:
         chosen_site_colour="black",
         unchosen_site_colour="grey",
         legend_loc="upper right",
+        legend_bbox_to_anchor=(1.75, 0.5),
+        legend_fontsize=10,
+        title_font_size=12,
+        annotation_size=6,
+        label_wrap_width=40,
+        height=12,
+        width=6,
     ):
         """
         Plot a map of the best-performing site combination.
@@ -382,6 +391,20 @@ class MapsMixin:
         legend_loc: str, default="upper right"
             Adjust position of the legend within the main plot. Accepts standard
             matplotlib positioning strings.
+        legend_bbox_to_anchor : tuple or None, default=None
+            If provided, places the legend outside the plot area. Accepts a
+            2-tuple (x, y) in axes coordinates. Common examples:
+            - (1.05, 1) for right side, top aligned
+            - (0.5, -0.1) for bottom center
+            - (1.05, 0.5) for right side, center aligned
+            When set, legend_loc is used as the anchor point on the legend box.
+        legend_fontsize : int or float, default=10
+            Font size for legend text.
+        title_fontsize : int or float, default=12
+            Font size for the plot title.
+        label_wrap_width : int, default=40
+            Maximum character width before wrapping legend labels. Set to None
+            to disable wrapping.
 
         Returns
         -------
@@ -455,6 +478,14 @@ class MapsMixin:
                 # If plotting travel time/distance/other cost, use a sequential colourmap
                 cmap = "Blues"
 
+        legend_kwargs = {
+            "loc": legend_loc,
+            "fontsize": legend_fontsize,
+        }
+
+        if legend_bbox_to_anchor is not None:
+            legend_kwargs["bbox_to_anchor"] = legend_bbox_to_anchor
+
         if plot_site_allocation:
             ax = nearest_site_travel_gdf.plot(
                 "selected_site",
@@ -463,8 +494,8 @@ class MapsMixin:
                 alpha=0.7,
                 edgecolor="black",
                 linewidth=0.5,
-                figsize=(12, 6),
-                legend_kwds={"loc": legend_loc},
+                figsize=(height, width),
+                legend_kwds=legend_kwargs,
             )
         elif plot_regions_not_meeting_threshold:
             # nearest_site_travel_gdf["within_threshold"] = nearest_site_travel_gdf[
@@ -492,11 +523,17 @@ class MapsMixin:
             patches = [
                 mpatches.Patch(
                     color=colors[0],
-                    label=f"Further than {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}",
+                    label=_wrap_label(
+                        f"Further than {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}",
+                        width=label_wrap_width,
+                    ),
                 ),
                 mpatches.Patch(
                     color=colors[1],
-                    label=f"Within {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}",
+                    label=_wrap_label(
+                        f"Within {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}",
+                        width=label_wrap_width,
+                    ),
                 ),
             ]
             ax.legend(handles=patches, title="Coverage Status", loc=legend_loc)
@@ -509,11 +546,16 @@ class MapsMixin:
                 edgecolor="black",
                 linewidth=0.5,
                 figsize=(12, 6),
+                legend_kwds=legend_kwargs,
             )
 
         if self.site_problem._candidate_sites_type == "geopandas":
-            selected_sites = self.site_problem.candidate_sites.iloc[
-                solution.site_indices.iloc[0]
+            selected_site_names = solution.site_names.iloc[0]
+            # Get site names from the travel matrix columns using the indices
+            selected_sites = self.site_problem.candidate_sites[
+                self.site_problem.candidate_sites[
+                    self.site_problem._candidate_sites_candidate_id_col
+                ].isin(selected_site_names)
             ]
 
             if show_all_locations:
@@ -531,11 +573,12 @@ class MapsMixin:
                 selected_sites[self.site_problem._candidate_sites_candidate_id_col],
             ):
                 ax.annotate(
-                    label,
+                    _wrap_label(label, width=label_wrap_width),
                     xy=(x, y),
                     xytext=(10, 3),
                     textcoords="offset points",
                     bbox=dict(facecolor="white"),
+                    size=annotation_size,
                 )
 
         cx.add_basemap(
@@ -565,7 +608,9 @@ class MapsMixin:
                         f"Best solution for {self.n_sites} sites \nWeighted Average: {solution['weighted_average'].values[0]:.1f} {self.site_problem._travel_matrix_unit} \nMaximum: {solution['max'].values[0]:.1f} {self.site_problem._travel_matrix_unit}"
                     )
             else:
-                title = plt.title(_safe_evaluate(title, solution=solution))
+                title = plt.title(
+                    _safe_evaluate(title, solution=solution), fontsize=title_font_size
+                )
 
         return ax
 
@@ -831,8 +876,20 @@ class MapsMixin:
                 )
 
             if self.site_problem._candidate_sites_type == "geopandas":
-                selected_sites = self.site_problem.candidate_sites.iloc[
-                    solution.site_indices.iloc[0]
+                # Get site names from the travel matrix columns using the indices
+                selected_site_names = solution.site_names.iloc[0]
+                # Get site names from the travel matrix columns using the indices
+                selected_sites = self.site_problem.candidate_sites[
+                    self.site_problem.candidate_sites[
+                        self.site_problem._candidate_sites_candidate_id_col
+                    ].isin(selected_site_names)
+                ]
+
+                # Then filter by name
+                selected_sites = self.site_problem.candidate_sites[
+                    self.site_problem.candidate_sites[
+                        self.site_problem._candidate_sites_candidate_id_col
+                    ].isin(selected_site_names)
                 ]
 
                 if show_all_locations:
@@ -929,11 +986,15 @@ class MapsMixin:
             legend_patches = [
                 mpatches.Patch(
                     color=colors[0],  # Color for False (Index 0)
-                    label=f"Further than {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}\nfrom nearest site",
+                    label=_wrap_label(
+                        f"Further than {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}\nfrom nearest site"
+                    ),
                 ),
                 mpatches.Patch(
                     color=colors[1],  # Color for True (Index 1)
-                    label=f"Within {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}\nof nearest site",
+                    label=_wrap_label(
+                        f"Within {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}\nof nearest site"
+                    ),
                 ),
             ]
 
