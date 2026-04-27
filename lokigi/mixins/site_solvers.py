@@ -195,7 +195,9 @@ class GreedyMixin:
             ][0]
 
             if show_progress:
-                print(f"Best combination for {i} sites: {best_indices}")
+                print(
+                    f"Best combination for {i} sites: {[int(i) for i in best_indices]}"
+                )
 
         best_solution_metrics = self.evaluate_single_solution_single_objective(
             site_indices=best_indices,

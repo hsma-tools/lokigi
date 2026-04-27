@@ -38,6 +38,14 @@ listing:
     sort: false
     grid-columns: 3
     template: ../lokigi_docs/resources/listing.ejs
+
+  - id: sites-other
+    contents:
+      - "location/obtaining_travel_time_matrices/index.ipynb"
+    type: grid
+    sort: false
+    grid-columns: 3
+    template: ../lokigi_docs/resources/listing.ejs
 ---
 
 ## Single Objective Location Optimization
@@ -66,4 +74,9 @@ When a problem is too big for evaluating and storing every combination, lokigi o
 ### Specialised plots
 
 ::: {#sites-specialised-plots}
+:::
+
+### Other
+
+:::{#sites-other}
 :::

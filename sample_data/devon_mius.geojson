@@ -1,0 +1,22 @@
+{
+"type": "FeatureCollection",
+"name": "devon_mius",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "Facility_Name": "North Devon District Hospital", "Latitude": 51.09217, "Longitude": -4.05043 }, "geometry": { "type": "Point", "coordinates": [ -4.05043, 51.09217 ] } },
+{ "type": "Feature", "properties": { "Facility_Name": "Honiton Hospital", "Latitude": 50.79492, "Longitude": -3.18659 }, "geometry": { "type": "Point", "coordinates": [ -3.18659, 50.79492 ] } },
+{ "type": "Feature", "properties": { "Facility_Name": "Tiverton & District Hospital", "Latitude": 50.90933, "Longitude": -3.49308 }, "geometry": { "type": "Point", "coordinates": [ -3.49308, 50.90933 ] } },
+{ "type": "Feature", "properties": { "Facility_Name": "Exmouth Minor Injury Unit", "Latitude": 50.62083, "Longitude": -3.40198 }, "geometry": { "type": "Point", "coordinates": [ -3.40198, 50.62083 ] } },
+{ "type": "Feature", "properties": { "Facility_Name": "Victoria Hospital (Sidmouth)", "Latitude": 50.68161, "Longitude": -3.23966 }, "geometry": { "type": "Point", "coordinates": [ -3.23966, 50.68161 ] } },
+{ "type": "Feature", "properties": { "Facility_Name": "Newton Abbot Community Hospital", "Latitude": 50.53926, "Longitude": -3.61224 }, "geometry": { "type": "Point", "coordinates": [ -3.61224, 50.53926 ] } },
+{ "type": "Feature", "properties": { "Facility_Name": "Totnes Community Hospital", "Latitude": 50.43283, "Longitude": -3.68406 }, "geometry": { "type": "Point", "coordinates": [ -3.68406, 50.43283 ] } },
+{ "type": "Feature", "properties": { "Facility_Name": "NHS Walk in Centre (Exeter)", "Latitude": 50.72658, "Longitude": -3.52521 }, "geometry": { "type": "Point", "coordinates": [ -3.52521, 50.72658 ] } },
+{ "type": "Feature", "properties": { "Facility_Name": "Tavistock Hospital", "Latitude": 50.54708, "Longitude": -4.15376 }, "geometry": { "type": "Point", "coordinates": [ -4.15376, 50.54708 ] } },
+{ "type": "Feature", "properties": { "Facility_Name": "South Hams Hospital (Kingsbridge)", "Latitude": 50.28929, "Longitude": -3.78143 }, "geometry": { "type": "Point", "coordinates": [ -3.78143, 50.28929 ] } },
+{ "type": "Feature", "properties": { "Facility_Name": "Cumberland Centre (Plymouth)", "Latitude": 50.37004, "Longitude": -4.16873 }, "geometry": { "type": "Point", "coordinates": [ -4.16873, 50.37004 ] } },
+{ "type": "Feature", "properties": { "Facility_Name": "Derriford Hospital (UTC)", "Latitude": 50.41802, "Longitude": -4.1189 }, "geometry": { "type": "Point", "coordinates": [ -4.1189, 50.41802 ] } },
+{ "type": "Feature", "properties": { "Facility_Name": "Ilfracombe & District Tyrrell Hospital", "Latitude": 51.20468, "Longitude": -4.12454 }, "geometry": { "type": "Point", "coordinates": [ -4.12454, 51.20468 ] } },
+{ "type": "Feature", "properties": { "Facility_Name": "South Molton Hospital", "Latitude": 51.01681, "Longitude": -3.83823 }, "geometry": { "type": "Point", "coordinates": [ -3.83823, 51.01681 ] } },
+{ "type": "Feature", "properties": { "Facility_Name": "Dawlish Community Hospital", "Latitude": 50.58057, "Longitude": -3.47482 }, "geometry": { "type": "Point", "coordinates": [ -3.47482, 50.58057 ] } }
+]
+}
