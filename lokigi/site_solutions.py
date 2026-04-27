@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 from lokigi.mixins.site_solution_plots import (
     MapsMixin,
@@ -332,3 +333,82 @@ class SiteSolutionSet(
 
     def summary_table(self):
         pass
+
+
+class SolutionSetComparator:
+    """
+    Tools to compare two SiteSolutionSet objects.
+    """
+
+    def __init__(self, set_a, set_b, labels=("Set A", "Set B")):
+        self.set_a = set_a
+        self.set_b = set_b
+        self.labels = labels
+
+    def compare_top_results(self, n=1):
+        """
+        Compares the top N solutions from both sets.
+        """
+        top_a = self.set_a.solution_df.head(n).copy()
+        top_b = self.set_b.solution_df.head(n).copy()
+
+        top_a["origin"] = self.labels[0]
+        top_b["origin"] = self.labels[1]
+
+        return pd.concat([top_a, top_b]).reset_index(drop=True)
+
+    def get_metric_summary(self, objective="weighted_average"):
+        """
+        Returns a comparison of descriptive statistics for a specific objective.
+        """
+
+        stats_a = self.set_a.solution_df[objective].describe()
+        stats_b = self.set_b.solution_df[objective].describe()
+
+        summary = pd.DataFrame({self.labels[0]: stats_a, self.labels[1]: stats_b})
+        summary["difference"] = summary[self.labels[0]] - summary[self.labels[1]]
+        return summary
+
+    def site_overlap(self, top_n=1):
+        """
+        Analyzes how many sites are common between the top N solutions
+        of both sets.
+        """
+
+        def get_all_sites(solution_df, n):
+            # Flattens the list of site_indices from the top N rows
+            all_indices = solution_df.head(n)["site_indices"].explode()
+            return set(all_indices)
+
+        sites_a = get_all_sites(self.set_a.solution_df, top_n)
+        sites_b = get_all_sites(self.set_b.solution_df, top_n)
+
+        common = sites_a.intersection(sites_b)
+        only_a = sites_a - sites_b
+        only_b = sites_b - sites_a
+
+        return {
+            "common_sites_count": len(common),
+            "common_sites_indices": list(common),
+            "unique_to_a": list(only_a),
+            "unique_to_b": list(only_b),
+            "jaccard_similarity": len(common) / len(sites_a.union(sites_b))
+            if sites_a.union(sites_b)
+            else 0,
+        }
+
+    def summary_report(self):
+        """Prints a quick text summary of the comparison."""
+        obj = self.set_a.objectives
+        if isinstance(obj, list):
+            obj = obj[0]
+
+        best_a = self.set_a.solution_df[obj].iloc[0]
+        best_b = self.set_b.solution_df[obj].iloc[0]
+
+        print(f"--- Comparison Report: {self.labels[0]} vs {self.labels[1]} ---")
+        print(f"Objective: {obj}")
+        print(f"Best Score ({self.labels[0]}): {best_a:.4f}")
+        print(f"Best Score ({self.labels[1]}): {best_b:.4f}")
+        print(f"Difference: {best_a - best_b:.4f}")
+        print("-" * 40)

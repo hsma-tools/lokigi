@@ -8,6 +8,8 @@ listing:
       - "location/simple/simple.ipynb"
       - "location/existing_sites/existing_sites.ipynb"
       - "location/no_geometry/no_geometry.ipynb"
+      - "location/evaluating_current_baseline/index.ipynb"
+      - "location/site_closures/index.ipynb"
     type: grid
     sort: false
     grid-columns: 3
@@ -31,9 +33,10 @@ listing:
     grid-columns: 3
     template: ../lokigi_docs/resources/listing.ejs
 
-  - id: sites-specialised-plots
+  - id: sites-solution-evaluation
     contents:
       - "location/equity/equity.ipynb"
+      - "location/comparing_solutions/comparting_solutions.ipynb"
     type: grid
     sort: false
     grid-columns: 3
@@ -71,9 +74,9 @@ When a problem is too big for evaluating and storing every combination, lokigi o
 ::: {#sites-solver-type}
 :::
 
-### Specialised plots
+### Advanced Solution Evaluation
 
-::: {#sites-specialised-plots}
+::: {#sites-solution-evaluation}
 :::
 
 ### Other

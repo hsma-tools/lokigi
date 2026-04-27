@@ -343,6 +343,7 @@ class MapsMixin:
         cmap=None,
         chosen_site_colour="black",
         unchosen_site_colour="grey",
+        unchosen_site_opacity=0.5,
         legend_loc="upper right",
         legend_bbox_to_anchor=(1.75, 0.5),
         legend_fontsize=10,
@@ -388,6 +389,8 @@ class MapsMixin:
             Colour used to plot selected site locations.
         unchosen_site_colour : str, default="grey"
             Colour used to plot unselected candidate site locations.
+        unchosen_site_opacity : float, default=0.5
+            Opaqueness/alpha of the points for unchosen sites
         legend_loc: str, default="upper right"
             Adjust position of the legend within the main plot. Accepts standard
             matplotlib positioning strings.
@@ -546,7 +549,6 @@ class MapsMixin:
                 edgecolor="black",
                 linewidth=0.5,
                 figsize=(12, 6),
-                legend_kwds=legend_kwargs,
             )
 
         if self.site_problem._candidate_sites_type == "geopandas":
@@ -560,7 +562,10 @@ class MapsMixin:
 
             if show_all_locations:
                 all_site_points = self.site_problem.candidate_sites.plot(
-                    ax=ax, color=unchosen_site_colour, markersize=30, alpha=0.3
+                    ax=ax,
+                    color=unchosen_site_colour,
+                    markersize=30,
+                    alpha=unchosen_site_opacity,
                 )
 
             selected_site_points = selected_sites.plot(
