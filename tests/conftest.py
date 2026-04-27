@@ -42,6 +42,16 @@ def demand_df():
 
 
 @pytest.fixture
+def low_demand_df():
+    return pd.DataFrame(
+        {
+            "location_id": ["LSOA_1", "LSOA_2", "LSOA_3"],
+            "demand": [5, 3, 2],
+        }
+    )
+
+
+@pytest.fixture
 def demand_gdf():
     return geopandas.GeoDataFrame(
         {
@@ -94,6 +104,17 @@ def loaded_problem(basic_problem, demand_df, candidate_df, travel_df):
     """A SiteProblem with all three data sources added."""
     basic_problem.add_demand(
         demand_df, demand_col="demand", location_id_col="location_id"
+    )
+    basic_problem.add_sites(candidate_df, candidate_id_col="site_id")
+    basic_problem.add_travel_matrix(travel_df, source_col="source_id")
+    return basic_problem
+
+
+@pytest.fixture
+def loaded_problem_low_demand(basic_problem, low_demand_df, candidate_df, travel_df):
+    """A SiteProblem with all three data sources added."""
+    basic_problem.add_demand(
+        low_demand_df, demand_col="demand", location_id_col="location_id"
     )
     basic_problem.add_sites(candidate_df, candidate_id_col="site_id")
     basic_problem.add_travel_matrix(travel_df, source_col="source_id")
