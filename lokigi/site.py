@@ -28,6 +28,7 @@ from warnings import warn
 import numpy as np
 from typing import Literal
 from .mixins.site_solvers import BruteForceMixin, GreedyMixin, GraspMixin
+import copy
 
 
 class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
@@ -1698,3 +1699,6 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
             if not available_only:
                 print(f"Status: {info['status']}")
         print("\nTo run a model, use: prob.solve_pmedian(p=3) or similar.")
+
+    def copy(self):
+        return copy.deepcopy(self)
