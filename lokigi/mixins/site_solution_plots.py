@@ -5,6 +5,7 @@ import matplotlib.patches as mpatches
 from matplotlib.colors import ListedColormap
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
+from matplotlib.lines import Line2D
 from warnings import warn
 import numpy as np
 import math
@@ -395,12 +396,13 @@ class MapsMixin:
         ax,
         solution,
         show_all_locations=True,
+        label_all_locations=False,
         plot_site_allocation=False,
         plot_regions_not_meeting_threshold=False,
         cmap=None,
         chosen_site_colour="black",
         unchosen_site_colour="white",
-        unchosen_site_opacity=0.5,
+        unchosen_site_opacity=0.7,
         annotation_size=6,
         label_wrap_width=40,
         global_vmin=None,
@@ -548,16 +550,77 @@ class MapsMixin:
                 ].isin(selected_site_names)
             ]
 
+            # Determine if there are required sites
+            required_values = {"y", "yes", "true", "t", "required", "1"}
+            has_required_sites = False
+            required_sites = None
+
+            if self.site_problem._candidate_sites_required_sites_col is not None:
+                required_mask = (
+                    self.site_problem.candidate_sites[
+                        self.site_problem._candidate_sites_required_sites_col
+                    ]
+                    .astype(str)
+                    .str.lower()
+                    .isin(required_values)
+                )
+                has_required_sites = required_mask.any()
+                if has_required_sites:
+                    required_sites = self.site_problem.candidate_sites[required_mask]
+
             if show_all_locations:
-                self.site_problem.candidate_sites.plot(
+                # Plot non-selected, non-required sites
+                if has_required_sites:
+                    non_selected_non_required = self.site_problem.candidate_sites[
+                        ~self.site_problem.candidate_sites[
+                            self.site_problem._candidate_sites_candidate_id_col
+                        ].isin(selected_site_names)
+                        & ~required_mask
+                    ]
+                    non_selected_non_required.plot(
+                        ax=ax,
+                        color=unchosen_site_colour,
+                        markersize=30,
+                        alpha=unchosen_site_opacity,
+                    )
+                else:
+                    self.site_problem.candidate_sites[
+                        ~self.site_problem.candidate_sites[
+                            self.site_problem._candidate_sites_candidate_id_col
+                        ].isin(selected_site_names)
+                    ].plot(
+                        ax=ax,
+                        color=unchosen_site_colour,
+                        markersize=30,
+                        alpha=unchosen_site_opacity,
+                    )
+
+            # Plot required sites with different marker (triangle)
+            if has_required_sites:
+                required_sites.plot(
                     ax=ax,
-                    color=unchosen_site_colour,
-                    markersize=30,
-                    alpha=unchosen_site_opacity,
+                    color=chosen_site_colour,
+                    markersize=60,
+                    marker="^",  # Triangle marker
                 )
 
-            selected_sites.plot(ax=ax, color=chosen_site_colour, markersize=60)
+            # Plot selected sites (non-required with circle marker)
+            if has_required_sites:
+                selected_non_required = selected_sites[
+                    ~selected_sites[
+                        self.site_problem._candidate_sites_required_sites_col
+                    ]
+                    .astype(str)
+                    .str.lower()
+                    .isin(required_values)
+                ]
+                selected_non_required.plot(
+                    ax=ax, color=chosen_site_colour, markersize=60
+                )
+            else:
+                selected_sites.plot(ax=ax, color=chosen_site_colour, markersize=60)
 
+            # Add labels for selected sites
             for x, y, label in zip(
                 selected_sites.geometry.x,
                 selected_sites.geometry.y,
@@ -572,6 +635,30 @@ class MapsMixin:
                     size=annotation_size,
                 )
 
+            # Optionally add labels for all unselected sites
+            if show_all_locations and label_all_locations:
+                unselected_sites = self.site_problem.candidate_sites[
+                    ~self.site_problem.candidate_sites[
+                        self.site_problem._candidate_sites_candidate_id_col
+                    ].isin(selected_site_names)
+                ]
+                for x, y, label in zip(
+                    unselected_sites.geometry.x,
+                    unselected_sites.geometry.y,
+                    unselected_sites[
+                        self.site_problem._candidate_sites_candidate_id_col
+                    ],
+                ):
+                    ax.annotate(
+                        _wrap_label(label, width=label_wrap_width),
+                        xy=(x, y),
+                        xytext=(10, 3),
+                        textcoords="offset points",
+                        bbox=dict(facecolor="white", alpha=0.6),  # More transparent
+                        size=annotation_size * 0.8,  # Smaller font
+                        style="italic",  # Italic to distinguish
+                    )
+
         # Add basemap
         cx.add_basemap(
             ax,
@@ -580,19 +667,20 @@ class MapsMixin:
 
         ax.axis("off")
 
-        return ax
+        return ax, has_required_sites
 
     def plot_best_combination(
         self,
         rank_on=None,
         title="default",
         show_all_locations=True,
+        label_all_locations=False,
         plot_site_allocation=False,
         plot_regions_not_meeting_threshold=False,
         cmap=None,
         chosen_site_colour="black",
         unchosen_site_colour="grey",
-        unchosen_site_opacity=0.5,
+        unchosen_site_opacity=0.7,
         legend_loc="upper right",
         legend_bbox_to_anchor=(1.75, 0.5),
         legend_fontsize=10,
@@ -601,6 +689,7 @@ class MapsMixin:
         label_wrap_width=40,
         height=12,
         width=6,
+        site_legend_loc="best",
     ):
         """
         Plot a map of the best-performing site combination.
@@ -643,6 +732,10 @@ class MapsMixin:
         legend_loc: str, default="upper right"
             Adjust position of the legend within the main plot. Accepts standard
             matplotlib positioning strings.
+        site_legend_loc: str, default="best"
+            Adjust position of the legend within the main plot. Accepts standard
+            matplotlib positioning strings. Only used if required sites are present
+            in the problem.
         legend_bbox_to_anchor : tuple or None, default=None
             If provided, places the legend outside the plot area. Accepts a
             2-tuple (x, y) in axes coordinates. Common examples:
@@ -736,10 +829,11 @@ class MapsMixin:
         # Create figure and plot
         fig, ax = plt.subplots(figsize=(height, width))
 
-        ax = self._plot_single_solution_map(
+        ax, has_required_sites = self._plot_single_solution_map(
             ax=ax,
             solution=solution,
             show_all_locations=show_all_locations,
+            label_all_locations=label_all_locations,
             plot_site_allocation=plot_site_allocation,
             plot_regions_not_meeting_threshold=plot_regions_not_meeting_threshold,
             cmap=cmap,
@@ -753,6 +847,35 @@ class MapsMixin:
             add_legend=True,
             legend_kwargs=legend_kwargs,
         )
+
+        if has_required_sites:
+            legend_elements = []
+
+            legend_elements.append(
+                Line2D(
+                    [0],
+                    [0],
+                    marker="^",
+                    color="w",
+                    markerfacecolor=chosen_site_colour,
+                    markersize=10,
+                    label="Required sites",
+                )
+            )
+
+            legend_elements.append(
+                Line2D(
+                    [0],
+                    [0],
+                    marker="o",
+                    color="w",
+                    markerfacecolor=chosen_site_colour,
+                    markersize=10,
+                    label="Additional selected sites",
+                )
+            )
+
+            ax.legend(handles=legend_elements, loc=site_legend_loc)
 
         # Add title
         if title is not None:
@@ -783,6 +906,7 @@ class MapsMixin:
         title=None,
         subplot_title="default",
         show_all_locations=True,
+        label_all_locations=False,
         plot_site_allocation=False,
         plot_regions_not_meeting_threshold=False,
         cmap=None,
@@ -794,6 +918,8 @@ class MapsMixin:
         n_rows=None,
         fig_size_multiplier=6,
         legend_wrap_width=40,
+        site_legend_bbox_to_anchor=(0.9, 0.9),
+        site_legend_loc="upper right",
     ):
         """
         Plot maps for the top-performing site combinations.
@@ -852,6 +978,17 @@ class MapsMixin:
             Factor to adjust overall plot size
         annotation_size: int, optional
             Font size of site name annotations on the map
+        site_legend_loc: str, default="upper right"
+            Adjust position of the site legend. Accepts standard
+            matplotlib positioning strings. Only used if required sites are present
+            in the problem.
+        site_legend_bbox_to_anchor : tuple, default (0.9,0.9)
+            If provided, places the legend outside the plot area. Accepts a
+            2-tuple (x, y) in axes coordinates. Common examples:
+            - (1.05, 1) for right side, top aligned
+            - (0.5, -0.1) for bottom center
+            - (1.05, 0.5) for right side, center aligned
+            When set, legend_loc is used as the anchor point on the legend box.
 
         Returns
         -------
@@ -993,10 +1130,11 @@ class MapsMixin:
         for i, ax in enumerate(axs[:n_best]):
             solution = sorted_df.iloc[[i]]
 
-            ax = self._plot_single_solution_map(
+            ax, has_required_sites = self._plot_single_solution_map(
                 ax=ax,
                 solution=solution,
                 show_all_locations=show_all_locations,
+                label_all_locations=label_all_locations,
                 plot_site_allocation=plot_site_allocation,
                 plot_regions_not_meeting_threshold=plot_regions_not_meeting_threshold,
                 cmap=cmap,
@@ -1084,6 +1222,40 @@ class MapsMixin:
                 title="Coverage Status",
                 loc="center right",
                 bbox_to_anchor=(1.05, 0.5),
+            )
+
+        if has_required_sites:
+            legend_elements = []
+
+            legend_elements.append(
+                Line2D(
+                    [0],
+                    [0],
+                    marker="^",
+                    color="w",
+                    markerfacecolor=chosen_site_colour,
+                    markersize=10,
+                    label="Required sites",
+                )
+            )
+
+            legend_elements.append(
+                Line2D(
+                    [0],
+                    [0],
+                    marker="o",
+                    color="w",
+                    markerfacecolor=chosen_site_colour,
+                    markersize=10,
+                    label="Additional selected sites",
+                )
+            )
+
+            fig.legend(
+                handles=legend_elements,
+                loc=site_legend_loc,
+                bbox_to_anchor=site_legend_bbox_to_anchor,
+                framealpha=0.9,
             )
 
         return fig, axs
