@@ -1589,11 +1589,15 @@ class EquityPlotsMixin:
         share_colorbar=True,
         outline_color="grey",
         figsize_multiplier=4,
+        groups_to_include="all",
         **kwargs,
     ):
         equity_col = self.site_problem._equity_data_equity_col
 
         groups = sorted(self.solution_df["problem_df"][0][equity_col].dropna().unique())
+
+        if groups_to_include != "all":
+            groups = [i for i in groups if i in groups_to_include]
 
         n = len(groups)
         nrows = math.ceil(n / ncols)
@@ -1653,6 +1657,7 @@ class EquityPlotsMixin:
                 ax=ax,
                 vmin=vmin,
                 vmax=vmax,
+                **kwargs,
             )
 
             ax.set_title(f"{equity_col}: {group}")
