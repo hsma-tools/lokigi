@@ -17,6 +17,9 @@ import textwrap
 from lokigi.utils import _wrap_label
 
 
+##################################
+# MARK: Pareto
+##################################
 class ParetoPlotsMixin:
     def plot_simple_pareto_front(
         self,
@@ -229,6 +232,9 @@ class ParetoPlotsMixin:
         return fig
 
 
+##################################
+# MARK: Non-map plots
+##################################
 class NonMapPlotsMixin:
     def plot_n_best_combinations_bar(
         self,
@@ -371,7 +377,202 @@ class NonMapPlotsMixin:
         return fig
 
 
+##################################
+# MARK: Maps
+##################################
 class MapsMixin:
+    def _plot_single_solution_map(
+        self,
+        ax,
+        solution,
+        show_all_locations=True,
+        plot_site_allocation=False,
+        plot_regions_not_meeting_threshold=False,
+        cmap=None,
+        chosen_site_colour="black",
+        unchosen_site_colour="white",
+        unchosen_site_opacity=0.5,
+        annotation_size=6,
+        label_wrap_width=40,
+        global_vmin=None,
+        global_vmax=None,
+        site_color_map=None,
+        discrete_cmap=None,
+        colors=None,
+        add_legend=True,
+        legend_kwargs=None,
+    ):
+        """
+        Internal helper to plot a single solution map onto a given axes.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            The axes to plot onto
+        solution : pd.Series or pd.DataFrame
+            Single row containing solution data
+        global_vmin, global_vmax : float, optional
+            For consistent color scaling across multiple plots
+        site_color_map : dict, optional
+            Mapping from site names to colors for consistent categorical coloring
+        discrete_cmap : ListedColormap, optional
+            Discrete colormap for threshold plots
+        colors : list, optional
+            List of colors for threshold legend
+        add_legend : bool, default=True
+            Whether to add a legend to this axes
+        legend_kwargs : dict, optional
+            Keyword arguments for legend placement
+        annotation_size: int, optional
+            Font size of site name annotations on the map
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            The modified axes object
+        """
+        # Merge geometry with solution data
+        solution_df = (
+            solution["problem_df"].values[0]
+            if hasattr(solution["problem_df"], "values")
+            else solution["problem_df"][0]
+        )
+
+        nearest_site_travel_gdf = pd.merge(
+            self.site_problem.region_geometry_layer,
+            solution_df,
+            left_on=self.site_problem._region_geometry_layer_common_col,
+            right_on=self.site_problem._demand_data_id_col,
+        )
+
+        # Plot regions based on selected mode
+        if plot_site_allocation:
+            if site_color_map is not None:
+                # Use consistent global color mapping
+                colors_mapped = nearest_site_travel_gdf["selected_site"].map(
+                    site_color_map
+                )
+                ax = nearest_site_travel_gdf.plot(
+                    color=colors_mapped,
+                    legend=False,
+                    alpha=0.7,
+                    edgecolor="black",
+                    linewidth=0.5,
+                    ax=ax,
+                )
+            else:
+                # Single plot with its own legend
+                ax = nearest_site_travel_gdf.plot(
+                    "selected_site",
+                    legend=add_legend,
+                    cmap=cmap,
+                    alpha=0.7,
+                    edgecolor="black",
+                    linewidth=0.5,
+                    ax=ax,
+                    legend_kwds=legend_kwargs if legend_kwargs and add_legend else {},
+                )
+
+        elif plot_regions_not_meeting_threshold:
+            ax = nearest_site_travel_gdf.plot(
+                "within_threshold",
+                legend=False,
+                cmap=discrete_cmap,
+                alpha=0.7,
+                edgecolor="black",
+                linewidth=0.5,
+                ax=ax,
+                vmin=0,
+                vmax=1,
+            )
+
+            # Add custom legend if requested and this is a single plot
+            if add_legend and colors is not None:
+                patches = [
+                    mpatches.Patch(
+                        color=colors[0],
+                        label=_wrap_label(
+                            f"Further than {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}",
+                            width=label_wrap_width,
+                        ),
+                    ),
+                    mpatches.Patch(
+                        color=colors[1],
+                        label=_wrap_label(
+                            f"Within {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}",
+                            width=label_wrap_width,
+                        ),
+                    ),
+                ]
+                legend_loc = (
+                    legend_kwargs.get("loc", "upper right")
+                    if legend_kwargs
+                    else "upper right"
+                )
+                ax.legend(handles=patches, title="Coverage Status", loc=legend_loc)
+
+        else:
+            # Plot min_cost
+            ax = nearest_site_travel_gdf.plot(
+                "min_cost",
+                legend=add_legend,
+                cmap=cmap,
+                alpha=0.7,
+                edgecolor="black",
+                linewidth=0.5,
+                ax=ax,
+                vmin=global_vmin,
+                vmax=global_vmax,
+            )
+
+        # Plot candidate sites if applicable
+        if self.site_problem._candidate_sites_type == "geopandas":
+            selected_site_names = (
+                solution.site_names.iloc[0]
+                if hasattr(solution.site_names, "iloc")
+                else solution.site_names[0]
+            )
+
+            selected_sites = self.site_problem.candidate_sites[
+                self.site_problem.candidate_sites[
+                    self.site_problem._candidate_sites_candidate_id_col
+                ].isin(selected_site_names)
+            ]
+
+            if show_all_locations:
+                self.site_problem.candidate_sites.plot(
+                    ax=ax,
+                    color=unchosen_site_colour,
+                    markersize=30,
+                    alpha=unchosen_site_opacity,
+                )
+
+            selected_sites.plot(ax=ax, color=chosen_site_colour, markersize=60)
+
+            for x, y, label in zip(
+                selected_sites.geometry.x,
+                selected_sites.geometry.y,
+                selected_sites[self.site_problem._candidate_sites_candidate_id_col],
+            ):
+                ax.annotate(
+                    _wrap_label(label, width=label_wrap_width),
+                    xy=(x, y),
+                    xytext=(10, 3),
+                    textcoords="offset points",
+                    bbox=dict(facecolor="white"),
+                    size=annotation_size,
+                )
+
+        # Add basemap
+        cx.add_basemap(
+            ax,
+            crs=nearest_site_travel_gdf.crs.to_string(),
+        )
+
+        ax.axis("off")
+
+        return ax
+
     def plot_best_combination(
         self,
         rank_on=None,
@@ -447,6 +648,8 @@ class MapsMixin:
         label_wrap_width : int, default=40
             Maximum character width before wrapping legend labels. Set to None
             to disable wrapping.
+        annotation_size: int, optional
+            Font size of site name annotations on the map
 
         Returns
         -------
@@ -489,164 +692,70 @@ class MapsMixin:
             )
 
         if rank_on is not None:
-            solution = self.solution_df.sort_values(rank_on).head().reset_index()
+            solution = self.solution_df.sort_values(rank_on).head(1).reset_index()
         else:
-            solution = self.solution_df.head().reset_index()
+            solution = self.solution_df.head(1).reset_index()
 
-        nearest_site_travel_gdf = pd.merge(
-            self.site_problem.region_geometry_layer,
-            solution["problem_df"][0],
-            left_on=self.site_problem._region_geometry_layer_common_col,
-            right_on=self.site_problem._demand_data_id_col,
-        )
-
-        # Choose appropriate colourmap if a colourmap is not provided
+        # Choose appropriate colourmap if not provided
         if cmap is None:
             if plot_site_allocation:
-                # If plotting site allocation, use a categorical (qualitative) colourmap
                 cmap = "Set2"
             elif plot_regions_not_meeting_threshold:
                 cmap = "Set1"
-
-                cmap_obj = plt.get_cmap(cmap)
-                # Extract the first two colors correctly
-                if hasattr(cmap_obj, "colors"):
-                    colors = [cmap_obj.colors[0], cmap_obj.colors[1]]
-                else:
-                    colors = [cmap_obj(0.0), cmap_obj(1.0)]
-
-                discrete_cmap = ListedColormap(colors)
             else:
-                # If plotting travel time/distance/other cost, use a sequential colourmap
                 cmap = "Blues"
 
+        # Prepare discrete colormap and colors for threshold plotting
+        discrete_cmap = None
+        colors = None
+        if plot_regions_not_meeting_threshold:
+            cmap_obj = plt.get_cmap(cmap)
+            if hasattr(cmap_obj, "colors"):
+                colors = [cmap_obj.colors[0], cmap_obj.colors[1]]
+            else:
+                colors = [cmap_obj(0.0), cmap_obj(1.0)]
+            discrete_cmap = ListedColormap(colors)
+
+        # Set up legend kwargs
         legend_kwargs = {
             "loc": legend_loc,
             "fontsize": legend_fontsize,
         }
-
         if legend_bbox_to_anchor is not None:
             legend_kwargs["bbox_to_anchor"] = legend_bbox_to_anchor
 
-        if plot_site_allocation:
-            ax = nearest_site_travel_gdf.plot(
-                "selected_site",
-                legend=True,
-                cmap=cmap,
-                alpha=0.7,
-                edgecolor="black",
-                linewidth=0.5,
-                figsize=(height, width),
-                legend_kwds=legend_kwargs,
-            )
-        elif plot_regions_not_meeting_threshold:
-            # nearest_site_travel_gdf["within_threshold"] = nearest_site_travel_gdf[
-            #     "within_threshold_str"
-            # ].apply(
-            #     lambda x: (
-            #         f"Within {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}\nof nearest site"
-            #         if x is True
-            #         else f"Further than {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}\nfrom nearest site"
-            #     )
-            # )
-            ax = nearest_site_travel_gdf.plot(
-                "within_threshold",
-                legend=False,
-                cmap=discrete_cmap,
-                alpha=0.7,
-                edgecolor="black",
-                linewidth=0.5,
-                figsize=(12, 6),
-                vmin=0,
-                vmax=1,
-            )
+        # Create figure and plot
+        fig, ax = plt.subplots(figsize=(height, width))
 
-            # Build custom legend
-            patches = [
-                mpatches.Patch(
-                    color=colors[0],
-                    label=_wrap_label(
-                        f"Further than {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}",
-                        width=label_wrap_width,
-                    ),
-                ),
-                mpatches.Patch(
-                    color=colors[1],
-                    label=_wrap_label(
-                        f"Within {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}",
-                        width=label_wrap_width,
-                    ),
-                ),
-            ]
-            ax.legend(handles=patches, title="Coverage Status", loc=legend_loc)
-        else:
-            ax = nearest_site_travel_gdf.plot(
-                "min_cost",
-                legend=True,
-                cmap=cmap,
-                alpha=0.7,
-                edgecolor="black",
-                linewidth=0.5,
-                figsize=(12, 6),
-            )
-
-        if self.site_problem._candidate_sites_type == "geopandas":
-            selected_site_names = solution.site_names.iloc[0]
-            # Get site names from the travel matrix columns using the indices
-            selected_sites = self.site_problem.candidate_sites[
-                self.site_problem.candidate_sites[
-                    self.site_problem._candidate_sites_candidate_id_col
-                ].isin(selected_site_names)
-            ]
-
-            if show_all_locations:
-                all_site_points = self.site_problem.candidate_sites.plot(
-                    ax=ax,
-                    color=unchosen_site_colour,
-                    markersize=30,
-                    alpha=unchosen_site_opacity,
-                )
-
-            selected_site_points = selected_sites.plot(
-                ax=ax, color=chosen_site_colour, markersize=60
-            )
-
-            for x, y, label in zip(
-                selected_sites.geometry.x,
-                selected_sites.geometry.y,
-                selected_sites[self.site_problem._candidate_sites_candidate_id_col],
-            ):
-                ax.annotate(
-                    _wrap_label(label, width=label_wrap_width),
-                    xy=(x, y),
-                    xytext=(10, 3),
-                    textcoords="offset points",
-                    bbox=dict(facecolor="white"),
-                    size=annotation_size,
-                )
-
-        cx.add_basemap(
-            ax,
-            crs=nearest_site_travel_gdf.crs.to_string(),
+        ax = self._plot_single_solution_map(
+            ax=ax,
+            solution=solution,
+            show_all_locations=show_all_locations,
+            plot_site_allocation=plot_site_allocation,
+            plot_regions_not_meeting_threshold=plot_regions_not_meeting_threshold,
+            cmap=cmap,
+            chosen_site_colour=chosen_site_colour,
+            unchosen_site_colour=unchosen_site_colour,
+            unchosen_site_opacity=unchosen_site_opacity,
+            annotation_size=annotation_size,
+            label_wrap_width=label_wrap_width,
+            discrete_cmap=discrete_cmap,
+            colors=colors,
+            add_legend=True,
+            legend_kwargs=legend_kwargs,
         )
 
-        ax.axis("off")
-
+        # Add title
         if title is not None:
             if title == "default":
                 if self.objectives == "mclp":
                     title = plt.title(
                         f"Best solution for {self.n_sites} sites \nCoverage within threshold of {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}: {solution['proportion_within_coverage_threshold'].values[0]:.1%} \nUnweighted Average: {solution['unweighted_average'].values[0]:.1f} {self.site_problem._travel_matrix_unit} \nMaximum: {solution['max'].values[0]:.1f} {self.site_problem._travel_matrix_unit}"
                     )
-
-                elif self.objectives in [
-                    "simple_p_median",
-                    "hybrid_simple_p_median",
-                ]:
+                elif self.objectives in ["simple_p_median", "hybrid_simple_p_median"]:
                     title = plt.title(
                         f"Best solution for {self.n_sites} sites \nUnweighted Average: {solution['unweighted_average'].values[0]:.1f} {self.site_problem._travel_matrix_unit} \nMaximum: {solution['max'].values[0]:.1f} {self.site_problem._travel_matrix_unit}"
                     )
-
                 else:
                     title = plt.title(
                         f"Best solution for {self.n_sites} sites \nWeighted Average: {solution['weighted_average'].values[0]:.1f} {self.site_problem._travel_matrix_unit} \nMaximum: {solution['max'].values[0]:.1f} {self.site_problem._travel_matrix_unit}"
@@ -669,7 +778,9 @@ class MapsMixin:
         plot_regions_not_meeting_threshold=False,
         cmap=None,
         chosen_site_colour="black",
-        unchosen_site_colour="grey",
+        unchosen_site_colour="white",
+        unchosen_site_opacity=0.5,
+        annotation_size=6,
         n_cols=None,
         n_rows=None,
         fig_size_multiplier=6,
@@ -720,6 +831,8 @@ class MapsMixin:
             Colour used to plot selected site locations.
         unchosen_site_colour : str, default="grey"
             Colour used to plot unselected candidate site locations.
+        unchosen_site_opacity : float, default=0.5
+            Opaqueness/alpha of the points for unchosen sites
         n_cols : int, optional
             Number of columns in the subplot grid. If None, determined
             automatically.
@@ -728,6 +841,8 @@ class MapsMixin:
             automatically.
         fig_size_multiplier: int, optional
             Factor to adjust overall plot size
+        annotation_size: int, optional
+            Font size of site name annotations on the map
 
         Returns
         -------
@@ -780,60 +895,67 @@ class MapsMixin:
                 f"n_best parameter higher than number of available solutions. Returning {len(self.solution_df)} solutions."
             )
 
-        # Set up number of rows and columns if not specified
+        # Set up number of rows and columns
         if n_cols is None and n_rows is None:
             max_cols = 5
             ncols = min(n_best, max_cols)
             nrows = math.ceil(n_best / ncols)
-
-        # Set up number of rows and columns if only one value specified
         elif n_cols is None and n_rows is not None:
             nrows = n_rows
-            ncols = min(n_best, max_cols)
-
+            ncols = math.ceil(n_best / nrows)
         elif n_cols is not None and n_rows is None:
             ncols = n_cols
             nrows = math.ceil(n_best / ncols)
-        # If none of these conditions are met, then can assume both have been passed
+        else:
+            nrows = n_rows
+            ncols = n_cols
 
-        # Set up subplots for plotting onto
+        # Set up subplots
         fig, axs = plt.subplots(
             nrows,
             ncols,
             figsize=(fig_size_multiplier * ncols, fig_size_multiplier * nrows),
         )
 
-        # flatten axs in case it's a 2D array
+        # Flatten axs in case it's a 2D array
         if isinstance(axs, np.ndarray):
             axs = axs.flatten()
+        else:
+            axs = [axs]  # Single subplot case
 
+        # Sort and select top solutions
         if rank_on is not None:
             sorted_df = self.solution_df.sort_values(rank_on).reset_index().head(n_best)
         else:
             sorted_df = self.solution_df.reset_index().head(n_best)
 
-        # Choose appropriate colourmap if a colourmap is not provided
+        # Choose appropriate colourmap if not provided
         if cmap is None:
             if plot_site_allocation:
-                # If plotting site allocation, use a categorical (qualitative) colourmap
                 cmap = "Set2"
             elif plot_regions_not_meeting_threshold:
                 cmap = "Set1"
             else:
-                # If plotting travel time/distance/other cost, use a sequential colourmap
                 cmap = "Blues"
 
-        # Set up a consistent legend that will be shared across all subplots
+        # Set up consistent coloring across subplots
+        global_vmin = None
+        global_vmax = None
+        site_color_map = None
+        discrete_cmap = None
+        colors = None
+
         if not plot_site_allocation and not plot_regions_not_meeting_threshold:
-            # Calculate global color scale boundaries
+            # Calculate global color scale for min_cost
             global_vmin = min(df["min_cost"].min() for df in sorted_df["problem_df"])
             global_vmax = max(df["min_cost"].max() for df in sorted_df["problem_df"])
+
         elif plot_site_allocation:
+            # Create consistent color mapping for sites
             master_site_order = self.site_problem.candidate_sites[
                 self.site_problem._candidate_sites_candidate_id_col
             ].tolist()
 
-            # Extract all unique selected sites across all top solutions for consistent mapping
             all_allocated_sites = set()
             for df in sorted_df["problem_df"]:
                 all_allocated_sites.update(df["selected_site"].unique())
@@ -843,136 +965,53 @@ class MapsMixin:
                 site for site in master_site_order if site in all_allocated_sites
             ]
 
-            # Create a consistent color mapping for categorical site data
             cmap_obj = plt.get_cmap(cmap)
-            # Handles qualitative maps seamlessly (wrapping around if too many sites)
             site_color_map = {
                 site: cmap_obj(i % cmap_obj.N)
                 for i, site in enumerate(sorted_allocated_sites)
             }
+
         elif plot_regions_not_meeting_threshold:
+            # Set up discrete colormap for threshold
             cmap_obj = plt.get_cmap(cmap)
             if hasattr(cmap_obj, "colors"):
                 colors = [cmap_obj.colors[0], cmap_obj.colors[1]]
             else:
                 colors = [cmap_obj(0.0), cmap_obj(1.0)]
-
             discrete_cmap = ListedColormap(colors)
 
-        for i, ax in enumerate(fig.axes):
+        # Plot each solution
+        for i, ax in enumerate(axs[:n_best]):
             solution = sorted_df.iloc[[i]]
-            solution_df = solution["problem_df"].values[0]
 
-            nearest_site_travel_gdf = pd.merge(
-                self.site_problem.region_geometry_layer,
-                solution_df,
-                left_on=self.site_problem._region_geometry_layer_common_col,
-                right_on=self.site_problem._demand_data_id_col,
+            ax = self._plot_single_solution_map(
+                ax=ax,
+                solution=solution,
+                show_all_locations=show_all_locations,
+                plot_site_allocation=plot_site_allocation,
+                plot_regions_not_meeting_threshold=plot_regions_not_meeting_threshold,
+                cmap=cmap,
+                chosen_site_colour=chosen_site_colour,
+                unchosen_site_colour=unchosen_site_colour,
+                unchosen_site_opacity=unchosen_site_opacity,
+                annotation_size=annotation_size,
+                label_wrap_width=legend_wrap_width,
+                global_vmin=global_vmin,
+                global_vmax=global_vmax,
+                site_color_map=site_color_map,
+                discrete_cmap=discrete_cmap,
+                colors=colors,
+                add_legend=False,  # Legends added at figure level
+                legend_kwargs=None,
             )
 
-            if plot_site_allocation:
-                # Map the site IDs to their consistent global color
-                colors = nearest_site_travel_gdf["selected_site"].map(site_color_map)
-                ax = nearest_site_travel_gdf.plot(
-                    color=colors,
-                    legend=False,
-                    alpha=0.7,
-                    edgecolor="black",
-                    linewidth=0.5,
-                    ax=ax,
-                )
-
-            elif plot_regions_not_meeting_threshold:
-                # nearest_site_travel_gdf["within_threshold_str"] = (
-                #     nearest_site_travel_gdf["within_threshold"].apply(
-                #         lambda x: (
-                #             f"Within {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}\nof nearest site"
-                #             if x is True
-                #             else f"Further than {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}\nfrom nearest site"
-                #         )
-                #     )
-                # )
-
-                ax = nearest_site_travel_gdf.plot(
-                    "within_threshold",
-                    legend=False,
-                    cmap=discrete_cmap,
-                    alpha=0.7,
-                    edgecolor="black",
-                    linewidth=0.5,
-                    figsize=(12, 6),
-                    ax=ax,
-                    vmin=0,
-                    vmax=1,
-                )
-            # Otherwise plot the min cost (travel/cost to closest site from region)
-            else:
-                ax = nearest_site_travel_gdf.plot(
-                    "min_cost",
-                    legend=False,
-                    cmap=cmap,
-                    alpha=0.7,
-                    edgecolor="black",
-                    linewidth=0.5,
-                    figsize=(12, 6),
-                    ax=ax,
-                    vmin=global_vmin,
-                    vmax=global_vmax,
-                )
-
-            if self.site_problem._candidate_sites_type == "geopandas":
-                # Get site names from the travel matrix columns using the indices
-                selected_site_names = solution.site_names.iloc[0]
-                # Get site names from the travel matrix columns using the indices
-                selected_sites = self.site_problem.candidate_sites[
-                    self.site_problem.candidate_sites[
-                        self.site_problem._candidate_sites_candidate_id_col
-                    ].isin(selected_site_names)
-                ]
-
-                # Then filter by name
-                selected_sites = self.site_problem.candidate_sites[
-                    self.site_problem.candidate_sites[
-                        self.site_problem._candidate_sites_candidate_id_col
-                    ].isin(selected_site_names)
-                ]
-
-                if show_all_locations:
-                    all_site_points = self.site_problem.candidate_sites.plot(
-                        ax=ax, color=unchosen_site_colour, markersize=30, alpha=0.3
-                    )
-
-                selected_site_points = selected_sites.plot(
-                    ax=ax, color=chosen_site_colour, markersize=60
-                )
-
-                for x, y, label in zip(
-                    selected_sites.geometry.x,
-                    selected_sites.geometry.y,
-                    selected_sites[self.site_problem._candidate_sites_candidate_id_col],
-                ):
-                    ax.annotate(
-                        label,
-                        xy=(x, y),
-                        xytext=(10, 3),
-                        textcoords="offset points",
-                        bbox=dict(facecolor="white"),
-                    )
-
-            cx.add_basemap(
-                ax,
-                crs=nearest_site_travel_gdf.crs.to_string(),
-            )
-
-            ax.axis("off")
-
+            # Add subplot titles
             if subplot_title is not None:
                 if subplot_title == "default":
                     if self.objectives == "mclp":
                         ax.set_title(
                             f"Coverage within threshold of {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}: {solution['proportion_within_coverage_threshold'].values[0]:.1%} \nUnweighted Average: {solution['unweighted_average'].values[0]:.1f} {self.site_problem._travel_matrix_unit} \nMaximum: {solution['max'].values[0]:.1f} {self.site_problem._travel_matrix_unit}"
                         )
-
                     elif self.objectives in [
                         "simple_p_median",
                         "hybrid_simple_p_median",
@@ -980,26 +1019,26 @@ class MapsMixin:
                         ax.set_title(
                             f"Unweighted Average: {solution['unweighted_average'].values[0]:.1f} {self.site_problem._travel_matrix_unit} \nMaximum: {solution['max'].values[0]:.1f} {self.site_problem._travel_matrix_unit}"
                         )
-
                     else:
                         ax.set_title(
                             f"Weighted Average: {solution['weighted_average'].values[0]:.1f} {self.site_problem._travel_matrix_unit} \nMaximum: {solution['max'].values[0]:.1f} {self.site_problem._travel_matrix_unit}"
                         )
                 else:
                     ax.set_title(_safe_evaluate(subplot_title, solution=solution))
+
             if title is not None:
                 ax.set_title(title)
 
-        # Set up appropriate shared legends
-        # If plotting min travel time/cost per region
+        # Hide unused subplots
+        for i in range(n_best, len(axs)):
+            axs[i].axis("off")
+
+        # Add shared legends/colorbars
         if not plot_site_allocation and not plot_regions_not_meeting_threshold:
-            # Create a single colorbar based on the global scale and chosen colormap
             sm = plt.cm.ScalarMappable(
                 cmap=cmap, norm=plt.Normalize(vmin=global_vmin, vmax=global_vmax)
             )
-            sm._A = []  # Empty array for the scalar mappable
-
-            # Add the colorbar to the figure
+            sm._A = []
             fig.colorbar(sm, ax=axs, fraction=0.02, pad=0.04, label="Min Cost")
 
         elif plot_site_allocation:
@@ -1015,36 +1054,22 @@ class MapsMixin:
             )
 
         elif plot_regions_not_meeting_threshold:
-            # Create legend for threshold coverage
-            if hasattr(cmap_obj, "colors"):
-                # Get the actual defined color list
-                colors = [cmap_obj.colors[0], cmap_obj.colors[1]]
-            else:
-                # Fallback for continuous maps: sample at 0 and 1
-                colors = [cmap_obj(0.0), cmap_obj(1.0)]
-
-            # 3. Create a discrete colormap for the plot to ensure it matches the legend
-            # This ensures 0 maps to colors[0] and 1 maps to colors[1] exactly
-            discrete_cmap = ListedColormap(colors)
-
-            # Matplotlib assigns colors to boolean values: False=0, True=1
             legend_patches = [
                 mpatches.Patch(
-                    color=colors[0],  # Color for False (Index 0)
+                    color=colors[0],
                     label=_wrap_label(
-                        f"Further than {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}\nfrom nearest site",
+                        f"Further than {sorted_df.iloc[0]['coverage_threshold']} {self.site_problem._travel_matrix_unit}\nfrom nearest site",
                         width=legend_wrap_width,
                     ),
                 ),
                 mpatches.Patch(
-                    color=colors[1],  # Color for True (Index 1)
+                    color=colors[1],
                     label=_wrap_label(
-                        f"Within {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}\nof nearest site",
+                        f"Within {sorted_df.iloc[0]['coverage_threshold']} {self.site_problem._travel_matrix_unit}\nof nearest site",
                         width=legend_wrap_width,
                     ),
                 ),
             ]
-
             fig.legend(
                 handles=legend_patches,
                 title="Coverage Status",
@@ -1340,6 +1365,9 @@ class DistributionPlotsMixin:
         return fig
 
 
+##################################
+# MARK: Equity
+##################################
 class EquityPlotsMixin:
     def check_solution_equity(
         self,
