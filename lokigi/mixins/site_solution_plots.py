@@ -673,6 +673,7 @@ class MapsMixin:
         n_cols=None,
         n_rows=None,
         fig_size_multiplier=6,
+        legend_wrap_width=40,
     ):
         """
         Plot maps for the top-performing site combinations.
@@ -1031,13 +1032,15 @@ class MapsMixin:
                 mpatches.Patch(
                     color=colors[0],  # Color for False (Index 0)
                     label=_wrap_label(
-                        f"Further than {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}\nfrom nearest site"
+                        f"Further than {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}\nfrom nearest site",
+                        width=legend_wrap_width,
                     ),
                 ),
                 mpatches.Patch(
                     color=colors[1],  # Color for True (Index 1)
                     label=_wrap_label(
-                        f"Within {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}\nof nearest site"
+                        f"Within {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}\nof nearest site",
+                        width=legend_wrap_width,
                     ),
                 ),
             ]
