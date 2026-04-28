@@ -247,6 +247,10 @@ class NonMapPlotsMixin:
         y_axis_label="default",
         plot_names=True,
         line_breaks_x_axis_label=True,
+        interactive_width=800,
+        interactive_height=600,
+        static_width=12,
+        static_height=6,
     ):
         """
         Plot a bar chart of the top-performing site combinations.
@@ -344,8 +348,13 @@ class NonMapPlotsMixin:
                     else y_axis_label,
                 },
             )
+
+            fig.update_layout(
+                width=interactive_width,  # simple scaling from "inches-like" input
+                height=interactive_height,
+            )
         else:
-            fig, ax = plt.subplots()
+            fig, ax = plt.subplots(figsize=(static_width, static_height))
 
             ax.bar(
                 df["site_names"] if plot_names else df["site_indices"],
