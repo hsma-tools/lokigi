@@ -619,6 +619,7 @@ class MapsMixin:
                 )
             else:
                 selected_sites.plot(ax=ax, color=chosen_site_colour, markersize=60)
+                has_required_sites = False
 
             # Add labels for selected sites
             for x, y, label in zip(
