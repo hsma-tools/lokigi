@@ -1055,6 +1055,9 @@ class MapsMixin:
         return fig, axs
 
 
+##################################
+# MARK: Distributions
+##################################
 class DistributionPlotsMixin:
     def plot_travel_time_distribution(
         self,
@@ -1148,12 +1151,14 @@ class DistributionPlotsMixin:
         solutions_filtered = pd.concat(filtered_dfs)
 
         # Convert columns to be compared to tuples to allow dupliate detection
-        solutions_filtered["site_indices_comp"] = solutions_filtered[
-            "site_indices"
-        ].apply(lambda x: tuple(x) if isinstance(x, np.ndarray) else x)
+        solutions_filtered["site_indices_comp"] = (
+            solutions_filtered["site_indices"]
+            .apply(lambda x: list(set([int(i) for i in x])))
+            .astype("str")
+        )
 
-        solutions_filtered["site_names_comp"] = solutions_filtered["site_names"].apply(
-            lambda x: tuple(x) if isinstance(x, np.ndarray) else x
+        solutions_filtered["site_names_comp"] = (
+            solutions_filtered["site_names"].apply(lambda x: list(set(x))).astype("str")
         )
 
         solutions_filtered = solutions_filtered.drop_duplicates(
@@ -1166,7 +1171,8 @@ class DistributionPlotsMixin:
 
         for index, row in solutions_filtered.iterrows():
             df = row["problem_df"].copy()
-            df["site_indices"] = str(row["site_indices"])
+            df["site_indices"] = ", ".join([str(int(i)) for i in row["site_indices"]])
+            df["site_names"] = ", ".join(row["site_names"])
             df["weighted_average"] = row["weighted_average"]
             df["unweighted_average"] = row["unweighted_average"]
             df["max"] = row["max"]
@@ -1176,9 +1182,10 @@ class DistributionPlotsMixin:
             dfs.append(df)
 
         dfs = pd.concat(dfs)
+
         dfs["label"] = (
             "Sites: "
-            + dfs["site_indices"].astype(str)
+            + dfs["site_names"]
             + " | Weighted Avg: "
             + dfs["weighted_average"].round(2).astype(str)
             + " | Unweighted Avg: "
@@ -1241,7 +1248,7 @@ class DistributionPlotsMixin:
                 x=0,
                 line_color="black",
                 line_width=2,
-                annotation_text="Best",
+                annotation_text="Best Solution",
                 annotation_position="top right",
                 annotation_yshift=4,
             )
