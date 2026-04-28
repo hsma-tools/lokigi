@@ -5,9 +5,9 @@ toc: true
 listing:
   - id: sites-problem-basic
     contents:
-      - "location/simple/simple.ipynb"
-      - "location/existing_sites/existing_sites.ipynb"
-      - "location/no_geometry/no_geometry.ipynb"
+      - "location/simple/index.ipynb"
+      - "location/existing_sites/index.ipynb"
+      - "location/no_geometry/index.ipynb"
       - "location/evaluating_current_baseline/index.ipynb"
       - "location/site_closures/index.ipynb"
     type: grid
@@ -17,8 +17,8 @@ listing:
 
   - id: sites-problem-type
     contents:
-      - "location/p_median_and_p_center_variants/p_median_and_p_center_variants.ipynb"
-      - "location/mclp/mclp.ipynb"
+      - "location/p_median_and_p_center_variants/index.ipynb"
+      - "location/mclp/index.ipynb"
     type: grid
     sort: false
     grid-columns: 3
@@ -26,8 +26,8 @@ listing:
 
   - id: sites-solver-type
     contents:
-      - "location/larger_problems/larger_problems_brute_force.ipynb"
-      - "location/greedy_and_grasp/greedy_and_grasp.ipynb"
+      - "location/larger_problems/index.ipynb"
+      - "location/greedy_and_grasp/index.ipynb"
     type: grid
     sort: false
     grid-columns: 3
@@ -35,8 +35,8 @@ listing:
 
   - id: sites-solution-evaluation
     contents:
-      - "location/equity/equity.ipynb"
-      - "location/comparing_solutions/comparting_solutions.ipynb"
+      - "location/equity/index.ipynb"
+      - "location/comparing_solutions/index.ipynb"
     type: grid
     sort: false
     grid-columns: 3
