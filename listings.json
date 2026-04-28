@@ -2,16 +2,18 @@
   {
     "listing": "/examples/examples.html",
     "items": [
-      "/examples/location/simple/simple.html",
-      "/examples/location/existing_sites/existing_sites.html",
-      "/examples/location/no_geometry/no_geometry.html",
+      "/examples/location/simple/index.html",
+      "/examples/location/existing_sites/index.html",
+      "/examples/location/no_geometry/index.html",
       "/examples/location/evaluating_current_baseline/index.html",
       "/examples/location/site_closures/index.html",
-      "/examples/location/p_median_and_p_center_variants/p_median_and_p_center_variants.html",
-      "/examples/location/mclp/mclp.html",
-      "/examples/location/larger_problems/larger_problems_brute_force.html",
-      "/examples/location/greedy_and_grasp/greedy_and_grasp.html",
-      "/examples/location/equity/equity.html",
+      "/examples/location/p_median_and_p_center_variants/index.html",
+      "/examples/location/mclp/index.html",
+      "/examples/location/larger_problems/index.html",
+      "/examples/location/greedy_and_grasp/index.html",
+      "/examples/location/equity/index.html",
+      "/examples/location/comparing_solutions/index.html",
+      "/examples/location/comparing_n_sites/index.html",
       "/examples/location/obtaining_travel_time_matrices/index.html"
     ]
   }
