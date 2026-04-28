@@ -1625,26 +1625,6 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
                 threshold_for_coverage=threshold_for_coverage,
             )
 
-            if objective != "mclp":
-                return SiteSolutionSet(
-                    solution_df=pd.DataFrame(outputs).sort_values(
-                        [ranking, "weighted_average"]
-                    ),
-                    site_problem=self,
-                    objectives=objective,
-                    n_sites=p,
-                )
-
-            else:
-                return SiteSolutionSet(
-                    solution_df=pd.DataFrame(outputs).sort_values(
-                        [ranking, "weighted_average"], ascending=[False, True]
-                    ),
-                    site_problem=self,
-                    objectives=objective,
-                    n_sites=p,
-                )
-
         if search_strategy == "greedy":
             # Note that coverage threshold will only be used for assessing coverage, not for
             # filtering out solutions, when using greedy search strategy
@@ -1653,15 +1633,6 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
                 objectives=objective,
                 show_progress=show_progress,
                 threshold_for_coverage=threshold_for_coverage,
-            )
-
-            return SiteSolutionSet(
-                solution_df=pd.DataFrame(outputs).sort_values(
-                    [ranking, "weighted_average"]
-                ),
-                site_problem=self,
-                objectives=objective,
-                n_sites=p,
             )
 
         if search_strategy == "grasp":
@@ -1681,30 +1652,38 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
                 max_swap_count_local_search=grasp_max_swap_count_local_search,
             )
 
+        if objective != "mclp":
             solution_df = (
                 pd.DataFrame(outputs)
                 .sort_values([ranking, "weighted_average"])
                 .reset_index(drop=True)
             )
-
-            solution_df["solution_rank"] = (
-                solution_df.groupby(ranking)["weighted_average"]
-                .rank(method="first")
-                .add(
-                    solution_df[ranking]
-                    .rank(method="dense")
-                    .sub(1)
-                    .mul(solution_df.groupby(ranking).size().max())
-                )
-                .astype(int)
+        else:
+            solution_df = pd.DataFrame(outputs).sort_values(
+                [ranking, "weighted_average"], ascending=[False, True]
             )
 
-            return SiteSolutionSet(
-                solution_df=solution_df,
-                site_problem=self,
-                objectives=objective,
-                n_sites=p,
+        solution_df["solution_rank"] = (
+            solution_df.groupby(ranking)["weighted_average"]
+            .rank(method="first")
+            .add(
+                solution_df[ranking]
+                .rank(method="dense")
+                .sub(1)
+                .mul(solution_df.groupby(ranking).size().max())
             )
+            .astype(int)
+        )
+
+        # Move this to be the first column
+        solution_df.insert(0, "solution_rank", solution_df.pop("solution_rank"))
+
+        return SiteSolutionSet(
+            solution_df=solution_df,
+            site_problem=self,
+            objectives=objective,
+            n_sites=p,
+        )
 
     def evaluate_n_sites(self, min_sites, max_sites):
         pass
