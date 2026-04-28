@@ -228,7 +228,7 @@ class SiteSolutionSet(
         self.objectives = objectives
         self.n_sites = n_sites
 
-    def show_solutions(self, rounding=2):
+    def show_solutions(self, rounding=2, n_best=None):
         """
         Return the solution DataFrame with rounded values.
 
@@ -249,9 +249,9 @@ class SiteSolutionSet(
         rounded copy.
         """
         if rounding is None:
-            return self.solution_df
+            return self.solution_df.head(n_best)
         else:
-            return round(self.solution_df, rounding)
+            return round(self.solution_df, rounding).head(n_best)
 
     def return_best_combination_details(self, rank_on=None, top_n=1):
         """
