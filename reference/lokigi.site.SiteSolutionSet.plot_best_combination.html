@@ -78,8 +78,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-d0ae9245876894da5ac7e18953ecc5cc.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-656931bf671e9b74ba634a267e0883f8.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-3db5a696ff866eae0c3e466e6cf61434.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-fd5b4d64843d35908f954f0bfd43a152.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-9365c3958d3ba3838995695ce3de7443.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -349,18 +349,26 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    cmap<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    chosen_site_colour<span class="op">=</span><span class="st">'black'</span>,</span>
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    unchosen_site_colour<span class="op">=</span><span class="st">'grey'</span>,</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    legend_loc<span class="op">=</span><span class="st">'upper right'</span>,</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    unchosen_site_opacity<span class="op">=</span><span class="fl">0.5</span>,</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    legend_loc<span class="op">=</span><span class="st">'upper right'</span>,</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    legend_bbox_to_anchor<span class="op">=</span>(<span class="fl">1.75</span>, <span class="fl">0.5</span>),</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    legend_fontsize<span class="op">=</span><span class="dv">10</span>,</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    title_font_size<span class="op">=</span><span class="dv">12</span>,</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    annotation_size<span class="op">=</span><span class="dv">6</span>,</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    label_wrap_width<span class="op">=</span><span class="dv">40</span>,</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    height<span class="op">=</span><span class="dv">12</span>,</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    width<span class="op">=</span><span class="dv">6</span>,</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Plot a map of the best-performing site combination.</p>
 <p>This method visualises the spatial performance of the best solution in the solution set, including travel costs, site allocations, or coverage relative to a threshold. Regions are coloured according to the selected metric, and candidate site locations can be overlaid.</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 11%">
-<col style="width: 8%">
-<col style="width: 75%">
-<col style="width: 5%">
+<col style="width: 9%">
+<col style="width: 7%">
+<col style="width: 78%">
+<col style="width: 4%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -420,10 +428,46 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>"grey"</code></td>
 </tr>
 <tr class="odd">
+<td>unchosen_site_opacity</td>
+<td>float</td>
+<td>Opaqueness/alpha of the points for unchosen sites</td>
+<td><code>0.5</code></td>
+</tr>
+<tr class="even">
 <td>legend_loc</td>
 <td></td>
 <td>Adjust position of the legend within the main plot. Accepts standard matplotlib positioning strings.</td>
 <td><code>'upper right'</code></td>
+</tr>
+<tr class="odd">
+<td>legend_bbox_to_anchor</td>
+<td>tuple or None</td>
+<td>If provided, places the legend outside the plot area. Accepts a 2-tuple (x, y) in axes coordinates. Common examples: - (1.05, 1) for right side, top aligned - (0.5, -0.1) for bottom center - (1.05, 0.5) for right side, center aligned When set, legend_loc is used as the anchor point on the legend box.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td>legend_fontsize</td>
+<td>int or float</td>
+<td>Font size for legend text.</td>
+<td><code>10</code></td>
+</tr>
+<tr class="odd">
+<td>title_fontsize</td>
+<td>int or float</td>
+<td>Font size for the plot title.</td>
+<td><code>12</code></td>
+</tr>
+<tr class="even">
+<td>label_wrap_width</td>
+<td>int</td>
+<td>Maximum character width before wrapping legend labels. Set to None to disable wrapping.</td>
+<td><code>40</code></td>
+</tr>
+<tr class="odd">
+<td>annotation_size</td>
+<td></td>
+<td>Font size of site name annotations on the map</td>
+<td><code>6</code></td>
 </tr>
 </tbody>
 </table>

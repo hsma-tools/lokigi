@@ -45,8 +45,8 @@ ul.task-list li input[type="checkbox"] {
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-d0ae9245876894da5ac7e18953ecc5cc.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-656931bf671e9b74ba634a267e0883f8.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-3db5a696ff866eae0c3e466e6cf61434.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-fd5b4d64843d35908f954f0bfd43a152.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-9365c3958d3ba3838995695ce3de7443.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -161,7 +161,7 @@ ul.task-list li input[type="checkbox"] {
   
 
   window.document.addEventListener("DOMContentLoaded", function (_event) {
-    const listingTargetEl = window.document.querySelector('#listing-sites-specialised-plots .list');
+    const listingTargetEl = window.document.querySelector('#listing-sites-solution-evaluation .list');
     if (!listingTargetEl) {
       // No listing discovered, do not attach.
       return; 
@@ -174,7 +174,35 @@ ul.task-list li input[type="checkbox"] {
     };
 
     window['quarto-listings'] = window['quarto-listings'] || {};
-    window['quarto-listings']['listing-sites-specialised-plots'] = new List('listing-sites-specialised-plots', options);
+    window['quarto-listings']['listing-sites-solution-evaluation'] = new List('listing-sites-solution-evaluation', options);
+
+    if (window['quarto-listing-loaded']) {
+      window['quarto-listing-loaded']();
+    }
+  });
+
+  window.addEventListener('hashchange',() => {
+    if (window['quarto-listing-loaded']) {
+      window['quarto-listing-loaded']();
+    }
+  })
+  
+
+  window.document.addEventListener("DOMContentLoaded", function (_event) {
+    const listingTargetEl = window.document.querySelector('#listing-sites-other .list');
+    if (!listingTargetEl) {
+      // No listing discovered, do not attach.
+      return; 
+    }
+
+    const options = {
+      valueNames: ['listing-project','listing-website','listing-quartodoc','listing-format','listing-engines','listing-language','listing-title','listing-image','listing-toc','listing-execute','listing-path','listing-outputHref','listing-author','listing-description','listing-filename','listing-file-modified','listing-reading-time','listing-word-count',{ data: ['index'] },{ data: ['categories'] },{ data: ['listing-file-modified-sort'] },{ data: ['listing-reading-time-sort'] },{ data: ['listing-word-count-sort'] }],
+      
+      searchColumns: ["listing-project","listing-website","listing-quartodoc","listing-format","listing-engines","listing-language","listing-title","listing-image","listing-toc","listing-execute","listing-path","listing-outputHref","listing-author","listing-description","listing-filename","listing-file-modified","listing-reading-time","listing-word-count"],
+    };
+
+    window['quarto-listings'] = window['quarto-listings'] || {};
+    window['quarto-listings']['listing-sites-other'] = new List('listing-sites-other', options);
 
     if (window['quarto-listing-loaded']) {
       window['quarto-listing-loaded']();
@@ -449,7 +477,8 @@ window.Quarto = {
   <li><a href="#basic-site-problem-examples" id="toc-basic-site-problem-examples" class="nav-link" data-scroll-target="#basic-site-problem-examples">Basic site problem examples</a></li>
   <li><a href="#different-problem-types" id="toc-different-problem-types" class="nav-link" data-scroll-target="#different-problem-types">Different Problem Types</a></li>
   <li><a href="#advanced-solver-options" id="toc-advanced-solver-options" class="nav-link" data-scroll-target="#advanced-solver-options">Advanced Solver Options</a></li>
-  <li><a href="#specialised-plots" id="toc-specialised-plots" class="nav-link" data-scroll-target="#specialised-plots">Specialised plots</a></li>
+  <li><a href="#advanced-solution-evaluation" id="toc-advanced-solution-evaluation" class="nav-link" data-scroll-target="#advanced-solution-evaluation">Advanced Solution Evaluation</a></li>
+  <li><a href="#other" id="toc-other" class="nav-link" data-scroll-target="#other">Other</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -487,7 +516,7 @@ window.Quarto = {
 <div class="list grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 450px)); gap: 20px;">
 
   
-    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1776861339717" data-listing-reading-time-sort="2" data-listing-word-count-sort="350">
+    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1777370166608" data-listing-reading-time-sort="2" data-listing-word-count-sort="350">
           <div class="main-card-content">
             
               <a href="../examples/location/simple/simple.html">
@@ -510,7 +539,7 @@ window.Quarto = {
               </div>
 
             
-    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1776861339430" data-listing-reading-time-sort="2" data-listing-word-count-sort="368">
+    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1777370166372" data-listing-reading-time-sort="2" data-listing-word-count-sort="368">
           <div class="main-card-content">
             
               <a href="../examples/location/existing_sites/existing_sites.html">
@@ -533,7 +562,7 @@ window.Quarto = {
               </div>
 
             
-    <div class="custom-grid-card border-2 rounded-3" data-index="2" data-listing-file-modified-sort="1776861339507" data-listing-reading-time-sort="3" data-listing-word-count-sort="495">
+    <div class="custom-grid-card border-2 rounded-3" data-index="2" data-listing-file-modified-sort="1777370166420" data-listing-reading-time-sort="3" data-listing-word-count-sort="514">
           <div class="main-card-content">
             
               <a href="../examples/location/no_geometry/no_geometry.html">
@@ -556,6 +585,52 @@ window.Quarto = {
               </div>
 
             
+    <div class="custom-grid-card border-2 rounded-3" data-index="3" data-listing-file-modified-sort="1777370166349" data-listing-reading-time-sort="1" data-listing-word-count-sort="111">
+          <div class="main-card-content">
+            
+              <a href="../examples/location/evaluating_current_baseline/index.html">
+                <img class="card-img" src="../examples/location/evaluating_current_baseline/image.png" alt="Evaluating an existing site combination">
+              </a>
+              
+
+              <div class="listing-title">
+                <h5 class="no-anchor card-title listing-title">Evaluating an existing site combination</h5>
+            </div>
+
+            
+
+              </div>
+
+                <div class="details-listing">
+                  <button class="link-listing-button"><a href="../examples/location/evaluating_current_baseline/index.html"><i class="fa fa-info-circle"></i> Details </a></button>
+                </div>
+
+              </div>
+
+            
+    <div class="custom-grid-card border-2 rounded-3" data-index="4" data-listing-file-modified-sort="1777370166639" data-listing-reading-time-sort="2" data-listing-word-count-sort="333">
+          <div class="main-card-content">
+            
+              <a href="../examples/location/site_closures/index.html">
+                <img class="card-img" src="../examples/location/site_closures/image.png" alt="Site Closure Problems">
+              </a>
+              
+
+              <div class="listing-title">
+                <h5 class="no-anchor card-title listing-title">Site Closure Problems</h5>
+            </div>
+
+            
+
+              </div>
+
+                <div class="details-listing">
+                  <button class="link-listing-button"><a href="../examples/location/site_closures/index.html"><i class="fa fa-info-circle"></i> Details </a></button>
+                </div>
+
+              </div>
+
+            
           </div>
 
 <div class="listing-no-matching d-none">No matching items</div>
@@ -567,7 +642,7 @@ window.Quarto = {
 <div class="list grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 450px)); gap: 20px;">
 
   
-    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1776861339558" data-listing-reading-time-sort="3" data-listing-word-count-sort="453">
+    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1777370166482" data-listing-reading-time-sort="3" data-listing-word-count-sort="453">
           <div class="main-card-content">
             
               <a href="../examples/location/p_median_and_p_center_variants/p_median_and_p_center_variants.html">
@@ -590,7 +665,7 @@ window.Quarto = {
               </div>
 
             
-    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1776861339501" data-listing-reading-time-sort="4" data-listing-word-count-sort="768">
+    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1777370166419" data-listing-reading-time-sort="4" data-listing-word-count-sort="768">
           <div class="main-card-content">
             
               <a href="../examples/location/mclp/mclp.html">
@@ -625,7 +700,7 @@ window.Quarto = {
 <div class="list grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 450px)); gap: 20px;">
 
   
-    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1776861339460" data-listing-reading-time-sort="3" data-listing-word-count-sort="476">
+    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1777370166402" data-listing-reading-time-sort="3" data-listing-word-count-sort="476">
           <div class="main-card-content">
             
               <a href="../examples/location/larger_problems/larger_problems_brute_force.html">
@@ -648,7 +723,7 @@ window.Quarto = {
               </div>
 
             
-    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1776861339456" data-listing-reading-time-sort="5" data-listing-word-count-sort="942">
+    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1777370166399" data-listing-reading-time-sort="5" data-listing-word-count-sort="942">
           <div class="main-card-content">
             
               <a href="../examples/location/greedy_and_grasp/greedy_and_grasp.html">
@@ -676,13 +751,13 @@ window.Quarto = {
 <div class="listing-no-matching d-none">No matching items</div>
 </div>
 </section>
-<section id="specialised-plots" class="level3">
-<h3 class="anchored" data-anchor-id="specialised-plots">Specialised plots</h3>
-<div id="listing-sites-specialised-plots" class="quarto-listing quarto-listing-container-custom">
+<section id="advanced-solution-evaluation" class="level3">
+<h3 class="anchored" data-anchor-id="advanced-solution-evaluation">Advanced Solution Evaluation</h3>
+<div id="listing-sites-solution-evaluation" class="quarto-listing quarto-listing-container-custom">
 <div class="list grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 450px)); gap: 20px;">
 
   
-    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1776861339408" data-listing-reading-time-sort="2" data-listing-word-count-sort="252">
+    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1777370166316" data-listing-reading-time-sort="2" data-listing-word-count-sort="273">
           <div class="main-card-content">
             
               <a href="../examples/location/equity/equity.html">
@@ -700,6 +775,40 @@ window.Quarto = {
 
                 <div class="details-listing">
                   <button class="link-listing-button"><a href="../examples/location/equity/equity.html"><i class="fa fa-info-circle"></i> Details </a></button>
+                </div>
+
+              </div>
+
+            
+          </div>
+
+<div class="listing-no-matching d-none">No matching items</div>
+</div>
+</section>
+<section id="other" class="level3">
+<h3 class="anchored" data-anchor-id="other">Other</h3>
+<div id="listing-sites-other" class="quarto-listing quarto-listing-container-custom">
+<div class="list grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 450px)); gap: 20px;">
+
+  
+    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1777370166431" data-listing-reading-time-sort="5" data-listing-word-count-sort="946">
+          <div class="main-card-content">
+            
+              <a href="../examples/location/obtaining_travel_time_matrices/index.html">
+                <img class="card-img" src="../examples/location/obtaining_travel_time_matrices/image.png" alt="Generating your own travel time matrices">
+              </a>
+              
+
+              <div class="listing-title">
+                <h5 class="no-anchor card-title listing-title">Generating your own travel time matrices</h5>
+            </div>
+
+            
+
+              </div>
+
+                <div class="details-listing">
+                  <button class="link-listing-button"><a href="../examples/location/obtaining_travel_time_matrices/index.html"><i class="fa fa-info-circle"></i> Details </a></button>
                 </div>
 
               </div>
