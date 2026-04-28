@@ -1590,16 +1590,33 @@ class EquityPlotsMixin:
         outline_color="grey",
         figsize_multiplier=4,
         groups_to_include="all",
+        groupings=None,
         **kwargs,
     ):
         equity_col = self.site_problem._equity_data_equity_col
 
-        groups = sorted(self.solution_df["problem_df"][0][equity_col].dropna().unique())
+        # ---- Base groups from data ----
+        raw_groups = sorted(
+            self.solution_df["problem_df"][0][equity_col].dropna().unique()
+        )
 
         if groups_to_include != "all":
-            groups = [i for i in groups if i in groups_to_include]
+            raw_groups = [i for i in raw_groups if i in groups_to_include]
 
-        n = len(groups)
+        # ---- Handle grouping logic ----
+        if groupings is None:
+            # Each group stands alone
+            plot_groups = {str(g): [g] for g in raw_groups}
+        else:
+            # Only include values that exist in the data (defensive)
+            plot_groups = {
+                label: [g for g in vals if g in raw_groups]
+                for label, vals in groupings.items()
+            }
+
+        group_labels = list(plot_groups.keys())
+
+        n = len(group_labels)
         nrows = math.ceil(n / ncols)
 
         fig, axes = plt.subplots(
@@ -1609,6 +1626,7 @@ class EquityPlotsMixin:
         )
         axes = axes.flatten()
 
+        # ---- Select solution row ----
         if rank_on is not None:
             plotting_row = self.solution_df.sort_values(rank_on).iloc[solution_rank - 1]
         else:
@@ -1628,18 +1646,20 @@ class EquityPlotsMixin:
         else:
             vmin = vmax = None
 
-        for i, group in enumerate(groups):
+        # ---- Plotting loop ----
+        for i, label in enumerate(group_labels):
             ax = axes[i]
+            group_values = plot_groups[label]
 
             subset = nearest_site_travel_gdf[
-                nearest_site_travel_gdf[equity_col] == group
+                nearest_site_travel_gdf[equity_col].isin(group_values)
             ]
 
             remainder = nearest_site_travel_gdf[
-                nearest_site_travel_gdf[equity_col] != group
+                ~nearest_site_travel_gdf[equity_col].isin(group_values)
             ]
 
-            # ---- Plot background (other regions as outlines) ----
+            # Background
             remainder.plot(
                 ax=ax,
                 facecolor="none",
@@ -1648,7 +1668,7 @@ class EquityPlotsMixin:
                 alpha=0.7,
             )
 
-            # ---- Plot main subset ----
+            # Main layer
             subset.plot(
                 column="min_cost",
                 cmap=cmap,
@@ -1660,7 +1680,7 @@ class EquityPlotsMixin:
                 **kwargs,
             )
 
-            ax.set_title(f"{equity_col}: {group}")
+            ax.set_title(f"{equity_col}: {label}")
 
             cx.add_basemap(
                 ax,
@@ -1670,7 +1690,7 @@ class EquityPlotsMixin:
             ax.axis("off")
 
         # ---- Remove unused axes ----
-        for j in range(len(groups), len(axes)):
+        for j in range(len(group_labels), len(axes)):
             fig.delaxes(axes[j])
 
         # ---- Shared colorbar ----
@@ -1681,7 +1701,7 @@ class EquityPlotsMixin:
 
             cbar = fig.colorbar(
                 sm,
-                ax=axes[: len(groups)],
+                ax=axes[: len(group_labels)],
                 orientation="vertical",
                 fraction=0.03,
                 pad=0.02,
