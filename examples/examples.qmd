@@ -37,6 +37,7 @@ listing:
     contents:
       - "location/equity/index.ipynb"
       - "location/comparing_solutions/index.ipynb"
+      - "location/comparing_n_sites/index.ipynb"
     type: grid
     sort: false
     grid-columns: 3
