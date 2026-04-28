@@ -167,6 +167,9 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
         print(f"{'...':<15} | {'...':<15} | {'...':<15}")
         print("--------------------------------------------\n")
 
+    ########################
+    # MARK: Demand
+    ########################
     def add_demand(self, demand_df, demand_col, location_id_col, skip_cols=None):
         """
         Add demand data to the site problem and validate its structure.
@@ -242,6 +245,46 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
         """
         return self.demand_data
 
+    def _setup_equal_demand_df(self):
+        """
+        Initialize a default demand dataset with uniform weights.
+
+        This internal method is used when no explicit demand data has been
+        provided. It creates a synthetic demand DataFrame based on the
+        unique source locations found in the travel matrix, assigning a
+        nominal demand value of 1 to every location.
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        This method updates the following internal attributes:
+        - `self.demand_data`: A new pandas DataFrame containing location IDs
+          and a demand column 'n'.
+        - `self._demand_data_type`: Set to "pandas".
+        - `self._demand_data_id_col`: Set to match the travel matrix source column.
+        - `self._demand_data_demand_col`: Set to "n".
+
+        This ensures that optimization objectives like p-median can still
+        function by minimizing average travel time across all known
+        locations equally.
+        """
+        demand_data_temp = pd.DataFrame(
+            self.travel_matrix[self._travel_matrix_source_col],
+            columns=[self._travel_matrix_source_col],
+        )
+        demand_data_temp["n"] = 1
+
+        self.demand_data = demand_data_temp
+        self._demand_data_type = "pandas"
+        self._demand_data_id_col = self._travel_matrix_source_col
+        self._demand_data_demand_col = "n"
+
+    ##################################
+    # MARK: Equity Data
+    ##################################
     def add_equity_data(
         self,
         equity_data,
@@ -341,6 +384,9 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
     def show_equity_data(self):
         return self.equity_data
 
+    ###############################
+    # MARK: Region geometry
+    ###############################
     def add_region_geometry_layer(self, region_geometry_df, common_col):
         """
         Add a region geodataframe to the site problem and validate its structure.
@@ -583,6 +629,9 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
             fig = self.region_geometry_layer.plot(**kwargs)
             return fig
 
+    ###############################
+    # MARK: Sites
+    ###############################
     def add_sites(
         self,
         candidate_site_df,
@@ -784,6 +833,57 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
             m = self.candidate_sites.explore()
             return m
 
+    def _setup_sites_df_from_travel_matrix(self):
+        """
+        Generate a candidate sites DataFrame directly from travel matrix columns.
+
+        This internal method is invoked when no explicit candidate site data
+        has been provided. It extracts all destination column names from the
+        travel matrix (excluding the source/ID column) and treats them as
+        the available facility locations.
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        Because the travel matrix columns typically only contain names/IDs,
+        the resulting `self.candidate_sites` will not contain spatial
+        geometry (lat/long) or capacity information.
+
+        The following internal attributes are updated:
+        - `self.candidate_sites`: A DataFrame containing a 'site' column
+          and an integer index.
+        - `self._candidate_sites_type`: Set to "pandas".
+        - `self._candidate_sites_candidate_id_col`: Set to "site".
+        - `self.total_n_sites`: Set to the number of extracted columns.
+        - Spatial and capacity columns are explicitly set to `None`.
+
+        See Also
+        --------
+        _setup_equal_demand_df : The counterpart for generating default demand.
+        """
+        sites_df_temp = pd.DataFrame(
+            self.travel_matrix.columns.T.drop(self._demand_data_id_col),
+            columns=["site"],
+        )
+
+        sites_df_temp = sites_df_temp.reset_index(
+            drop=False, names="canonical_site_index"
+        )
+
+        self.candidate_sites = sites_df_temp
+        self._candidate_sites_type = "pandas"
+        self._candidate_sites_candidate_id_col = "site"
+        self._candidate_sites_vertical_col = None
+        self._candidate_sites_horizontal_col = None
+        self._candidate_sites_capacity_col = None
+        self.total_n_sites = len(self.candidate_sites)
+
+    #############################
+    # MARK: Travel Matrix
+    #############################
     def add_travel_matrix(
         self,
         travel_matrix_df,
@@ -964,6 +1064,9 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
 
         self.travel_and_demand_df = travel_and_demand_df.set_index(index_col)
 
+    ####################################
+    # MARK: Single solution evaluation
+    ####################################
     def evaluate_single_solution_single_objective(
         self,
         objective: str = "p_median",
@@ -1206,89 +1309,6 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
             site_problem=self,
             coverage_threshold=threshold_for_coverage,
         )
-
-    def _setup_equal_demand_df(self):
-        """
-        Initialize a default demand dataset with uniform weights.
-
-        This internal method is used when no explicit demand data has been
-        provided. It creates a synthetic demand DataFrame based on the
-        unique source locations found in the travel matrix, assigning a
-        nominal demand value of 1 to every location.
-
-        Returns
-        -------
-        None
-
-        Notes
-        -----
-        This method updates the following internal attributes:
-        - `self.demand_data`: A new pandas DataFrame containing location IDs
-          and a demand column 'n'.
-        - `self._demand_data_type`: Set to "pandas".
-        - `self._demand_data_id_col`: Set to match the travel matrix source column.
-        - `self._demand_data_demand_col`: Set to "n".
-
-        This ensures that optimization objectives like p-median can still
-        function by minimizing average travel time across all known
-        locations equally.
-        """
-        demand_data_temp = pd.DataFrame(
-            self.travel_matrix[self._travel_matrix_source_col],
-            columns=[self._travel_matrix_source_col],
-        )
-        demand_data_temp["n"] = 1
-
-        self.demand_data = demand_data_temp
-        self._demand_data_type = "pandas"
-        self._demand_data_id_col = self._travel_matrix_source_col
-        self._demand_data_demand_col = "n"
-
-    def _setup_sites_df_from_travel_matrix(self):
-        """
-        Generate a candidate sites DataFrame directly from travel matrix columns.
-
-        This internal method is invoked when no explicit candidate site data
-        has been provided. It extracts all destination column names from the
-        travel matrix (excluding the source/ID column) and treats them as
-        the available facility locations.
-
-        Returns
-        -------
-        None
-
-        Notes
-        -----
-        Because the travel matrix columns typically only contain names/IDs,
-        the resulting `self.candidate_sites` will not contain spatial
-        geometry (lat/long) or capacity information.
-
-        The following internal attributes are updated:
-        - `self.candidate_sites`: A DataFrame containing a 'site' column
-          and an integer index.
-        - `self._candidate_sites_type`: Set to "pandas".
-        - `self._candidate_sites_candidate_id_col`: Set to "site".
-        - `self.total_n_sites`: Set to the number of extracted columns.
-        - Spatial and capacity columns are explicitly set to `None`.
-
-        See Also
-        --------
-        _setup_equal_demand_df : The counterpart for generating default demand.
-        """
-        sites_df_temp = pd.DataFrame(
-            self.travel_matrix.columns.T.drop(self._demand_data_id_col),
-            columns=["site"],
-        )
-
-        sites_df_temp = sites_df_temp.reset_index(drop=False, names="index")
-
-        self.candidate_sites = sites_df_temp
-        self._candidate_sites_type = "pandas"
-        self._candidate_sites_candidate_id_col = "site"
-        self._candidate_sites_vertical_col = None
-        self._candidate_sites_horizontal_col = None
-        self._candidate_sites_capacity_col = None
-        self.total_n_sites = len(self.candidate_sites)
 
     def solve(
         self,

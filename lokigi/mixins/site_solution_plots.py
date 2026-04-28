@@ -237,6 +237,10 @@ class NonMapPlotsMixin:
         interactive=True,
         rank_on=None,
         title="default",
+        x_axis_label="default",
+        y_axis_label="default",
+        plot_names=True,
+        line_breaks_x_axis_label=True,
     ):
         """
         Plot a bar chart of the top-performing site combinations.
@@ -264,6 +268,8 @@ class NonMapPlotsMixin:
             Title for the plot. If "default", an automatic title is generated
             based on the ranking metric or objective. If None, no title is set.
             Otherwise, the provided string is used as the title.
+        plot_names: bool, default=True
+            If True, plots site names. If false, plots canonical site indices.
 
         Returns
         -------
@@ -289,26 +295,57 @@ class NonMapPlotsMixin:
             df = self.solution_df
         if n_best is not None:
             df = df.head(n_best)
+        if line_breaks_x_axis_label:
+            if interactive:
+                line_break = "<br>"
+            else:
+                line_break = "\n"
+        else:
+            line_break = " "
+
+        if plot_names:
+            df["site_names"] = df["site_names"].apply(
+                lambda x: f",{line_break}".join([i for i in x])
+            )
+
+            x_axis = "site_names"
+        else:
+            df["site_indices"] = df["site_indices"].apply(
+                lambda x: f",{line_break}".join([str(int(i)) for i in x])
+            )
+
+            x_axis = "site_indices"
 
         if interactive:
             df = df.copy()
-            df["site_indices"] = df["site_indices"].astype("str")
+
             if rank_on is not None:
                 title = f"Top {n_best} Solutions by {rank_on.replace('_', ' ').title()}"
             else:
                 title = f"Top {n_best} Solutions: {self.objectives.replace('_', ' ').title()}"
+
             fig = px.bar(
                 df,
-                x="site_indices",
+                x=x_axis,
                 y=y_axis,
                 title=title,
+                labels={
+                    x_axis: x_axis.replace("_", " ").title()
+                    if x_axis_label == "default"
+                    else x_axis_label,
+                    y_axis: y_axis.replace("_", " ").title()
+                    if y_axis_label == "default"
+                    else y_axis_label,
+                },
             )
         else:
             fig, ax = plt.subplots()
+
             ax.bar(
-                df["site_indices"].astype(str),
+                df["site_names"] if plot_names else df["site_indices"],
                 df[y_axis],
             )
+
             if title == "default":
                 if rank_on is not None:
                     ax.set_title(
@@ -323,9 +360,11 @@ class NonMapPlotsMixin:
             else:
                 ax.set_title(title)
 
-            ax.set_xlabel("Site Indices")
-            ax.set_ylabel(f"{y_axis.replace('_', ' ').title()}")
-            plt.xticks(rotation=45)
+            x_label = "Site Names" if plot_names else "Site Names"
+            y_label = f"{y_axis.replace('_', ' ').title()}"
+            ax.set_xlabel(x_label if x_axis_label == "default" else x_axis_label)
+            ax.set_ylabel(y_label if y_axis_label == "default" else y_axis_label)
+            # plt.xticks(rotation=45)
             plt.tight_layout()
             plt.close(fig)
 
