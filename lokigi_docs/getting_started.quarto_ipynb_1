@@ -1,0 +1,655 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "---\n",
+        "title: Getting Started\n",
+        "toc: true\n",
+        "---\n",
+        "\n",
+        "The lokigi package is designed to make it easier to undertake location analysis problems.\n",
+        "\n",
+        "In many organisations - but particularly in healthcare - there is a need to be able to find a near-optimum combination of possible sites to minimize an objective. For example, you may be aiming to open an additional site to deliver healthcare services from, wanting to achieve a goal like minimizing the average travel time for each individual.\n",
+        "\n",
+        "Excellent packages exist for finding optimum solutions, such as [spopt](). However, in healthcare scenarios in particular, providing only the optimum solution is often not ideal as these decisions are extremely complex and costly, and stakeholders need to understand the pros and cons of a range of near-optimal solutions to make an informed decision.\n",
+        "\n",
+        "Enter lokigi.\n",
+        "\n",
+        "## Setting up a site location problem\n",
+        "\n",
+        "First, we need to import the `SiteProblem` class from the `lokigi.site` module."
+      ],
+      "id": "6540294c"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: import\n",
+        "from lokigi.site import SiteProblem"
+      ],
+      "id": "import",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "We will set up an **instance** of the SiteProblem class. Let's just call this `problem` - but you could call it anything."
+      ],
+      "id": "095bf01b"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: initialise-instance\n",
+        "problem = SiteProblem()"
+      ],
+      "id": "initialise-instance",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "There are four core types of data we can add to our problem object:\n",
+        "\n",
+        "- a travel time (or other 'cost') matrix\n",
+        "- site locations \\*\n",
+        "- per-region demand \\*\n",
+        "- a geographic dataset representing the region being explored \\*\n",
+        "\n",
+        "*\\* indicates optional datasets*\n",
+        "\n",
+        "The data you provide should take the following format.\n",
+        "\n",
+        "![](lokigi_input_data_examples.drawio.png)\n",
+        "\n",
+        "Remember - **only the travel matrix is completely necessary**. You can include any combination of the remaining data.\n",
+        "\n",
+        "The columns in blue can contain **any** unit of geographical area. In the UK, this might be LSOA, OA, MSOA, postcode, postcode sector, and so on. The column names do not need to be consistent across the three datasets as you will specify which column contains that data in each case - in this example two use the name \"LSOA\" while the third uses \"LSOA11NM\", for example.\n",
+        "\n",
+        "Similarly, the columns in orange do not need to use the format shown. Your sites may have any names, as long as the names used in the site dataframe (if provided) are consistent with the names used for the columns in your travel matrix.\n",
+        "\n",
+        "### Adding a travel time (or other 'cost') matrix\n",
+        "\n",
+        "The bare minimum we need to provide to be able to undertake a location problem is a **travel matrix**.\n",
+        "\n",
+        "This is a grid of travel times - or another 'cost' parameter that you want to optimize for, like the distance.\n",
+        "\n",
+        "The **rows** should represent where people would start their journey from.\n",
+        "\n",
+        "The first **column** should contain the names of the places people would start their journey from. In location problems in a UK context, we often use something like LSOA or MSOA.\n",
+        "\n",
+        "The remaining **columns** should represent where people would end their journey - i.e. all of your candidate sites. Here we will use names to represent each site; we can pass in exact coordinates or other details in a different step.\n",
+        "\n",
+        "The values in each cell within your grid would be the cost parameter: the travel time, distance, or another option like CO2 emissions.\n",
+        "\n",
+        "Here is an example dataset in the correct format."
+      ],
+      "id": "58597d4d"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| echo: false\n",
+        "#| eval: true\n",
+        "#| label: show-data-matrix\n",
+        "import pandas as pd\n",
+        "pd.read_csv(\"../sample_data/brighton_travel_matrix_driving.csv\").head(5)[[\"LSOA\", \"Site 1\", \"Site 2\", \"Site 3\"]]"
+      ],
+      "id": "show-data-matrix",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "Here, someone travelling from the LSOA Brighton and Hove 027E to site 3 would have a travel time of 7.4 minutes, versus 12.9 minutes if they went to site 1.\n",
+        "\n",
+        "::: callout-tip\n",
+        "Want to know about different ways of organising geographic information in the UK?\n",
+        "\n",
+        "Check out the subsection [\"What other ways do we determine areas within the UK\"](https://geographic.hsma.co.uk/ct_crs.html#what-other-ways-do-we-determine-areas-within-the-uk) chapter of the HSMA geographic book.\n",
+        ":::\n",
+        "\n",
+        "We don't have to use LSOAs for our rows, or site names for our columns - these could be anything! You might have postcode sectors for your rows and lat/long pairs for your columns, for example.\n",
+        "\n",
+        "To add this data to our problem, we use the `.add_travel_matrix()` method of our `SiteProblem` instance."
+      ],
+      "id": "a4da34b8"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: add-travel-matrix\n",
+        "problem.add_travel_matrix(\n",
+        "    travel_matrix_df=\"../sample_data/brighton_travel_matrix_driving.csv\", # <1>\n",
+        "    source_col=\"LSOA\", # <2>\n",
+        "    from_unit=\"seconds\", # <3>\n",
+        "    to_unit=\"minutes\" # <4>\n",
+        "    )"
+      ],
+      "id": "add-travel-matrix",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "1.  We can pass in either a pandas object or a link to a filepath (either on your computer or on the web).\n",
+        "2.  We need to tell lokigi which column contains our 'source' data - i.e. the column that has the names of the locations people will be travelling from. It will then assume all other columns in the dataframe relate to the destinations; if this is not the case, the `skip_cols` parameter must be provided so that any irrelevant columns can be ignored.\n",
+        "3.  We can optionally convert the values in our travel matrix. This travel matrix records travel times in seconds, so we use that as our 'from_unit'...\n",
+        "4.  ... and we would prefer to display our times in minutes, so we provide that as the 'to' unit.\n",
+        "\n",
+        ":::{.callout-tip}\n",
+        "If we weren't doing a conversion, we can just pass the 'unit' parameter to describe the unit used in our dataset, and this will then be picked up when we're plotting our solution, so it's worth specifying here.\n",
+        "\n",
+        "If we're doing a conversion, we don't need to pass the 'unit' parameter too as lokigi will automatically set this using the 'to_unit'.\n",
+        ":::\n",
+        "\n",
+        "Let's now view our dataset."
+      ],
+      "id": "e59dd436"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: show-travel-matrix\n",
+        "problem.show_travel_matrix().head()"
+      ],
+      "id": "show-travel-matrix",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "We can see that we the travel times for every LSOA to 6 possible sites.\n",
+        "\n",
+        "::: callout-note\n",
+        "At present, lokigi assumes you **always** want to **minimize** the cost parameter - i.e. you want people to travel the **shortest** distance or have the **shortest** travel time, or undertake journeys that emit the **least** amount of CO2.\n",
+        "\n",
+        "If you need lokigi to be able to support **maximising** a cost objective, please raise an issue on the repository: <https://github.com/hsma-tools/lokigi/issues>\n",
+        ":::\n",
+        "\n",
+        "::: callout-tip\n",
+        "Lokigi doesn't handle generating travel/cost matrices. It assumes you have already got this data to feed into it.\n",
+        "\n",
+        "Interested in generating your own travel matrices in this format?\n",
+        "\n",
+        "Check out the [\"Lookup Up Travel Times Using APIs\"](https://geographic.hsma.co.uk/mtt_travel_time_apis.html) chapter of the HSMA geographic book.\n",
+        ":::\n",
+        "\n",
+        "## Solving a simple problem\n",
+        "\n",
+        "If we don't have any other requirements, we can solve our problem right now!\n",
+        "\n",
+        "Let's solve by minimizing the average travel time from all 'sources' to all 'destinations' - which we can call a \"simple p-median\" problem.\n",
+        "\n",
+        "We'll assume we want to find the best possible combination of any 3 sites."
+      ],
+      "id": "a18d40c5"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: solve-1\n",
+        "solutions = problem.solve(p=3, objectives=\"simple_p_median\")"
+      ],
+      "id": "solve-1",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "This returns an object with the lokigi class `SiteSolutionSet`."
+      ],
+      "id": "d241e4d3"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: show-solutions-object-type\n",
+        "solutions"
+      ],
+      "id": "show-solutions-object-type",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: show-solutions-df\n",
+        "solutions.show_solutions()"
+      ],
+      "id": "show-solutions-df",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "We can produce a bar plot of the solutions, showing the variation between the best and worst."
+      ],
+      "id": "848e45ee"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: plot-n-best-combinations-1\n",
+        "solutions.plot_n_best_combinations_bar()"
+      ],
+      "id": "plot-n-best-combinations-1",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Adding in geographic data\n",
+        "\n",
+        "If we have a geojson, shp or geopackage file that represents the areas we are looking at, we can pass this in as well.\n",
+        "\n",
+        "Here, we are passing in a geojson that contains the"
+      ],
+      "id": "7ea796c5"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: add-region-geometry\n",
+        "problem.add_region_geometry_layer(\n",
+        "    region_geometry_df=\"https://github.com/hsma-programme/h6_3d_facility_location_problems/raw/refs/heads/main/h6_3d_facility_location_problems/example_code/LSOA_2011_Boundaries_Super_Generalised_Clipped_BSC_EW_V4.geojson\", # <1>\n",
+        "    common_col=\"LSOA11NM\" # <2>\n",
+        "    )"
+      ],
+      "id": "add-region-geometry",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "1.  We pass in the pass to a geojson, shp or geopackage file. This can be located locally or on the web. If provided with a standard github link, it will automatically try to create the appropriate 'raw' link that it can download the file directly from.\n",
+        "2.  We pass in the name of the column in this geojson that should be used when trying to join to the other datasets - i.e. the column that acts as a bridge between the rows in our travel matrix and this geographic data. In our travel matrix, recall we have a column called \"LSOA\". This contains the LSOA names in the same format as the \"LSOA11NM\" in our geographic dataset - so this is what we provide as our 'common_col'.\n",
+        "\n",
+        "Let's take a look at the first few rows of this geographic data."
+      ],
+      "id": "5f4ef054"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: show-region-geometry\n",
+        "problem.show_region_geometry_layer().head(5)"
+      ],
+      "id": "show-region-geometry",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "However, what's more useful is plotting it."
+      ],
+      "id": "7bb3dfd6"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: plot-region-geometry\n",
+        "problem.plot_region_geometry_layer()"
+      ],
+      "id": "plot-region-geometry",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "This becomes more useful when we then solve the problem again."
+      ],
+      "id": "c08ab3dc"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: solve-plus-region-geometry\n",
+        "solutions = problem.solve(p=3, objectives=\"simple_p_median\")"
+      ],
+      "id": "solve-plus-region-geometry",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "We can now plot the solution."
+      ],
+      "id": "7b7eb651"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: plot-best-combos-no-site-data\n",
+        "solutions.plot_best_combination()"
+      ],
+      "id": "plot-best-combos-no-site-data",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Adding in site data\n",
+        "\n",
+        "However, it would be more useful if we could see the sites on the map.\n",
+        "\n",
+        "Let's load in a dataset containing the locations of our sites."
+      ],
+      "id": "89a1b569"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: add-sites\n",
+        "problem.add_sites(\n",
+        "    candidate_site_df=\"../sample_data/brighton_sites.geojson\",\n",
+        "    candidate_id_col=\"site\"\n",
+        "    )"
+      ],
+      "id": "add-sites",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "::: callout-note\n",
+        "As we're passing in a dataset in a recognised geographic data format, it will look for a 'geography' column automatically. Alternatively, we could pass in a pandas dataframe or csv if it contains lat/long or eastings/northings, for example, specifying the 'vertical' geometry column and the 'horizontal' geometry column.\n",
+        ":::\n",
+        "\n",
+        "Let's take a look at this data."
+      ],
+      "id": "35e6dbe5"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: show-sites\n",
+        "problem.show_sites()"
+      ],
+      "id": "show-sites",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "Let's also plot this data."
+      ],
+      "id": "dfcee0b0"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: plot-sites\n",
+        "problem.plot_sites()"
+      ],
+      "id": "plot-sites",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "Now let's solve the problem again, this time noticing that we can plot the site data."
+      ],
+      "id": "892e0ce6"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: solve-with-sites\n",
+        "solutions = problem.solve(p=3, objectives=\"simple_p_median\")"
+      ],
+      "id": "solve-with-sites",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "We can now plot the solution. This time, we'll plot the 6 best solutions."
+      ],
+      "id": "4226a963"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: plot-n-best-with-sites\n",
+        "solutions.plot_n_best_combinations(n_best=5)"
+      ],
+      "id": "plot-n-best-with-sites",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Demand Data\n",
+        "\n",
+        "Finally, we can add in demand data.\n",
+        "\n",
+        "With this, we can start exploring the 'standard' p-median problems, where the travel time is weighted by the number of people travelling from each region, which can support a more equitable solution.\n",
+        "\n",
+        "Lokigi requires the demand data to contain a row per source region (i.e. where people will travel from)."
+      ],
+      "id": "aba50a85"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: add-demand\n",
+        "problem.add_demand(\n",
+        "    demand_df=\"../sample_data/brighton_demand.csv\",\n",
+        "    demand_col=\"demand\",\n",
+        "    location_id_col=\"LSOA\"\n",
+        "    )"
+      ],
+      "id": "add-demand",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: show-demand\n",
+        "problem.show_demand()"
+      ],
+      "id": "show-demand",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "When we plot our region, this time we can look at the demand."
+      ],
+      "id": "b558d9a5"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: plot-region-geometry-layer\n",
+        "problem.plot_region_geometry_layer(plot_demand=True)"
+      ],
+      "id": "plot-region-geometry-layer",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "Now we can solve for a true p-median problem rather than a simplified one. This means that the weighted travel time - the travel time adjusted by the number of people travelling from each place - will be considered."
+      ],
+      "id": "082818e5"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: solve-all-data\n",
+        "solutions = problem.solve(\n",
+        "    p=3,\n",
+        "    objectives=\"p_median\" # <1>\n",
+        "    )"
+      ],
+      "id": "solve-all-data",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "1.  Note that we have changed our objective from \"simple_p_median\" to \"p_median\" here. We haven't had to change any other parts of our problem class, so we can easily run multiple different types of solver from our single problem class.\n",
+        "\n",
+        "::: callout-tip\n",
+        "Want a more detailed explanation of weighted travel time? Take a look at the [p-median problems](https://geographic.hsma.co.uk/intro_facility_location.html#p-median-problems) subsection of the HSMA geographic book.\n",
+        ":::\n",
+        "\n",
+        "Let's plot the solutions again."
+      ],
+      "id": "b8d8fb58"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| label: plot-n-best-all-data\n",
+        "solutions.plot_n_best_combinations(n_best=5)"
+      ],
+      "id": "plot-n-best-all-data",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Recap - the data to add to your problem class\n",
+        "\n",
+        "![](lokigi_input_data_examples.drawio.png)\n",
+        "\n",
+        "A more detailed breakdown of the allowed data is provided below.\n",
+        "\n",
+        "+--------------------+--------------------------------------------------------------+--------------------+----------------------------------------------------+---------------------------------------------------------------------------------------------+--------------------------------------------------------+--------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------+\n",
+        "| Input Data         | Relevant Functions + mandatory parameters                    | Optional/Mandatory | Accepted Formats                                   | Required Columns                                                                            | Required Rows                                          | Cell Contents                                                                  | Commonalities                                                                                             |\n",
+        "+====================+==============================================================+====================+====================================================+=============================================================================================+========================================================+================================================================================+===========================================================================================================+\n",
+        "| Travel/Cost Matrix | `.add_travel_matrix(travel_matrix_df, source_col)`           | Mandatory          | - Pandas dataframe                                 | One column should represent the                                                             | 'Sources' (regions people are travelling from) as rows | Cells are a figure to optimize on - e.g. travel time, distance, CO2 emissions | The 'destinations' column should have destinations in the same format as the region_geometry              |\n",
+        "|                    |                                                              |                    |                                                    |                                                                                             |                                                        |                                                                                |                                                                                                           |\n",
+        "|                    | `show_travel_matrix()`                                       |                    | - Path to csv, parquet                             | The remaining columns should be 'Destinations' (places people are travelling to) as columns |                                                        |                                                                                | The sources should match up with the site names used in the site locations dataset (if provided)          |\n",
+        "+--------------------+--------------------------------------------------------------+--------------------+----------------------------------------------------+---------------------------------------------------------------------------------------------+--------------------------------------------------------+--------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------+\n",
+        "| Region Geometry    | `.add_region_geometry_layer(region_geometry_df, common_col)` | Optional           | - Geopandas dataframe                              | 'Geometry', containing polygons or multipolygons of the regions of interest                 | There should be a row for each 'source' region         |                                                                                | The rows in this dataframe should overlap with the rows in the 'sources' column of the travel/cost matrix |\n",
+        "|                    |                                                              |                    |                                                    |                                                                                             |                                                        |                                                                                |                                                                                                           |\n",
+        "|                    | `.show_region_geometry_layer()`                              |                    | - Path to geojson, shp or geopackage               |                                                                                             |                                                        |                                                                                |                                                                                                           |\n",
+        "|                    |                                                              |                    |                                                    |                                                                                             |                                                        |                                                                                |                                                                                                           |\n",
+        "|                    | `.plot_region_geometry_layer()`                              |                    |                                                    |                                                                                             |                                                        |                                                                                |                                                                                                           |\n",
+        "+--------------------+--------------------------------------------------------------+--------------------+----------------------------------------------------+---------------------------------------------------------------------------------------------+--------------------------------------------------------+--------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------+\n",
+        "| Site Locations     | `.add_sites(candidate_site_df, candidate_id_col)`            | Optional           | - Pandas dataframe OR geopandas dataframe          | A column representing the names of candidate sites                                          | One row per candidate site                             | Site names                                                                     | Site names should match the names of the columns provided in the travel/cost matrix                       |\n",
+        "|                    |                                                              |                    |                                                    |                                                                                             |                                                        |                                                                                |                                                                                                           |\n",
+        "|                    | `.show_sites()`                                              |                    | - Path to csv, parquet, geojson, shp or geopackage | AND either                                                                                  |                                                        | Locations of sites                                                             |                                                                                                           |\n",
+        "|                    |                                                              |                    |                                                    |                                                                                             |                                                        |                                                                                |                                                                                                           |\n",
+        "|                    | `.plot_sites()`                                              |                    |                                                    | **geometry** containing points representing locations                                       |                                                        |                                                                                |                                                                                                           |\n",
+        "|                    |                                                              |                    |                                                    |                                                                                             |                                                        |                                                                                |                                                                                                           |\n",
+        "|                    |                                                              |                    |                                                    | **OR**                                                                                      |                                                        |                                                                                |                                                                                                           |\n",
+        "|                    |                                                              |                    |                                                    |                                                                                             |                                                        |                                                                                |                                                                                                           |\n",
+        "|                    |                                                              |                    |                                                    | columns representing the positionof your sites. Defaults to looking for lat/long.           |                                                        |                                                                                |                                                                                                           |\n",
+        "+--------------------+--------------------------------------------------------------+--------------------+----------------------------------------------------+---------------------------------------------------------------------------------------------+--------------------------------------------------------+--------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------+\n",
+        "| Demand             | `.add_demand(demand_df, demand_col, location_id_col)`        | Optional           | - Pandas dataframe                                 | A column representing the regions                                                           | One row per region                                     | A demand figure or another value that should be used to weight travel times    | Row names should match the rows used for the travel matrix and region geometry                            |\n",
+        "|                    |                                                              |                    |                                                    |                                                                                             |                                                        |                                                                                |                                                                                                           |\n",
+        "|                    | `.show_demand()`                                             |                    | - Path to csv or parquet                           | Another column representing the demand or other weighting factor                            |                                                        |                                                                                |                                                                                                           |\n",
+        "+--------------------+--------------------------------------------------------------+--------------------+----------------------------------------------------+---------------------------------------------------------------------------------------------+--------------------------------------------------------+--------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------+\n",
+        "\n",
+        "## Summary - the key object types\n",
+        "\n",
+        "### SiteProblem\n",
+        "\n",
+        "The SiteProblem object is used to store all relevant data for the problem.\n",
+        "\n",
+        "You initialise an empty SiteProblem, then run the methods detailed above to add the relevant datasets to the object.\n",
+        "\n",
+        "You then call the .solve() method to create the SiteSolutionSet containing the ranked solutions.\n",
+        "\n",
+        "### SiteSolutionSet\n",
+        "\n",
+        "A SiteSolutionSet is created by calling .solve() on your SiteProblem.\n",
+        "\n",
+        "This object contains lot of methods for plotting the solutions.\n",
+        "\n",
+        "### EvaluatedCombination\n",
+        "\n",
+        "*Developer use only*\n",
+        "\n",
+        "During the process of generating solutions, an EvaluatedCombination object will be created for every evaluated set of sites. This is not directly available to you after you have solved your problem."
+      ],
+      "id": "eb1e6de9"
+    }
+  ],
+  "metadata": {
+    "kernelspec": {
+      "name": "python3",
+      "language": "python",
+      "display_name": "Python 3 (ipykernel)",
+      "path": "C:\\Users\\Sammi\\AppData\\Roaming\\jupyter\\kernels\\python3"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 5
+}
