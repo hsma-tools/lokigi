@@ -536,3 +536,131 @@ def _wrap_label(text, width):
     if width is None or not isinstance(text, str):
         return text
     return "\n".join(textwrap.wrap(text, width=width))
+
+
+def _add_rank_column(df, score_col, tiebreaker_col, ascending=True):
+    """
+    Add a sequential rank column based on a primary score and a tiebreaker.
+
+    Rows are ranked by:
+    1. `score_col` (primary ordering)
+    2. `tiebreaker_col` (used to break ties deterministically)
+
+    The resulting rank:
+    - Is a "dense rank" (1, 2, 2, 3, ...)
+    - Has no gaps
+    - Assigns the exact same rank to true ties (identical score AND tiebreaker)
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input DataFrame.
+    score_col : str
+        Column used as the primary ranking metric.
+    tiebreaker_col : str
+        Column used to break ties when `score_col` values are equal.
+    ascending : bool or list of bool, default True
+        Sort direction. If a single bool, applied to both columns.
+        If a list, should match [score_col, tiebreaker_col].
+
+        Example:
+        - ascending=[True, True] -> lower is better for both
+        - ascending=[False, True] -> higher score is better, lower tiebreaker is better
+
+    Returns
+    -------
+    pandas.DataFrame
+        A new DataFrame with `solution_rank` inserted as the first column.
+    """
+
+    # Normalise ascending argument
+    if isinstance(ascending, bool):
+        ascending = [ascending, ascending]
+
+    # 1. Sort by primary score, then tiebreaker
+    # sort_values returns a new DataFrame, so we don't strictly need .copy()
+    ranked_df = df.sort_values([score_col, tiebreaker_col], ascending=ascending)
+
+    # 2. Assign dense ranks that handle true ties
+    # sort=False ensures groupby respects the order we just established.
+    # ngroup() numbers each unique group starting from 0, so we add 1.
+    ranked_df["solution_rank"] = (
+        ranked_df.groupby([score_col, tiebreaker_col], sort=False).ngroup() + 1
+    )
+
+    # 3. Move rank column to the front
+    ranked_df.insert(0, "solution_rank", ranked_df.pop("solution_rank"))
+
+    return ranked_df.reset_index(drop=True)
+
+
+def _select_solution(
+    solution_df, rank_on=None, solution_rank=1, site_names=None, site_indices=None
+):
+    """
+    Select a single solution from solution_df based on provided criteria.
+
+    Priority: site_indices > site_names > rank_on/solution_rank
+
+    Returns
+    -------
+    pd.DataFrame
+        Single-row DataFrame containing the selected solution.
+
+    Raises
+    ------
+    ValueError
+        If no matching solution is found or if solution_rank is out of range.
+    """
+    # Priority 1: site_indices
+    if site_indices is not None:
+        site_indices = np.asarray(site_indices)  # handle list input
+        mask = solution_df["site_indices"].apply(
+            lambda x: np.array_equal(np.sort(x), np.sort(site_indices))
+        )
+        filtered = solution_df[mask]
+        if filtered.empty:
+            raise ValueError(f"No solution found with site_indices: {site_indices}")
+        return filtered.head(1).reset_index()
+
+    # Priority 2: site_names
+    if site_names is not None:
+        site_names_sorted = sorted(site_names)
+        mask = solution_df["site_names"].apply(lambda x: sorted(x) == site_names_sorted)
+        filtered = solution_df[mask]
+        if filtered.empty:
+            raise ValueError(f"No solution found with site_names: {site_names}")
+        return filtered.head(1).reset_index()
+
+    # Priority 3: rank-based selection
+    if rank_on is not None:
+        sorted_df = solution_df.sort_values(rank_on)
+    else:
+        sorted_df = solution_df
+
+    if solution_rank < 1 or solution_rank > len(sorted_df):
+        raise ValueError(
+            f"solution_rank must be between 1 and {len(sorted_df)}, got {solution_rank}"
+        )
+
+    return sorted_df.iloc[[solution_rank - 1]].reset_index()
+
+
+def _get_ordinal_suffix(n):
+    """
+    Return the ordinal suffix for a number (e.g., 'st', 'nd', 'rd', 'th').
+
+    Parameters
+    ----------
+    n : int
+        The number to get the suffix for.
+
+    Returns
+    -------
+    str
+        The ordinal suffix ('st', 'nd', 'rd', or 'th').
+    """
+    if 10 <= n % 100 <= 20:
+        return "th"
+    else:
+        return {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")

@@ -15,7 +15,7 @@ import sweetpareto.vis as spv
 import itertools
 from typing import Literal, Optional
 import textwrap
-from lokigi.utils import _wrap_label
+from lokigi.utils import _wrap_label, _select_solution, _get_ordinal_suffix
 
 
 ##################################
@@ -659,6 +659,8 @@ class MapsMixin:
                         size=annotation_size * 0.8,  # Smaller font
                         style="italic",  # Italic to distinguish
                     )
+        else:
+            has_required_sites = False
 
         # Add basemap
         cx.add_basemap(
@@ -673,6 +675,9 @@ class MapsMixin:
     def plot_best_combination(
         self,
         rank_on=None,
+        solution_rank=1,
+        site_names=None,
+        site_indices=None,
         title="default",
         show_all_locations=True,
         label_all_locations=False,
@@ -680,7 +685,7 @@ class MapsMixin:
         plot_regions_not_meeting_threshold=False,
         cmap=None,
         chosen_site_colour="black",
-        unchosen_site_colour="grey",
+        unchosen_site_colour="white",
         unchosen_site_opacity=0.7,
         legend_loc="upper right",
         legend_bbox_to_anchor=(1.75, 0.5),
@@ -703,9 +708,19 @@ class MapsMixin:
         Parameters
         ----------
         rank_on : str, optional
-            Column name used to rank solutions. If provided, the solution with
-            the lowest value in this column is selected. If None, the first row
-            of ``solution_df`` is used.
+            Column name used to rank solutions. If provided, solutions are sorted
+            by this column (ascending). Ignored if site_names or site_indices is provided.
+        solution_rank : int, default=1
+            Which ranked solution to plot (1 = best, 2 = second best, etc.).
+            Ignored if site_names or site_indices is provided.
+        site_names : list of str, optional
+            Specific site names to plot. If provided, filters solution_df to the
+            row containing this exact combination of sites. Overrides rank_on and
+            solution_rank.
+        site_indices : list of int or np.ndarray, optional
+            Specific site indices to plot. If provided, filters solution_df to the
+            row containing this exact combination. Overrides rank_on, solution_rank,
+            and site_names.
         title : str or None, default="default"
             Title for the plot. If "default", an automatic title is generated
             based on the objective and solution metrics. If a string is provided,
@@ -799,6 +814,15 @@ class MapsMixin:
         else:
             solution = self.solution_df.head(1).reset_index()
 
+        # Solution selection logic
+        solution = _select_solution(
+            self.solution_df,
+            rank_on=rank_on,
+            solution_rank=solution_rank,
+            site_names=site_names,
+            site_indices=site_indices,
+        )
+
         # Choose appropriate colourmap if not provided
         if cmap is None:
             if plot_site_allocation:
@@ -881,18 +905,48 @@ class MapsMixin:
         # Add title
         if title is not None:
             if title == "default":
+                # Determine the description prefix based on selection method
+                if site_indices is not None:
+                    title_prefix = (
+                        f"Solution for {self.n_sites} sites (by site indices)"
+                    )
+                elif site_names is not None:
+                    title_prefix = f"Solution for {self.n_sites} sites (by site names)"
+                elif solution_rank == 1:
+                    title_prefix = f"Best solution for {self.n_sites} sites"
+                else:
+                    rank_suffix = _get_ordinal_suffix(solution_rank)
+                    title_prefix = f"{solution_rank}{rank_suffix} best solution for {self.n_sites} sites"
+
+                # Build metrics section based on objective type
                 if self.objectives == "mclp":
-                    title = plt.title(
-                        f"Best solution for {self.n_sites} sites \nCoverage within threshold of {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}: {solution['proportion_within_coverage_threshold'].values[0]:.1%} \nUnweighted Average: {solution['unweighted_average'].values[0]:.1f} {self.site_problem._travel_matrix_unit} \nMaximum: {solution['max'].values[0]:.1f} {self.site_problem._travel_matrix_unit}"
+                    metrics = (
+                        f"Coverage within threshold of {solution['coverage_threshold'].values[0]} "
+                        f"{self.site_problem._travel_matrix_unit}: "
+                        f"{solution['proportion_within_coverage_threshold'].values[0]:.1%} \n"
+                        f"Unweighted Average: {solution['unweighted_average'].values[0]:.1f} "
+                        f"{self.site_problem._travel_matrix_unit} \n"
+                        f"Maximum: {solution['max'].values[0]:.1f} "
+                        f"{self.site_problem._travel_matrix_unit}"
                     )
                 elif self.objectives in ["simple_p_median", "hybrid_simple_p_median"]:
-                    title = plt.title(
-                        f"Best solution for {self.n_sites} sites \nUnweighted Average: {solution['unweighted_average'].values[0]:.1f} {self.site_problem._travel_matrix_unit} \nMaximum: {solution['max'].values[0]:.1f} {self.site_problem._travel_matrix_unit}"
+                    metrics = (
+                        f"Unweighted Average: {solution['unweighted_average'].values[0]:.1f} "
+                        f"{self.site_problem._travel_matrix_unit} \n"
+                        f"Maximum: {solution['max'].values[0]:.1f} "
+                        f"{self.site_problem._travel_matrix_unit}"
                     )
                 else:
-                    title = plt.title(
-                        f"Best solution for {self.n_sites} sites \nWeighted Average: {solution['weighted_average'].values[0]:.1f} {self.site_problem._travel_matrix_unit} \nMaximum: {solution['max'].values[0]:.1f} {self.site_problem._travel_matrix_unit}"
+                    metrics = (
+                        f"Weighted Average: {solution['weighted_average'].values[0]:.1f} "
+                        f"{self.site_problem._travel_matrix_unit} \n"
+                        f"Maximum: {solution['max'].values[0]:.1f} "
+                        f"{self.site_problem._travel_matrix_unit}"
                     )
+
+                title = plt.title(
+                    f"{title_prefix} \n{metrics}", fontsize=title_font_size
+                )
             else:
                 title = plt.title(
                     _safe_evaluate(title, solution=solution), fontsize=title_font_size
@@ -1260,6 +1314,240 @@ class MapsMixin:
             )
 
         return fig, axs
+
+    def plot_solution_comparison(
+        self,
+        solutions_config,
+        figsize=(16, 8),
+        title=None,
+        title_fontsize=14,
+        **shared_plot_kwargs,
+    ):
+        """
+        Plot multiple solutions side-by-side for comparison.
+
+        Parameters
+        ----------
+        solutions_config : list of dict
+            List of configuration dictionaries for each subplot. Each dict can contain
+            any parameters accepted by plot_best_combination(), e.g.:
+            - 'solution_rank': int
+            - 'site_names': list of str
+            - 'site_indices': list of int or np.ndarray
+            - 'rank_on': str
+            - 'title': str (subplot title)
+            - Any other plot_best_combination() parameters
+        figsize : tuple, default=(16, 8)
+            Figure size as (width, height) in inches.
+        title : str, optional
+            Overall figure title (suptitle). If None, no suptitle is added.
+        title_fontsize : int, default=14
+            Font size for the overall figure title.
+        **shared_plot_kwargs
+            Keyword arguments applied to all subplots. Individual subplot configs
+            override these shared settings.
+
+        Returns
+        -------
+        tuple
+            (fig, axes) where fig is the Figure and axes is an array of Axes objects.
+
+        Examples
+        --------
+        # Compare best vs 2nd best solution
+        fig, axes = solver.plot_solution_comparison([
+            {'solution_rank': 1, 'title': 'Best Solution'},
+            {'solution_rank': 2, 'title': '2nd Best Solution'}
+        ])
+
+        # Compare specific site combinations
+        fig, axes = solver.plot_solution_comparison([
+            {'site_names': ['Site A', 'Site B', 'Site C']},
+            {'site_names': ['Site D', 'Site E', 'Site F']}
+        ], show_all_locations=False)
+
+        # Three-way comparison with custom ranking
+        fig, axes = solver.plot_solution_comparison([
+            {'solution_rank': 1, 'rank_on': 'weighted_average'},
+            {'solution_rank': 1, 'rank_on': 'max'},
+            {'solution_rank': 1, 'rank_on': 'proportion_within_coverage_threshold'}
+        ], figsize=(24, 8))
+        """
+        n_plots = len(solutions_config)
+
+        if n_plots == 0:
+            raise ValueError("solutions_config must contain at least one configuration")
+
+        # Create subplots
+        fig, axes = plt.subplots(1, n_plots, figsize=figsize)
+
+        # Handle single plot case (axes won't be an array)
+        if n_plots == 1:
+            axes = [axes]
+
+        # Plot each solution
+        for i, config in enumerate(solutions_config):
+            # Merge shared kwargs with individual config (config takes precedence)
+            plot_kwargs = {**shared_plot_kwargs, **config}
+
+            # Get the solution based on config
+            solution = _select_solution(
+                self.solution_df,
+                rank_on=config.get("rank_on"),
+                solution_rank=config.get("solution_rank", 1),
+                site_names=config.get("site_names"),
+                site_indices=config.get("site_indices"),
+            )
+
+            # Extract plotting-specific parameters
+            show_all_locations = plot_kwargs.pop("show_all_locations", True)
+            label_all_locations = plot_kwargs.pop("label_all_locations", False)
+            plot_site_allocation = plot_kwargs.pop("plot_site_allocation", False)
+            plot_regions_not_meeting_threshold = plot_kwargs.pop(
+                "plot_regions_not_meeting_threshold", False
+            )
+            cmap = plot_kwargs.pop("cmap", None)
+            chosen_site_colour = plot_kwargs.pop("chosen_site_colour", "black")
+            unchosen_site_colour = plot_kwargs.pop("unchosen_site_colour", "grey")
+            unchosen_site_opacity = plot_kwargs.pop("unchosen_site_opacity", 0.7)
+            annotation_size = plot_kwargs.pop("annotation_size", 6)
+            label_wrap_width = plot_kwargs.pop("label_wrap_width", 40)
+            legend_loc = plot_kwargs.pop("legend_loc", "upper right")
+            legend_bbox_to_anchor = plot_kwargs.pop(
+                "legend_bbox_to_anchor", (1.75, 0.5)
+            )
+            legend_fontsize = plot_kwargs.pop("legend_fontsize", 10)
+            site_legend_loc = plot_kwargs.pop("site_legend_loc", "best")
+            subplot_title = plot_kwargs.pop("title", "default")
+            subplot_title_fontsize = plot_kwargs.pop("title_fontsize", 12)
+
+            # Choose colormap if not provided
+            if cmap is None:
+                if plot_site_allocation:
+                    cmap = "Set2"
+                elif plot_regions_not_meeting_threshold:
+                    cmap = "Set1"
+                else:
+                    cmap = "Blues"
+
+            # Prepare discrete colormap for threshold plotting
+            discrete_cmap = None
+            colors = None
+            if plot_regions_not_meeting_threshold:
+                cmap_obj = plt.get_cmap(cmap)
+                if hasattr(cmap_obj, "colors"):
+                    colors = [cmap_obj.colors[0], cmap_obj.colors[1]]
+                else:
+                    colors = [cmap_obj(0.0), cmap_obj(1.0)]
+                discrete_cmap = ListedColormap(colors)
+
+            # Set up legend kwargs
+            legend_kwargs = {
+                "loc": legend_loc,
+                "fontsize": legend_fontsize,
+            }
+            if legend_bbox_to_anchor is not None:
+                legend_kwargs["bbox_to_anchor"] = legend_bbox_to_anchor
+
+            # Plot the solution
+            axes[i], has_required_sites = self._plot_single_solution_map(
+                ax=axes[i],
+                solution=solution,
+                show_all_locations=show_all_locations,
+                label_all_locations=label_all_locations,
+                plot_site_allocation=plot_site_allocation,
+                plot_regions_not_meeting_threshold=plot_regions_not_meeting_threshold,
+                cmap=cmap,
+                chosen_site_colour=chosen_site_colour,
+                unchosen_site_colour=unchosen_site_colour,
+                unchosen_site_opacity=unchosen_site_opacity,
+                annotation_size=annotation_size,
+                label_wrap_width=label_wrap_width,
+                discrete_cmap=discrete_cmap,
+                colors=colors,
+                add_legend=True,
+                legend_kwargs=legend_kwargs,
+            )
+
+            # Add required sites legend if needed
+            if has_required_sites:
+                legend_elements = [
+                    Line2D(
+                        [0],
+                        [0],
+                        marker="^",
+                        color="w",
+                        markerfacecolor=chosen_site_colour,
+                        markersize=10,
+                        label="Required sites",
+                    ),
+                    Line2D(
+                        [0],
+                        [0],
+                        marker="o",
+                        color="w",
+                        markerfacecolor=chosen_site_colour,
+                        markersize=10,
+                        label="Additional selected sites",
+                    ),
+                ]
+                axes[i].legend(handles=legend_elements, loc=site_legend_loc)
+
+            # Add subplot title
+            if subplot_title is not None:
+                if subplot_title == "default":
+                    # Generate default title (same logic as plot_best_combination)
+                    if config.get("site_indices") is not None:
+                        title_prefix = (
+                            f"Solution for {self.n_sites} sites (by site indices)"
+                        )
+                    elif config.get("site_names") is not None:
+                        title_prefix = (
+                            f"Solution for {self.n_sites} sites (by site names)"
+                        )
+                    elif config.get("solution_rank", 1) == 1:
+                        title_prefix = f"Best solution for {self.n_sites} sites"
+                    else:
+                        rank = config.get("solution_rank", 1)
+                        rank_suffix = self._get_ordinal_suffix(rank)
+                        title_prefix = f"{rank}{rank_suffix} best solution for {self.n_sites} sites"
+
+                    if self.objectives == "mclp":
+                        metrics = (
+                            f"Coverage: {solution['proportion_within_coverage_threshold'].values[0]:.1%} | "
+                            f"Avg: {solution['unweighted_average'].values[0]:.1f} | "
+                            f"Max: {solution['max'].values[0]:.1f}"
+                        )
+                    elif self.objectives in [
+                        "simple_p_median",
+                        "hybrid_simple_p_median",
+                    ]:
+                        metrics = (
+                            f"Unweighted Avg: {solution['unweighted_average'].values[0]:.1f} | "
+                            f"Max: {solution['max'].values[0]:.1f}"
+                        )
+                    else:
+                        metrics = (
+                            f"Weighted Avg: {solution['weighted_average'].values[0]:.1f} | "
+                            f"Max: {solution['max'].values[0]:.1f}"
+                        )
+
+                    axes[i].set_title(
+                        f"{title_prefix}\n{metrics}", fontsize=subplot_title_fontsize
+                    )
+                else:
+                    axes[i].set_title(
+                        _safe_evaluate(subplot_title, solution=solution),
+                        fontsize=subplot_title_fontsize,
+                    )
+
+        # Add overall title
+        if title is not None:
+            fig.suptitle(title, fontsize=title_fontsize, y=0.98)
+
+        plt.tight_layout()
+
+        return fig, axes
 
 
 ##################################

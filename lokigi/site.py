@@ -8,7 +8,7 @@ from lokigi.utils import (
     _convert_crs,
     SUPPORTED_OBJECTIVES,
     _get_ranking_by_objective,
-    _validate_capacity_constraint,
+    _add_rank_column,
 )
 
 from lokigi.site_solutions import EvaluatedCombination, SiteSolutionSet
@@ -1653,30 +1653,19 @@ class SiteProblem(BruteForceMixin, GreedyMixin, GraspMixin):
             )
 
         if objective != "mclp":
-            solution_df = (
-                pd.DataFrame(outputs)
-                .sort_values([ranking, "weighted_average"])
-                .reset_index(drop=True)
+            solution_df = _add_rank_column(
+                pd.DataFrame(outputs),
+                score_col=ranking,
+                tiebreaker_col="weighted_average",
+                ascending=[True, True],
             )
         else:
-            solution_df = pd.DataFrame(outputs).sort_values(
-                [ranking, "weighted_average"], ascending=[False, True]
+            solution_df = _add_rank_column(
+                pd.DataFrame(outputs),
+                score_col=ranking,
+                tiebreaker_col="weighted_average",
+                ascending=[False, True],
             )
-
-        solution_df["solution_rank"] = (
-            solution_df.groupby(ranking)["weighted_average"]
-            .rank(method="first")
-            .add(
-                solution_df[ranking]
-                .rank(method="dense")
-                .sub(1)
-                .mul(solution_df.groupby(ranking).size().max())
-            )
-            .astype(int)
-        )
-
-        # Move this to be the first column
-        solution_df.insert(0, "solution_rank", solution_df.pop("solution_rank"))
 
         return SiteSolutionSet(
             solution_df=solution_df,
