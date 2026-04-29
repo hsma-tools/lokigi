@@ -78,8 +78,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-dark-d0ae9245876894da5ac7e18953ecc5cc.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../../site_libs/bootstrap/bootstrap-fd5b4d64843d35908f954f0bfd43a152.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../../../site_libs/bootstrap/bootstrap-dark-9365c3958d3ba3838995695ce3de7443.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../../../site_libs/bootstrap/bootstrap-656931bf671e9b74ba634a267e0883f8.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../../site_libs/bootstrap/bootstrap-dark-3db5a696ff866eae0c3e466e6cf61434.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -334,8 +334,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#the-solutioncomparator" id="toc-the-solutioncomparator" class="nav-link active" data-scroll-target="#the-solutioncomparator">The SolutionComparator</a></li>
+  <li><a href="#finding-a-balanced-solution" id="toc-finding-a-balanced-solution" class="nav-link" data-scroll-target="#finding-a-balanced-solution">Finding a balanced solution</a>
+  <ul class="collapse">
+  <li><a href="#repeating-with-a-different-set-of-objectives" id="toc-repeating-with-a-different-set-of-objectives" class="nav-link" data-scroll-target="#repeating-with-a-different-set-of-objectives">Repeating with a different set of objectives</a></li>
+  </ul></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
@@ -360,11 +370,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
+<p>We may often find ourselves wanting to optimize for more than one objective.</p>
+<p>For example, we may want a solution that strikes a good balance between car travel times and public transport times.</p>
+<p>While full multi-objective optimization is some way down the lokigi roadmap, there are still ways to compare and contrast two solution sets in a way that can help aid decision making.</p>
+<p>We start with our standard import.</p>
 <div id="df367e1f" class="cell" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.site <span class="im">import</span> SiteProblem</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Let’s first load up a problem.</p>
-<p>We’ll just load in the information that needs to be shared.</p>
+<p>We’ll just load in the information that needs to be shared across both problems - everything except our travel matrix.</p>
 <div id="7477782e" class="cell" data-execution_count="2">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>problem <span class="op">=</span> SiteProblem()</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -399,16 +413,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>We’ll solve each.</p>
+<p>In this instance we are looking to reduce from the 15 current minor injury units down 11.</p>
+<p>Note that we’ve passed in different coverage thresholds (i.e.&nbsp;the target time for an LSOA to be from its nearest centre) across the two different options. However, depending on what you are looking to compare, you may have the same threshold, or no threshold at all.</p>
 <div id="12c09831" class="cell" data-execution_count="5">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>solution_car <span class="op">=</span> problem_car.solve(p<span class="op">=</span><span class="dv">12</span>, threshold_for_coverage<span class="op">=</span><span class="dv">20</span>)</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>solution_public_transport <span class="op">=</span> problem_public_transport.solve(p<span class="op">=</span><span class="dv">12</span>, threshold_for_coverage<span class="op">=</span><span class="dv">60</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>solution_car <span class="op">=</span> problem_car.solve(p<span class="op">=</span><span class="dv">11</span>, threshold_for_coverage<span class="op">=</span><span class="dv">20</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>solution_public_transport <span class="op">=</span> problem_public_transport.solve(p<span class="op">=</span><span class="dv">11</span>, threshold_for_coverage<span class="op">=</span><span class="dv">60</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>/__w/lokigi/lokigi/lokigi/site.py:1434: UserWarning: No demand data was provided. Demand from all regions has been assumed to be equal.If you wish to override this, run .add_demand() to add your site dataframe before running .solve() again.You can use the .show_demand_format() to see the expected format beforehand.
   warn(</code></pre>
 </div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"d81ac30021824fffbc7ddac7a26dee46","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+{"model_id":"f2c4d3955b934ad2bd3e268688eb5633","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
 </script>
 </div>
 <div class="cell-output cell-output-stderr">
@@ -417,10 +433,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"081cd56e4c414c2bb1101a772c7c53fa","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+{"model_id":"3add1697a8e9437da97585ec9b7aed71","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
 </script>
 </div>
 </div>
+<p>Let’s take a look at the best 2 solutions for our car problem.</p>
 <div id="dbf0aa20" class="cell" data-execution_count="6">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>solution_car.show_solutions().head(<span class="dv">2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="6">
@@ -448,26 +465,26 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <th data-quarto-table-cell-role="th">0</th>
 <td>1</td>
 <td>[North Devon District Hospital, Honiton Hospit...</td>
-<td>[0, 1, 2, 3, 5, 6, 7, 8, 9, 11, 12, 14]</td>
+<td>[0, 1, 2, 3, 5, 6, 7, 8, 11, 12, 14]</td>
 <td>20</td>
-<td>15.08</td>
-<td>15.08</td>
+<td>15.38</td>
+<td>15.38</td>
 <td>26.0</td>
 <td>54.0</td>
-<td>0.75</td>
+<td>0.74</td>
 <td>from_id&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;from_id_x&nbsp;&nbsp;North D...</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1</th>
-<td>5</td>
+<td>2</td>
 <td>[North Devon District Hospital, Honiton Hospit...</td>
-<td>[0, 1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 14]</td>
+<td>[0, 1, 2, 3, 5, 6, 7, 8, 9, 11, 12]</td>
 <td>20</td>
-<td>15.10</td>
-<td>15.10</td>
+<td>15.45</td>
+<td>15.45</td>
 <td>26.0</td>
 <td>54.0</td>
-<td>0.75</td>
+<td>0.74</td>
 <td>from_id&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;from_id_x&nbsp;&nbsp;North D...</td>
 </tr>
 </tbody>
@@ -476,6 +493,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
+<p>And the best 2 for our public transport problem.</p>
 <div id="73ad94da" class="cell" data-execution_count="7">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>solution_public_transport.show_solutions().head(<span class="dv">2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="7">
@@ -503,26 +521,26 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <th data-quarto-table-cell-role="th">0</th>
 <td>1</td>
 <td>[North Devon District Hospital, Honiton Hospit...</td>
-<td>[0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 12, 14]</td>
+<td>[0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 12]</td>
 <td>60</td>
-<td>58.63</td>
-<td>58.63</td>
-<td>99.0</td>
+<td>59.64</td>
+<td>59.64</td>
+<td>99.4</td>
 <td>262.0</td>
-<td>0.6</td>
+<td>0.58</td>
 <td>from_id&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;from_id_x&nbsp;&nbsp;North D...</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1</th>
-<td>3</td>
+<td>2</td>
 <td>[North Devon District Hospital, Honiton Hospit...</td>
-<td>[0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12]</td>
+<td>[0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 14]</td>
 <td>60</td>
-<td>58.66</td>
-<td>58.66</td>
-<td>99.0</td>
+<td>59.69</td>
+<td>59.69</td>
+<td>100.4</td>
 <td>262.0</td>
-<td>0.6</td>
+<td>0.58</td>
 <td>from_id&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;from_id_x&nbsp;&nbsp;North D...</td>
 </tr>
 </tbody>
@@ -531,7 +549,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
+<p>We can quickly see that they are not the same sets of site indices!</p>
 <p>We could pull out the best solution for car from our public transport example.</p>
+<p>We first grab the car indices, then grab our solution dataframe from our public transport output.</p>
+<p>We can then filter our public transport dataframe to find the row with the same site indices as our best car solution.</p>
 <div id="dc0cb5a1" class="cell" data-execution_count="8">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>best_indices_car <span class="op">=</span> solution_car.return_best_combination_site_indices()</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -564,15 +585,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tbody>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">46</th>
-<td>85</td>
+<td>43</td>
 <td>[North Devon District Hospital, Honiton Hospit...</td>
-<td>[0, 1, 2, 3, 5, 6, 7, 8, 9, 11, 12, 14]</td>
+<td>[0, 1, 2, 3, 5, 6, 7, 8, 11, 12, 14]</td>
 <td>60</td>
-<td>59.61</td>
-<td>59.61</td>
-<td>98.4</td>
+<td>60.57</td>
+<td>60.57</td>
+<td>102.0</td>
 <td>262.0</td>
-<td>0.58</td>
+<td>0.57</td>
 <td>from_id&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;from_id_x&nbsp;&nbsp;North D...</td>
 </tr>
 </tbody>
@@ -581,7 +602,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
-<p>So our best solution for car is our 47th best solution for public transport!</p>
+<p>So our best solution for car is our 43rd best solution for public transport!</p>
+<p>Let’s repeat this, but the other way around - filtering our car solution to find the solution with the same indices as our best public transport solution.</p>
 <div id="34841910" class="cell" data-execution_count="9">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>best_indices_public_transport <span class="op">=</span> solution_public_transport.return_best_combination_site_indices()</span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -612,16 +634,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<th data-quarto-table-cell-role="th">2</th>
-<td>9</td>
+<th data-quarto-table-cell-role="th">5</th>
+<td>6</td>
 <td>[North Devon District Hospital, Honiton Hospit...</td>
-<td>[0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 12, 14]</td>
+<td>[0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 12]</td>
 <td>20</td>
-<td>15.11</td>
-<td>15.11</td>
+<td>15.47</td>
+<td>15.47</td>
 <td>26.0</td>
 <td>54.0</td>
-<td>0.74</td>
+<td>0.72</td>
 <td>from_id&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;from_id_x&nbsp;&nbsp;North D...</td>
 </tr>
 </tbody>
@@ -630,13 +652,353 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
-<p>But our best public transport solution is our 2nd best car travel solution.</p>
+<p>It looks like our best public transport solution is our 6th best car travel solution - that could be a much more reasonable balance!</p>
+<section id="the-solutioncomparator" class="level2">
+<h2 class="anchored" data-anchor-id="the-solutioncomparator">The SolutionComparator</h2>
+<p>Lokigi does provide a helper class for these sorts of comparisons. We’ll import it from the site_solutions module.</p>
+<div id="a39bf407" class="cell" data-execution_count="10">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.site_solutions <span class="im">import</span> SolutionComparator</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Now we initialise it, passing in our two SolutionSet objects (the output of the .solve() call), and passing in appropriate labels for telling them apart.</p>
+<div id="25b1cc33" class="cell" data-execution_count="11">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>comparison <span class="op">=</span> SolutionComparator(</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    solution_car,</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    solution_public_transport,</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    labels<span class="op">=</span>(<span class="st">"Car"</span>, <span class="st">"Public Transport"</span>)</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Let’s explore the various methods this class has.</p>
+<p>We can return the top result from each.</p>
+<div id="af333f4c" class="cell" data-execution_count="12">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>comparison.compare_top_results()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="12">
+<div>
 
 
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">solution_rank</th>
+<th data-quarto-table-cell-role="th">site_names</th>
+<th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average</th>
+<th data-quarto-table-cell-role="th">unweighted_average</th>
+<th data-quarto-table-cell-role="th">90th_percentile</th>
+<th data-quarto-table-cell-role="th">max</th>
+<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">problem_df</th>
+<th data-quarto-table-cell-role="th">origin</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>1</td>
+<td>[North Devon District Hospital, Honiton Hospit...</td>
+<td>[0, 1, 2, 3, 5, 6, 7, 8, 11, 12, 14]</td>
+<td>20</td>
+<td>15.380481</td>
+<td>15.380481</td>
+<td>26.0</td>
+<td>54.0</td>
+<td>0.735502</td>
+<td>from_id&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;from_id_x&nbsp;&nbsp;North D...</td>
+<td>Car</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>1</td>
+<td>[North Devon District Hospital, Honiton Hospit...</td>
+<td>[0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 12]</td>
+<td>60</td>
+<td>59.643564</td>
+<td>59.643564</td>
+<td>99.4</td>
+<td>262.0</td>
+<td>0.575672</td>
+<td>from_id&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;from_id_x&nbsp;&nbsp;North D...</td>
+<td>Public Transport</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>We can also get a quick summary of any given metric for each. This may be more useful if you are comparing, for example, a solution for 12 sites vs 11 sites (though you might find the plots in <a href="../../../examples/location/comparing_n_sites/index.html">the ‘comparing n sites’ example</a> more useful!)</p>
+<div id="e6dac78e" class="cell" data-execution_count="13">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>comparison.get_metric_summary()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="13">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Car</th>
+<th data-quarto-table-cell-role="th">Public Transport</th>
+<th data-quarto-table-cell-role="th">difference</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">count</th>
+<td>1365.000000</td>
+<td>1365.000000</td>
+<td>0.000000</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">mean</th>
+<td>17.047162</td>
+<td>66.675987</td>
+<td>-49.628825</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">std</th>
+<td>1.099810</td>
+<td>5.186672</td>
+<td>-4.086862</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">min</th>
+<td>15.380481</td>
+<td>59.643564</td>
+<td>-44.263083</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">25%</th>
+<td>16.275813</td>
+<td>62.396040</td>
+<td>-46.120226</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">50%</th>
+<td>16.743989</td>
+<td>64.721358</td>
+<td>-47.977369</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">75%</th>
+<td>17.619519</td>
+<td>71.371994</td>
+<td>-53.752475</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">max</th>
+<td>23.374823</td>
+<td>89.872702</td>
+<td>-66.497878</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</section>
+<section id="finding-a-balanced-solution" class="level2">
+<h2 class="anchored" data-anchor-id="finding-a-balanced-solution">Finding a balanced solution</h2>
+<p>What we’ll probably find most useful is the ability to draw out a ‘balanced’ solution.</p>
+<p>By default, it will return the solution from each set where this combination of solutions minimizes the combined rank of the solutions.</p>
+<div id="d85939cc" class="cell" data-execution_count="14">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>solution_car, solution_public_transport <span class="op">=</span> comparison.find_balanced_solution()</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>solution_car</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="14">
+<pre><code>solution_rank                                                                           6
+site_names                              [North Devon District Hospital, Honiton Hospit...
+site_indices                                         [0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 12]
+coverage_threshold                                                                     20
+weighted_average                                                                15.471004
+unweighted_average                                                              15.471004
+90th_percentile                                                                      26.0
+max                                                                                  54.0
+proportion_within_coverage_threshold                                             0.718529
+problem_df                                           from_id        from_id_x  North D...
+Name: 5, dtype: object</code></pre>
+</div>
+</div>
+<div id="32cb486b" class="cell" data-execution_count="15">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>solution_public_transport</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="15">
+<pre><code>solution_rank                                                                           1
+site_names                              [North Devon District Hospital, Honiton Hospit...
+site_indices                                         [0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 12]
+coverage_threshold                                                                     60
+weighted_average                                                                59.643564
+unweighted_average                                                              59.643564
+90th_percentile                                                                      99.4
+max                                                                                 262.0
+proportion_within_coverage_threshold                                             0.575672
+problem_df                                           from_id        from_id_x  North D...
+Name: 0, dtype: object</code></pre>
+</div>
+</div>
+<p>We can see these are, in this case, the solutions we found earlier when we looked at our best public transport solution and found the position of the same example in our car travel time.</p>
+<p>We can then use the .plot_comparison() method to put these side by side.</p>
+<div id="a83c759d" class="cell" data-execution_count="16">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>comparison.plot_comparison(</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>    config_1<span class="op">=</span>{<span class="st">'site_indices'</span>: solution_car.site_indices,</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>              <span class="st">'title'</span>: <span class="ss">f'Balanced Car Solution  (rank: </span><span class="sc">{</span>solution_car<span class="sc">.</span>solution_rank<span class="sc">}</span><span class="ss">)'</span>},</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>    config_2<span class="op">=</span>{<span class="st">'site_indices'</span>: solution_public_transport.site_indices,</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>              <span class="st">'title'</span>: <span class="ss">f'Balanced Public Transport Solution (rank: </span><span class="sc">{</span>solution_public_transport<span class="sc">.</span>solution_rank<span class="sc">}</span><span class="ss">)'</span>},</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">'Balanced Multi-Modal Solutions'</span></span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-17-output-1.png" width="1483" height="757" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>We can pass in all of our normal options.</p>
+<div id="c8c5a0da" class="cell" data-execution_count="17">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>comparison.plot_comparison(</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>    config_1<span class="op">=</span>{<span class="st">'site_indices'</span>: solution_car.site_indices,</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>              <span class="st">'title'</span>: <span class="ss">f'Balanced Car Solution  (rank: </span><span class="sc">{</span>solution_car<span class="sc">.</span>solution_rank<span class="sc">}</span><span class="ss">)'</span>,</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>              <span class="st">'label_all_locations'</span>: <span class="va">True</span>,</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>              <span class="st">'plot_regions_not_meeting_threshold'</span>: <span class="va">True</span></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>              },</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>    config_2<span class="op">=</span>{<span class="st">'site_indices'</span>: solution_public_transport.site_indices,</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>              <span class="st">'title'</span>: <span class="ss">f'Balanced Public Transport Solution (rank: </span><span class="sc">{</span>solution_public_transport<span class="sc">.</span>solution_rank<span class="sc">}</span><span class="ss">)'</span>,</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>              <span class="st">'label_all_locations'</span>: <span class="va">True</span>,</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>              <span class="st">'plot_regions_not_meeting_threshold'</span>: <span class="va">True</span></span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>              },</span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">'Balanced Multi-Modal Solutions'</span></span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-18-output-1.png" width="1526" height="752" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<div id="1b534896" class="cell" data-execution_count="18">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>comparison.plot_comparison(</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>    config_1<span class="op">=</span>{<span class="st">'site_indices'</span>: solution_car.site_indices,</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>              <span class="st">'title'</span>: <span class="ss">f'Balanced Car Solution  (rank: </span><span class="sc">{</span>solution_car<span class="sc">.</span>solution_rank<span class="sc">}</span><span class="ss">)'</span>,</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>              <span class="st">'label_all_locations'</span>: <span class="va">True</span>,</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>              <span class="st">'plot_site_allocation'</span>: <span class="va">True</span>,</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>              <span class="st">'legend_bbox_to_anchor'</span>: (<span class="fl">1.18</span>, <span class="fl">1.1</span>),</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>              <span class="st">'cmap'</span>: <span class="st">'Set3'</span></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>              },</span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>    config_2<span class="op">=</span>{<span class="st">'site_indices'</span>: solution_public_transport.site_indices,</span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>              <span class="st">'title'</span>: <span class="ss">f'Balanced Public Transport Solution (rank: </span><span class="sc">{</span>solution_public_transport<span class="sc">.</span>solution_rank<span class="sc">}</span><span class="ss">)'</span>,</span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>              <span class="st">'label_all_locations'</span>: <span class="va">True</span>,</span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a>              <span class="st">'plot_site_allocation'</span>: <span class="va">True</span>,</span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a>              <span class="st">'legend_bbox_to_anchor'</span>: (<span class="fl">1.25</span>, <span class="fl">1.1</span>),</span>
+<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a>              <span class="st">'cmap'</span>: <span class="st">'Set3'</span></span>
+<span id="cb22-15"><a href="#cb22-15" aria-hidden="true" tabindex="-1"></a>              },</span>
+<span id="cb22-16"><a href="#cb22-16" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">'Balanced Multi-Modal Solutions'</span></span>
+<span id="cb22-17"><a href="#cb22-17" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-19-output-1.png" width="1550" height="701" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<section id="repeating-with-a-different-set-of-objectives" class="level3">
+<h3 class="anchored" data-anchor-id="repeating-with-a-different-set-of-objectives">Repeating with a different set of objectives</h3>
+<p>We can also pass different objectives to this method to then find a solution that balances something else.</p>
+<p>For example, we might want to also see what the best balanced solution is for sites based on the proportion of LSOAs falling within the maximum travel time to their nearest site that we defined.</p>
+<p>We can use the ‘secondary_objective’ parameter to choose what breaks ties between</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Lokigi will automatically handle the fact that we want to maximise the coverage metric (i.e.&nbsp;higher=better) while minimizing the weighted average travel time (i.e.&nbsp;lower=better).</p>
+</div>
+</div>
+<div id="369fc755" class="cell" data-execution_count="19">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>solution_car_cov, solution_public_transport_cov <span class="op">=</span> comparison.find_balanced_solution(</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>    objective<span class="op">=</span><span class="st">"proportion_within_coverage_threshold"</span>, secondary_objective<span class="op">=</span><span class="st">"weighted_average"</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>solution_car_cov</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="19">
+<pre><code>solution_rank                                                                           4
+site_names                              [North Devon District Hospital, Honiton Hospit...
+site_indices                                         [0, 1, 2, 3, 4, 5, 6, 7, 11, 12, 14]
+coverage_threshold                                                                     20
+weighted_average                                                                15.663366
+unweighted_average                                                              15.663366
+90th_percentile                                                                      26.0
+max                                                                                  64.0
+proportion_within_coverage_threshold                                             0.735502
+problem_df                                           from_id        from_id_x  North D...
+Name: 3, dtype: object</code></pre>
+</div>
+</div>
+<div id="e86e27bb" class="cell" data-execution_count="20">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>solution_public_transport_cov</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="20">
+<pre><code>solution_rank                                                                          16
+site_names                              [North Devon District Hospital, Honiton Hospit...
+site_indices                                         [0, 1, 2, 3, 4, 5, 6, 7, 11, 12, 14]
+coverage_threshold                                                                     60
+weighted_average                                                                60.800566
+unweighted_average                                                              60.800566
+90th_percentile                                                                     104.8
+max                                                                                 262.0
+proportion_within_coverage_threshold                                              0.58133
+problem_df                                           from_id        from_id_x  North D...
+Name: 15, dtype: object</code></pre>
+</div>
+</div>
+<p>We can see that this time that the best ranked solution (for this pair of objectives - as the method will re-rank the original solution set if you pass non-default objectives) with the same sites in for car and public transport is the 4th best for cars and the 16th best for public transport, having the lowest combined rank overall across the example.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>If we have optimized using a non-exhaustive search method like GRASP, note that we may not get particularly optimal solutions when trying to find a balanced solution on anything other than the objective we originally optimized on.</p>
+<p>However, if you’ve brute forced, like in this example, you can confidently explore balanced solutions for any objective.</p>
+</div>
+</div>
+<div id="aab4df7e" class="cell" data-execution_count="21">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>comparison.plot_comparison(</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>    config_1<span class="op">=</span>{</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>        <span class="st">'site_indices'</span>: solution_car_cov.site_indices,</span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>        <span class="st">'title'</span>: <span class="ss">f'Balanced Car Solution - Coverage threshold 20 mins (rank: </span><span class="sc">{</span>solution_car_cov<span class="sc">.</span>solution_rank<span class="sc">}</span><span class="ss">)'</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>        },</span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>    config_2<span class="op">=</span>{</span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>        <span class="st">'site_indices'</span>: solution_public_transport_cov.site_indices,</span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>        <span class="st">'title'</span>: <span class="ss">f'Balanced Public Transport Solution - Coverage threshold 60 mins (rank: </span><span class="sc">{</span>solution_public_transport_cov<span class="sc">.</span>solution_rank<span class="sc">}</span><span class="ss">)'</span></span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>        },</span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">'Balanced Multi-Modal Solutions (Ranked on Coverage)'</span></span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-22-output-1.png" width="1483" height="757" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+
+
+</section>
+</section>
 
 <a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
 <script type="application/vnd.jupyter.widget-state+json">
-{"state":{"081cd56e4c414c2bb1101a772c7c53fa":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_3174095e70e740d0a3949e20588cd012","IPY_MODEL_56e02ee35fb74b4b911ab488e6296359","IPY_MODEL_f062ff0a149f4d9eb8ad8209ea2f2749"],"layout":"IPY_MODEL_e75188c5116848b381a7b9d4d9ff06a9","tabbable":null,"tooltip":null}},"24a94494b61b421e90ee2ed3aa7c7594":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_9e2ba63d5efb4e778791c29ea64c904c","max":455,"min":0,"orientation":"horizontal","style":"IPY_MODEL_d428d9d098524d8caf76c42956729133","tabbable":null,"tooltip":null,"value":455}},"3174095e70e740d0a3949e20588cd012":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_96838fdcace748dea18422ee608f1b12","placeholder":"​","style":"IPY_MODEL_ee6758b3c29343c5b5d1b25ae969dc61","tabbable":null,"tooltip":null,"value":"100%"}},"56e02ee35fb74b4b911ab488e6296359":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_bb2cf8f14bbe4d82ae8a03a3733a3525","max":455,"min":0,"orientation":"horizontal","style":"IPY_MODEL_ca1297d51c6a44a994be843a50dd572c","tabbable":null,"tooltip":null,"value":455}},"69857a604141491f9cd689ffabbcd9d0":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"7181d5ca63934ab3a9190e2ff1a97d47":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"78247ee9ac6a4c68bb53561d052b861d":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"7c116286539c425fbf71da19bff7a08d":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"885b728253104089a9c3f7fa726f1c5f":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_adda86188cc14129935faf6ce94c4bfd","placeholder":"​","style":"IPY_MODEL_69857a604141491f9cd689ffabbcd9d0","tabbable":null,"tooltip":null,"value":" 455/455 [00:02&lt;00:00, 213.54it/s]"}},"96838fdcace748dea18422ee608f1b12":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"9e2ba63d5efb4e778791c29ea64c904c":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"adda86188cc14129935faf6ce94c4bfd":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"b333c3e6f1fc4dc8bc44dee07e3aad62":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_fdd0ce112ea945e9a6f19234e289b8e9","placeholder":"​","style":"IPY_MODEL_7c116286539c425fbf71da19bff7a08d","tabbable":null,"tooltip":null,"value":"100%"}},"bb2cf8f14bbe4d82ae8a03a3733a3525":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"ca1297d51c6a44a994be843a50dd572c":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"d428d9d098524d8caf76c42956729133":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"d81ac30021824fffbc7ddac7a26dee46":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_b333c3e6f1fc4dc8bc44dee07e3aad62","IPY_MODEL_24a94494b61b421e90ee2ed3aa7c7594","IPY_MODEL_885b728253104089a9c3f7fa726f1c5f"],"layout":"IPY_MODEL_78247ee9ac6a4c68bb53561d052b861d","tabbable":null,"tooltip":null}},"e75188c5116848b381a7b9d4d9ff06a9":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"ee6758b3c29343c5b5d1b25ae969dc61":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"f062ff0a149f4d9eb8ad8209ea2f2749":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_f7a24e86d4be44dea509daf5cee50f89","placeholder":"​","style":"IPY_MODEL_7181d5ca63934ab3a9190e2ff1a97d47","tabbable":null,"tooltip":null,"value":" 455/455 [00:02&lt;00:00, 166.91it/s]"}},"f7a24e86d4be44dea509daf5cee50f89":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"fdd0ce112ea945e9a6f19234e289b8e9":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}}},"version_major":2,"version_minor":0}
+{"state":{"22290bb463f844d884e0bf93446695b9":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_a0433647a19a4e74b8951b5ab8458564","max":1365,"min":0,"orientation":"horizontal","style":"IPY_MODEL_9e30fd1ba8eb41bdafbd93e1cf33542b","tabbable":null,"tooltip":null,"value":1365}},"3052da4a5fe64fb5b74940c5f3fa6292":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"357b19cc160d4f42be15c78f1eaceaf5":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"3add1697a8e9437da97585ec9b7aed71":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_780e4b6335d743f1a4a86aca034764f2","IPY_MODEL_22290bb463f844d884e0bf93446695b9","IPY_MODEL_e339a9a6e0584852acf4bf47ad9804c7"],"layout":"IPY_MODEL_9c11cca9fabd4a7ab052098f811f3f6e","tabbable":null,"tooltip":null}},"4502a883f37f450e9db1ece820536600":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"54766ce4aa714473887929cad05bca85":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"66b52ef300a0490c99d99efc85c93264":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"780e4b6335d743f1a4a86aca034764f2":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_920db81fd97b4fd69a244a7c4c8b271c","placeholder":"​","style":"IPY_MODEL_88b2f4f5d09e4463860a6ffb81d3b42e","tabbable":null,"tooltip":null,"value":"100%"}},"88b2f4f5d09e4463860a6ffb81d3b42e":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"920db81fd97b4fd69a244a7c4c8b271c":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"9be88af1ae5042e2aceea69cc73038d9":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"9c11cca9fabd4a7ab052098f811f3f6e":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"9cb09a40acb748c1ae4e9cf3f692d588":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_3052da4a5fe64fb5b74940c5f3fa6292","placeholder":"​","style":"IPY_MODEL_9be88af1ae5042e2aceea69cc73038d9","tabbable":null,"tooltip":null,"value":" 1365/1365 [00:05&lt;00:00, 243.64it/s]"}},"9e30fd1ba8eb41bdafbd93e1cf33542b":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"a0433647a19a4e74b8951b5ab8458564":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"c5f21a273a6743efa60d937ef53de556":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"cf68097f09ee48979273942511a5c5bd":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_4502a883f37f450e9db1ece820536600","max":1365,"min":0,"orientation":"horizontal","style":"IPY_MODEL_c5f21a273a6743efa60d937ef53de556","tabbable":null,"tooltip":null,"value":1365}},"e2a8d6a2a85e4609bc2ac3f6b819f105":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"e339a9a6e0584852acf4bf47ad9804c7":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_f539b9ecb57a4abb89e8786fa88e24fc","placeholder":"​","style":"IPY_MODEL_66b52ef300a0490c99d99efc85c93264","tabbable":null,"tooltip":null,"value":" 1365/1365 [00:05&lt;00:00, 244.13it/s]"}},"f2c4d3955b934ad2bd3e268688eb5633":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_ffd7b7db08f14aa5856552fe947b358b","IPY_MODEL_cf68097f09ee48979273942511a5c5bd","IPY_MODEL_9cb09a40acb748c1ae4e9cf3f692d588"],"layout":"IPY_MODEL_54766ce4aa714473887929cad05bca85","tabbable":null,"tooltip":null}},"f539b9ecb57a4abb89e8786fa88e24fc":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"ffd7b7db08f14aa5856552fe947b358b":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_357b19cc160d4f42be15c78f1eaceaf5","placeholder":"​","style":"IPY_MODEL_e2a8d6a2a85e4609bc2ac3f6b819f105","tabbable":null,"tooltip":null,"value":"100%"}}},"version_major":2,"version_minor":0}
 </script>
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {

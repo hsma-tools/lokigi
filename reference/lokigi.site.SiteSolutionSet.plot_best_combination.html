@@ -78,8 +78,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-d0ae9245876894da5ac7e18953ecc5cc.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-fd5b4d64843d35908f954f0bfd43a152.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-9365c3958d3ba3838995695ce3de7443.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-656931bf671e9b74ba634a267e0883f8.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-3db5a696ff866eae0c3e466e6cf61434.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -342,23 +342,28 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h1>plot_best_combination</h1>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet.plot_best_combination(</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    rank_on<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">'default'</span>,</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    show_all_locations<span class="op">=</span><span class="va">True</span>,</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    plot_site_allocation<span class="op">=</span><span class="va">False</span>,</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    plot_regions_not_meeting_threshold<span class="op">=</span><span class="va">False</span>,</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    cmap<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    chosen_site_colour<span class="op">=</span><span class="st">'black'</span>,</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    unchosen_site_colour<span class="op">=</span><span class="st">'grey'</span>,</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    unchosen_site_opacity<span class="op">=</span><span class="fl">0.5</span>,</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    legend_loc<span class="op">=</span><span class="st">'upper right'</span>,</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    legend_bbox_to_anchor<span class="op">=</span>(<span class="fl">1.75</span>, <span class="fl">0.5</span>),</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    legend_fontsize<span class="op">=</span><span class="dv">10</span>,</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    title_font_size<span class="op">=</span><span class="dv">12</span>,</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    annotation_size<span class="op">=</span><span class="dv">6</span>,</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    label_wrap_width<span class="op">=</span><span class="dv">40</span>,</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    height<span class="op">=</span><span class="dv">12</span>,</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    width<span class="op">=</span><span class="dv">6</span>,</span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    solution_rank<span class="op">=</span><span class="dv">1</span>,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    site_names<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    site_indices<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">'default'</span>,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    show_all_locations<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    label_all_locations<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    plot_site_allocation<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    plot_regions_not_meeting_threshold<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    cmap<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    chosen_site_colour<span class="op">=</span><span class="st">'black'</span>,</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    unchosen_site_colour<span class="op">=</span><span class="st">'white'</span>,</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    unchosen_site_opacity<span class="op">=</span><span class="fl">0.7</span>,</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    legend_loc<span class="op">=</span><span class="st">'upper right'</span>,</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    legend_bbox_to_anchor<span class="op">=</span>(<span class="fl">1.75</span>, <span class="fl">0.5</span>),</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    legend_fontsize<span class="op">=</span><span class="dv">10</span>,</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    title_font_size<span class="op">=</span><span class="dv">12</span>,</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    annotation_size<span class="op">=</span><span class="dv">6</span>,</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    label_wrap_width<span class="op">=</span><span class="dv">40</span>,</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    height<span class="op">=</span><span class="dv">12</span>,</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    width<span class="op">=</span><span class="dv">6</span>,</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>    site_legend_loc<span class="op">=</span><span class="st">'best'</span>,</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Plot a map of the best-performing site combination.</p>
 <p>This method visualises the spatial performance of the best solution in the solution set, including travel costs, site allocations, or coverage relative to a threshold. Regions are coloured according to the selected metric, and candidate site locations can be overlaid.</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">
@@ -382,62 +387,86 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td>rank_on</td>
 <td>str</td>
-<td>Column name used to rank solutions. If provided, the solution with the lowest value in this column is selected. If None, the first row of <code>solution_df</code> is used.</td>
+<td>Column name used to rank solutions. If provided, solutions are sorted by this column (ascending). Ignored if site_names or site_indices is provided.</td>
 <td><code>None</code></td>
 </tr>
 <tr class="even">
+<td>solution_rank</td>
+<td>int</td>
+<td>Which ranked solution to plot (1 = best, 2 = second best, etc.). Ignored if site_names or site_indices is provided.</td>
+<td><code>1</code></td>
+</tr>
+<tr class="odd">
+<td>site_names</td>
+<td>list of str</td>
+<td>Specific site names to plot. If provided, filters solution_df to the row containing this exact combination of sites. Overrides rank_on and solution_rank.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td>site_indices</td>
+<td>list of int or np.ndarray</td>
+<td>Specific site indices to plot. If provided, filters solution_df to the row containing this exact combination. Overrides rank_on, solution_rank, and site_names.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
 <td>title</td>
 <td>str or None</td>
 <td>Title for the plot. If “default”, an automatic title is generated based on the objective and solution metrics. If a string is provided, it may be evaluated using <code>_safe_evaluate</code> with access to the selected solution. If None, no title is set.</td>
 <td><code>"default"</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>show_all_locations</td>
 <td>bool</td>
 <td>If True, plots all candidate site locations in addition to the selected sites.</td>
 <td><code>True</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>plot_site_allocation</td>
 <td>bool</td>
 <td>If True, regions are coloured by the assigned (nearest) site. Overrides other colouring options.</td>
 <td><code>False</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>plot_regions_not_meeting_threshold</td>
 <td>bool</td>
 <td>If True, regions are coloured based on whether they fall within the coverage threshold. Overrides default cost-based colouring.</td>
 <td><code>False</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>cmap</td>
 <td>str or matplotlib colormap</td>
 <td>Colormap used for plotting. If None, a default is chosen: - Sequential colormap (“Blues”) for cost-based plots - Qualitative colormap (“Set2”) for site allocation plots</td>
 <td><code>None</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>chosen_site_colour</td>
 <td>str</td>
 <td>Colour used to plot selected site locations.</td>
 <td><code>"black"</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>unchosen_site_colour</td>
 <td>str</td>
 <td>Colour used to plot unselected candidate site locations.</td>
 <td><code>"grey"</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>unchosen_site_opacity</td>
 <td>float</td>
 <td>Opaqueness/alpha of the points for unchosen sites</td>
 <td><code>0.5</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>legend_loc</td>
 <td></td>
 <td>Adjust position of the legend within the main plot. Accepts standard matplotlib positioning strings.</td>
 <td><code>'upper right'</code></td>
+</tr>
+<tr class="even">
+<td>site_legend_loc</td>
+<td></td>
+<td>Adjust position of the legend within the main plot. Accepts standard matplotlib positioning strings. Only used if required sites are present in the problem.</td>
+<td><code>'best'</code></td>
 </tr>
 <tr class="odd">
 <td>legend_bbox_to_anchor</td>
