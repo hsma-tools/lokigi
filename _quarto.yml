@@ -33,6 +33,8 @@ website:
         href: examples/examples.qmd
       - text: "API Reference"
         href: reference/index.qmd
+      - href: vidigi_docs/changelog.qmd
+        text: "Changelog"
     right:
       - icon: github
         href: https://github.com/hsma-tools/lokigi/

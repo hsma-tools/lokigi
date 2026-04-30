@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lokigi"
-version = "0.1.0"
+version = "0.1.1"
 description = "A package for generating, ranking, analysing and visualising the best candidate solutions for discrete facility location problems"
 readme = "README.md"
 license = "MIT"
@@ -18,6 +18,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 
 dependencies = [
@@ -26,13 +27,14 @@ dependencies = [
     "geopandas>=1.0.0,<2.0.0",
     "pydantic>=2.0.0,<3.0.0",
     "webcolors>=24.11.1",
-    "folium>=0.14.0",
+    "folium>=0.14.0,<1.0.0",
     "contextily>=1.5.0,<2.0.0",
-    "mapclassify>=2.0.0,<3.0.0",
+    "mapclassify>=2.0.0,<4.0.0",
     "adjusttext>=1.3.0",
     "tqdm>=4.67.3",
     "sweetpareto>=1.1.0",
-    "seaborn>=0.13.2",
+    "seaborn>=0.13.0,<1.0.0",
+    "plotly>=5.0.0,<6.0.0",
 ]
 
 [project.urls]
@@ -54,16 +56,15 @@ dev = [
     "black",
     "flake8",
     "hatch",
-    "ipywidgets==8.1.5",
-    "jupyterlab==4.2.4",
-    "jupyterlab-spellchecker==0.8.4",
-    "lintquarto==0.8.0",
+    "ipywidgets>=8.1.5,<9.0.0",
+    "jupyterlab>=4.2.4,<5.0.0",
+    "jupyterlab-spellchecker>=0.8.4,<1.0.0",
+    "lintquarto>=0.8.0,<1.0.0",
     "nbqa",
-    "pylint==4.0.5",
-    "pytest-html==4.1.1",
-    "quartodoc==0.11.1",
-    "tox==4.25.0",
+    "pylint>=4.0.5,<5.0.0",
+    "pytest-html>=4.1.1,<5.0.0",
+    "quartodoc>=0.11.1,<1.0.0",
+    "tox>=4.25.0,<5.0.0",
     "griffe<2.0.0",
-    "plotly>=6.6.0",
-    "r5py>=1.1.3",
+    "r5py>=1.1.3,<2.0.0",
 ]

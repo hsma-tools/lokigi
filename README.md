@@ -16,9 +16,12 @@ Lokigi is planned to expand to boundary optimisation problems in the future.
 
 Head to the [documentation](https://hsma-tools.github.io/lokigi/lokigi_docs/) to find out how to use the package.
 
-For now, you would need to clone this repository to make use of it.
+Install the package with `pip install lokigi`
 
-PyPi and Conda support coming very soon.
+> [!WARNING]
+> Lokigi is currently in an alpha state and not advised to be used for production. However, we would welcome feedback as we move towards a full release.
+
+Conda support coming very soon.
 
 ## Contributors
 

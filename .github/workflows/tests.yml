@@ -28,9 +28,10 @@ on:
         default: 'all'
         options:
           - all
-          - '3.10'
           - '3.11'
           - '3.12'
+          - '3.13'
+          - '3.14'
 
 concurrency:
   group: tests-${{ github.ref }}
@@ -43,8 +44,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            python-version: '3.11'
           - os: ubuntu-latest
             python-version: '3.12'
           - os: windows-latest
