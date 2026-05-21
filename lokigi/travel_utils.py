@@ -6,6 +6,8 @@ import subprocess
 
 import osmium
 import re
+import numpy as np
+from collections import defaultdict
 
 
 def prepare_valhalla_network(
@@ -140,12 +142,27 @@ def prepare_valhalla_network(
 def build_time_matrix_valhalla(
     origins_gdf, destinations_gdf, valhalla_config_path, costing="auto"
 ):
+    """
+    Build a time/distance matrix between origins and destinations using Valhalla.
 
+    Optimizations:
+    - Vectorized coordinate extraction using NumPy
+    - Vectorized time/distance conversion
+    - Avoid itertuples() and nested loops
+    - Pre-allocate arrays for better memory efficiency
+    - Use NumPy operations instead of list comprehension for large datasets
+    """
     actor = Actor(valhalla_config_path)
 
-    sources = [{"lat": geom.y, "lon": geom.x} for geom in origins_gdf.geometry]
-
-    targets = [{"lat": geom.y, "lon": geom.x} for geom in destinations_gdf.geometry]
+    # Vectorized extraction of coordinates
+    sources = [
+        {"lat": lat, "lon": lon}
+        for lat, lon in zip(origins_gdf.geometry.y, origins_gdf.geometry.x)
+    ]
+    targets = [
+        {"lat": lat, "lon": lon}
+        for lat, lon in zip(destinations_gdf.geometry.y, destinations_gdf.geometry.x)
+    ]
 
     request = {
         "sources": sources,
@@ -157,29 +174,130 @@ def build_time_matrix_valhalla(
 
     matrix = actor.matrix(request)
 
-    rows = []
+    # Convert nested lists to NumPy arrays for vectorized operations
+    durations = np.array(matrix["sources_to_targets"]["durations"])
+    distances = np.array(matrix["sources_to_targets"]["distances"])
 
-    durations = matrix["sources_to_targets"]["durations"]
-    distances = matrix["sources_to_targets"]["distances"]
+    # Vectorized unit conversion
+    travel_times = np.where(durations, durations / 60, None)
+    distance_km = np.where(distances, distances, None)
 
-    for i, origin in enumerate(origins_gdf.itertuples()):
-        for j, destination in enumerate(destinations_gdf.itertuples()):
-            # Access durations and distances from the correct structure
-            travel_time_seconds = durations[i][j]
-            distance_meters = distances[i][j]
+    # Get IDs as arrays for broadcasting
+    origin_ids = origins_gdf["id"].values
+    destination_ids = destinations_gdf["id"].values
 
-            rows.append(
-                {
-                    "from_id": origin.id,
-                    "to_id": destination.id,
-                    "travel_time_minutes": travel_time_seconds / 60
-                    if travel_time_seconds
-                    else None,
-                    "distance_km": distance_meters if distance_meters else None,
-                }
+    # Create meshgrid for efficient cartesian product
+    from_ids, to_ids = np.meshgrid(origin_ids, destination_ids, indexing="ij")
+
+    # Flatten all arrays for DataFrame construction
+    return pd.DataFrame(
+        {
+            "from_id": from_ids.ravel(),
+            "to_id": to_ids.ravel(),
+            "travel_time_minutes": travel_times.ravel(),
+            "distance_km": distance_km.ravel(),
+        }
+    )
+
+
+# Alternative version if you want to handle None values differently:
+def build_time_matrix_valhalla_v2(
+    origins_gdf,
+    destinations_gdf,
+    valhalla_config_path,
+    costing="auto",
+    wide_format=True,
+    metric="travel_time",
+):
+    """
+    Build a time/distance matrix between origins and destinations using Valhalla.
+
+    Parameters:
+    -----------
+    origins_gdf : GeoDataFrame
+        Origins with geometry and 'id' column
+    destinations_gdf : GeoDataFrame
+        Destinations with geometry and 'id' column
+    valhalla_config_path : str
+        Path to Valhalla configuration
+    costing : str, default "auto"
+        Costing model for routing
+    wide_format : bool, default True
+        If True, return wide format matrix with origin IDs as rows and destination IDs as columns.
+        If False, return long format (from_id, to_id, metric columns)
+    metric : str, default "travel_time"
+        Metric to use for matrix values: "travel_time" (in minutes) or "distance" (in km).
+        Only used when wide_format=True.
+
+    Returns:
+    --------
+    pd.DataFrame
+        If wide_format=True: matrix with origin IDs as index and destination IDs as columns
+        If wide_format=False: long format with columns [from_id, to_id, travel_time_minutes, distance_km]
+    """
+    actor = Actor(valhalla_config_path)
+
+    # Vectorized coordinate extraction
+    sources = [
+        {"lat": lat, "lon": lon}
+        for lat, lon in zip(origins_gdf.geometry.y, origins_gdf.geometry.x)
+    ]
+    targets = [
+        {"lat": lat, "lon": lon}
+        for lat, lon in zip(destinations_gdf.geometry.y, destinations_gdf.geometry.x)
+    ]
+
+    request = {
+        "sources": sources,
+        "targets": targets,
+        "costing": costing,
+        "matrix_locations": len(sources) + len(targets),
+        "verbose": False,
+    }
+
+    matrix = actor.matrix(request)
+
+    durations = np.array(matrix["sources_to_targets"]["durations"], dtype=float)
+    distances = np.array(matrix["sources_to_targets"]["distances"], dtype=float)
+
+    # Convert zeros to NaN if that's your intent
+    travel_times = durations / 60
+    travel_times[durations == 0] = np.nan
+
+    distance_km = distances.copy()
+    distance_km[distances == 0] = np.nan
+
+    # Get IDs
+    origin_ids = origins_gdf["id"].values
+    destination_ids = destinations_gdf["id"].values
+
+    if wide_format:
+        # Create wide format matrix
+        if metric == "travel_time":
+            data = travel_times
+            metric_name = "travel_time_minutes"
+        elif metric == "distance":
+            data = distance_km
+            metric_name = "distance_km"
+        else:
+            raise ValueError(
+                f"metric must be 'travel_time' or 'distance', got '{metric}'"
             )
 
-    return pd.DataFrame(rows)
+        return pd.DataFrame(data, index=origin_ids, columns=destination_ids)
+
+    else:
+        # Create long format
+        from_ids, to_ids = np.meshgrid(origin_ids, destination_ids, indexing="ij")
+
+        return pd.DataFrame(
+            {
+                "from_id": from_ids.ravel(),
+                "to_id": to_ids.ravel(),
+                "travel_time_minutes": travel_times.ravel(),
+                "distance_km": distance_km.ravel(),
+            }
+        )
 
 
 class AdvancedSpeedUpdater(osmium.SimpleHandler):
@@ -400,3 +518,209 @@ class WayInspector(osmium.SimpleHandler):
         print("\n-- all tags --")
         for k, v in sorted(tags.items()):
             print(f"  {k}: {v}")
+
+
+def valhalla_detailed_route(
+    engine,
+    origin,
+    destination,
+    costing="auto",
+    costing_options=None,
+    units="miles",
+    verbose=True,
+):
+    """
+    Run a Valhalla route and compute leg-level speeds.
+    """
+
+    request = {
+        "locations": [
+            {"lat": origin[0], "lon": origin[1], "type": "break"},
+            {"lat": destination[0], "lon": destination[1], "type": "break"},
+        ],
+        "costing": costing,
+        "units": units,
+        "directions_options": {
+            "units": units,
+            "narrative": True,
+            "language": "en-US",
+            "shape_format": "polyline6",
+        },
+    }
+
+    if costing_options:
+        request["costing_options"] = costing_options
+
+    response = engine.route(request)
+
+    trip = response["trip"]
+
+    summary = {
+        "total_time_s": trip["summary"]["time"],
+        "total_dist": trip["summary"]["length"],
+        "legs": [],
+    }
+
+    if verbose:
+        print("\n=== OVERALL ===")
+        print(f"Time: {trip['summary']['time'] / 60:.1f} min")
+        print(f"Distance: {trip['summary']['length']:.2f} {units}")
+
+    for i, leg in enumerate(trip["legs"]):
+        leg_time_s = leg["summary"]["time"]
+        leg_dist = leg["summary"]["length"]
+
+        # compute speed
+        if leg_time_s > 0:
+            leg_speed = leg_dist / (leg_time_s / 3600)
+        else:
+            leg_speed = 0
+
+        leg_data = {
+            "leg_index": i,
+            "time_s": leg_time_s,
+            "distance": leg_dist,
+            "speed": leg_speed,
+        }
+
+        summary["legs"].append(leg_data)
+
+        if verbose:
+            print(f"\n--- LEG {i} ---")
+            print(f"Time: {leg_time_s / 60:.1f} min")
+            print(f"Distance: {leg_dist:.2f} {units}")
+            print(f"Speed: {leg_speed:.1f} {units}/h")
+
+            print("\nManeuvers:")
+            for m in leg["maneuvers"]:
+                print(
+                    f"{m['time']:>4}s | {m['length']:>6} | {m.get('instruction', '')}"
+                )
+
+    return response, summary
+
+
+def valhalla_audit_route_speeds(response, speed_bands=None, unit="km"):
+    """
+    Analyse Valhalla route maneuvers by implied speed distribution.
+
+    Parameters
+    ----------
+    response : dict
+        Valhalla route response
+    speed_bands : list of tuples
+        [(label, max_speed_kmh), ...]
+    unit : str
+        "km" or "miles" (Valhalla typically returns km internally unless configured)
+
+    Returns
+    -------
+    dict summary
+    """
+
+    if speed_bands is None:
+        speed_bands = [
+            ("< 20 km/h (urban/stop-start)", 20),
+            ("20–40 km/h (dense urban)", 40),
+            ("40–60 km/h (suburban)", 60),
+            ("60–90 km/h (A-road)", 90),
+            ("90+ km/h (motorway-like)", float("inf")),
+        ]
+
+    # accumulators
+    band_stats = defaultdict(lambda: {"time": 0.0, "dist": 0.0})
+    total_time = 0.0
+    total_dist = 0.0
+
+    trip = response["trip"]
+
+    for leg in trip["legs"]:
+        for m in leg["maneuvers"]:
+            time_s = m["time"]
+            dist = m["length"]
+
+            # Valhalla typically returns km in "length"
+            if unit == "miles":
+                dist_km = dist * 1.60934
+            else:
+                dist_km = dist
+
+            time_h = time_s / 3600
+
+            total_time += time_s
+            total_dist += dist_km
+
+            speed = (dist_km / time_h) if time_h > 0 else 0
+
+            # assign to band
+            for label, max_speed in speed_bands:
+                if speed <= max_speed:
+                    band_stats[label]["time"] += time_s
+                    band_stats[label]["dist"] += dist_km
+                    break
+
+    # report
+    print("\n=== ROUTE SUMMARY ===")
+    print(f"Total time: {total_time / 60:.1f} min")
+    print(f"Total dist: {total_dist:.2f} km")
+
+    print("\n=== SPEED DISTRIBUTION ===")
+
+    for label, _ in speed_bands:
+        t = band_stats[label]["time"]
+        d = band_stats[label]["dist"]
+
+        print(
+            f"{label:35s} | "
+            f"time: {t / 60:6.1f} min ({t / total_time * 100:5.1f}%) | "
+            f"dist: {d:6.1f} km ({d / total_dist * 100:5.1f}%)"
+        )
+
+    return {
+        "total_time_s": total_time,
+        "total_dist_km": total_dist,
+        "band_stats": dict(band_stats),
+    }
+
+
+def valhalla_maneuvers_to_gdf(response, crs="EPSG:4326", units="km"):
+    import polyline
+    import geopandas as gpd
+    from shapely.geometry import LineString
+
+    rows = []
+
+    for leg_idx, leg in enumerate(response["trip"]["legs"]):
+        coords = polyline.decode(leg["shape"], precision=6)
+
+        for m_idx, m in enumerate(leg["maneuvers"]):
+            start = m["begin_shape_index"]
+            end = m["end_shape_index"]
+
+            segment = coords[start : end + 1]
+
+            if len(segment) < 2:
+                continue
+
+            geom = LineString([(lon, lat) for lat, lon in segment])
+
+            time_s = m["time"]
+            dist = m["length"]
+
+            speed = dist / (time_s / 3600) if time_s > 0 else 0
+
+            rows.append(
+                {
+                    "leg": leg_idx,
+                    "maneuver": m_idx,
+                    "instruction": m.get("instruction"),
+                    "time_s": time_s,
+                    "distance": dist,
+                    "speed_kmh": speed,
+                    "geometry": geom,
+                }
+            )
+
+    gdf = gpd.GeoDataFrame(rows, geometry="geometry", crs=crs)
+
+    return gdf
