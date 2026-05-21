@@ -140,33 +140,28 @@ def prepare_valhalla_network(
     }
 
 
+import os
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
+
+
 def build_time_matrix_valhalla(
     origins_gdf,
     destinations_gdf,
     valhalla_config_path,
+    output_csv_path,
     costing="auto",
-    reshape_for_lokigi=True,
+    reshape_to_wide=False,
     metric_of_interest="travel_time_minutes",
 ):
     """
-    Build a time/distance matrix between origins and destinations using Valhalla.
-
-    Implements smart batching for datasets exceeding 2500 total locations to balance:
-    - API request size limits (Valhalla recommends max ~2500 locations per request)
-    - Memory efficiency (avoids loading entire matrix in memory)
-    - Network efficiency (fewer, larger requests vs. many small ones)
-
-    Optimizations:
-    - Vectorized coordinate extraction using NumPy
-    - Vectorized time/distance conversion
-    - Smart batching for large datasets
-    - Pre-allocate arrays for better memory efficiency
-    - Use NumPy operations instead of list comprehension
-    - Stream results to avoid loading full matrix in memory
+    Build a time/distance matrix between origins and destinations using Valhalla
+    and stream results directly to a CSV to maintain a near-zero memory footprint.
     """
     actor = Actor(valhalla_config_path)
 
-    # Vectorized extraction of coordinates
+    # Fast extraction of coordinates
     sources = [
         {"lat": lat, "lon": lon}
         for lat, lon in zip(origins_gdf.geometry.y, origins_gdf.geometry.x)
@@ -179,72 +174,55 @@ def build_time_matrix_valhalla(
     origin_ids = origins_gdf["id"].values
     destination_ids = destinations_gdf["id"].values
 
-    # If under threshold, process in single batch
-    # Using conservative 1000 threshold based on Valhalla's actual limits
-    if len(sources) < 50 and len(targets) < 50:
-        print("Processing in a single batch")
-        if reshape_for_lokigi:
-            return (
-                _process_single_batch(
-                    sources, targets, origin_ids, destination_ids, actor, costing
-                )
-                .pivot(columns="to_id", index="from_id", values=metric_of_interest)
-                .reset_index()
-                .rename_axis(None, axis=1)
-            )
+    # Clean up any pre-existing file at the output path
+    if os.path.exists(output_csv_path):
+        os.remove(output_csv_path)
 
-        else:
-            return _process_single_batch(
-                sources, targets, origin_ids, destination_ids, actor, costing
-            )
+    _process_and_stream(
+        sources,
+        targets,
+        origin_ids,
+        destination_ids,
+        actor,
+        costing,
+        reshape_to_wide,
+        metric_of_interest,
+        output_csv_path,
+    )
 
-    # Smart batching strategy for large datasets
-    if reshape_for_lokigi:
-        return (
-            _process_batched(
-                sources, targets, origin_ids, destination_ids, actor, costing
-            )
-            .pivot(columns="to_id", index="from_id", values=metric_of_interest)
-            .reset_index()
-            .rename_axis(None, axis=1)
-        )
-    else:
-        return _process_batched(
-            sources, targets, origin_ids, destination_ids, actor, costing
-        )
+    print(f"Matrix generation complete. Output saved to {output_csv_path}")
 
 
 def _process_single_batch(
     sources, targets, origin_ids, destination_ids, actor, costing
 ):
-    """Process a single batch of sources and targets."""
+    """Process a single batch without memory-heavy object arrays."""
     request = {
         "sources": sources,
         "targets": targets,
         "costing": costing,
-        "matrix_locations": len(sources) + len(targets),
         "verbose": False,
     }
 
     matrix = actor.matrix(request)
 
-    # Convert nested lists to NumPy arrays for vectorized operations
-    durations = np.array(matrix["sources_to_targets"]["durations"], dtype=object)
-    distances = np.array(matrix["sources_to_targets"]["distances"], dtype=object)
+    # Convert None to np.nan inline to preserve ultra-fast native numerical types (float32)
+    raw_durations = [
+        [float("nan") if x is None else x for x in row]
+        for row in matrix["sources_to_targets"]["durations"]
+    ]
+    raw_distances = [
+        [float("nan") if x is None else x for x in row]
+        for row in matrix["sources_to_targets"]["distances"]
+    ]
 
-    # Vectorized unit conversion - handle None values
-    travel_times = np.empty(durations.shape, dtype=object)
-    travel_times[durations != None] = durations[durations != None] / 60
-    travel_times[durations == None] = None
+    # Fast vectorized calculations using float32 to reduce memory footprint
+    travel_times = np.array(raw_durations, dtype=np.float32) / 60.0
+    distance_km = np.array(raw_distances, dtype=np.float32)
 
-    distance_km = np.empty(distances.shape, dtype=object)
-    distance_km[distances != None] = distances[distances != None]
-    distance_km[distances == None] = None
-
-    # Create meshgrid for efficient cartesian product
+    # Meshgrid creation for mapping coordinates
     from_ids, to_ids = np.meshgrid(origin_ids, destination_ids, indexing="ij")
 
-    # Flatten all arrays for DataFrame construction
     return pd.DataFrame(
         {
             "from_id": from_ids.ravel(),
@@ -255,146 +233,89 @@ def _process_single_batch(
     )
 
 
-def _process_batched(sources, targets, origin_ids, destination_ids, actor, costing):
+def _process_and_stream(
+    sources,
+    targets,
+    origin_ids,
+    destination_ids,
+    actor,
+    costing,
+    reshape_to_wide,
+    metric_of_interest,
+    output_csv_path,
+):
     """
-    Process large datasets using smart batching strategy.
-
-    Strategy:
-    1. If destinations are small, batch origins
-    2. If origins are small, batch destinations
-    3. If both are large, batch origins and iterate destinations
-
-    This minimizes redundant API calls and memory usage while respecting
-    Valhalla's 2500 location limit per request.
+    Streams chunks directly to disk.
+    Respects Valhalla's hard limit of (sources * targets <= 2500).
     """
-    results = []
-
-    # Determine batching strategy
     n_origins = len(sources)
     n_targets = len(targets)
 
-    # Use conservative limits to ensure we never hit Valhalla's hard limit
-    SAFE_LIMIT = 1200  # Conservative safety margin
+    # Valhalla counts matrix limits as the product of sources and targets.
+    # 50 * 50 = 2500 pairs per API request.
+    origin_batch_size = 50
+    target_batch_size = 50
 
-    print(f"Dataset: {n_origins} origins × {n_targets} targets")
+    if reshape_to_wide:
+        # Write Wide Header
+        header_df = pd.DataFrame(columns=["from_id"] + list(destination_ids))
+        header_df.to_csv(output_csv_path, index=False)
 
-    # # Strategy 1: Batch origins (if destinations are manageable)
-    # if n_targets <= 600 and n_origins > 600:
-    #     print("Strategy 1: Batching origins")
-    #     origin_batch_size = _calculate_batch_size(
-    #         n_origins, n_targets, max_batch_size=SAFE_LIMIT
-    #     )
-    #     n_batches = (n_origins + origin_batch_size - 1) // origin_batch_size
+        for i in tqdm(
+            range(0, n_origins, origin_batch_size), desc="Streaming Wide Matrix Rows"
+        ):
+            b_sources = sources[i : i + origin_batch_size]
+            b_origin_ids = origin_ids[i : i + origin_batch_size]
 
-    #     with tqdm(
-    #         total=n_batches, desc="Processing origin batches", unit="batch"
-    #     ) as pbar:
-    #         for i in range(0, n_origins, origin_batch_size):
-    #             batch_sources = sources[i : i + origin_batch_size]
-    #             batch_origin_ids = origin_ids[i : i + origin_batch_size]
+            # Accumulate all destination slices for this specific batch of rows
+            row_chunks = []
+            for j in range(0, n_targets, target_batch_size):
+                b_targets = targets[j : j + target_batch_size]
+                b_target_ids = destination_ids[j : j + target_batch_size]
 
-    #             # Verify batch size is safe
-    #             batch_locations = len(batch_sources) + n_targets
-    #             if batch_locations > SAFE_LIMIT:
-    #                 raise ValueError(
-    #                     f"Strategy 1 batch exceeds limit: {len(batch_sources)} origins + {n_targets} targets = {batch_locations} > {SAFE_LIMIT}"
-    #                 )
+                chunk_df = _process_single_batch(
+                    b_sources, b_targets, b_origin_ids, b_target_ids, actor, costing
+                )
+                row_chunks.append(chunk_df)
 
-    #             batch_df = _process_single_batch(
-    #                 batch_sources,
-    #                 targets,
-    #                 batch_origin_ids,
-    #                 destination_ids,
-    #                 actor,
-    #                 costing,
-    #             )
-    #             results.append(batch_df)
-    #             pbar.update(1)
+            # Combine the chunks for the current row group, pivot it, and append to file
+            assembled_rows = pd.concat(row_chunks, ignore_index=True)
+            pivoted_rows = (
+                assembled_rows.pivot(
+                    columns="to_id", index="from_id", values=metric_of_interest
+                )
+                .reset_index()
+                .rename_axis(None, axis=1)
+            )
+            # Reindex to guarantee correct destination column ordering matches header
+            pivoted_rows = pivoted_rows.reindex(
+                columns=["from_id"] + list(destination_ids)
+            )
+            pivoted_rows.to_csv(output_csv_path, mode="a", header=False, index=False)
 
-    # # Strategy 2: Batch destinations (if origins are manageable)
-    # elif n_origins <= 600 and n_targets > 600:
-    #     print("Strategy 2: Batching destinations")
-    #     target_batch_size = _calculate_batch_size(
-    #         n_targets, n_origins, max_batch_size=SAFE_LIMIT
-    #     )
-    #     n_batches = (n_targets + target_batch_size - 1) // target_batch_size
+    else:
+        # Long-form streaming
+        is_first_chunk = True
 
-    #     with tqdm(
-    #         total=n_batches, desc="Processing destination batches", unit="batch"
-    #     ) as pbar:
-    #         for j in range(0, n_targets, target_batch_size):
-    #             batch_targets = targets[j : j + target_batch_size]
-    #             batch_target_ids = destination_ids[j : j + target_batch_size]
-
-    #             # Verify batch size is safe
-    #             batch_locations = n_origins + len(batch_targets)
-    #             if batch_locations > SAFE_LIMIT:
-    #                 raise ValueError(
-    #                     f"Strategy 2 batch exceeds limit: {n_origins} origins + {len(batch_targets)} targets = {batch_locations} > {SAFE_LIMIT}"
-    #                 )
-
-    #             batch_df = _process_single_batch(
-    #                 sources, batch_targets, origin_ids, batch_target_ids, actor, costing
-    #             )
-    #             results.append(batch_df)
-    #             pbar.update(1)
-
-    # Strategy 3: Both large - batch both dimensions aggressively
-    # else:
-    print("Batching both dimensions")
-    # For very large datasets, use smaller fixed batch sizes
-    origin_batch_size = 50  # Conservative fixed size
-    target_batch_size = 50  # Conservative fixed size
-
-    n_origin_batches = (n_origins + origin_batch_size - 1) // origin_batch_size
-    n_target_batches = (n_targets + target_batch_size - 1) // target_batch_size
-    total_batches = n_origin_batches * n_target_batches
-
-    with tqdm(total=total_batches, desc="Processing batches", unit="batch") as pbar:
-        for i in range(0, n_origins, origin_batch_size):
-            batch_sources = sources[i : i + origin_batch_size]
-            batch_origin_ids = origin_ids[i : i + origin_batch_size]
+        for i in tqdm(
+            range(0, n_origins, origin_batch_size), desc="Streaming Long Matrix"
+        ):
+            b_sources = sources[i : i + origin_batch_size]
+            b_origin_ids = origin_ids[i : i + origin_batch_size]
 
             for j in range(0, n_targets, target_batch_size):
-                batch_targets = targets[j : j + target_batch_size]
-                batch_target_ids = destination_ids[j : j + target_batch_size]
+                b_targets = targets[j : j + target_batch_size]
+                b_target_ids = destination_ids[j : j + target_batch_size]
 
-                # Verify this batch won't exceed limit
-                batch_locations = len(batch_sources) + len(batch_targets)
-
-                if batch_locations > SAFE_LIMIT:
-                    raise ValueError(
-                        f"Batch size calculation error: {batch_locations} locations "
-                        f"exceeds safe limit of {SAFE_LIMIT}. Try reducing batch sizes."
-                    )
-
-                batch_df = _process_single_batch(
-                    batch_sources,
-                    batch_targets,
-                    batch_origin_ids,
-                    batch_target_ids,
-                    actor,
-                    costing,
+                chunk_df = _process_single_batch(
+                    b_sources, b_targets, b_origin_ids, b_target_ids, actor, costing
                 )
-                results.append(batch_df)
-                pbar.update(1)
 
-    # Combine all batches and reset index
-    return pd.concat(results, ignore_index=True)
-
-
-def _calculate_batch_size(primary_size, secondary_size, max_batch_size=2400):
-    """
-    Calculate optimal batch size for primary dimension.
-
-    Valhalla counts total locations as: primary_batch_size + secondary_size
-    Ensures: primary_batch_size + secondary_size <= max_batch_size
-    """
-    # For Valhalla: total_locations = sources + targets (not their product!)
-    max_primary_batch = max_batch_size - secondary_size
-
-    # Ensure at least 1, but cap at primary_size
-    return max(1, min(primary_size, max_primary_batch))
+                # Append directly to CSV
+                chunk_df.to_csv(
+                    output_csv_path, mode="a", header=is_first_chunk, index=False
+                )
+                is_first_chunk = False
 
 
 class AdvancedSpeedUpdater(osmium.SimpleHandler):
