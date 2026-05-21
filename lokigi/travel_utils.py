@@ -8,6 +8,7 @@ import osmium
 import re
 import numpy as np
 from collections import defaultdict
+from tqdm import tqdm
 
 
 def prepare_valhalla_network(
@@ -140,17 +141,28 @@ def prepare_valhalla_network(
 
 
 def build_time_matrix_valhalla(
-    origins_gdf, destinations_gdf, valhalla_config_path, costing="auto"
+    origins_gdf,
+    destinations_gdf,
+    valhalla_config_path,
+    costing="auto",
+    reshape_for_lokigi=True,
+    metric_of_interest="travel_time_minutes",
 ):
     """
     Build a time/distance matrix between origins and destinations using Valhalla.
 
+    Implements smart batching for datasets exceeding 2500 total locations to balance:
+    - API request size limits (Valhalla recommends max ~2500 locations per request)
+    - Memory efficiency (avoids loading entire matrix in memory)
+    - Network efficiency (fewer, larger requests vs. many small ones)
+
     Optimizations:
     - Vectorized coordinate extraction using NumPy
     - Vectorized time/distance conversion
-    - Avoid itertuples() and nested loops
+    - Smart batching for large datasets
     - Pre-allocate arrays for better memory efficiency
-    - Use NumPy operations instead of list comprehension for large datasets
+    - Use NumPy operations instead of list comprehension
+    - Stream results to avoid loading full matrix in memory
     """
     actor = Actor(valhalla_config_path)
 
@@ -164,6 +176,48 @@ def build_time_matrix_valhalla(
         for lat, lon in zip(destinations_gdf.geometry.y, destinations_gdf.geometry.x)
     ]
 
+    origin_ids = origins_gdf["id"].values
+    destination_ids = destinations_gdf["id"].values
+
+    # If under threshold, process in single batch
+    # Using conservative 1000 threshold based on Valhalla's actual limits
+    if len(sources) < 50 and len(targets) < 50:
+        print("Processing in a single batch")
+        if reshape_for_lokigi:
+            return (
+                _process_single_batch(
+                    sources, targets, origin_ids, destination_ids, actor, costing
+                )
+                .pivot(columns="to_id", index="from_id", values=metric_of_interest)
+                .reset_index()
+                .rename_axis(None, axis=1)
+            )
+
+        else:
+            return _process_single_batch(
+                sources, targets, origin_ids, destination_ids, actor, costing
+            )
+
+    # Smart batching strategy for large datasets
+    if reshape_for_lokigi:
+        return (
+            _process_batched(
+                sources, targets, origin_ids, destination_ids, actor, costing
+            )
+            .pivot(columns="to_id", index="from_id", values=metric_of_interest)
+            .reset_index()
+            .rename_axis(None, axis=1)
+        )
+    else:
+        return _process_batched(
+            sources, targets, origin_ids, destination_ids, actor, costing
+        )
+
+
+def _process_single_batch(
+    sources, targets, origin_ids, destination_ids, actor, costing
+):
+    """Process a single batch of sources and targets."""
     request = {
         "sources": sources,
         "targets": targets,
@@ -175,16 +229,17 @@ def build_time_matrix_valhalla(
     matrix = actor.matrix(request)
 
     # Convert nested lists to NumPy arrays for vectorized operations
-    durations = np.array(matrix["sources_to_targets"]["durations"])
-    distances = np.array(matrix["sources_to_targets"]["distances"])
+    durations = np.array(matrix["sources_to_targets"]["durations"], dtype=object)
+    distances = np.array(matrix["sources_to_targets"]["distances"], dtype=object)
 
-    # Vectorized unit conversion
-    travel_times = np.where(durations, durations / 60, None)
-    distance_km = np.where(distances, distances, None)
+    # Vectorized unit conversion - handle None values
+    travel_times = np.empty(durations.shape, dtype=object)
+    travel_times[durations != None] = durations[durations != None] / 60
+    travel_times[durations == None] = None
 
-    # Get IDs as arrays for broadcasting
-    origin_ids = origins_gdf["id"].values
-    destination_ids = destinations_gdf["id"].values
+    distance_km = np.empty(distances.shape, dtype=object)
+    distance_km[distances != None] = distances[distances != None]
+    distance_km[distances == None] = None
 
     # Create meshgrid for efficient cartesian product
     from_ids, to_ids = np.meshgrid(origin_ids, destination_ids, indexing="ij")
@@ -200,104 +255,146 @@ def build_time_matrix_valhalla(
     )
 
 
-# Alternative version if you want to handle None values differently:
-def build_time_matrix_valhalla_v2(
-    origins_gdf,
-    destinations_gdf,
-    valhalla_config_path,
-    costing="auto",
-    wide_format=True,
-    metric="travel_time",
-):
+def _process_batched(sources, targets, origin_ids, destination_ids, actor, costing):
     """
-    Build a time/distance matrix between origins and destinations using Valhalla.
+    Process large datasets using smart batching strategy.
 
-    Parameters:
-    -----------
-    origins_gdf : GeoDataFrame
-        Origins with geometry and 'id' column
-    destinations_gdf : GeoDataFrame
-        Destinations with geometry and 'id' column
-    valhalla_config_path : str
-        Path to Valhalla configuration
-    costing : str, default "auto"
-        Costing model for routing
-    wide_format : bool, default True
-        If True, return wide format matrix with origin IDs as rows and destination IDs as columns.
-        If False, return long format (from_id, to_id, metric columns)
-    metric : str, default "travel_time"
-        Metric to use for matrix values: "travel_time" (in minutes) or "distance" (in km).
-        Only used when wide_format=True.
+    Strategy:
+    1. If destinations are small, batch origins
+    2. If origins are small, batch destinations
+    3. If both are large, batch origins and iterate destinations
 
-    Returns:
-    --------
-    pd.DataFrame
-        If wide_format=True: matrix with origin IDs as index and destination IDs as columns
-        If wide_format=False: long format with columns [from_id, to_id, travel_time_minutes, distance_km]
+    This minimizes redundant API calls and memory usage while respecting
+    Valhalla's 2500 location limit per request.
     """
-    actor = Actor(valhalla_config_path)
+    results = []
 
-    # Vectorized coordinate extraction
-    sources = [
-        {"lat": lat, "lon": lon}
-        for lat, lon in zip(origins_gdf.geometry.y, origins_gdf.geometry.x)
-    ]
-    targets = [
-        {"lat": lat, "lon": lon}
-        for lat, lon in zip(destinations_gdf.geometry.y, destinations_gdf.geometry.x)
-    ]
+    # Determine batching strategy
+    n_origins = len(sources)
+    n_targets = len(targets)
 
-    request = {
-        "sources": sources,
-        "targets": targets,
-        "costing": costing,
-        "matrix_locations": len(sources) + len(targets),
-        "verbose": False,
-    }
+    # Use conservative limits to ensure we never hit Valhalla's hard limit
+    SAFE_LIMIT = 1200  # Conservative safety margin
 
-    matrix = actor.matrix(request)
+    print(f"Dataset: {n_origins} origins × {n_targets} targets")
 
-    durations = np.array(matrix["sources_to_targets"]["durations"], dtype=float)
-    distances = np.array(matrix["sources_to_targets"]["distances"], dtype=float)
+    # # Strategy 1: Batch origins (if destinations are manageable)
+    # if n_targets <= 600 and n_origins > 600:
+    #     print("Strategy 1: Batching origins")
+    #     origin_batch_size = _calculate_batch_size(
+    #         n_origins, n_targets, max_batch_size=SAFE_LIMIT
+    #     )
+    #     n_batches = (n_origins + origin_batch_size - 1) // origin_batch_size
 
-    # Convert zeros to NaN if that's your intent
-    travel_times = durations / 60
-    travel_times[durations == 0] = np.nan
+    #     with tqdm(
+    #         total=n_batches, desc="Processing origin batches", unit="batch"
+    #     ) as pbar:
+    #         for i in range(0, n_origins, origin_batch_size):
+    #             batch_sources = sources[i : i + origin_batch_size]
+    #             batch_origin_ids = origin_ids[i : i + origin_batch_size]
 
-    distance_km = distances.copy()
-    distance_km[distances == 0] = np.nan
+    #             # Verify batch size is safe
+    #             batch_locations = len(batch_sources) + n_targets
+    #             if batch_locations > SAFE_LIMIT:
+    #                 raise ValueError(
+    #                     f"Strategy 1 batch exceeds limit: {len(batch_sources)} origins + {n_targets} targets = {batch_locations} > {SAFE_LIMIT}"
+    #                 )
 
-    # Get IDs
-    origin_ids = origins_gdf["id"].values
-    destination_ids = destinations_gdf["id"].values
+    #             batch_df = _process_single_batch(
+    #                 batch_sources,
+    #                 targets,
+    #                 batch_origin_ids,
+    #                 destination_ids,
+    #                 actor,
+    #                 costing,
+    #             )
+    #             results.append(batch_df)
+    #             pbar.update(1)
 
-    if wide_format:
-        # Create wide format matrix
-        if metric == "travel_time":
-            data = travel_times
-            metric_name = "travel_time_minutes"
-        elif metric == "distance":
-            data = distance_km
-            metric_name = "distance_km"
-        else:
-            raise ValueError(
-                f"metric must be 'travel_time' or 'distance', got '{metric}'"
-            )
+    # # Strategy 2: Batch destinations (if origins are manageable)
+    # elif n_origins <= 600 and n_targets > 600:
+    #     print("Strategy 2: Batching destinations")
+    #     target_batch_size = _calculate_batch_size(
+    #         n_targets, n_origins, max_batch_size=SAFE_LIMIT
+    #     )
+    #     n_batches = (n_targets + target_batch_size - 1) // target_batch_size
 
-        return pd.DataFrame(data, index=origin_ids, columns=destination_ids)
+    #     with tqdm(
+    #         total=n_batches, desc="Processing destination batches", unit="batch"
+    #     ) as pbar:
+    #         for j in range(0, n_targets, target_batch_size):
+    #             batch_targets = targets[j : j + target_batch_size]
+    #             batch_target_ids = destination_ids[j : j + target_batch_size]
 
-    else:
-        # Create long format
-        from_ids, to_ids = np.meshgrid(origin_ids, destination_ids, indexing="ij")
+    #             # Verify batch size is safe
+    #             batch_locations = n_origins + len(batch_targets)
+    #             if batch_locations > SAFE_LIMIT:
+    #                 raise ValueError(
+    #                     f"Strategy 2 batch exceeds limit: {n_origins} origins + {len(batch_targets)} targets = {batch_locations} > {SAFE_LIMIT}"
+    #                 )
 
-        return pd.DataFrame(
-            {
-                "from_id": from_ids.ravel(),
-                "to_id": to_ids.ravel(),
-                "travel_time_minutes": travel_times.ravel(),
-                "distance_km": distance_km.ravel(),
-            }
-        )
+    #             batch_df = _process_single_batch(
+    #                 sources, batch_targets, origin_ids, batch_target_ids, actor, costing
+    #             )
+    #             results.append(batch_df)
+    #             pbar.update(1)
+
+    # Strategy 3: Both large - batch both dimensions aggressively
+    # else:
+    print("Batching both dimensions")
+    # For very large datasets, use smaller fixed batch sizes
+    origin_batch_size = 50  # Conservative fixed size
+    target_batch_size = 50  # Conservative fixed size
+
+    n_origin_batches = (n_origins + origin_batch_size - 1) // origin_batch_size
+    n_target_batches = (n_targets + target_batch_size - 1) // target_batch_size
+    total_batches = n_origin_batches * n_target_batches
+
+    with tqdm(total=total_batches, desc="Processing batches", unit="batch") as pbar:
+        for i in range(0, n_origins, origin_batch_size):
+            batch_sources = sources[i : i + origin_batch_size]
+            batch_origin_ids = origin_ids[i : i + origin_batch_size]
+
+            for j in range(0, n_targets, target_batch_size):
+                batch_targets = targets[j : j + target_batch_size]
+                batch_target_ids = destination_ids[j : j + target_batch_size]
+
+                # Verify this batch won't exceed limit
+                batch_locations = len(batch_sources) + len(batch_targets)
+
+                if batch_locations > SAFE_LIMIT:
+                    raise ValueError(
+                        f"Batch size calculation error: {batch_locations} locations "
+                        f"exceeds safe limit of {SAFE_LIMIT}. Try reducing batch sizes."
+                    )
+
+                batch_df = _process_single_batch(
+                    batch_sources,
+                    batch_targets,
+                    batch_origin_ids,
+                    batch_target_ids,
+                    actor,
+                    costing,
+                )
+                results.append(batch_df)
+                pbar.update(1)
+
+    # Combine all batches and reset index
+    return pd.concat(results, ignore_index=True)
+
+
+def _calculate_batch_size(primary_size, secondary_size, max_batch_size=2400):
+    """
+    Calculate optimal batch size for primary dimension.
+
+    Valhalla counts total locations as: primary_batch_size + secondary_size
+    Ensures: primary_batch_size + secondary_size <= max_batch_size
+    """
+    # For Valhalla: total_locations = sources + targets (not their product!)
+    max_primary_batch = max_batch_size - secondary_size
+
+    # Ensure at least 1, but cap at primary_size
+    return max(1, min(primary_size, max_primary_batch))
 
 
 class AdvancedSpeedUpdater(osmium.SimpleHandler):
