@@ -396,3 +396,186 @@ class SiteAttributeMixin:
         self._candidate_sites_horizontal_col = None
         self._candidate_sites_capacity_col = None
         self.total_n_sites = len(self.candidate_sites)
+
+    #############################
+    # MARK: Travel Matrix
+    #############################
+    def add_travel_matrix(
+        self,
+        travel_matrix_df,
+        source_col,
+        skip_cols=None,
+        unit=None,
+        from_unit=None,
+        to_unit=None,
+    ):
+        """
+        Add a travel cost matrix to the problem and handle unit conversions.
+
+        This method integrates a matrix (typically time or distance) representing
+        the travel cost between demand locations and candidate sites. It can
+        automatically scale numeric columns if time unit conversion is required
+        (e.g., converting seconds to minutes).
+
+        Parameters
+        ----------
+        travel_matrix_df : pandas.DataFrame or geopandas.GeoDataFrame or str
+            The dataset containing travel costs, or a local or web
+            path to its location. Usually structured as an
+            origin-destination matrix or a long-format table.
+        source_col : str
+            The column name in `travel_matrix_df` that identifies the origin
+            points (should correspond to IDs in the demand or site data).
+        skip_cols : list of str, optional
+            A list of column names to ignore during data loading.
+        unit : str, optional
+            A label for the units used in the matrix (e.g., "miles", "km").
+            Used if no conversion is performed.
+        from_unit : {"seconds", "minutes", "hours"}, optional
+            The current time unit of the numeric values in the dataframe.
+        to_unit : {"seconds", "minutes", "hours"}, optional
+            The target time unit for the numeric values in the dataframe.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        ValueError
+            If the `source_col` is missing from the provided dataframe.
+        KeyError
+            If the `from_unit` to `to_unit` combination is not supported
+            by the internal conversion dictionary.
+
+        Notes
+        -----
+        If both `from_unit` and `to_unit` are provided, the method identifies
+        all numeric columns in the dataframe and applies the appropriate
+        multiplication factor. Supported conversions are limited to time-based
+        units (seconds, minutes, hours).
+
+        The resulting data is stored in `self.travel_matrix`, and the resolved
+        unit label is stored in `self._travel_matrix_unit`.
+        """
+        loaded_df, df_type = _load_spatial_or_tabular_data(
+            travel_matrix_df, skip_cols=skip_cols
+        )
+
+        _validate_columns(
+            df=loaded_df,
+            col_names=[source_col],
+            msg_template=(
+                "It looks like your travel matrix data is missing these columns: {missing}. "
+                "We found these instead: {available}. Please double-check the column names "
+                "you are passing to the .add_travel_matrix() method."
+            ),
+        )
+
+        conversion = {
+            ("seconds", "minutes"): 1 / 60,
+            ("seconds", "hours"): 1 / 3600,
+            ("minutes", "seconds"): 60,
+            ("minutes", "hours"): 1 / 60,
+            ("hours", "seconds"): 3600,
+            ("hours", "minutes"): 60,
+        }
+
+        if from_unit is not None and to_unit is not None:
+            factor = conversion[(from_unit, to_unit)]
+            num_cols = loaded_df.select_dtypes(include="number").columns
+            loaded_df.loc[:, num_cols] *= factor
+            self._travel_matrix_unit = to_unit
+        elif from_unit is None and to_unit is not None:
+            self._travel_matrix_unit = to_unit
+        elif from_unit is not None and to_unit is None:
+            self._travel_matrix_unit = from_unit
+        else:
+            self._travel_matrix_unit = unit
+
+        self.travel_matrix = loaded_df
+        self._travel_matrix_source_col = source_col
+
+    def show_travel_matrix(self):
+        """
+        Returns a loaded travel or cost matrix dataframe
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe containing the travel times, distances or other costs for
+            combinations of sources (rows) and destinations (columns)
+
+        """
+        return self.travel_matrix
+
+    def _create_joined_demand_travel_df(self, index_col):
+        """
+        Merge demand data with travel costs and (if present) equity data into a single master dataframe.
+
+        This internal method performs an inner join between the demand dataset
+        and the travel matrix. It ensures that the resulting object preserves
+        spatial properties if the demand data is a GeoDataFrame by managing
+        the merge order.
+
+        Parameters
+        ----------
+        index_col : str
+            The column name to be set as the index of the resulting merged
+            dataframe (typically the unique identifier for demand locations).
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        KeyError
+            If the inner join results in an empty dataframe. This usually
+            indicates a mismatch between the ID values in the demand data
+            and the source values in the travel matrix.
+
+        Notes
+        -----
+        The method logic is sensitive to the data types of the inputs:
+        - If `self.demand_data` is a GeoDataFrame, it is placed on the left
+          side of the join to ensure the output is also a GeoDataFrame.
+        - The join is performed on `self._demand_data_id_col` and
+          `self._travel_matrix_source_col`.
+
+        The merged result is stored in the `self.travel_and_demand_df` attribute.
+        """
+        # If one is a geopandas dataframe, put that first in the merge call so that the
+        # output object will also be a geodataframe
+        if self._demand_data_type == "geopandas":
+            travel_and_demand_df = pd.merge(
+                self.demand_data,
+                self.travel_matrix,
+                left_on=self._demand_data_id_col,
+                right_on=self._travel_matrix_source_col,
+                how="inner",
+            )
+
+            self._joined_demand_travel_df_key_col = self._demand_data_id_col
+
+        else:
+            travel_and_demand_df = pd.merge(
+                self.travel_matrix,
+                self.demand_data,
+                left_on=self._travel_matrix_source_col,
+                right_on=self._demand_data_id_col,
+                how="inner",
+            )
+
+            self._joined_demand_travel_df_key_col = self._travel_matrix_source_col
+
+        if len(travel_and_demand_df) == 0:
+            raise KeyError(
+                "Warning: merging the travel matrix and demand data has failed."
+                f"This may be because there are no common values found in the {self._travel_matrix_source_col}"
+                f"(sample values: {self.travel_matrix.head(5)[self._travel_matrix_source_col]})"
+                f"column in the travel dataframe and the {self._demand_data_id_col} column in the"
+                f"demand dataframe (sample values: {self.demand_data.head(5)[self._demand_data_id_col]})"
+            )
+
+        self.travel_and_demand_df = travel_and_demand_df.set_index(index_col)
