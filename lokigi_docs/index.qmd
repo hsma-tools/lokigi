@@ -226,6 +226,15 @@ Thanks goes to all of the following people ([emoji key](https://allcontributors.
 
 <br>
 
+## A note about routing
+
+:::{.callout-warning}
+If you dig around in the code enough, you will find some unfinished routing experiments. These have been left in as this is a direction we may pick up again in the future, but they are nowhere near finished and will require significant work to become usable.
+
+For now, SiteProblem is the only supported mode.
+:::
+
+
 ## Licence
 
 lokigi is released under the MIT licence.
