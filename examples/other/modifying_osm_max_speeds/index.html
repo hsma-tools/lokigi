@@ -1,0 +1,3435 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Modifying speed data in OSM files – lokigi</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script><script src="../../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../../">
+<script src="../../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../../site_libs/bootstrap/bootstrap-59dfb9f6924f26d7845d072dcc52ab2b.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../../site_libs/bootstrap/bootstrap-dark-38f87c1f73cd123310a369f68dc29550.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.min.js" integrity="sha384-c9c+LnTbwQ3aujuU7ULEPVvgLs+Fn6fJUvIGTsuu1ZcCf11fiEubah0ttpca4ntM sha384-6V1/AdqZRWk1KAlWbKBlGhN7VG4iE/yAZcO6NZPMF8od0vukrvr0tg4qY6NSrItx" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+
+<link rel="stylesheet" href="../../../lokigi_docs/resources/styles.css">
+</head>
+
+<body class="nav-fixed quarto-dark"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = true;
+    const darkModeDefault = authorPrefersDark;
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../../index.html">
+    <span class="navbar-title">lokigi</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../../lokigi_docs/index.html"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../../lokigi_docs/getting_started.html"> 
+<span class="menu-text">Getting Started</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../../examples/examples.html"> 
+<span class="menu-text">Examples</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../../reference/index.html"> 
+<span class="menu-text">API Reference</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../../vidigi_docs/changelog.qmd"> 
+<span class="menu-text">Changelog</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/hsma-tools/lokigi/"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://pypi.org/project/lokigi/"> <i class="bi bi-box-fill" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#trying-this-out" id="toc-trying-this-out" class="nav-link active" data-scroll-target="#trying-this-out">Trying this out</a>
+  <ul class="collapse">
+  <li><a href="#generating-origins-and-destinations-in-the-expected-format" id="toc-generating-origins-and-destinations-in-the-expected-format" class="nav-link" data-scroll-target="#generating-origins-and-destinations-in-the-expected-format">Generating origins and destinations in the expected format</a></li>
+  <li><a href="#routingpy" id="toc-routingpy" class="nav-link" data-scroll-target="#routingpy">Routingpy</a></li>
+  </ul></li>
+  <li><a href="#valhalla" id="toc-valhalla" class="nav-link" data-scroll-target="#valhalla">Valhalla</a></li>
+  <li><a href="#advanced-valhalla-route-inspection-and-debugging" id="toc-advanced-valhalla-route-inspection-and-debugging" class="nav-link" data-scroll-target="#advanced-valhalla-route-inspection-and-debugging">Advanced valhalla route inspection and debugging</a>
+  <ul class="collapse">
+  <li><a href="#cullompton-to-tavistock-cornish-arms" id="toc-cullompton-to-tavistock-cornish-arms" class="nav-link" data-scroll-target="#cullompton-to-tavistock-cornish-arms">Cullompton to Tavistock (Cornish Arms)</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Modifying speed data in OSM files</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>Living in rural Devon, we are surrounded by many roads that have a nominal speed limit of 60mph on which that would be a wholly inadvisable speed to travel, with likely speeds generally falling closer to the 20-40mph range.</p>
+<p>For some journeys, this could have a significant impact when calculating the journey time using r5py and valhalla, which (presumably) assume free-flowing traffic at the maximum permitted speed for the road.</p>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Tip
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>If you’re a bilingual R/Python user, you could choose to switch over to r5r at this point as they <a href="https://ipeagit.github.io/r5r/articles/scenarios.html">natively support modifying max car speeds, both at a granular level or applying a more general scaling factor to certain types of roads</a>.</p>
+</div>
+</div>
+<div id="f7575726" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> r5py</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> geopandas</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> contextily <span class="im">as</span> cx</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.travel_utils <span class="im">import</span> process_uk_network, prepare_valhalla_network, <span class="op">\</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    build_time_matrix_valhalla, WayInspector, <span class="op">\</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>valhalla_audit_route_speeds, valhalla_detailed_route, <span class="op">\</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>valhalla_maneuvers_to_gdf</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="60c36a40" class="cell" data-execution_count="3">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>process_uk_network(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"../../datasets/devon-260422.osm.pbf"</span>,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"../../datasets/devon-260422-modified.osm.pbf"</span>,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    debug<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    minor_road_cap<span class="op">=</span><span class="dv">5</span>,</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    debug_limit<span class="op">=</span><span class="dv">50</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Reading from C:\lokigi\examples\datasets\devon-260422.osm.pbf
+Will write to C:\lokigi\examples\datasets\devon-260422-modified.osm.pbf
+Processing C:\lokigi\examples\datasets\devon-260422.osm.pbf...
+[WAY 2252] ALL TAGS:
+    highway: residential
+    lit: yes
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+    name: Holland Road
+[WAY 2252] MAXSPEED-RELATED TAGS:
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+[WAY 2252] residential | original='30 mph' (parsed=30.0) -&gt; new='5.0 (5 mph)' | reasons=['minor road cap -&gt; 5'] | inferred_missing=False
+[WAY 2253] ALL TAGS:
+    highway: tertiary
+    lanes: 2
+    lit: yes
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+    name: Bradham Lane
+    surface: asphalt
+[WAY 2253] MAXSPEED-RELATED TAGS:
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+[WAY 2253] tertiary | original='30 mph' (parsed=30.0) -&gt; new='5.0 (5 mph)' | reasons=['minor road cap -&gt; 5'] | inferred_missing=False
+[WAY 2255] ALL TAGS:
+    foot: yes
+    highway: cycleway
+    segregated: yes
+    smoothness: good
+    surface: asphalt
+[WAY 2256] ALL TAGS:
+    foot: yes
+    highway: cycleway
+    lit: no
+    railway: abandoned
+    segregated: no
+    smoothness: good
+    surface: asphalt
+[WAY 2470] ALL TAGS:
+    highway: service
+[WAY 2470] service | original='None' (parsed=60.0) -&gt; new='5.0 (5 mph)' | reasons=['minor road cap -&gt; 5'] | inferred_missing=True
+[WAY 2471] ALL TAGS:
+    highway: tertiary
+    lanes: 2
+    lit: yes
+    maxspeed: 20 mph
+    name: Withycombe Village Road
+    sidewalk:both: separate
+    surface: asphalt
+[WAY 2471] MAXSPEED-RELATED TAGS:
+    maxspeed: 20 mph
+[WAY 2471] tertiary | original='20 mph' (parsed=20.0) -&gt; new='5.0 (5 mph)' | reasons=['minor road cap -&gt; 5'] | inferred_missing=False
+Debug output truncated at 50/50 changes
+Done! Saved to C:\lokigi\examples\datasets\devon-260422-modified.osm.pbf
+Total Changes made: 134159</code></pre>
+</div>
+</div>
+<p>And let’s repeat this applying a simple multiplier for traffic.</p>
+<div id="fc32f13a" class="cell" data-execution_count="4">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>process_uk_network(</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"../../datasets/devon-260422.osm.pbf"</span>,</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"../../datasets/devon-260422-modified-traffic.osm.pbf"</span>,</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    debug<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    traffic_multiplier<span class="op">=</span><span class="fl">0.6</span>, <span class="co"># Lower = slower max speed assumed</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    debug_limit<span class="op">=</span><span class="dv">50</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Reading from C:\lokigi\examples\datasets\devon-260422.osm.pbf
+Will write to C:\lokigi\examples\datasets\devon-260422-modified-traffic.osm.pbf
+Processing C:\lokigi\examples\datasets\devon-260422.osm.pbf...
+[WAY 2252] ALL TAGS:
+    highway: residential
+    lit: yes
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+    name: Holland Road
+[WAY 2252] MAXSPEED-RELATED TAGS:
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+[WAY 2252] residential | original='30 mph' (parsed=30.0) -&gt; new='18.0 (18 mph)' | reasons=['traffic multiplier x0.6'] | inferred_missing=False
+[WAY 2253] ALL TAGS:
+    highway: tertiary
+    lanes: 2
+    lit: yes
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+    name: Bradham Lane
+    surface: asphalt
+[WAY 2253] MAXSPEED-RELATED TAGS:
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+[WAY 2253] tertiary | original='30 mph' (parsed=30.0) -&gt; new='18.0 (18 mph)' | reasons=['traffic multiplier x0.6'] | inferred_missing=False
+[WAY 2255] ALL TAGS:
+    foot: yes
+    highway: cycleway
+    segregated: yes
+    smoothness: good
+    surface: asphalt
+[WAY 2256] ALL TAGS:
+    foot: yes
+    highway: cycleway
+    lit: no
+    railway: abandoned
+    segregated: no
+    smoothness: good
+    surface: asphalt
+[WAY 2470] ALL TAGS:
+    highway: service
+[WAY 2470] service | original='None' (parsed=60.0) -&gt; new='18.0 (18 mph)' | reasons=['minor road cap -&gt; 30', 'traffic multiplier x0.6'] | inferred_missing=True
+[WAY 2471] ALL TAGS:
+    highway: tertiary
+    lanes: 2
+    lit: yes
+    maxspeed: 20 mph
+    name: Withycombe Village Road
+    sidewalk:both: separate
+    surface: asphalt
+[WAY 2471] MAXSPEED-RELATED TAGS:
+    maxspeed: 20 mph
+[WAY 2471] tertiary | original='20 mph' (parsed=20.0) -&gt; new='12.0 (12 mph)' | reasons=['traffic multiplier x0.6'] | inferred_missing=False
+Debug output truncated at 50/50 changes
+Done! Saved to C:\lokigi\examples\datasets\devon-260422-modified-traffic.osm.pbf
+Total Changes made: 141920</code></pre>
+</div>
+</div>
+<section id="confirming-the-change-has-worked" class="level4">
+<h4 class="anchored" data-anchor-id="confirming-the-change-has-worked">Confirming the change has worked</h4>
+<p>Let’s load this modified file back in to confirm the change has taken.</p>
+<div id="dfbad14c" class="cell" data-execution_count="5">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>inspector <span class="op">=</span> WayInspector([</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    <span class="dv">2253</span>  <span class="co"># from the debug output</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<section id="original-file" class="level5">
+<h5 class="anchored" data-anchor-id="original-file">Original File</h5>
+<div id="2220eb2d" class="cell" data-execution_count="6">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>inspector.apply_file(<span class="st">"../../datasets/devon-260422.osm.pbf"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+================================================================================
+WAY 2253
+highway: tertiary
+maxspeed: 30 mph
+
+-- maxspeed-related tags --
+  maxspeed: 30 mph
+  maxspeed:type: GB:nsl_restricted
+
+-- all tags --
+  highway: tertiary
+  lanes: 2
+  lit: yes
+  maxspeed: 30 mph
+  maxspeed:type: GB:nsl_restricted
+  name: Bradham Lane
+  surface: asphalt</code></pre>
+</div>
+</div>
+</section>
+<section id="modified-file" class="level5">
+<h5 class="anchored" data-anchor-id="modified-file">Modified file</h5>
+<div id="c77b08f6" class="cell" data-execution_count="7">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>inspector.apply_file(<span class="st">"../../datasets/devon-260422-modified.osm.pbf"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+================================================================================
+WAY 2253
+highway: tertiary
+maxspeed: 5 mph
+
+-- maxspeed-related tags --
+  maxspeed: 5 mph
+  maxspeed:motorcar: 5 mph
+
+-- all tags --
+  highway: tertiary
+  lanes: 2
+  lit: yes
+  maxspeed: 5 mph
+  maxspeed:motorcar: 5 mph
+  name: Bradham Lane
+  surface: asphalt</code></pre>
+</div>
+</div>
+<p>And our traffic file:</p>
+<div id="ed07401d" class="cell" data-execution_count="8">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>inspector.apply_file(<span class="st">"../../datasets/devon-260422-modified-traffic.osm.pbf"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+================================================================================
+WAY 2253
+highway: tertiary
+maxspeed: 18 mph
+
+-- maxspeed-related tags --
+  maxspeed: 18 mph
+  maxspeed:motorcar: 18 mph
+
+-- all tags --
+  highway: tertiary
+  lanes: 2
+  lit: yes
+  maxspeed: 18 mph
+  maxspeed:motorcar: 18 mph
+  name: Bradham Lane
+  surface: asphalt</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="trying-this-out" class="level2">
+<h2 class="anchored" data-anchor-id="trying-this-out">Trying this out</h2>
+<p>Let’s now show the impact of this change. First, let’s do the calculation on the unedited file.</p>
+<section id="generating-origins-and-destinations-in-the-expected-format" class="level3">
+<h3 class="anchored" data-anchor-id="generating-origins-and-destinations-in-the-expected-format">Generating origins and destinations in the expected format</h3>
+<p>Let’s just calculate a single route we know covers a lot of minor roads.</p>
+<p>Travelling from Cullompton to Cheriton Fitzpaine takes us along a large number of minor roads, so is a good test case.</p>
+<p>Let’s travel from EX15 1HN to EX17 4JG.</p>
+<div id="025b8930" class="cell" data-execution_count="3">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>origins <span class="op">=</span> pd.DataFrame([{<span class="st">'id'</span>:<span class="st">'EX15 1HN'</span>, <span class="st">'longitude'</span>: <span class="op">-</span><span class="fl">3.3964515912457207</span>, <span class="st">'latitude'</span>: <span class="fl">50.85510704952628</span>},</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>                        ])</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>origins <span class="op">=</span> geopandas.GeoDataFrame(</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    origins,</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>    geometry <span class="op">=</span> geopandas.points_from_xy(</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>        origins[<span class="st">'longitude'</span>],</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>        origins[<span class="st">'latitude'</span>]</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>        ),</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>    crs <span class="op">=</span> <span class="st">'EPSG:4326'</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>origins</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="3">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">id</th>
+<th data-quarto-table-cell-role="th">longitude</th>
+<th data-quarto-table-cell-role="th">latitude</th>
+<th data-quarto-table-cell-role="th">geometry</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>EX15 1HN</td>
+<td>-3.396452</td>
+<td>50.855107</td>
+<td>POINT (-3.39645 50.85511)</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div id="eb814a4c" class="cell" data-execution_count="4">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>destinations <span class="op">=</span> pd.DataFrame([{<span class="st">'id'</span>:<span class="st">'EX17 4JG'</span>, <span class="st">'longitude'</span>: <span class="op">-</span><span class="fl">3.6102812023506217</span>, <span class="st">'latitude'</span>: <span class="fl">50.844712763862496</span>},</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>                             {<span class="st">'id'</span>:<span class="st">'Exeter Airport'</span>, <span class="st">'longitude'</span>: <span class="op">-</span><span class="fl">3.413323770890914</span>, <span class="st">'latitude'</span>:<span class="fl">50.73714162801647</span>},</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>                             {<span class="st">'id'</span>: <span class="st">"Cornish Arms Tavistock"</span>, <span class="st">'longitude'</span>: <span class="op">-</span><span class="fl">4.146750479096123</span>, <span class="st">'latitude'</span>: <span class="fl">50.551448737522115</span>}])</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>destinations <span class="op">=</span> geopandas.GeoDataFrame(</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>    destinations,</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>    geometry <span class="op">=</span> geopandas.points_from_xy(</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>        destinations[<span class="st">'longitude'</span>],</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>        destinations[<span class="st">'latitude'</span>]</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>        ),</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>    crs <span class="op">=</span> <span class="st">'EPSG:4326'</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>destinations</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="4">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">id</th>
+<th data-quarto-table-cell-role="th">longitude</th>
+<th data-quarto-table-cell-role="th">latitude</th>
+<th data-quarto-table-cell-role="th">geometry</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>EX17 4JG</td>
+<td>-3.610281</td>
+<td>50.844713</td>
+<td>POINT (-3.61028 50.84471)</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>Exeter Airport</td>
+<td>-3.413324</td>
+<td>50.737142</td>
+<td>POINT (-3.41332 50.73714)</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>Cornish Arms Tavistock</td>
+<td>-4.146750</td>
+<td>50.551449</td>
+<td>POINT (-4.14675 50.55145)</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</section>
+<section id="routingpy" class="level3">
+<h3 class="anchored" data-anchor-id="routingpy">Routingpy</h3>
+<p>First, let’s calculate the travel for our unedited pbf file.</p>
+<div id="b832e758" class="cell" data-execution_count="11">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>transport_network <span class="op">=</span> r5py.TransportNetwork(</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"../../datasets/devon-260422.osm.pbf"</span>,</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>travel_time_matrix_car <span class="op">=</span> r5py.TravelTimeMatrix(</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>    transport_network,</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>    origins<span class="op">=</span>origins,</span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>    destinations<span class="op">=</span>destinations,</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>    transport_modes<span class="op">=</span>[r5py.TransportMode.CAR]</span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="66b9c4c9" class="cell" data-execution_count="12">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>travel_time_matrix_car</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="12">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">from_id</th>
+<th data-quarto-table-cell-role="th">to_id</th>
+<th data-quarto-table-cell-role="th">travel_time</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>EX15 1HN</td>
+<td>EX17 4JG</td>
+<td>28</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>EX15 1HN</td>
+<td>Exeter Airport</td>
+<td>28</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>EX15 1HN</td>
+<td>Cornish Arms Tavistock</td>
+<td>62</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>Comparing these with real-world travel times, it looks like they’d be reasonably accurate for early morning free-flowing traffic, though optimistic in some cases and pessimistic in others.</p>
+<p><img src="assets\2026-05-21-10-13-22.png" height="300"></p>
+<p><img src="assets\2026-05-21-10-12-28.png" height="300"></p>
+<p><img src="assets\2026-05-21-10-13-45.png" height="300"></p>
+<div id="a754cab8" class="cell" data-execution_count="13">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>travel_time_matrix_car_valhalla <span class="op">=</span> build_time_matrix_valhalla(</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>    origins_gdf<span class="op">=</span>origins,</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>    destinations_gdf<span class="op">=</span>destinations,</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>    valhalla_config_path<span class="op">=</span><span class="st">"../../datasets/devon-260422_valhalla.json"</span>,</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    costing<span class="op">=</span><span class="st">"auto"</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Let’s take a look at a detailed breakdown of this journey.</p>
+<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Warning
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This point-to-point router isn’t really r5py’s strong point! So these routes may look a bit squiffy - but they do show us something useful for our experiments, so I’ve left it in.</p>
+<p>This is explained in the following github issues: https://github.com/conveyal/r5/issues/863, https://github.com/r5py/r5py/issues/386</p>
+<blockquote class="blockquote">
+<p>We haven’t used the point-to-point routing server for many years and it is not actively maintained. This dates from a time when we were exploring use of R5 as a replacement for OpenTripPlanner, but there has since been a clearer division of roles between the two projects with OpenTripPlanner 2 handling passenger-facing and point-to-point routing, while R5 is specialized in many-to-many urban analytics use cases. The point-to-point routing code paths do work somewhat differently than the one-to-many routing we use heavily for travel time mapping and accessibility calculations. We have not (yet) removed the point-to-point functionality in case anyone finds it useful, but realistically we probably won’t spend time exploring issues with this part of the codebase.</p>
+</blockquote>
+</div>
+</div>
+<div id="352c8fa6" class="cell" data-execution_count="14">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>detailed_itineraries <span class="op">=</span> r5py.DetailedItineraries(</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>    transport_network,</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>    origins<span class="op">=</span>origins,</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>    destinations<span class="op">=</span>destinations,</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>    transport_modes<span class="op">=</span>[r5py.TransportMode.CAR],</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>    snap_to_network<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>detailed_itineraries</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="14">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">from_id</th>
+<th data-quarto-table-cell-role="th">to_id</th>
+<th data-quarto-table-cell-role="th">option</th>
+<th data-quarto-table-cell-role="th">segment</th>
+<th data-quarto-table-cell-role="th">transport_mode</th>
+<th data-quarto-table-cell-role="th">departure_time</th>
+<th data-quarto-table-cell-role="th">distance</th>
+<th data-quarto-table-cell-role="th">travel_time</th>
+<th data-quarto-table-cell-role="th">wait_time</th>
+<th data-quarto-table-cell-role="th">feed</th>
+<th data-quarto-table-cell-role="th">agency_id</th>
+<th data-quarto-table-cell-role="th">route_id</th>
+<th data-quarto-table-cell-role="th">start_stop_id</th>
+<th data-quarto-table-cell-role="th">end_stop_id</th>
+<th data-quarto-table-cell-role="th">geometry</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>EX15 1HN</td>
+<td>EX17 4JG</td>
+<td>0</td>
+<td>0</td>
+<td>TransportMode.CAR</td>
+<td>NaT</td>
+<td>20403.065</td>
+<td>0 days 00:35:49</td>
+<td>0 days</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>LINESTRING (-3.39673 50.85504, -3.39672 50.855...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>EX15 1HN</td>
+<td>Exeter Airport</td>
+<td>0</td>
+<td>0</td>
+<td>TransportMode.CAR</td>
+<td>NaT</td>
+<td>20527.246</td>
+<td>0 days 00:26:13</td>
+<td>0 days</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>LINESTRING (-3.39673 50.85539, -3.39671 50.855...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>EX15 1HN</td>
+<td>Cornish Arms Tavistock</td>
+<td>0</td>
+<td>0</td>
+<td>TransportMode.CAR</td>
+<td>NaT</td>
+<td>86600.881</td>
+<td>0 days 01:59:35</td>
+<td>0 days</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>LINESTRING (-3.39673 50.85504, -3.39672 50.855...</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div id="9d32752d" class="cell" data-execution_count="15">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>ax <span class="op">=</span> detailed_itineraries.plot(column<span class="op">=</span><span class="st">"to_id"</span>)</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>cx.add_basemap(</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>    ax, <span class="co"># the figure we created using our plot method</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>    crs<span class="op">=</span>detailed_itineraries.crs.to_string(), <span class="co"># we can pull the CRS out of the geodataframe!</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-15-output-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<section id="repeating-this-with-the-modified-matrix" class="level4">
+<h4 class="anchored" data-anchor-id="repeating-this-with-the-modified-matrix">Repeating this with the modified matrix</h4>
+<p>Now let’s repeat this with our new matrix.</p>
+<div id="45babce9" class="cell" data-execution_count="16">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>transport_network_modified <span class="op">=</span> r5py.TransportNetwork(</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"../../datasets/devon-260422-modified.osm.pbf"</span>,</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Our travel times appear to be unchanged.</p>
+<div id="1c025244" class="cell" data-execution_count="17">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>travel_time_matrix_car_modified <span class="op">=</span> r5py.TravelTimeMatrix(</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>    transport_network_modified,</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>    origins<span class="op">=</span>origins,</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>    destinations<span class="op">=</span>destinations,</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>    transport_modes<span class="op">=</span>[r5py.TransportMode.CAR]</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>travel_time_matrix_car_modified</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="17">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">from_id</th>
+<th data-quarto-table-cell-role="th">to_id</th>
+<th data-quarto-table-cell-role="th">travel_time</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>EX15 1HN</td>
+<td>EX17 4JG</td>
+<td>28</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>EX15 1HN</td>
+<td>Exeter Airport</td>
+<td>28</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>EX15 1HN</td>
+<td>Cornish Arms Tavistock</td>
+<td>62</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>What about the detailed routes - even if they’re probably not right?</p>
+<div id="18d4de19" class="cell" data-execution_count="18">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>detailed_itineraries_modified <span class="op">=</span> r5py.DetailedItineraries(</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>    transport_network_modified,</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>    origins<span class="op">=</span>origins,</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>    destinations<span class="op">=</span>destinations,</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>    transport_modes<span class="op">=</span>[r5py.TransportMode.CAR],</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>    snap_to_network<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>These have changed!</p>
+<div id="c5d5307d" class="cell" data-execution_count="19">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>detailed_itineraries_modified</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="19">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">from_id</th>
+<th data-quarto-table-cell-role="th">to_id</th>
+<th data-quarto-table-cell-role="th">option</th>
+<th data-quarto-table-cell-role="th">segment</th>
+<th data-quarto-table-cell-role="th">transport_mode</th>
+<th data-quarto-table-cell-role="th">departure_time</th>
+<th data-quarto-table-cell-role="th">distance</th>
+<th data-quarto-table-cell-role="th">travel_time</th>
+<th data-quarto-table-cell-role="th">wait_time</th>
+<th data-quarto-table-cell-role="th">feed</th>
+<th data-quarto-table-cell-role="th">agency_id</th>
+<th data-quarto-table-cell-role="th">route_id</th>
+<th data-quarto-table-cell-role="th">start_stop_id</th>
+<th data-quarto-table-cell-role="th">end_stop_id</th>
+<th data-quarto-table-cell-role="th">geometry</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>EX15 1HN</td>
+<td>EX17 4JG</td>
+<td>0</td>
+<td>0</td>
+<td>TransportMode.CAR</td>
+<td>NaT</td>
+<td>21388.334</td>
+<td>0 days 00:35:47</td>
+<td>0 days</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>LINESTRING (-3.39673 50.85504, -3.39672 50.855...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>EX15 1HN</td>
+<td>Exeter Airport</td>
+<td>0</td>
+<td>0</td>
+<td>TransportMode.CAR</td>
+<td>NaT</td>
+<td>20527.246</td>
+<td>0 days 00:32:57</td>
+<td>0 days</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>LINESTRING (-3.39673 50.85539, -3.39671 50.855...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>EX15 1HN</td>
+<td>Cornish Arms Tavistock</td>
+<td>0</td>
+<td>0</td>
+<td>TransportMode.CAR</td>
+<td>NaT</td>
+<td>86600.881</td>
+<td>0 days 01:58:39</td>
+<td>0 days</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>LINESTRING (-3.39673 50.85504, -3.39672 50.855...</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div id="6bff9896" class="cell" data-execution_count="20">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>ax <span class="op">=</span> detailed_itineraries_modified.plot(column<span class="op">=</span><span class="st">"to_id"</span>)</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>cx.add_basemap(</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>    ax, <span class="co"># the figure we created using our plot method</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>    crs<span class="op">=</span>detailed_itineraries_modified.crs.to_string(), <span class="co"># we can pull the CRS out of the geodataframe!</span></span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-20-output-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="repeating-with-our-traffic-altered-file" class="level4">
+<h4 class="anchored" data-anchor-id="repeating-with-our-traffic-altered-file">Repeating with our traffic-altered file</h4>
+<p>Finally, let’s repeat with our traffic-altered file.</p>
+<div id="18e0eb3d" class="cell" data-execution_count="21">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>transport_network_modified_traffic <span class="op">=</span> r5py.TransportNetwork(</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"../../datasets/devon-260422-modified-traffic.osm.pbf"</span>,</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Once again, our travel matrix times are unchanged.</p>
+<div id="c58cc9bc" class="cell" data-execution_count="22">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>travel_time_matrix_car_modified_traffic <span class="op">=</span> r5py.TravelTimeMatrix(</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>    transport_network_modified_traffic,</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>    origins<span class="op">=</span>origins,</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>    destinations<span class="op">=</span>destinations,</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>    transport_modes<span class="op">=</span>[r5py.TransportMode.CAR]</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>travel_time_matrix_car_modified</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="22">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">from_id</th>
+<th data-quarto-table-cell-role="th">to_id</th>
+<th data-quarto-table-cell-role="th">travel_time</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>EX15 1HN</td>
+<td>EX17 4JG</td>
+<td>28</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>EX15 1HN</td>
+<td>Exeter Airport</td>
+<td>28</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>EX15 1HN</td>
+<td>Cornish Arms Tavistock</td>
+<td>62</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>But our detailed itineraries have changed.</p>
+<div id="96225ab3" class="cell" data-execution_count="23">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>detailed_itineraries_modified_traffic <span class="op">=</span> r5py.DetailedItineraries(</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>    transport_network_modified_traffic,</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>    origins<span class="op">=</span>origins,</span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>    destinations<span class="op">=</span>destinations,</span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>    transport_modes<span class="op">=</span>[r5py.TransportMode.CAR],</span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>    snap_to_network<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="a3bcb7fb" class="cell" data-execution_count="24">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>detailed_itineraries_modified_traffic</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="24">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">from_id</th>
+<th data-quarto-table-cell-role="th">to_id</th>
+<th data-quarto-table-cell-role="th">option</th>
+<th data-quarto-table-cell-role="th">segment</th>
+<th data-quarto-table-cell-role="th">transport_mode</th>
+<th data-quarto-table-cell-role="th">departure_time</th>
+<th data-quarto-table-cell-role="th">distance</th>
+<th data-quarto-table-cell-role="th">travel_time</th>
+<th data-quarto-table-cell-role="th">wait_time</th>
+<th data-quarto-table-cell-role="th">feed</th>
+<th data-quarto-table-cell-role="th">agency_id</th>
+<th data-quarto-table-cell-role="th">route_id</th>
+<th data-quarto-table-cell-role="th">start_stop_id</th>
+<th data-quarto-table-cell-role="th">end_stop_id</th>
+<th data-quarto-table-cell-role="th">geometry</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>EX15 1HN</td>
+<td>EX17 4JG</td>
+<td>0</td>
+<td>0</td>
+<td>TransportMode.CAR</td>
+<td>NaT</td>
+<td>21388.334</td>
+<td>0 days 00:26:54</td>
+<td>0 days</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>LINESTRING (-3.39673 50.85504, -3.39672 50.855...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>EX15 1HN</td>
+<td>Exeter Airport</td>
+<td>0</td>
+<td>0</td>
+<td>TransportMode.CAR</td>
+<td>NaT</td>
+<td>20527.246</td>
+<td>0 days 00:25:06</td>
+<td>0 days</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>LINESTRING (-3.39673 50.85539, -3.39671 50.855...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>EX15 1HN</td>
+<td>Cornish Arms Tavistock</td>
+<td>0</td>
+<td>0</td>
+<td>TransportMode.CAR</td>
+<td>NaT</td>
+<td>85051.652</td>
+<td>0 days 01:29:07</td>
+<td>0 days</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>LINESTRING (-3.39673 50.85504, -3.39672 50.855...</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div id="cdb5f824" class="cell" data-execution_count="25">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>ax <span class="op">=</span> detailed_itineraries_modified_traffic.plot(column<span class="op">=</span><span class="st">"to_id"</span>)</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>cx.add_basemap(</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>    ax, <span class="co"># the figure we created using our plot method</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>    crs<span class="op">=</span>detailed_itineraries_modified_traffic.crs.to_string(), <span class="co"># we can pull the CRS out of the geodataframe!</span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-25-output-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>What’s going on?
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>It looks like routingpy uses some other way of calculating travel time when using its matrix function.</p>
+<p>And they’re not bad! But it does mean we won’t be able to use this method for things like traffic modifications either.</p>
+</div>
+</div>
+</section>
+</section>
+</section>
+<section id="valhalla" class="level2">
+<h2 class="anchored" data-anchor-id="valhalla">Valhalla</h2>
+<p>Let’s compare with valhalla, a routing engine that’s much more focussed on car travel times.</p>
+<p>In the past, valhalla had to be set up in a fairly daunting way, but we now have the pyvalhalla option, which is much more approachable!</p>
+<div id="fb85ad8e" class="cell" data-execution_count="26">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>prepare_valhalla_network(</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>    osm_path<span class="op">=</span><span class="st">"../../datasets/devon-260422.osm.pbf"</span>,</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>    output_dir<span class="op">=</span><span class="st">"../../datasets/"</span>,</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>    output_name<span class="op">=</span><span class="st">"devon-260422_valhalla.json"</span></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Using existing Valhalla build</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="26">
+<pre><code>{'config_path': 'C:\\lokigi\\examples\\datasets\\devon-260422_valhalla.json.json',
+ 'tile_dir': 'C:\\lokigi\\examples\\datasets\\devon-260422_valhalla.json_tiles',
+ 'traffic_path': 'C:\\lokigi\\examples\\datasets\\devon-260422_valhalla.json_traffic.tar'}</code></pre>
+</div>
+</div>
+<div id="3a1813ec" class="cell" data-execution_count="27">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>travel_time_matrix_car_valhalla <span class="op">=</span> build_time_matrix_valhalla(</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>    origins_gdf<span class="op">=</span>origins,</span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>    destinations_gdf<span class="op">=</span>destinations,</span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>    valhalla_config_path<span class="op">=</span><span class="st">"../../datasets/devon-260422_valhalla.json"</span>,</span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>    costing<span class="op">=</span><span class="st">"auto"</span></span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="60df522c" class="cell" data-execution_count="28">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>travel_time_matrix_car_valhalla</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="28">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">from_id</th>
+<th data-quarto-table-cell-role="th">to_id</th>
+<th data-quarto-table-cell-role="th">travel_time_minutes</th>
+<th data-quarto-table-cell-role="th">distance_km</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>EX15 1HN</td>
+<td>EX17 4JG</td>
+<td>21.783333</td>
+<td>26.503</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>EX15 1HN</td>
+<td>Exeter Airport</td>
+<td>14.166667</td>
+<td>17.259</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>EX15 1HN</td>
+<td>Cornish Arms Tavistock</td>
+<td>54.383333</td>
+<td>89.2</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>This has worked!</p>
+<p>Although compared to google maps, it seems quite optimistic - more so than r5py was.</p>
+<p><img src="assets\2026-05-21-10-13-22.png" height="300"></p>
+<p><img src="assets\2026-05-21-10-12-28.png" height="300"></p>
+<p><img src="assets\2026-05-21-10-13-45.png" height="300"></p>
+<p>We can now repeat this with our modified files.</p>
+<div id="905759ec" class="cell" data-execution_count="29">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb35"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>prepare_valhalla_network(</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>    osm_path<span class="op">=</span><span class="st">"../../datasets/devon-260422-modified.osm.pbf"</span>,</span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>    output_dir<span class="op">=</span><span class="st">"../../datasets/"</span>,</span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>    output_name<span class="op">=</span><span class="st">"devon-260422_valhalla-modified"</span></span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Using existing Valhalla build</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="29">
+<pre><code>{'config_path': 'C:\\lokigi\\examples\\datasets\\devon-260422_valhalla-modified.json',
+ 'tile_dir': 'C:\\lokigi\\examples\\datasets\\devon-260422_valhalla-modified_tiles',
+ 'traffic_path': 'C:\\lokigi\\examples\\datasets\\devon-260422_valhalla-modified_traffic.tar'}</code></pre>
+</div>
+</div>
+<div id="567849d1" class="cell" data-execution_count="30">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb38"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>travel_time_matrix_car_valhalla_modified <span class="op">=</span> build_time_matrix_valhalla(</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>    origins_gdf<span class="op">=</span>origins,</span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>    destinations_gdf<span class="op">=</span>destinations,</span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a>    valhalla_config_path<span class="op">=</span><span class="st">"../../datasets/devon-260422_valhalla-modified.json"</span>,</span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a>    costing<span class="op">=</span><span class="st">"auto"</span></span>
+<span id="cb38-6"><a href="#cb38-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>This looks a little better - but it’s still optimistic, and the journey to the Cornish Arms has actually become a tiny bit faster, which is unexpected!</p>
+<div id="60efa8f5" class="cell" data-execution_count="31">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb39"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>travel_time_matrix_car_valhalla_modified</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="31">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">from_id</th>
+<th data-quarto-table-cell-role="th">to_id</th>
+<th data-quarto-table-cell-role="th">travel_time_minutes</th>
+<th data-quarto-table-cell-role="th">distance_km</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>EX15 1HN</td>
+<td>EX17 4JG</td>
+<td>24.066667</td>
+<td>20.382</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>EX15 1HN</td>
+<td>Exeter Airport</td>
+<td>16.1</td>
+<td>23.31</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>EX15 1HN</td>
+<td>Cornish Arms Tavistock</td>
+<td>54.35</td>
+<td>89.2</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>And finally, let’s do this with our very heavy traffic file that assumed all traffic would only be travelling at 60% of the listed road speed.</p>
+<div id="e9a4b2dc" class="cell" data-execution_count="32">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb40"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>prepare_valhalla_network(</span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>    osm_path<span class="op">=</span><span class="st">"../../datasets/devon-260422-modified-traffic.osm.pbf"</span>,</span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>    output_dir<span class="op">=</span><span class="st">"../../datasets/"</span>,</span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a>    output_name<span class="op">=</span><span class="st">"devon-260422_valhalla-modified-traffic"</span></span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Using existing Valhalla build</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="32">
+<pre><code>{'config_path': 'C:\\lokigi\\examples\\datasets\\devon-260422_valhalla-modified-traffic.json',
+ 'tile_dir': 'C:\\lokigi\\examples\\datasets\\devon-260422_valhalla-modified-traffic_tiles',
+ 'traffic_path': 'C:\\lokigi\\examples\\datasets\\devon-260422_valhalla-modified-traffic_traffic.tar'}</code></pre>
+</div>
+</div>
+<div id="5504a45b" class="cell" data-execution_count="33">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb43"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a>travel_time_matrix_car_valhalla_modified <span class="op">=</span> build_time_matrix_valhalla(</span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a>    origins_gdf<span class="op">=</span>origins,</span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a>    destinations_gdf<span class="op">=</span>destinations,</span>
+<span id="cb43-4"><a href="#cb43-4" aria-hidden="true" tabindex="-1"></a>    valhalla_config_path<span class="op">=</span><span class="st">"../../datasets/devon-260422_valhalla-modified-traffic.json"</span>,</span>
+<span id="cb43-5"><a href="#cb43-5" aria-hidden="true" tabindex="-1"></a>    costing<span class="op">=</span><span class="st">"auto"</span></span>
+<span id="cb43-6"><a href="#cb43-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="cc65dd46" class="cell" data-execution_count="34">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb44"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>travel_time_matrix_car_valhalla_modified</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="34">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">from_id</th>
+<th data-quarto-table-cell-role="th">to_id</th>
+<th data-quarto-table-cell-role="th">travel_time_minutes</th>
+<th data-quarto-table-cell-role="th">distance_km</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>EX15 1HN</td>
+<td>EX17 4JG</td>
+<td>35.05</td>
+<td>18.699</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>EX15 1HN</td>
+<td>Exeter Airport</td>
+<td>25.466667</td>
+<td>23.309</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>EX15 1HN</td>
+<td>Cornish Arms Tavistock</td>
+<td>88.566667</td>
+<td>88.944</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>So we can conclude that valhalla definitely responds to the maximum speed tags in a way that routingpy doesn’t - though it’s still not a perfect fix.</p>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Tip
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Routingpy remains an extremely good option if you are interested in public transport.</p>
+<p>Valhalla is probably the better choice if you are looking for car travel times.</p>
+<p>Valhalla does also have the benefit of having no java requirements whatsoever - so it’s easier to install in locked down environments.</p>
+<p>For some projects, you may end up using a mix of both!</p>
+</div>
+</div>
+<p>Let’s do one more modified file to see if we can make a difference.</p>
+<p>This time, we’ll apply our same substantial slowdown to unclassified roads.</p>
+<p>On top of that, we’ll add the assumption that all journies are slower than the posted speed limit on average, so we’ll bring speeds down to 90% of reality.</p>
+<div id="78a59d82" class="cell" data-execution_count="35">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb45"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>process_uk_network(</span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"../../datasets/devon-260422.osm.pbf"</span>,</span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"../../datasets/devon-260422-combined-modified.osm.pbf"</span>,</span>
+<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a>    debug<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb45-5"><a href="#cb45-5" aria-hidden="true" tabindex="-1"></a>    traffic_multiplier<span class="op">=</span><span class="fl">0.9</span>, <span class="co"># Lower = slower max speed assumed</span></span>
+<span id="cb45-6"><a href="#cb45-6" aria-hidden="true" tabindex="-1"></a>    minor_road_cap<span class="op">=</span><span class="dv">30</span>,</span>
+<span id="cb45-7"><a href="#cb45-7" aria-hidden="true" tabindex="-1"></a>    debug_limit<span class="op">=</span><span class="dv">100</span></span>
+<span id="cb45-8"><a href="#cb45-8" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Reading from C:\lokigi\examples\datasets\devon-260422.osm.pbf
+Will write to C:\lokigi\examples\datasets\devon-260422-combined-modified.osm.pbf
+Processing C:\lokigi\examples\datasets\devon-260422.osm.pbf...
+[WAY 2252] ALL TAGS:
+    highway: residential
+    lit: yes
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+    name: Holland Road
+[WAY 2252] MAXSPEED-RELATED TAGS:
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+[WAY 2252] residential | original='30 mph' (parsed=30.0) -&gt; new='27.0 (27 mph)' | reasons=['traffic multiplier x0.9'] | inferred_missing=False
+[WAY 2253] ALL TAGS:
+    highway: tertiary
+    lanes: 2
+    lit: yes
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+    name: Bradham Lane
+    surface: asphalt
+[WAY 2253] MAXSPEED-RELATED TAGS:
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+[WAY 2253] tertiary | original='30 mph' (parsed=30.0) -&gt; new='27.0 (27 mph)' | reasons=['traffic multiplier x0.9'] | inferred_missing=False
+[WAY 2255] ALL TAGS:
+    foot: yes
+    highway: cycleway
+    segregated: yes
+    smoothness: good
+    surface: asphalt
+[WAY 2256] ALL TAGS:
+    foot: yes
+    highway: cycleway
+    lit: no
+    railway: abandoned
+    segregated: no
+    smoothness: good
+    surface: asphalt
+[WAY 2470] ALL TAGS:
+    highway: service
+[WAY 2470] service | original='None' (parsed=60.0) -&gt; new='27.0 (27 mph)' | reasons=['minor road cap -&gt; 30', 'traffic multiplier x0.9'] | inferred_missing=True
+[WAY 2471] ALL TAGS:
+    highway: tertiary
+    lanes: 2
+    lit: yes
+    maxspeed: 20 mph
+    name: Withycombe Village Road
+    sidewalk:both: separate
+    surface: asphalt
+[WAY 2471] MAXSPEED-RELATED TAGS:
+    maxspeed: 20 mph
+[WAY 2471] tertiary | original='20 mph' (parsed=20.0) -&gt; new='18.0 (18 mph)' | reasons=['traffic multiplier x0.9'] | inferred_missing=False
+[WAY 3363] ALL TAGS:
+    highway: unclassified
+    lit: yes
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+    name: Prince of Wales Drive
+[WAY 3363] MAXSPEED-RELATED TAGS:
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+[WAY 3363] unclassified | original='30 mph' (parsed=30.0) -&gt; new='27.0 (27 mph)' | reasons=['traffic multiplier x0.9'] | inferred_missing=False
+[WAY 3364] ALL TAGS:
+    highway: unclassified
+    lit: yes
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+    name: Prince of Wales Drive
+[WAY 3364] MAXSPEED-RELATED TAGS:
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+[WAY 3364] unclassified | original='30 mph' (parsed=30.0) -&gt; new='27.0 (27 mph)' | reasons=['traffic multiplier x0.9'] | inferred_missing=False
+[WAY 3365] ALL TAGS:
+    highway: unclassified
+    maxspeed: 20 mph
+    maxspeed:type: GB:zone20
+    name: Moorfield Road
+[WAY 3365] MAXSPEED-RELATED TAGS:
+    maxspeed: 20 mph
+    maxspeed:type: GB:zone20
+[WAY 3365] unclassified | original='20 mph' (parsed=20.0) -&gt; new='18.0 (18 mph)' | reasons=['traffic multiplier x0.9'] | inferred_missing=False
+[WAY 3368] ALL TAGS:
+    highway: residential
+    lit: yes
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+    name: Park Road
+[WAY 3368] MAXSPEED-RELATED TAGS:
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+[WAY 3368] residential | original='30 mph' (parsed=30.0) -&gt; new='27.0 (27 mph)' | reasons=['traffic multiplier x0.9'] | inferred_missing=False
+[WAY 78851] ALL TAGS:
+    highway: residential
+    lit: yes
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+    name: Newlands Avenue
+[WAY 78851] MAXSPEED-RELATED TAGS:
+    maxspeed: 30 mph
+    maxspeed:type: GB:nsl_restricted
+[WAY 78851] residential | original='30 mph' (parsed=30.0) -&gt; new='27.0 (27 mph)' | reasons=['traffic multiplier x0.9'] | inferred_missing=False
+[WAY 78856] ALL TAGS:
+Debug output truncated at 100/100 changes
+Done! Saved to C:\lokigi\examples\datasets\devon-260422-combined-modified.osm.pbf
+Total Changes made: 141920</code></pre>
+</div>
+</div>
+<div id="fcde5822" class="cell" data-execution_count="36">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb47"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a>prepare_valhalla_network(</span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>    osm_path<span class="op">=</span><span class="st">"../../datasets/devon-260422-combined-modified.osm.pbf"</span>,</span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>    output_dir<span class="op">=</span><span class="st">"../../datasets/"</span>,</span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>    output_name<span class="op">=</span><span class="st">"devon-260422_valhalla-combined-modified"</span></span>
+<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Using existing Valhalla build</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="36">
+<pre><code>{'config_path': 'C:\\lokigi\\examples\\datasets\\devon-260422_valhalla-combined-modified.json',
+ 'tile_dir': 'C:\\lokigi\\examples\\datasets\\devon-260422_valhalla-combined-modified_tiles',
+ 'traffic_path': 'C:\\lokigi\\examples\\datasets\\devon-260422_valhalla-combined-modified_traffic.tar'}</code></pre>
+</div>
+</div>
+<div id="9f22e545" class="cell" data-execution_count="37">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb50"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a>travel_time_matrix_car_valhalla_final <span class="op">=</span> build_time_matrix_valhalla(</span>
+<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a>    origins_gdf<span class="op">=</span>origins,</span>
+<span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a>    destinations_gdf<span class="op">=</span>destinations,</span>
+<span id="cb50-4"><a href="#cb50-4" aria-hidden="true" tabindex="-1"></a>    valhalla_config_path<span class="op">=</span><span class="st">"../../datasets/devon-260422_valhalla-combined-modified.json"</span>,</span>
+<span id="cb50-5"><a href="#cb50-5" aria-hidden="true" tabindex="-1"></a>    costing<span class="op">=</span><span class="st">"auto"</span></span>
+<span id="cb50-6"><a href="#cb50-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb50-7"><a href="#cb50-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb50-8"><a href="#cb50-8" aria-hidden="true" tabindex="-1"></a>travel_time_matrix_car_valhalla_final</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="37">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">from_id</th>
+<th data-quarto-table-cell-role="th">to_id</th>
+<th data-quarto-table-cell-role="th">travel_time_minutes</th>
+<th data-quarto-table-cell-role="th">distance_km</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>EX15 1HN</td>
+<td>EX17 4JG</td>
+<td>23.783333</td>
+<td>18.699</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>EX15 1HN</td>
+<td>Exeter Airport</td>
+<td>17.5</td>
+<td>23.309</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>EX15 1HN</td>
+<td>Cornish Arms Tavistock</td>
+<td>60.383333</td>
+<td>89.2</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>While this still isn’t great for one of our journies, the other two are now quite accurate.</p>
+</section>
+<section id="advanced-valhalla-route-inspection-and-debugging" class="level2">
+<h2 class="anchored" data-anchor-id="advanced-valhalla-route-inspection-and-debugging">Advanced valhalla route inspection and debugging</h2>
+<p>We can do a bit more debugging…</p>
+<div id="47f163a0" class="cell" data-execution_count="48">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb51"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> valhalla <span class="im">import</span> Actor</span>
+<span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-3"><a href="#cb51-3" aria-hidden="true" tabindex="-1"></a>result, summary <span class="op">=</span> valhalla_detailed_route(engine<span class="op">=</span>Actor(<span class="st">"../../datasets/devon-260422_valhalla-combined-modified.json"</span>),</span>
+<span id="cb51-4"><a href="#cb51-4" aria-hidden="true" tabindex="-1"></a>                        origin<span class="op">=</span>(origins.iloc[<span class="dv">0</span>].latitude, origins.iloc[<span class="dv">0</span>].longitude),</span>
+<span id="cb51-5"><a href="#cb51-5" aria-hidden="true" tabindex="-1"></a>                        destination<span class="op">=</span>(destinations.iloc[<span class="dv">0</span>].latitude, destinations.iloc[<span class="dv">0</span>].longitude),</span>
+<span id="cb51-6"><a href="#cb51-6" aria-hidden="true" tabindex="-1"></a>                        )</span>
+<span id="cb51-7"><a href="#cb51-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-8"><a href="#cb51-8" aria-hidden="true" tabindex="-1"></a>result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+=== OVERALL ===
+Time: 23.8 min
+Distance: 11.62 miles
+
+--- LEG 0 ---
+Time: 23.8 min
+Distance: 11.62 miles
+Speed: 29.3 miles/h
+
+Maneuvers:
+23.279s | 0.1721 | Drive north on Shortlands Road.
+177.943s | 1.3023 | Turn left onto Tiverton Road.
+193.822s | 1.4366 | Bear left.
+67.676s |  0.479 | Turn left.
+8.794s | 0.0596 | Turn left.
+41.361s | 0.2746 | Turn right.
+13.657s |    0.1 | Turn left.
+154.684s | 1.1414 | Turn right.
+99.832s | 0.7052 | Turn right.
+54.456s | 0.2516 | Turn right.
+32.896s | 0.2491 | Turn right onto A396.
+201.203s | 2.8471 | Turn left onto A3072.
+47.666s | 0.3324 | Turn right onto Uppincott Lane.
+56.956s | 0.4212 | Turn left.
+240.096s | 1.7789 | Keep left at the fork.
+12.825s | 0.0671 | Turn right.
+ 0.0s |    0.0 | Your destination is on the right.</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="48">
+<pre><code>{'trip': {'locations': [{'type': 'break',
+    'lat': 50.855107,
+    'lon': -3.396451,
+    'side_of_street': 'right',
+    'original_index': 0},
+   {'type': 'break',
+    'lat': 50.844712,
+    'lon': -3.610281,
+    'side_of_street': 'right',
+    'original_index': 1}],
+  'legs': [{'maneuvers': [{'type': 2,
+      'instruction': 'Drive north on Shortlands Road.',
+      'verbal_succinct_transition_instruction': 'Drive north. Then, in 900 feet, Turn left onto Tiverton Road.',
+      'verbal_pre_transition_instruction': 'Drive north on Shortlands Road. Then, in 900 feet, Turn left onto Tiverton Road.',
+      'verbal_post_transition_instruction': 'Continue for 900 feet.',
+      'street_names': ['Shortlands Road'],
+      'bearing_after': 4,
+      'time': 23.279,
+      'length': 0.1721,
+      'cost': 34.167,
+      'begin_shape_index': 0,
+      'end_shape_index': 18,
+      'verbal_multi_cue': True,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 15,
+      'instruction': 'Turn left onto Tiverton Road.',
+      'verbal_transition_alert_instruction': 'Turn left onto Tiverton Road.',
+      'verbal_succinct_transition_instruction': 'Turn left.',
+      'verbal_pre_transition_instruction': 'Turn left onto Tiverton Road.',
+      'verbal_post_transition_instruction': 'Continue for 1.5 miles.',
+      'street_names': ['Tiverton Road'],
+      'bearing_before': 14,
+      'bearing_after': 284,
+      'time': 177.943,
+      'length': 1.3023,
+      'cost': 194.035,
+      'begin_shape_index': 18,
+      'end_shape_index': 107,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 16,
+      'instruction': 'Bear left.',
+      'verbal_transition_alert_instruction': 'Bear left.',
+      'verbal_succinct_transition_instruction': 'Bear left.',
+      'verbal_pre_transition_instruction': 'Bear left.',
+      'verbal_post_transition_instruction': 'Continue for 1.5 miles.',
+      'bearing_before': 338,
+      'bearing_after': 296,
+      'time': 193.822,
+      'length': 1.4366,
+      'cost': 189.706,
+      'begin_shape_index': 107,
+      'end_shape_index': 168,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 15,
+      'instruction': 'Turn left.',
+      'verbal_transition_alert_instruction': 'Turn left.',
+      'verbal_succinct_transition_instruction': 'Turn left.',
+      'verbal_pre_transition_instruction': 'Turn left.',
+      'verbal_post_transition_instruction': 'Continue for a half mile.',
+      'bearing_before': 334,
+      'bearing_after': 235,
+      'time': 67.676,
+      'length': 0.479,
+      'cost': 70.843,
+      'begin_shape_index': 168,
+      'end_shape_index': 215,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 15,
+      'instruction': 'Turn left.',
+      'verbal_transition_alert_instruction': 'Turn left.',
+      'verbal_succinct_transition_instruction': 'Turn left. Then, in 300 feet, Turn right.',
+      'verbal_pre_transition_instruction': 'Turn left. Then, in 300 feet, Turn right.',
+      'verbal_post_transition_instruction': 'Continue for 300 feet.',
+      'bearing_before': 230,
+      'bearing_after': 160,
+      'time': 8.794,
+      'length': 0.0596,
+      'cost': 11.733,
+      'begin_shape_index': 215,
+      'end_shape_index': 221,
+      'verbal_multi_cue': True,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 10,
+      'instruction': 'Turn right.',
+      'verbal_transition_alert_instruction': 'Turn right.',
+      'verbal_succinct_transition_instruction': 'Turn right.',
+      'verbal_pre_transition_instruction': 'Turn right.',
+      'verbal_post_transition_instruction': 'Continue for a quarter mile.',
+      'bearing_before': 140,
+      'bearing_after': 222,
+      'time': 41.361,
+      'length': 0.2746,
+      'cost': 40.804,
+      'begin_shape_index': 221,
+      'end_shape_index': 237,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 15,
+      'instruction': 'Turn left.',
+      'verbal_transition_alert_instruction': 'Turn left.',
+      'verbal_succinct_transition_instruction': 'Turn left.',
+      'verbal_pre_transition_instruction': 'Turn left.',
+      'verbal_post_transition_instruction': 'Continue for 500 feet.',
+      'bearing_before': 276,
+      'bearing_after': 228,
+      'time': 13.657,
+      'length': 0.1,
+      'cost': 16.631,
+      'begin_shape_index': 237,
+      'end_shape_index': 250,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 10,
+      'instruction': 'Turn right.',
+      'verbal_transition_alert_instruction': 'Turn right.',
+      'verbal_succinct_transition_instruction': 'Turn right.',
+      'verbal_pre_transition_instruction': 'Turn right.',
+      'verbal_post_transition_instruction': 'Continue for 1 mile.',
+      'bearing_before': 203,
+      'bearing_after': 251,
+      'time': 154.684,
+      'length': 1.1414,
+      'cost': 154.73,
+      'begin_shape_index': 250,
+      'end_shape_index': 331,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 10,
+      'instruction': 'Turn right.',
+      'verbal_transition_alert_instruction': 'Turn right.',
+      'verbal_succinct_transition_instruction': 'Turn right.',
+      'verbal_pre_transition_instruction': 'Turn right.',
+      'verbal_post_transition_instruction': 'Continue for a half mile.',
+      'bearing_before': 213,
+      'bearing_after': 296,
+      'time': 99.832,
+      'length': 0.7052,
+      'cost': 99.687,
+      'begin_shape_index': 331,
+      'end_shape_index': 386,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 10,
+      'instruction': 'Turn right.',
+      'verbal_transition_alert_instruction': 'Turn right.',
+      'verbal_succinct_transition_instruction': 'Turn right.',
+      'verbal_pre_transition_instruction': 'Turn right.',
+      'verbal_post_transition_instruction': 'Continue for a quarter mile.',
+      'bearing_before': 285,
+      'bearing_after': 6,
+      'time': 54.456,
+      'length': 0.2516,
+      'cost': 60.248,
+      'begin_shape_index': 386,
+      'end_shape_index': 414,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 10,
+      'instruction': 'Turn right onto A396.',
+      'verbal_transition_alert_instruction': 'Turn right onto A396.',
+      'verbal_succinct_transition_instruction': 'Turn right.',
+      'verbal_pre_transition_instruction': 'Turn right onto A396.',
+      'verbal_post_transition_instruction': 'Continue for a quarter mile.',
+      'street_names': ['A396'],
+      'bearing_before': 303,
+      'bearing_after': 349,
+      'time': 32.896,
+      'length': 0.2491,
+      'cost': 51.46,
+      'begin_shape_index': 414,
+      'end_shape_index': 436,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 15,
+      'instruction': 'Turn left onto A3072.',
+      'verbal_transition_alert_instruction': 'Turn left onto A3072.',
+      'verbal_succinct_transition_instruction': 'Turn left.',
+      'verbal_pre_transition_instruction': 'Turn left onto A3072.',
+      'verbal_post_transition_instruction': 'Continue for 3 miles.',
+      'street_names': ['A3072'],
+      'bearing_before': 357,
+      'bearing_after': 288,
+      'time': 201.203,
+      'length': 2.8471,
+      'cost': 186.702,
+      'begin_shape_index': 436,
+      'end_shape_index': 636,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 10,
+      'instruction': 'Turn right onto Uppincott Lane.',
+      'verbal_transition_alert_instruction': 'Turn right onto Uppincott Lane.',
+      'verbal_succinct_transition_instruction': 'Turn right.',
+      'verbal_pre_transition_instruction': 'Turn right onto Uppincott Lane.',
+      'verbal_post_transition_instruction': 'Continue for a quarter mile.',
+      'street_names': ['Uppincott Lane'],
+      'bearing_before': 273,
+      'bearing_after': 344,
+      'time': 47.666,
+      'length': 0.3324,
+      'cost': 56.611,
+      'begin_shape_index': 636,
+      'end_shape_index': 656,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 15,
+      'instruction': 'Turn left.',
+      'verbal_transition_alert_instruction': 'Turn left.',
+      'verbal_succinct_transition_instruction': 'Turn left.',
+      'verbal_pre_transition_instruction': 'Turn left.',
+      'verbal_post_transition_instruction': 'Continue for a half mile.',
+      'bearing_before': 356,
+      'bearing_after': 305,
+      'time': 56.956,
+      'length': 0.4212,
+      'cost': 57.667,
+      'begin_shape_index': 656,
+      'end_shape_index': 679,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 24,
+      'instruction': 'Keep left at the fork.',
+      'verbal_transition_alert_instruction': 'Keep left at the fork.',
+      'verbal_pre_transition_instruction': 'Keep left at the fork.',
+      'verbal_post_transition_instruction': 'Continue for 2 miles.',
+      'bearing_before': 293,
+      'bearing_after': 279,
+      'time': 240.096,
+      'length': 1.7789,
+      'cost': 251.375,
+      'begin_shape_index': 679,
+      'end_shape_index': 824,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 10,
+      'instruction': 'Turn right.',
+      'verbal_transition_alert_instruction': 'Turn right.',
+      'verbal_succinct_transition_instruction': 'Turn right. Then, in 400 feet, Your destination will be on the right.',
+      'verbal_pre_transition_instruction': 'Turn right. Then, in 400 feet, Your destination will be on the right.',
+      'verbal_post_transition_instruction': 'Continue for 400 feet.',
+      'bearing_before': 242,
+      'bearing_after': 319,
+      'time': 12.825,
+      'length': 0.0671,
+      'cost': 17.142,
+      'begin_shape_index': 824,
+      'end_shape_index': 837,
+      'verbal_multi_cue': True,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 5,
+      'instruction': 'Your destination is on the right.',
+      'verbal_transition_alert_instruction': 'Your destination will be on the right.',
+      'verbal_pre_transition_instruction': 'Your destination is on the right.',
+      'bearing_before': 282,
+      'time': 0.0,
+      'length': 0.0,
+      'cost': 0.0,
+      'begin_shape_index': 837,
+      'end_shape_index': 837,
+      'travel_mode': 'drive',
+      'travel_type': 'car'}],
+    'summary': {'has_time_restrictions': False,
+     'has_toll': False,
+     'has_highway': False,
+     'has_ferry': False,
+     'min_lat': 50.836754,
+     'min_lon': -3.610295,
+     'max_lat': 50.867483,
+     'max_lon': -3.396712,
+     'time': 1427.153,
+     'length': 11.6191,
+     'cost': 1493.55},
+    'shape': '}k}~_BhfinEWAqFWqG\\iBZyFpAeT|B{Cx@qB`CoExJsCjJcCfImEpJsBnByBz@wBTyEa@uNyDyWwHwC`]SbCe@lGoArLsC`UqF~[cG|XyF~PoBdGiCfHoDfJ{DbLqKv[eIvR_IrSqBdGcAxDmBnHkCpLeClMk@|FYpFOhF@lFFrGPbHb@vMP|FLlDv@xWXtKBrCCpCEtAQxHgA~e@SdJStJm@lXgAfXcAbOMbB_@fE}@pF{@rG}C~VwFrd@_F|X}I~a@_Jlh@cEh[_Kvt@_Jpp@cHnh@gGbd@kDv]cD|a@wCrYsCpTgDlR{J~c@cKha@a@dAgFzMcGjSiIjWcFpLcFtJ_GrKgHfL}K~OiEpFgGvJ}DrHuAhEiDzNyKht@mGt\\uHb^gGnS}FrSqAzCuBdD_DnDaEvCkLnFaVjJaSfIeZbPY`CaKr_@cCzRyB~XsAfW@bMfA|PrB|QvSfaBjLrx@fBnQ|@hN|Adc@dAb[\\xaA`@nYh@zZ`Bdj@nLho@vNpi@bD`XpBfY`EdvAt@lkAfB~lABtm@?rl@tCv}@nAly@yBj]aDjcAkBlr@}Dp}@oKlTuOpHgEfCgA|CKdF\\jKxGzaAfB`^FlKOlD}@pEuCnIqCfKgD~YqCj_@qBxS{BpNoD~OoErPgDlKcArFqB|EgBtCmExCcM|Her@x^k^rQ}QnMd@vB~HhR`LfVpGbRvFxSxEzWzFzVlAfFtAxCpE~HrV|b@jZpw@dTfm@bHzPbP|`@r@jAv@bAtHbIbA`ATRrBlBvGpFjIrGv@n@v@t@r@v@rBbCrApBpAxBhJxPp@bAr@~@pCdD~FbHxAnB|A|BrDrFpB`DrAlBzAnB~ExFj@t@l@hAl@vA|AvD|ChI~AbDvAs@xEwA~F_F`BuAhG}H~NaTfKhPvCdH|Erj@~En_@v@dEhGbSpJtWnQbh@bO~f@tHr^jInZlC`LdAlIX~GG~EU~ElAh@~@nDhDnO~DtOxE|OvAfEpBpEfBtB|C|B~EtCjBfA|KpEfAlAdAhF^pIErLtCxb@lBvN|AjHzA|EpEjIbG~H`AzBb@tCj@tCzTbx@dJjXdTbZpAbEnE|WvIxa@lAdLIlLhGnj@w@d_@jBdc@bIrl@cBf[mBjGu@hCwAhIRvJ|CnRhD`Td@zHThVBlV|@|ChB~CzH|NfHd^zEjXbErIlHjI|EtO~BjGdBjB~BlD`AxDfBrV|AfSf@fGt@vGfJxq@|Ips@z@bFtAlEjAzBbDxFjFrInBpC~DjJ`DxIhBfKjDj[bDdY`ElZhFx[dBjJfC|KpC|J`DtIlEjKbDhLzAtHN`Md@xTf@bS~BbUbC`PtClLrZng@d_@xi@`DnCYv@qArFWbHr@`UpAtLp@nIp@|Gf@xHVtSE|MMn[`@xQlB~QxF~WrDp`@xAbQJ~DoCtS[xFHlHVrM[z_@]|DeAfGoB`K_EtQkCtF{CnGgCrKcAdJc@pKO|IiBd{@kFpzAe@vNaBjKmAfF]hE|Alr@|BbX`@xJPzQElNKrTTfKzAje@zEdk@|E~c@bAnMXlHDvDEnBg@~Ea@fEGz@uEe@wFa@yCN_Cv@uDtC_ClAoBZiBp@yQ~LyPpJ{HdGoBzCcHfMu@W_C`NkEtRaDdRiEnS}BfGqCvEqChBwFhDkIvFsGlI}C|CuCzC[pBEjBwAG{A\\mB~@wBpBgDbJqKjVsHtW}CrLwQpy@yDdHcEnFcDzBmGjC}TpDyJnCsFbGuJp\\eB`EwBxAqAVaAAoBaAYpBe@~Dk@dEQhB]dHAxMBrG?XXdMX`Ff@nFnA`JnAtKRz@Zh@rBpAxAfA~BrDjBvDrCrFhCjEbDfClDlAhFb@zCZrD~@|IvDvD|CtDvDzB|B|DjEvHtHlEpC`BdBrGpFnOzExK~@jKvClHfGpEvLbDvHxCfFrDlCtFb@pIsFtMiO~IsBxHl@pG~DdHpItTp`@zErMfTf^vGdOnQjq@zYfu@pAnCnFbJlFrKfQnYnKzR`H`SzBjK|AvTfG~zA~IvfB|Bd\\lCtVxB|NjBpH~B~GhDhH|HhOvEpMpAlF|@vG~@lJdAl_@dBpi@r@x^hBnWhCjR~CfQjVnnApDfIbClDnAhA`Ax@`Dx@nP^tOoAbEQ`GbCnHlHjOlWrIvLnCpD|AxDfAfEv@nFt@vL`AjJz@bF~AdFtEbEl]~[xSfQ|ItCjW`I`MvEpJfCdJjDlFvBzDpBnItGrD`FlDjG`CtFnAtDbAhDtArG|C`RjDfTzGjb@rC|SfJvy@vEza@tBzNtBvIjCtHvBbFfCbEfNzOzG`IpEvI|B`IlE~MlD~IvDxGbClC~AxA`Aj@tCxArMhEdLdE``@fO~HvD|IhF`M`JvCvBbEnB`KhE~EdCbExCdC`CrB|CjB~E|AhFzAnM|A~UrDpo@vB|WbDrZ~Ef^dGlZdK`b@zLdh@~CjM`CxHbDbI~JpQxUdc@lI~NjHfJ|GzGnEhIhFdLnD`MxLll@|Ltv@tDfVpFvYhEbWhFn]hBdO`AxJ^bF^vEj@`Ih@~Mf@hSJrOGpNaAhi@yBhnA@p{@Bxb@uAt|@{@|XUvRqADsBl@iGbI}C|Iqb@ju@cN`^sOlZuGpFcM_@gJVuYtHmPx@sTT}N`DcKrHiKh@eU{J{CcAiAT}@x@iAtCo}@lxCsOzd@aQ|h@q@|CiB`KkCxQyC~OiDxMmHbUkIhXyApGwAvJeAdJ}@|KiB|WuBtQeDbUoA|F}DxKoDxIgDpMyB~Li@jL}@vb@mBba@gA~NuB`RcEhX{B|O}Hnl@_Dt]_AhZNhe@Jje@y@bb@y@xf@c@`Oo@xOGlHGbJBhIErQXlJd@jKJnH_@bP]xHe@|Gc@xK_@pe@m@jUiCxp@}@xT?xM\\`Xw@lVf@d\\b@jMJtFR~KC|IQ|KWdVc@tJw@zQQdTJnI^zD|@bHzBxIjCzJ|@zEP`E@lK[tKSvJiAzRkArNuB`RcCnR}@vFiCrLuAlK}@fKoAlRsA|QgApK}AtH{BzGkInRqJjVyFxQsF~QeD`NqC`NwCvPwBtO{AfQ_AxLcBh^oAj[MdNCjFAjB^~Jh@|GrAhN`BrP~Aj[MlPcCbi@ObDA`CPjHn@dN~AvHbGrRp@dBv@fCbI|XhCdLhAvFlAhI~AvKbDx[|C~]fC|RhB`Nx@hGrB`RvAxTXfI^hPD|FI|FJhIf@bKxAlNnBtRhAxLbAfKzDxXt@|FxDtSlB~SbBnOlCjVzAjN^nDpAjL`BrTj@rIX~ELrU^~MHhLb@r[BvO\\|MTnQp@bMp@bIv@fGbArHdDjRrDxSdAfDsGvJmCrB{CdAmAt@qAp@m@`@a@p@m@|AuB|Im@rD{@bF{@|JWjE'}],
+  'summary': {'has_time_restrictions': False,
+   'has_toll': False,
+   'has_highway': False,
+   'has_ferry': False,
+   'min_lat': 50.836754,
+   'min_lon': -3.610295,
+   'max_lat': 50.867483,
+   'max_lon': -3.396712,
+   'time': 1427.153,
+   'length': 11.6191,
+   'cost': 1493.55},
+  'status_message': 'Found route between points',
+  'status': 0,
+  'units': 'miles',
+  'language': 'en-US'}}</code></pre>
+</div>
+</div>
+<div id="14612980" class="cell" data-execution_count="49">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb54"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a>summary</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="49">
+<pre><code>{'total_time_s': 1427.153,
+ 'total_dist': 11.6191,
+ 'legs': [{'leg_index': 0,
+   'time_s': 1427.153,
+   'distance': 11.6191,
+   'speed': 29.309233137582304}]}</code></pre>
+</div>
+</div>
+<div id="b9fc35be" class="cell" data-execution_count="50">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb56"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a>valhalla_audit_route_speeds(result)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+=== ROUTE SUMMARY ===
+Total time: 23.8 min
+Total dist: 11.62 km
+
+=== SPEED DISTRIBUTION ===
+&lt; 20 km/h (urban/stop-start)        | time:    1.1 min (  4.7%) | dist:    0.3 km (  2.7%)
+20–40 km/h (dense urban)            | time:   19.3 min ( 81.2%) | dist:    8.5 km ( 72.8%)
+40–60 km/h (suburban)               | time:    3.4 min ( 14.1%) | dist:    2.8 km ( 24.5%)
+60–90 km/h (A-road)                 | time:    0.0 min (  0.0%) | dist:    0.0 km (  0.0%)
+90+ km/h (motorway-like)            | time:    0.0 min (  0.0%) | dist:    0.0 km (  0.0%)</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="50">
+<pre><code>{'total_time_s': 1427.146,
+ 'total_dist_km': 11.6182,
+ 'band_stats': {'20–40 km/h (dense urban)': {'time': 1158.6619999999998,
+   'dist': 8.452399999999999},
+  '&lt; 20 km/h (urban/stop-start)': {'time': 67.281, 'dist': 0.3187},
+  '40–60 km/h (suburban)': {'time': 201.203, 'dist': 2.8471},
+  '60–90 km/h (A-road)': {'time': 0.0, 'dist': 0.0},
+  '90+ km/h (motorway-like)': {'time': 0.0, 'dist': 0.0}}}</code></pre>
+</div>
+</div>
+<div id="ac3b82ce" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb59"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a>result_gdf <span class="op">=</span> valhalla_maneuvers_to_gdf(result)</span>
+<span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-3"><a href="#cb59-3" aria-hidden="true" tabindex="-1"></a>ax <span class="op">=</span> result_gdf.plot(column<span class="op">=</span><span class="st">"speed_kmh"</span>, legend<span class="op">=</span><span class="va">True</span>, figsize<span class="op">=</span>(<span class="dv">8</span>,<span class="dv">4</span>))</span>
+<span id="cb59-4"><a href="#cb59-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-5"><a href="#cb59-5" aria-hidden="true" tabindex="-1"></a>cx.add_basemap(</span>
+<span id="cb59-6"><a href="#cb59-6" aria-hidden="true" tabindex="-1"></a>    ax, <span class="co"># the figure we created using our plot method</span></span>
+<span id="cb59-7"><a href="#cb59-7" aria-hidden="true" tabindex="-1"></a>    crs<span class="op">=</span>result_gdf.crs.to_string(), <span class="co"># we can pull the CRS out of the geodataframe!</span></span>
+<span id="cb59-8"><a href="#cb59-8" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb59-9"><a href="#cb59-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-10"><a href="#cb59-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Grab the auto-generated attribution object from matplotlib axes</span></span>
+<span id="cb59-11"><a href="#cb59-11" aria-hidden="true" tabindex="-1"></a>txt <span class="op">=</span> ax.texts[<span class="op">-</span><span class="dv">1</span>]</span>
+<span id="cb59-12"><a href="#cb59-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Adjust its position to outside the map, just below the bottom edge</span></span>
+<span id="cb59-13"><a href="#cb59-13" aria-hidden="true" tabindex="-1"></a>txt.set_position([<span class="fl">0.5</span>, <span class="op">-</span><span class="fl">0.1</span>])</span>
+<span id="cb59-14"><a href="#cb59-14" aria-hidden="true" tabindex="-1"></a>txt.set_ha(<span class="st">'center'</span>) <span class="co"># Center the text</span></span>
+<span id="cb59-15"><a href="#cb59-15" aria-hidden="true" tabindex="-1"></a>txt.set_va(<span class="st">'top'</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-41-output-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Let’s repeat this for our other routes.</p>
+<section id="to-exeter-airport" class="level4">
+<h4 class="anchored" data-anchor-id="to-exeter-airport">To Exeter Airport</h4>
+<div id="4efe1ec6" class="cell" data-execution_count="52">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb60"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb60-1"><a href="#cb60-1" aria-hidden="true" tabindex="-1"></a>result, summary <span class="op">=</span> valhalla_detailed_route(engine<span class="op">=</span>Actor(<span class="st">"../../datasets/devon-260422_valhalla-combined-modified.json"</span>),</span>
+<span id="cb60-2"><a href="#cb60-2" aria-hidden="true" tabindex="-1"></a>                        origin<span class="op">=</span>(origins.iloc[<span class="dv">0</span>].latitude, origins.iloc[<span class="dv">0</span>].longitude),</span>
+<span id="cb60-3"><a href="#cb60-3" aria-hidden="true" tabindex="-1"></a>                        destination<span class="op">=</span>(destinations.iloc[<span class="dv">1</span>].latitude, destinations.iloc[<span class="dv">1</span>].longitude),</span>
+<span id="cb60-4"><a href="#cb60-4" aria-hidden="true" tabindex="-1"></a>                        )</span>
+<span id="cb60-5"><a href="#cb60-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb60-6"><a href="#cb60-6" aria-hidden="true" tabindex="-1"></a>result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+=== OVERALL ===
+Time: 17.5 min
+Distance: 14.48 miles
+
+--- LEG 0 ---
+Time: 17.5 min
+Distance: 14.48 miles
+Speed: 49.6 miles/h
+
+Maneuvers:
+23.279s | 0.1721 | Drive north on Shortlands Road.
+32.749s | 0.2025 | Turn right onto Tiverton Road.
+17.196s |  0.118 | Turn left onto High Street/B3181.
+23.658s | 0.1584 | Turn right onto Station Road/B3181.
+1.606s | 0.0118 | Enter the roundabout and take the 1st exit onto Station Road/B3181.
+9.096s | 0.0671 | Exit the roundabout onto Station Road/B3181.
+9.91s | 0.0223 | Enter the roundabout and take the 2nd exit onto Station Road/B3181.
+17.397s | 0.1273 | Exit the roundabout onto Station Road/B3181.
+3.722s | 0.0223 | Enter the roundabout and take the 3rd exit onto Station Road/A373.
+6.367s | 0.0466 | Exit the roundabout onto Station Road/A373. Continue on A373.
+574.004s | 9.9431 | Turn right to take the M5 ramp.
+16.461s | 0.2858 | Take exit 29 toward Honiton/Exeter Airport.
+73.52s | 1.1346 | Bear left onto A30/Honiton Road. Continue on A30.
+17.467s | 0.2317 | Take the exit.
+2.167s | 0.0273 | Enter the roundabout and take the 1st exit onto Clyst Honiton Bypass/B3174.
+134.147s | 1.2595 | Exit the roundabout onto Clyst Honiton Bypass/B3174. Continue on B3174.
+3.628s | 0.0242 | Enter the roundabout and take the 2nd exit onto B3174.
+17.728s | 0.1764 | Exit the roundabout onto B3174.
+66.635s | 0.4524 | Turn right onto Treasbeare Lane.
+ 0.0s |    0.0 | Your destination is on the right.</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="52">
+<pre><code>{'trip': {'locations': [{'type': 'break',
+    'lat': 50.855107,
+    'lon': -3.396451,
+    'side_of_street': 'right',
+    'original_index': 0},
+   {'type': 'break',
+    'lat': 50.737141,
+    'lon': -3.413323,
+    'side_of_street': 'right',
+    'original_index': 1}],
+  'legs': [{'maneuvers': [{'type': 2,
+      'instruction': 'Drive north on Shortlands Road.',
+      'verbal_succinct_transition_instruction': 'Drive north. Then, in 900 feet, Turn right onto Tiverton Road.',
+      'verbal_pre_transition_instruction': 'Drive north on Shortlands Road. Then, in 900 feet, Turn right onto Tiverton Road.',
+      'verbal_post_transition_instruction': 'Continue for 900 feet.',
+      'street_names': ['Shortlands Road'],
+      'bearing_after': 4,
+      'time': 23.279,
+      'length': 0.1721,
+      'cost': 34.167,
+      'begin_shape_index': 0,
+      'end_shape_index': 18,
+      'verbal_multi_cue': True,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 10,
+      'instruction': 'Turn right onto Tiverton Road.',
+      'verbal_transition_alert_instruction': 'Turn right onto Tiverton Road.',
+      'verbal_succinct_transition_instruction': 'Turn right.',
+      'verbal_pre_transition_instruction': 'Turn right onto Tiverton Road.',
+      'verbal_post_transition_instruction': 'Continue for a quarter mile.',
+      'street_names': ['Tiverton Road'],
+      'bearing_before': 14,
+      'bearing_after': 104,
+      'time': 32.749,
+      'length': 0.2025,
+      'cost': 44.81,
+      'begin_shape_index': 18,
+      'end_shape_index': 29,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 15,
+      'instruction': 'Turn left onto High Street/B3181.',
+      'verbal_transition_alert_instruction': 'Turn left onto High Street.',
+      'verbal_succinct_transition_instruction': 'Turn left.',
+      'verbal_pre_transition_instruction': 'Turn left onto High Street, B3181.',
+      'verbal_post_transition_instruction': 'Continue for 600 feet.',
+      'street_names': ['High Street', 'B3181'],
+      'bearing_before': 83,
+      'bearing_after': 4,
+      'time': 17.196,
+      'length': 0.118,
+      'cost': 27.109,
+      'begin_shape_index': 29,
+      'end_shape_index': 44,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 10,
+      'instruction': 'Turn right onto Station Road/B3181.',
+      'verbal_transition_alert_instruction': 'Turn right onto Station Road.',
+      'verbal_succinct_transition_instruction': 'Turn right.',
+      'verbal_pre_transition_instruction': 'Turn right onto Station Road, B3181.',
+      'verbal_post_transition_instruction': 'Continue for 800 feet.',
+      'street_names': ['Station Road', 'B3181'],
+      'bearing_before': 14,
+      'bearing_after': 80,
+      'time': 23.658,
+      'length': 0.1584,
+      'cost': 31.815,
+      'begin_shape_index': 44,
+      'end_shape_index': 63,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 26,
+      'instruction': 'Enter the roundabout and take the 1st exit onto Station Road/B3181.',
+      'verbal_transition_alert_instruction': 'Enter the roundabout and take the 1st exit onto Station Road.',
+      'verbal_succinct_transition_instruction': 'Enter the roundabout and take the 1st exit.',
+      'verbal_pre_transition_instruction': 'Enter the roundabout and take the 1st exit onto Station Road, B3181.',
+      'bearing_before': 51,
+      'bearing_after': 39,
+      'time': 1.606,
+      'length': 0.0118,
+      'cost': 7.375,
+      'begin_shape_index': 63,
+      'end_shape_index': 68,
+      'roundabout_exit_count': 1,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 27,
+      'instruction': 'Exit the roundabout onto Station Road/B3181.',
+      'verbal_succinct_transition_instruction': 'Exit the roundabout.',
+      'verbal_pre_transition_instruction': 'Exit the roundabout onto Station Road, B3181.',
+      'verbal_post_transition_instruction': 'Continue for 400 feet.',
+      'street_names': ['Station Road', 'B3181'],
+      'bearing_before': 39,
+      'bearing_after': 19,
+      'time': 9.096,
+      'length': 0.0671,
+      'cost': 14.64,
+      'begin_shape_index': 68,
+      'end_shape_index': 80,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 26,
+      'instruction': 'Enter the roundabout and take the 2nd exit onto Station Road/B3181.',
+      'verbal_transition_alert_instruction': 'Enter the roundabout and take the 2nd exit onto Station Road.',
+      'verbal_succinct_transition_instruction': 'Enter the roundabout and take the 2nd exit.',
+      'verbal_pre_transition_instruction': 'Enter the roundabout and take the 2nd exit onto Station Road, B3181.',
+      'bearing_before': 57,
+      'bearing_after': 345,
+      'time': 9.91,
+      'length': 0.0223,
+      'cost': 9.038,
+      'begin_shape_index': 80,
+      'end_shape_index': 91,
+      'roundabout_exit_count': 2,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 27,
+      'instruction': 'Exit the roundabout onto Station Road/B3181.',
+      'verbal_succinct_transition_instruction': 'Exit the roundabout.',
+      'verbal_pre_transition_instruction': 'Exit the roundabout onto Station Road, B3181.',
+      'verbal_post_transition_instruction': 'Continue for 700 feet.',
+      'street_names': ['Station Road', 'B3181'],
+      'bearing_before': 143,
+      'bearing_after': 100,
+      'time': 17.397,
+      'length': 0.1273,
+      'cost': 27.233,
+      'begin_shape_index': 91,
+      'end_shape_index': 105,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 26,
+      'instruction': 'Enter the roundabout and take the 3rd exit onto Station Road/A373.',
+      'verbal_transition_alert_instruction': 'Enter the roundabout and take the 3rd exit onto Station Road.',
+      'verbal_succinct_transition_instruction': 'Enter the roundabout and take the 3rd exit.',
+      'verbal_pre_transition_instruction': 'Enter the roundabout and take the 3rd exit onto Station Road, A373.',
+      'bearing_before': 55,
+      'bearing_after': 47,
+      'time': 3.722,
+      'length': 0.0223,
+      'cost': 4.038,
+      'begin_shape_index': 105,
+      'end_shape_index': 114,
+      'roundabout_exit_count': 3,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 27,
+      'instruction': 'Exit the roundabout onto Station Road/A373. Continue on A373.',
+      'verbal_succinct_transition_instruction': 'Exit the roundabout. Then, in 200 feet, Turn right to take the M5 ramp.',
+      'verbal_pre_transition_instruction': 'Exit the roundabout onto Station Road, A373. Then, in 200 feet, Turn right to take the M5 ramp.',
+      'verbal_post_transition_instruction': 'Continue on A373 for 200 feet.',
+      'street_names': ['A373'],
+      'begin_street_names': ['Station Road', 'A373'],
+      'bearing_before': 146,
+      'bearing_after': 123,
+      'time': 6.367,
+      'length': 0.0466,
+      'cost': 6.013,
+      'begin_shape_index': 114,
+      'end_shape_index': 119,
+      'verbal_multi_cue': True,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 18,
+      'instruction': 'Turn right to take the M5 ramp.',
+      'verbal_transition_alert_instruction': 'Turn right to take the M5 ramp.',
+      'verbal_pre_transition_instruction': 'Turn right to take the M5 ramp.',
+      'verbal_post_transition_instruction': 'Continue for 10 miles.',
+      'street_names': ['M5'],
+      'bearing_before': 92,
+      'bearing_after': 167,
+      'time': 574.004,
+      'length': 9.9431,
+      'cost': 560.112,
+      'begin_shape_index': 119,
+      'end_shape_index': 297,
+      'highway': True,
+      'sign': {'exit_branch_elements': [{'text': 'M5'}]},
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 21,
+      'instruction': 'Take exit 29 toward Honiton/Exeter Airport.',
+      'verbal_transition_alert_instruction': 'Take exit 29.',
+      'verbal_pre_transition_instruction': 'Take exit 29 toward Honiton, Exeter Airport.',
+      'street_names': ['M5'],
+      'bearing_before': 186,
+      'bearing_after': 173,
+      'time': 16.461,
+      'length': 0.2858,
+      'cost': 17.625,
+      'begin_shape_index': 297,
+      'end_shape_index': 309,
+      'sign': {'exit_number_elements': [{'text': '29'}],
+       'exit_toward_elements': [{'text': 'Honiton', 'consecutive_count': 1},
+        {'text': 'Exeter Airport', 'consecutive_count': 1},
+        {'text': 'Exeter'}],
+       'exit_name_elements': [{'text': 'Sowton Interchange'}]},
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 16,
+      'instruction': 'Bear left onto A30/Honiton Road. Continue on A30.',
+      'verbal_transition_alert_instruction': 'Bear left onto A30.',
+      'verbal_succinct_transition_instruction': 'Bear left.',
+      'verbal_pre_transition_instruction': 'Bear left onto A30, Honiton Road.',
+      'verbal_post_transition_instruction': 'Continue on A30 for 1 mile.',
+      'street_names': ['A30'],
+      'begin_street_names': ['A30', 'Honiton Road'],
+      'bearing_before': 131,
+      'bearing_after': 85,
+      'time': 73.52,
+      'length': 1.1346,
+      'cost': 116.382,
+      'begin_shape_index': 309,
+      'end_shape_index': 344,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 21,
+      'instruction': 'Take the exit.',
+      'verbal_transition_alert_instruction': 'Take the exit.',
+      'verbal_pre_transition_instruction': 'Take the exit.',
+      'bearing_before': 95,
+      'bearing_after': 90,
+      'time': 17.467,
+      'length': 0.2317,
+      'cost': 16.567,
+      'begin_shape_index': 344,
+      'end_shape_index': 356,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 26,
+      'instruction': 'Enter the roundabout and take the 1st exit onto Clyst Honiton Bypass/B3174.',
+      'verbal_transition_alert_instruction': 'Enter the roundabout and take the 1st exit onto Clyst Honiton Bypass.',
+      'verbal_succinct_transition_instruction': 'Enter the roundabout and take the 1st exit.',
+      'verbal_pre_transition_instruction': 'Enter the roundabout and take the 1st exit onto Clyst Honiton Bypass, B3174.',
+      'bearing_before': 39,
+      'bearing_after': 7,
+      'time': 2.167,
+      'length': 0.0273,
+      'cost': 7.229,
+      'begin_shape_index': 356,
+      'end_shape_index': 362,
+      'roundabout_exit_count': 1,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 27,
+      'instruction': 'Exit the roundabout onto Clyst Honiton Bypass/B3174. Continue on B3174.',
+      'verbal_succinct_transition_instruction': 'Exit the roundabout.',
+      'verbal_pre_transition_instruction': 'Exit the roundabout onto Clyst Honiton Bypass, B3174.',
+      'verbal_post_transition_instruction': 'Continue on B3174 for 1.5 miles.',
+      'street_names': ['B3174'],
+      'begin_street_names': ['Clyst Honiton Bypass', 'B3174'],
+      'bearing_before': 75,
+      'bearing_after': 44,
+      'time': 134.147,
+      'length': 1.2595,
+      'cost': 143.657,
+      'begin_shape_index': 362,
+      'end_shape_index': 439,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 26,
+      'instruction': 'Enter the roundabout and take the 2nd exit onto B3174.',
+      'verbal_transition_alert_instruction': 'Enter the roundabout and take the 2nd exit onto B3174.',
+      'verbal_succinct_transition_instruction': 'Enter the roundabout and take the 2nd exit.',
+      'verbal_pre_transition_instruction': 'Enter the roundabout and take the 2nd exit onto B3174.',
+      'bearing_before': 17,
+      'bearing_after': 19,
+      'time': 3.628,
+      'length': 0.0242,
+      'cost': 7.799,
+      'begin_shape_index': 439,
+      'end_shape_index': 449,
+      'roundabout_exit_count': 2,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 27,
+      'instruction': 'Exit the roundabout onto B3174.',
+      'verbal_succinct_transition_instruction': 'Exit the roundabout.',
+      'verbal_pre_transition_instruction': 'Exit the roundabout onto B3174.',
+      'verbal_post_transition_instruction': 'Continue for 900 feet.',
+      'street_names': ['B3174'],
+      'bearing_before': 128,
+      'bearing_after': 109,
+      'time': 17.728,
+      'length': 0.1764,
+      'cost': 24.746,
+      'begin_shape_index': 449,
+      'end_shape_index': 468,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 10,
+      'instruction': 'Turn right onto Treasbeare Lane.',
+      'verbal_transition_alert_instruction': 'Turn right onto Treasbeare Lane.',
+      'verbal_succinct_transition_instruction': 'Turn right.',
+      'verbal_pre_transition_instruction': 'Turn right onto Treasbeare Lane.',
+      'verbal_post_transition_instruction': 'Continue for a half mile.',
+      'street_names': ['Treasbeare Lane'],
+      'bearing_before': 52,
+      'bearing_after': 143,
+      'time': 66.635,
+      'length': 0.4524,
+      'cost': 75.167,
+      'begin_shape_index': 468,
+      'end_shape_index': 488,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 5,
+      'instruction': 'Your destination is on the right.',
+      'verbal_transition_alert_instruction': 'Your destination will be on the right.',
+      'verbal_pre_transition_instruction': 'Your destination is on the right.',
+      'bearing_before': 145,
+      'time': 0.0,
+      'length': 0.0,
+      'cost': 0.0,
+      'begin_shape_index': 488,
+      'end_shape_index': 488,
+      'travel_mode': 'drive',
+      'travel_type': 'car'}],
+    'summary': {'has_time_restrictions': False,
+     'has_toll': False,
+     'has_highway': True,
+     'has_ferry': False,
+     'min_lat': 50.729028,
+     'min_lon': -3.462135,
+     'max_lat': 50.861101,
+     'max_lon': -3.38319,
+     'time': 1050.746,
+     'length': 14.4843,
+     'cost': 1175.531},
+    'shape': '}k}~_BhfinEWAqFWqG\\iBZyFpAeT|B{Cx@qB`CoExJsCjJcCfImEpJsBnByBz@wBTyEa@uNyDyWwHhBkT`AuUh@mQCk[EmDQmPy@ey@yAc~@wB{]k@}NImEyAImDO_KsAmDu@iDcAs@UuG_CmB_AqLoGyGqDsJ}HmDiBwDyBaCoAeF{ANmCc@kFaEaYeBiLgBiMiBgOuB}WoAuNeCeUIw@y@gHo@{BcB}E{BsEeCqDyEaFcEoDuAyBa@sBq@VeAOw@aAa@aB?mByASsDiB{DoCmBqBkAqBgBqDmAiDaCkGeCeH{C_Kw@cC{@qCs@d@y@Fw@Wm@w@_@kAKyAHaB^sAp@{@z@W|@L\\uB^eGBgGEoK_AgReAmWeAyUy@oRq@kHS}Hg@sPoA}GaB{EyAgDi@y@a@eA_@sBMuDPeA`@qBn@sAx@_AbAe@`A_EbDcJt@g]J_ED{HjBqApBu@pDIzWfD~d@zGfH`Ax^xFf_B~RzPrHdhCjPxo@rEdt@lIjm@~Lrf@dLpe@~Ox[tKr[xN|X`Nte@bWxIhFb}@rn@fk@jd@z]tVre@dW`WbLjUpItY`IhWtE~ThDrg@~DrsAnBnm@p@~i@jFte@lIxm@hQpf@lT|c@|Xrf@`_@v`@v_@|c@~i@``@rf@tgAxyA||@~jAja@de@`f@fe@xc@n^fe@n[rpAjr@`kAfn@bf@|Y`e@n\\te@pa@la@l`@tmA|rA|dAtiAzcA`iAndAviAbhAdmAnPlRbn@bs@xFtHx`@th@h`@~k@bRb]lc@hx@d_@xt@v]l{@d_@ldAvUdt@te@tyA~q@nkBno@z}A`v@z`B~y@|bBjbAhdBtTx^p]hj@rs@xlAbcAz`B|y@ztAh}@|xA`z@puAz~@l{A`y@ltAlx@frAbfA|dB|^jg@jZj`@v`@rd@t^na@ze@rb@|b@v]jc@hZxPhK|GfEzHxEfd@fU|g@hTta@nNrk@`Qtb@fJdf@lGbNpAfZ|Czp@lI`VxBpn@zI|ZzFhZbH`\\dJxg@lQzOrGv[hNh_@vRpk@f]~^xW`f@f`@p\\tYj_Axz@ty@nv@byAhsAbQ~OjIvHduAzoAzpBfiBfzAvsAvo@dg@zq@dc@np@f]zo@bXl`@tMr_@zJh[vHn`@~Gvg@fG`d@rDnv@lBhf@Qdj@kBt^oCp_@gEj^wF`a@{Hhw@{QvaBsa@`IoBtbFwnAnuAaYbvAsTjjAwLbjAeH|gAkCpdAa@t{@hBpPt@t]dBj`@pCj]|CtO|A|PbBv_A~Ljb@|HzJlBjnArWzhAv\\tw@rYn}@j]taD|xAxi@|T~MdGxPtFdNxD`fBde@zg@fLr}@rNz|@zKf_@tCn]tC|SiChZ?hz@h@xd@BrY{Avs@kG|HoDtBmA|AcBx@_A~@oBjE}Jq@w[oDgv@i@mLQyEUuFw@cR_@sK{Aec@qCwv@aCac@yFg|@qH_|@oFoh@sRagB}NorAuHw|@eDek@eBwb@cBkm@s@aj@Skp@^{h@dAcl@dBci@rCin@tAyYlEcp@lJi`BrL_cB|E{r@lB}ZbB_^zBuh@jCet@x@o_@GyhBc@en@aBsm@yBwVcD}YuCsPoA}GqCcLgB{F_BwEgAsB{DoFyC[uBiAiBsBsAyCy@sDY}CwF{JwAgBqGsE}EcC_EFuDNaE@{Cv@wCvAgi@vY_VbLwMvEqNtDqRnCkZbGgXjH_HhBgPpC_BNqLjAaITkJM{Hk@wScAwDyBgG_AiB_@mFgBqHkCsNgG}GkDiRoLyEg@qFmF}AwAkBcDkAsBmCIkBgBkFuFyE{GgD_KuG}RgEkRoMy_@uMyb@oI}VwKmZmI{TyF_RiBeFgJmWiGoPyFsPuM_`@qQce@kDmKeS_j@yDwJqGmP{IuSkSya@aRi[}R{\\eNgV{CsGoGcNsb@yeAwLa`@mTqx@{Hq`@iGa^wAmG_BeBqAcA}CeBoEgAeAWaAo@s@aAk@qA]aBOgBAkBJgBZaBp@cBr@sEb@oCZiDh@_FC}GKgGc@uGa@_De@{CgEiWsAqHsAqFoEmRgAgEeC{IuBsHcFcQcLq[{Lm[n@u@~@uAhAwAZWjAgAbGeDxQkIzQ_Ktw@_a@pJ{D|NqDd~@gNbS}DjJyDnTeJxF{DbEgFvn@{aAdp@kv@??'}],
+  'summary': {'has_time_restrictions': False,
+   'has_toll': False,
+   'has_highway': True,
+   'has_ferry': False,
+   'min_lat': 50.729028,
+   'min_lon': -3.462135,
+   'max_lat': 50.861101,
+   'max_lon': -3.38319,
+   'time': 1050.746,
+   'length': 14.4843,
+   'cost': 1175.531},
+  'status_message': 'Found route between points',
+  'status': 0,
+  'units': 'miles',
+  'language': 'en-US'}}</code></pre>
+</div>
+</div>
+<div id="ee7f6604" class="cell" data-execution_count="53">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb63"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb63-1"><a href="#cb63-1" aria-hidden="true" tabindex="-1"></a>summary</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="53">
+<pre><code>{'total_time_s': 1050.746,
+ 'total_dist': 14.4843,
+ 'legs': [{'leg_index': 0,
+   'time_s': 1050.746,
+   'distance': 14.4843,
+   'speed': 49.625199620079435}]}</code></pre>
+</div>
+</div>
+<div id="af293df4" class="cell" data-execution_count="54">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb65"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a>valhalla_audit_route_speeds(result)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+=== ROUTE SUMMARY ===
+Total time: 17.5 min
+Total dist: 14.48 km
+
+=== SPEED DISTRIBUTION ===
+&lt; 20 km/h (urban/stop-start)        | time:    0.2 min (  0.9%) | dist:    0.0 km (  0.2%)
+20–40 km/h (dense urban)            | time:    6.0 min ( 34.0%) | dist:    2.8 km ( 19.6%)
+40–60 km/h (suburban)               | time:    1.6 min (  8.9%) | dist:    1.4 km (  9.6%)
+60–90 km/h (A-road)                 | time:    9.8 min ( 56.2%) | dist:   10.2 km ( 70.6%)
+90+ km/h (motorway-like)            | time:    0.0 min (  0.0%) | dist:    0.0 km (  0.0%)</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="54">
+<pre><code>{'total_time_s': 1050.737,
+ 'total_dist_km': 14.483400000000001,
+ 'band_stats': {'20–40 km/h (dense urban)': {'time': 357.20799999999997,
+   'dist': 2.8386},
+  '&lt; 20 km/h (urban/stop-start)': {'time': 9.91, 'dist': 0.0223},
+  '60–90 km/h (A-road)': {'time': 590.465, 'dist': 10.2289},
+  '40–60 km/h (suburban)': {'time': 93.154, 'dist': 1.3936000000000002},
+  '90+ km/h (motorway-like)': {'time': 0.0, 'dist': 0.0}}}</code></pre>
+</div>
+</div>
+<div id="1c96dacd" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb68"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb68-1"><a href="#cb68-1" aria-hidden="true" tabindex="-1"></a>result_gdf <span class="op">=</span> valhalla_maneuvers_to_gdf(result)</span>
+<span id="cb68-2"><a href="#cb68-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb68-3"><a href="#cb68-3" aria-hidden="true" tabindex="-1"></a>ax <span class="op">=</span> result_gdf.plot(column<span class="op">=</span><span class="st">"speed_kmh"</span>, legend<span class="op">=</span><span class="va">True</span>, figsize<span class="op">=</span>(<span class="dv">10</span>,<span class="dv">6</span>))</span>
+<span id="cb68-4"><a href="#cb68-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb68-5"><a href="#cb68-5" aria-hidden="true" tabindex="-1"></a>cx.add_basemap(</span>
+<span id="cb68-6"><a href="#cb68-6" aria-hidden="true" tabindex="-1"></a>    ax, <span class="co"># the figure we created using our plot method</span></span>
+<span id="cb68-7"><a href="#cb68-7" aria-hidden="true" tabindex="-1"></a>    crs<span class="op">=</span>result_gdf.crs.to_string(), <span class="co"># we can pull the CRS out of the geodataframe!</span></span>
+<span id="cb68-8"><a href="#cb68-8" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb68-9"><a href="#cb68-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb68-10"><a href="#cb68-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Grab the auto-generated attribution object from matplotlib axes</span></span>
+<span id="cb68-11"><a href="#cb68-11" aria-hidden="true" tabindex="-1"></a>txt <span class="op">=</span> ax.texts[<span class="op">-</span><span class="dv">1</span>]</span>
+<span id="cb68-12"><a href="#cb68-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Adjust its position to outside the map, just below the bottom edge</span></span>
+<span id="cb68-13"><a href="#cb68-13" aria-hidden="true" tabindex="-1"></a>txt.set_position([<span class="fl">0.5</span>, <span class="op">-</span><span class="fl">0.1</span>])</span>
+<span id="cb68-14"><a href="#cb68-14" aria-hidden="true" tabindex="-1"></a>txt.set_ha(<span class="st">'center'</span>) <span class="co"># Center the text</span></span>
+<span id="cb68-15"><a href="#cb68-15" aria-hidden="true" tabindex="-1"></a>txt.set_va(<span class="st">'top'</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-45-output-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="cullompton-to-tavistock-cornish-arms" class="level3">
+<h3 class="anchored" data-anchor-id="cullompton-to-tavistock-cornish-arms">Cullompton to Tavistock (Cornish Arms)</h3>
+<div id="82571343" class="cell" data-execution_count="56">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb69"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a>result, summary <span class="op">=</span> valhalla_detailed_route(</span>
+<span id="cb69-2"><a href="#cb69-2" aria-hidden="true" tabindex="-1"></a>    engine<span class="op">=</span>Actor(<span class="st">"../../datasets/devon-260422_valhalla-combined-modified.json"</span>),</span>
+<span id="cb69-3"><a href="#cb69-3" aria-hidden="true" tabindex="-1"></a>    origin<span class="op">=</span>(origins.iloc[<span class="dv">0</span>].latitude, origins.iloc[<span class="dv">0</span>].longitude),</span>
+<span id="cb69-4"><a href="#cb69-4" aria-hidden="true" tabindex="-1"></a>    destination<span class="op">=</span>(destinations.iloc[<span class="dv">2</span>].latitude, destinations.iloc[<span class="dv">2</span>].longitude),</span>
+<span id="cb69-5"><a href="#cb69-5" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb69-6"><a href="#cb69-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb69-7"><a href="#cb69-7" aria-hidden="true" tabindex="-1"></a>result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+=== OVERALL ===
+Time: 60.4 min
+Distance: 55.43 miles
+
+--- LEG 0 ---
+Time: 60.4 min
+Distance: 55.43 miles
+Speed: 55.1 miles/h
+
+Maneuvers:
+23.279s | 0.1721 | Drive north on Shortlands Road.
+32.749s | 0.2025 | Turn right onto Tiverton Road.
+17.196s |  0.118 | Turn left onto High Street/B3181.
+23.658s | 0.1584 | Turn right onto Station Road/B3181.
+1.606s | 0.0118 | Enter the roundabout and take the 1st exit onto Station Road/B3181.
+9.096s | 0.0671 | Exit the roundabout onto Station Road/B3181.
+9.91s | 0.0223 | Enter the roundabout and take the 2nd exit onto Station Road/B3181.
+17.397s | 0.1273 | Exit the roundabout onto Station Road/B3181.
+3.722s | 0.0223 | Enter the roundabout and take the 3rd exit onto Station Road/A373.
+6.367s | 0.0466 | Exit the roundabout onto Station Road/A373. Continue on A373.
+843.429s | 14.6388 | Turn right to take the M5 ramp.
+54.772s | 0.7083 | Keep left to take exit 31 onto A30.
+1525.255s | 26.5816 | Continue on A30.
+13.947s | 0.2429 | Take the Sourton Cross exit.
+973.709s | 11.8563 | Turn left onto A386.
+26.07s | 0.1926 | Bear left onto A386/Dolvin Road. Continue on Dolvin Road.
+7.953s | 0.0211 | Enter Whitchurch Road and take the 2nd exit onto A386/Abbey Place.
+33.781s | 0.2352 | Exit the roundabout onto A386/Abbey Place.
+ 0.0s |    0.0 | You have arrived at your destination.</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="56">
+<pre><code>{'trip': {'locations': [{'type': 'break',
+    'lat': 50.855107,
+    'lon': -3.396451,
+    'side_of_street': 'right',
+    'original_index': 0},
+   {'type': 'break', 'lat': 50.551448, 'lon': -4.14675, 'original_index': 1}],
+  'legs': [{'maneuvers': [{'type': 2,
+      'instruction': 'Drive north on Shortlands Road.',
+      'verbal_succinct_transition_instruction': 'Drive north. Then, in 900 feet, Turn right onto Tiverton Road.',
+      'verbal_pre_transition_instruction': 'Drive north on Shortlands Road. Then, in 900 feet, Turn right onto Tiverton Road.',
+      'verbal_post_transition_instruction': 'Continue for 900 feet.',
+      'street_names': ['Shortlands Road'],
+      'bearing_after': 4,
+      'time': 23.279,
+      'length': 0.1721,
+      'cost': 34.167,
+      'begin_shape_index': 0,
+      'end_shape_index': 18,
+      'verbal_multi_cue': True,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 10,
+      'instruction': 'Turn right onto Tiverton Road.',
+      'verbal_transition_alert_instruction': 'Turn right onto Tiverton Road.',
+      'verbal_succinct_transition_instruction': 'Turn right.',
+      'verbal_pre_transition_instruction': 'Turn right onto Tiverton Road.',
+      'verbal_post_transition_instruction': 'Continue for a quarter mile.',
+      'street_names': ['Tiverton Road'],
+      'bearing_before': 14,
+      'bearing_after': 104,
+      'time': 32.749,
+      'length': 0.2025,
+      'cost': 44.81,
+      'begin_shape_index': 18,
+      'end_shape_index': 29,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 15,
+      'instruction': 'Turn left onto High Street/B3181.',
+      'verbal_transition_alert_instruction': 'Turn left onto High Street.',
+      'verbal_succinct_transition_instruction': 'Turn left.',
+      'verbal_pre_transition_instruction': 'Turn left onto High Street, B3181.',
+      'verbal_post_transition_instruction': 'Continue for 600 feet.',
+      'street_names': ['High Street', 'B3181'],
+      'bearing_before': 83,
+      'bearing_after': 4,
+      'time': 17.196,
+      'length': 0.118,
+      'cost': 27.109,
+      'begin_shape_index': 29,
+      'end_shape_index': 44,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 10,
+      'instruction': 'Turn right onto Station Road/B3181.',
+      'verbal_transition_alert_instruction': 'Turn right onto Station Road.',
+      'verbal_succinct_transition_instruction': 'Turn right.',
+      'verbal_pre_transition_instruction': 'Turn right onto Station Road, B3181.',
+      'verbal_post_transition_instruction': 'Continue for 800 feet.',
+      'street_names': ['Station Road', 'B3181'],
+      'bearing_before': 14,
+      'bearing_after': 80,
+      'time': 23.658,
+      'length': 0.1584,
+      'cost': 31.815,
+      'begin_shape_index': 44,
+      'end_shape_index': 63,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 26,
+      'instruction': 'Enter the roundabout and take the 1st exit onto Station Road/B3181.',
+      'verbal_transition_alert_instruction': 'Enter the roundabout and take the 1st exit onto Station Road.',
+      'verbal_succinct_transition_instruction': 'Enter the roundabout and take the 1st exit.',
+      'verbal_pre_transition_instruction': 'Enter the roundabout and take the 1st exit onto Station Road, B3181.',
+      'bearing_before': 51,
+      'bearing_after': 39,
+      'time': 1.606,
+      'length': 0.0118,
+      'cost': 7.375,
+      'begin_shape_index': 63,
+      'end_shape_index': 68,
+      'roundabout_exit_count': 1,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 27,
+      'instruction': 'Exit the roundabout onto Station Road/B3181.',
+      'verbal_succinct_transition_instruction': 'Exit the roundabout.',
+      'verbal_pre_transition_instruction': 'Exit the roundabout onto Station Road, B3181.',
+      'verbal_post_transition_instruction': 'Continue for 400 feet.',
+      'street_names': ['Station Road', 'B3181'],
+      'bearing_before': 39,
+      'bearing_after': 19,
+      'time': 9.096,
+      'length': 0.0671,
+      'cost': 14.64,
+      'begin_shape_index': 68,
+      'end_shape_index': 80,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 26,
+      'instruction': 'Enter the roundabout and take the 2nd exit onto Station Road/B3181.',
+      'verbal_transition_alert_instruction': 'Enter the roundabout and take the 2nd exit onto Station Road.',
+      'verbal_succinct_transition_instruction': 'Enter the roundabout and take the 2nd exit.',
+      'verbal_pre_transition_instruction': 'Enter the roundabout and take the 2nd exit onto Station Road, B3181.',
+      'bearing_before': 57,
+      'bearing_after': 345,
+      'time': 9.91,
+      'length': 0.0223,
+      'cost': 9.038,
+      'begin_shape_index': 80,
+      'end_shape_index': 91,
+      'roundabout_exit_count': 2,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 27,
+      'instruction': 'Exit the roundabout onto Station Road/B3181.',
+      'verbal_succinct_transition_instruction': 'Exit the roundabout.',
+      'verbal_pre_transition_instruction': 'Exit the roundabout onto Station Road, B3181.',
+      'verbal_post_transition_instruction': 'Continue for 700 feet.',
+      'street_names': ['Station Road', 'B3181'],
+      'bearing_before': 143,
+      'bearing_after': 100,
+      'time': 17.397,
+      'length': 0.1273,
+      'cost': 27.233,
+      'begin_shape_index': 91,
+      'end_shape_index': 105,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 26,
+      'instruction': 'Enter the roundabout and take the 3rd exit onto Station Road/A373.',
+      'verbal_transition_alert_instruction': 'Enter the roundabout and take the 3rd exit onto Station Road.',
+      'verbal_succinct_transition_instruction': 'Enter the roundabout and take the 3rd exit.',
+      'verbal_pre_transition_instruction': 'Enter the roundabout and take the 3rd exit onto Station Road, A373.',
+      'bearing_before': 55,
+      'bearing_after': 47,
+      'time': 3.722,
+      'length': 0.0223,
+      'cost': 4.038,
+      'begin_shape_index': 105,
+      'end_shape_index': 114,
+      'roundabout_exit_count': 3,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 27,
+      'instruction': 'Exit the roundabout onto Station Road/A373. Continue on A373.',
+      'verbal_succinct_transition_instruction': 'Exit the roundabout. Then, in 200 feet, Turn right to take the M5 ramp.',
+      'verbal_pre_transition_instruction': 'Exit the roundabout onto Station Road, A373. Then, in 200 feet, Turn right to take the M5 ramp.',
+      'verbal_post_transition_instruction': 'Continue on A373 for 200 feet.',
+      'street_names': ['A373'],
+      'begin_street_names': ['Station Road', 'A373'],
+      'bearing_before': 146,
+      'bearing_after': 123,
+      'time': 6.367,
+      'length': 0.0466,
+      'cost': 6.013,
+      'begin_shape_index': 114,
+      'end_shape_index': 119,
+      'verbal_multi_cue': True,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 18,
+      'instruction': 'Turn right to take the M5 ramp.',
+      'verbal_transition_alert_instruction': 'Turn right to take the M5 ramp.',
+      'verbal_pre_transition_instruction': 'Turn right to take the M5 ramp.',
+      'verbal_post_transition_instruction': 'Continue for 15 miles.',
+      'street_names': ['M5'],
+      'bearing_before': 92,
+      'bearing_after': 167,
+      'time': 843.429,
+      'length': 14.6388,
+      'cost': 841.844,
+      'begin_shape_index': 119,
+      'end_shape_index': 396,
+      'highway': True,
+      'sign': {'exit_branch_elements': [{'text': 'M5'}]},
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 24,
+      'instruction': 'Keep left to take exit 31 onto A30.',
+      'verbal_transition_alert_instruction': 'Keep left to take exit 31.',
+      'verbal_pre_transition_instruction': 'Keep left to take exit 31 onto A30.',
+      'street_names': ['M5'],
+      'bearing_before': 227,
+      'bearing_after': 220,
+      'time': 54.772,
+      'length': 0.7083,
+      'cost': 53.393,
+      'begin_shape_index': 396,
+      'end_shape_index': 435,
+      'sign': {'exit_number_elements': [{'text': '31'}],
+       'exit_branch_elements': [{'text': 'A30', 'consecutive_count': 1}],
+       'exit_name_elements': [{'text': "Pearce's Hill"}]},
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 8,
+      'instruction': 'Continue on A30.',
+      'verbal_transition_alert_instruction': 'Continue on A30.',
+      'verbal_pre_transition_instruction': 'Continue on A30.',
+      'verbal_post_transition_instruction': 'Continue for 27 miles.',
+      'street_names': ['A30'],
+      'bearing_before': 324,
+      'bearing_after': 324,
+      'time': 1525.255,
+      'length': 26.5816,
+      'cost': 1418.813,
+      'begin_shape_index': 435,
+      'end_shape_index': 1004,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 21,
+      'instruction': 'Take the Sourton Cross exit.',
+      'verbal_transition_alert_instruction': 'Take the Sourton Cross exit.',
+      'verbal_pre_transition_instruction': 'Take the Sourton Cross exit.',
+      'bearing_before': 234,
+      'bearing_after': 226,
+      'time': 13.947,
+      'length': 0.2429,
+      'cost': 12.194,
+      'begin_shape_index': 1004,
+      'end_shape_index': 1022,
+      'sign': {'exit_name_elements': [{'text': 'Sourton Cross'}]},
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 15,
+      'instruction': 'Turn left onto A386.',
+      'verbal_transition_alert_instruction': 'Turn left onto A386.',
+      'verbal_succinct_transition_instruction': 'Turn left.',
+      'verbal_pre_transition_instruction': 'Turn left onto A386.',
+      'verbal_post_transition_instruction': 'Continue for 12 miles.',
+      'street_names': ['A386'],
+      'bearing_before': 266,
+      'bearing_after': 190,
+      'time': 973.709,
+      'length': 11.8563,
+      'cost': 880.727,
+      'begin_shape_index': 1022,
+      'end_shape_index': 1510,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 16,
+      'instruction': 'Bear left onto A386/Dolvin Road. Continue on Dolvin Road.',
+      'verbal_transition_alert_instruction': 'Bear left onto A386.',
+      'verbal_succinct_transition_instruction': 'Bear left.',
+      'verbal_pre_transition_instruction': 'Bear left onto A386, Dolvin Road.',
+      'verbal_post_transition_instruction': 'Continue on Dolvin Road for a quarter mile.',
+      'street_names': ['Dolvin Road'],
+      'begin_street_names': ['A386', 'Dolvin Road'],
+      'bearing_before': 265,
+      'bearing_after': 229,
+      'time': 26.07,
+      'length': 0.1926,
+      'cost': 27.779,
+      'begin_shape_index': 1510,
+      'end_shape_index': 1522,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 26,
+      'instruction': 'Enter Whitchurch Road and take the 2nd exit onto A386/Abbey Place.',
+      'verbal_transition_alert_instruction': 'Enter Whitchurch Road and take the 2nd exit onto A386.',
+      'verbal_succinct_transition_instruction': 'Enter the roundabout and take the 2nd exit.',
+      'verbal_pre_transition_instruction': 'Enter Whitchurch Road and take the 2nd exit onto A386, Abbey Place.',
+      'street_names': ['Whitchurch Road'],
+      'bearing_before': 175,
+      'bearing_after': 194,
+      'time': 7.953,
+      'length': 0.0211,
+      'cost': 8.6,
+      'begin_shape_index': 1522,
+      'end_shape_index': 1534,
+      'roundabout_exit_count': 2,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 27,
+      'instruction': 'Exit the roundabout onto A386/Abbey Place.',
+      'verbal_succinct_transition_instruction': 'Exit the roundabout.',
+      'verbal_pre_transition_instruction': 'Exit the roundabout onto A386, Abbey Place.',
+      'verbal_post_transition_instruction': 'Continue for a quarter mile.',
+      'street_names': ['A386'],
+      'begin_street_names': ['A386', 'Abbey Place'],
+      'bearing_before': 325,
+      'bearing_after': 311,
+      'time': 33.781,
+      'length': 0.2352,
+      'cost': 55.038,
+      'begin_shape_index': 1534,
+      'end_shape_index': 1563,
+      'travel_mode': 'drive',
+      'travel_type': 'car'},
+     {'type': 4,
+      'instruction': 'You have arrived at your destination.',
+      'verbal_transition_alert_instruction': 'You will arrive at your destination.',
+      'verbal_pre_transition_instruction': 'You have arrived at your destination.',
+      'bearing_before': 335,
+      'time': 0.0,
+      'length': 0.0,
+      'cost': 0.0,
+      'begin_shape_index': 1563,
+      'end_shape_index': 1563,
+      'travel_mode': 'drive',
+      'travel_type': 'car'}],
+    'summary': {'has_time_restrictions': False,
+     'has_toll': False,
+     'has_highway': True,
+     'has_ferry': False,
+     'min_lat': 50.548826,
+     'min_lon': -4.146689,
+     'max_lat': 50.861101,
+     'max_lon': -3.38319,
+     'time': 3623.905,
+     'length': 55.4261,
+     'cost': 3504.635},
+    'shape': '}k}~_BhfinEWAqFWqG\\iBZyFpAeT|B{Cx@qB`CoExJsCjJcCfImEpJsBnByBz@wBTyEa@uNyDyWwHhBkT`AuUh@mQCk[EmDQmPy@ey@yAc~@wB{]k@}NImEyAImDO_KsAmDu@iDcAs@UuG_CmB_AqLoGyGqDsJ}HmDiBwDyBaCoAeF{ANmCc@kFaEaYeBiLgBiMiBgOuB}WoAuNeCeUIw@y@gHo@{BcB}E{BsEeCqDyEaFcEoDuAyBa@sBq@VeAOw@aAa@aB?mByASsDiB{DoCmBqBkAqBgBqDmAiDaCkGeCeH{C_Kw@cC{@qCs@d@y@Fw@Wm@w@_@kAKyAHaB^sAp@{@z@W|@L\\uB^eGBgGEoK_AgReAmWeAyUy@oRq@kHS}Hg@sPoA}GaB{EyAgDi@y@a@eA_@sBMuDPeA`@qBn@sAx@_AbAe@`A_EbDcJt@g]J_ED{HjBqApBu@pDIzWfD~d@zGfH`Ax^xFf_B~RzPrHdhCjPxo@rEdt@lIjm@~Lrf@dLpe@~Ox[tKr[xN|X`Nte@bWxIhFb}@rn@fk@jd@z]tVre@dW`WbLjUpItY`IhWtE~ThDrg@~DrsAnBnm@p@~i@jFte@lIxm@hQpf@lT|c@|Xrf@`_@v`@v_@|c@~i@``@rf@tgAxyA||@~jAja@de@`f@fe@xc@n^fe@n[rpAjr@`kAfn@bf@|Y`e@n\\te@pa@la@l`@tmA|rA|dAtiAzcA`iAndAviAbhAdmAnPlRbn@bs@xFtHx`@th@h`@~k@bRb]lc@hx@d_@xt@v]l{@d_@ldAvUdt@te@tyA~q@nkBno@z}A`v@z`B~y@|bBjbAhdBtTx^p]hj@rs@xlAbcAz`B|y@ztAh}@|xA`z@puAz~@l{A`y@ltAlx@frAbfA|dB|^jg@jZj`@v`@rd@t^na@ze@rb@|b@v]jc@hZxPhK|GfEzHxEfd@fU|g@hTta@nNrk@`Qtb@fJdf@lGbNpAfZ|Czp@lI`VxBpn@zI|ZzFhZbH`\\dJxg@lQzOrGv[hNh_@vRpk@f]~^xW`f@f`@p\\tYj_Axz@ty@nv@byAhsAbQ~OjIvHduAzoAzpBfiBfzAvsAvo@dg@zq@dc@np@f]zo@bXl`@tMr_@zJh[vHn`@~Gvg@fG`d@rDnv@lBhf@Qdj@kBt^oCp_@gEj^wF`a@{Hhw@{QvaBsa@`IoBtbFwnAnuAaYbvAsTjjAwLbjAeH|gAkCpdAa@t{@hBpPt@t]dBj`@pCj]|CtO|A|PbBv_A~Ljb@|HzJlBjnArWzhAv\\tw@rYn}@j]taD|xAxi@|T~MdGxPtFdNxD`fBde@zg@fLr}@rNz|@zKf_@tCn]tCxaAfFt`AnBdjBA~f@Of}@M`hBmA`p@sA`hGqCpb@DnxBkBd}@r@bZtAjm@~Dph@zGtt@tLnn@|Ndd@|OhR|GjU|K~a@fSrYzOdzAx{@noAtt@duAnx@bc@`W`h@~Xh[vNz`Avc@pN~FvhAn`@phBxi@x`C|~@bu@`^bz@tc@fdAvo@pcAzs@zkAjaA`kA~gAzmAbsAbXb\\fe@zk@tRtYt`@po@n\\rj@l[hm@fc@l}@r^|z@zOha@pOva@b_@rkArPzj@lJb]pTr}@tUxlA|Ifn@|Gtn@fAfOvA~RlAfSnAzWjA~Vf@pOd@vN\\dOZ~NLpNJpNHlNFxPGhRIdO]vSg@nRo@fOiDf}@cAbUqAjRcAnOuCfg@uCzh@eBn^eBje@yAhy@Gtd@Th\\p@dm@bCds@fCrd@~E|o@hHdo@vIpl@xLvr@pNxn@fNph@vRrm@bNp^bSdd@jN`YpOf[ve@pr@`W~^jO~S|NhRjIbJ`JjHjHxEjGlC|FnBhHbBbHhAxI\\fRQdRe@lIl@hHfAxGbCtGdFjEhGrDpHdCtIvB|JfAhKb@lKQ|Ku@zIuAvJmBhIeCvGeDtG_FfHkG~Gwz@|n@wt@th@eM|JgM|JwYlWeZ~Z}ObReHtI{IvKkC`Do]rf@cWpb@yIzPgMtU}Uvg@wQpc@yPre@aMz_@kIvXiLfa@eVfbA_c@dgBsXnlAuZxlA}YjnAcTx{@wKjb@wJv^gJpZeJjXgLtYeNn\\yHlPaHpNuGxMmLzSoTz]aUh[wIlKeHhIkTfUiRtQmTzQmN|J}QdLy_@dU_rB|cAemBlaAwt@n_@gb@lSwr@j`@iZlR}RfNuf@bb@cJzIgQpQmWl[aLlOmFjIqIfMkFdIoF|IwF`JmFjJiFvJkFfK_FzJcFlKeOp\\aHnP}A`EyClIg_@jiAsI~[{In]yIv`@eL|m@uJjm@yKp|@{I`_A_LhuA}K~rAgXv}CcLjdAsLhs@gGbZsEfTuDpO{C~LiC|ImQfj@aQfe@kWni@eNfWmXjb@eWv]{b@~c@oUnTyl@z_@aPrHiWvKuQfIaU`Km_@bSyUfOkVxPac@ba@mLtMaM~Nef@|s@}Yph@q]xm@}h@jy@o^tb@{~@lfA_e@dr@sOzYiUdk@kFrO}GhU}GvYgHx[aG|\\aE|[wDh^oCxd@{Aja@o@xf@Znf@RlYvBdg@jD|c@lHnw@xMhiAzSx{B`Fr~@|Ch~@`Ab|@eBhrAuA|z@_Ezz@gO|yAcUt_BmTjhAeXlfAeaAdfDeW|fAsUplAiErT{Lf{@{Hhi@mKz`AuGnt@gDpd@wFd~@sDr~@sCteAgA|hAPtcA|@ly@|Ax{@xCfz@lFjiBlEjzAzApu@Xbt@KbdAwAtmAuDliA}Ej`AeFvw@uI~`AwKjaAqJ`s@oJto@oQfjAuUd{AkNl|@cNjbA{LzbAuGjo@qIflA}FziAoDxkAaBroAQxj@Ldg@|AdkAfDhhAlNbsCrJzoB~Ad`@bBlf@HhDlBddA^ds@A|i@Axe@q@pn@{B~jA_FlkAiBz]eEvt@wIngA_Wb{BuRvoAwNxw@mOlr@}S`}@kf@tpBcK~b@cUncAcS|eAqStsAaNlcAgHps@kLzuAcH|lAcCvi@sBlu@wAnm@k@~u@]|v@\\~b@d@fh@fB||@pDleAtHvyApTjcDtVtaDxOfkBv\\`pDv_@~xDnb@tqDnPryApHzs@bJpaAnFht@xFx|@`Dvq@xCzv@jBzn@dCfjAz@|aAFjaBOvm@mAzgBqBxaCoA`eAyA~gAyBjnASzMKnIqFztBmGhhAcI~|@_Gdh@kD`YoMnw@uP`z@uNpm@}S`u@eXd{@}Utw@cYhdAwGn[}U~fAwNd`A{VdlBeLvgAwE`q@iMvaC_IfoCaBttCHzrAjA`tAvC|rAjHbuAxEfy@rGty@`S|`BjWf~Avm@puC||@duD~e@dwBle@nyB~fAdxFdFrVxg@ppCx\\fnBv^v{Br}@lwFdT`lAlWzmA`Obn@vO`o@`d@n}AxaAfcDr`@tsAj^`qArQrv@`Sb{@zOtv@rSzkAxQ~kAhNrbApOrwA`WbrCpGvbA|Eb}@pCxm@|DnxAvAtp@t@bk@d@jpB[rcAe@lfAgBldA}CrlAaIxyCyJtxCmKzlCsMzsCgeAtoOwD|p@wCfu@aAtUmCdbBoE`eEeCfdAwBl{@}Dh}@kFty@wEfp@gFdl@aBxO}Or~@eK`a@yIpZ{J|XwKjXgQr^yY~h@{{BjeDwu@hgAmt@`eAia@|l@q]xe@ke@|v@kPbXiFdKqTpd@uArCmRdf@{Uvw@eStv@cRnaA{Lju@{Jzv@yUlwBkRffBcS|wBwKnaBcGjlA}Bv{@oC~_B}Aj}@gCpn@_Dtf@sBjYmG~|@kMnlA_L`bAuqAdfLsRt_B}Rt`BiFt]yJxd@eUlz@uVdr@_Tnd@}Tdb@o_A`_BiYnk@c]~z@sOpd@mLv`@yNdk@eZd`BqMjeAmIzgAsE|eAkB~jAeGhbDgMp{HiE|jAgH|cAsOhtAmHfh@o\\hcCaKnaAwJvfAgOzcCgF`~AeEbiCDpaC^ve@p@xTpBhv@tI`yBpFfaAhIvdAjXdgCr`@~hDrKr~@`m@zeFpLtxAnHhvA~BtmBL|p@kAbs@eGbwAgItdAaJt{@uSr}AwHdi@aI~p@}H~v@oFbq@eGraA}B`r@eCjeAiBfsAHnnAp@zm@tApr@`Cfn@d@dUjEbx@`JhoAlKlfAbQbrAtRtlAnLdj@vKpd@~Mje@rSbn@d^f_Alk@|cAdObUbGjIxFfIlG~I`J`Njb@hk@tRlXxWhd@xJpQ`KbRhJjS`KxV|KpYzIdXnK|`@nLbg@|Hrd@nGla@hJlw@`Gvk@tFhi@fMztAjIpu@dLpfArJlz@xJr{@pH|p@xKr_AxKnt@jHnj@pKfs@jLxu@hMpq@rLhn@fKnd@lOxj@|Pxi@vSxi@zIvTbJlSjRh_@bYrh@vWde@fRd^xRtb@zM|ZxKlY~FjRhKz_@jGfXxD~QnC|NdDhSpEz\\~ChWfEra@bCjY`A|LjBzU`Dva@vDtc@dEle@|Ffn@pGfp@nFlh@hFtd@fDjYrEb_@nFz_@nE~[nHrg@tGrc@fHtd@~Gxa@|BzN`ExWhHta@~G~_@nNvs@~Gl]~Ipb@tL`h@|Jfd@rMxh@~Lng@fS`x@tXdlA~G`[j]~}AhR~|@pL~l@~Hd`@rN`t@xBfMbDvRbCvMtCtRxGrc@vIfj@lFd_@dSrwAtGhg@vDtZhJlz@|Kp{@xGtc@pLnq@nCtPdJne@|Hl_@nJ|`@zNti@lLpa@fSdk@bRvf@vV~k@nErJ`Sj`@nPnZ~Vbb@|Yrd@l{FnwIxjA|gBtSj^xO|ZbOd]|Lz\\zL`VzNhd@`Npd@`F`OzE|LfFhLjD~GrE`HzIvL|HnK~HhMdEpJjDpKjCvMnA|Gz@vJEhFIfChP~CpVbEdThDrVhEvPdEtOdErIfDxKbFhItEbQpLlQxNtVjWln@vr@ld@nh@fk@tn@xhA~nAzn@ds@lS~TzPn\\~d@xhAzQjd@dBfEzQzc@jKxUzInVrNfb@bNlb@zClJ~FdMfQ|Xd@`AbGdJbFtJnCzEhGjKhO~UvFtGxG|GfJlHpL`If@LhHhCrFvAzGdApLhAt^~Dvc@~DjHn@zT~@nOjAhOpC`JzCpBp@|LbHl|@zm@`RrL|MbGb[fN`h@lZ`MlHx@f@fF`DnGtEnMdM~LxMt]h^vM|Q|OzZtBxDh^pg@bc@fg@r]b`@~LvMhExCdKvFpXjGbZ|Ejs@nHbGn@pPh@pQIrCAxFIr@BdP|@~g@pDp]jA|It@nA`@|DnA`NtHlP`LtKzGbStJtGvD|FnEdUrQnNxHrObH|XtKjLbCnIh@hQYzAEzM[|K`AbPzClEfBdFtBfTtO|JhE~JnArBIl^kB|BEhDEtFG|HJtLz@|KbAhJP|J{@fP}DtWuGth@gPpQaI`P}IlOqHn@]zo@s[pV_MxHoBhIeA`UMvaAc@v_@D``@kAfK[fKHhG^pGnA|GzBbGzCzDvBjFrDtMzMjMfLnJzHpIvGhLrHfVzJfc@jPzN`Gvk@tTdNpFjChAxB`AlT`JvVfJpRhHjPbEtHxAvo@jN|g@rKn|@pRbDr@hAV`a@lJxOjDlJfBhFd@fKj@zYY`SYpNC`ABfz@|ChRr@leBlF`N`@pENnFRpEPzCLll@`CrI\\zBHpp@zBrVfBjLdCfNxFxVtNdCpBrD`Cli@~\\pGxEb[`RvQzMl`B~dAra@bX`aAtm@fGtDhEbBnCv@vF\\hHe@~L{CjNiFhi@wVhGwBtD_AhEQbFFvCFjAJbAH^Dr@HnA`@~CrAxCvCbDjGtD~KdDhNj@rCnG|[bNn|@|AtFjC|FrFjIvBtBlClBnDbBzChA~A`@`ATfDv@tFZrGDlZQlGMxEWnLeB|OwDrYcJzIc@lF?lD?dZpCfgBxRfg@tFzdAlLz|@|IjIlA|BZdOlBnf@tFbuAvNr`@jEdBR`AJjJbAbXnC`XlCnf@nFt^xDdWjFbFvBxDdBzBpAh@Z|LpIzVxXfRnWrQtVvVpYlT|OnbAro@heCf_B`q@zb@xeA~q@bb@xXrw@|f@ny@hh@xu@|e@vp@xa@tw@ng@~QhLvLjHhIlF`EjCbCzAtO`K`WpOvi@zYpjC`wAtzApx@ffCxtA~SlLld@tVnBfAps@f_@tq@|_@l~@dh@xe@tW~dAbd@zmAxi@pXrLxCp@lB`@rBd@hGRlIDhA?lCBtQEL?pe@aAho@sA~A@vCE|Zu@bMYnn@eAhJ]rQ_@jDSxCg@~FeCxBqAjZkQhJgE`MgEdYwJjNyEbq@gUjUwJbRyKfM_JpLqKnk@sn@lR_PxMgJjR}JhRqHbMoDlPwDdQ{BbTwBjQmAbTwAhSp@dZtCzVvCtOfClFpAlZnH`^fFls@tI`IhA~B\\b}AlShcAdMhOtBjQvCxUbH~IhC~LrArz@nDfk@rDbJbAjK|BlIfGdFbHd^ln@`HfKnErF`EdDfJ`Frg@lPnKxBvHZfl@gC`\\BbImAdOsHv_@sUdLeJjQ}HfLeDlS_GzNuCzLSfJr@x]vGvR~EfP`GxFnFhGdJ`O~UvKtXZt@lG`VdEpSrCdVhBlPzBlMhDjKlD~ErDdEdHhDlz@hXbRxJfNrJlEvDrGfHjv@xgAdLlQtGhMrCdGjNda@fTli@jNt[dObUlX~YbSfTzPxQhSrU`IxMrKpVjKrVfF|LbOn\\tOtWdLxOpJzLbHrHpIlFvGfB`E^lGL|Qf@hPl@df@tEzWrDfTnFf\\~Ij_@vK~X`KrZbK|F|B|L|ElLvG`P`L~B|BzG|GdVb^fCtDtTz\\rQ`XdJxP|GnLrK~NnQrRxWlUlZxVpW|WrQ`TdGtKxElKzBnHdErMrJ|\\bFfOtEpJdFnItFdJnGjMnGnOvYb~@pH`Uj@dDpClPlA`UX|u@Rl[B`FVdDbAtCdDfGlGzN`Rd^pRh`@fMrUfGdIpKdJnMpIpSzKhE?zBi@dAeAr@Mp@Ll@f@b@z@RjADrAMpAWx@]j@e@^i@Jm@nA[t@w@|CgDtHKTs@z@_GlJkCrEqBpCgH|J}BzDmDpAwKjJoMlLuBlA{BzBm\\~TsA|AcBlBk@`A_BrCyCbJyBtJuBhMiC|I}DbJsE`HuGrE_Ab@'}],
+  'summary': {'has_time_restrictions': False,
+   'has_toll': False,
+   'has_highway': True,
+   'has_ferry': False,
+   'min_lat': 50.548826,
+   'min_lon': -4.146689,
+   'max_lat': 50.861101,
+   'max_lon': -3.38319,
+   'time': 3623.905,
+   'length': 55.4261,
+   'cost': 3504.635},
+  'status_message': 'Found route between points',
+  'status': 0,
+  'units': 'miles',
+  'language': 'en-US'}}</code></pre>
+</div>
+</div>
+<div id="b0dd96f2" class="cell" data-execution_count="57">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb72"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true" tabindex="-1"></a>summary</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="57">
+<pre><code>{'total_time_s': 3623.905,
+ 'total_dist': 55.4261,
+ 'legs': [{'leg_index': 0,
+   'time_s': 3623.905,
+   'distance': 55.4261,
+   'speed': 55.06048309765294}]}</code></pre>
+</div>
+</div>
+<div id="de04b693" class="cell" data-execution_count="58">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb74"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb74-1"><a href="#cb74-1" aria-hidden="true" tabindex="-1"></a>valhalla_audit_route_speeds(result)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+=== ROUTE SUMMARY ===
+Total time: 60.4 min
+Total dist: 55.43 km
+
+=== SPEED DISTRIBUTION ===
+&lt; 20 km/h (urban/stop-start)        | time:    0.3 min (  0.5%) | dist:    0.0 km (  0.1%)
+20–40 km/h (dense urban)            | time:    3.2 min (  5.4%) | dist:    1.4 km (  2.4%)
+40–60 km/h (suburban)               | time:   17.1 min ( 28.4%) | dist:   12.6 km ( 22.7%)
+60–90 km/h (A-road)                 | time:   39.7 min ( 65.7%) | dist:   41.5 km ( 74.8%)
+90+ km/h (motorway-like)            | time:    0.0 min (  0.0%) | dist:    0.0 km (  0.0%)</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="58">
+<pre><code>{'total_time_s': 3623.896,
+ 'total_dist_km': 55.42519999999999,
+ 'band_stats': {'20–40 km/h (dense urban)': {'time': 194.921, 'dist': 1.3539},
+  '&lt; 20 km/h (urban/stop-start)': {'time': 17.863, 'dist': 0.0434},
+  '60–90 km/h (A-road)': {'time': 2382.6310000000003, 'dist': 41.4633},
+  '40–60 km/h (suburban)': {'time': 1028.481, 'dist': 12.564599999999999},
+  '90+ km/h (motorway-like)': {'time': 0.0, 'dist': 0.0}}}</code></pre>
+</div>
+</div>
+<div id="ea34d3b9" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb77"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb77-1"><a href="#cb77-1" aria-hidden="true" tabindex="-1"></a>result_gdf <span class="op">=</span> valhalla_maneuvers_to_gdf(result)</span>
+<span id="cb77-2"><a href="#cb77-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb77-3"><a href="#cb77-3" aria-hidden="true" tabindex="-1"></a>ax <span class="op">=</span> result_gdf.plot(column<span class="op">=</span><span class="st">"speed_kmh"</span>, legend<span class="op">=</span><span class="va">True</span>, figsize<span class="op">=</span>(<span class="dv">8</span>,<span class="dv">4</span>))</span>
+<span id="cb77-4"><a href="#cb77-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb77-5"><a href="#cb77-5" aria-hidden="true" tabindex="-1"></a>cx.add_basemap(</span>
+<span id="cb77-6"><a href="#cb77-6" aria-hidden="true" tabindex="-1"></a>    ax, <span class="co"># the figure we created using our plot method</span></span>
+<span id="cb77-7"><a href="#cb77-7" aria-hidden="true" tabindex="-1"></a>    crs<span class="op">=</span>result_gdf.crs.to_string(), <span class="co"># we can pull the CRS out of the geodataframe!</span></span>
+<span id="cb77-8"><a href="#cb77-8" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb77-9"><a href="#cb77-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb77-10"><a href="#cb77-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Grab the auto-generated attribution object from matplotlib axes</span></span>
+<span id="cb77-11"><a href="#cb77-11" aria-hidden="true" tabindex="-1"></a>txt <span class="op">=</span> ax.texts[<span class="op">-</span><span class="dv">1</span>]</span>
+<span id="cb77-12"><a href="#cb77-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Adjust its position to outside the map, just below the bottom edge</span></span>
+<span id="cb77-13"><a href="#cb77-13" aria-hidden="true" tabindex="-1"></a>txt.set_position([<span class="fl">0.5</span>, <span class="op">-</span><span class="fl">0.1</span>])</span>
+<span id="cb77-14"><a href="#cb77-14" aria-hidden="true" tabindex="-1"></a>txt.set_ha(<span class="st">'center'</span>) <span class="co"># Center the text</span></span>
+<span id="cb77-15"><a href="#cb77-15" aria-hidden="true" tabindex="-1"></a>txt.set_va(<span class="st">'top'</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-49-output-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>If we are familiar with these routes, this might help us better understand where valhalla is overestimating or underestimating speeds.</p>
+
+
+</section>
+</section>
+
+<a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/hsma-tools\.github\.io\/lokigi\/");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+<p><a href="https://www.hsma.co.uk/"><img src="../../../lokigi_docs/assets/hsma_logo.png" class="img-fluid" width="150"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <a href="https://arc-swp.nihr.ac.uk/"><img src="../../../lokigi_docs/assets/nihr_logo.png" class="img-fluid" width="250"></a><br><br> <em>This work is independent research supported by the National Institute for Health and Care Research Applied Research Collaboration South West Peninsula.<br> The views expressed in this publication are those of the author(s) and not necessarily those of the National Institute for Health and Care Research or the Department of Health and Social Care.</em> <br><br></p>
+</div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
