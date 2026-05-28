@@ -43,6 +43,15 @@ listing:
     grid-columns: 3
     template: ../lokigi_docs/resources/listing.ejs
 
+  - id: travel-time-matrices
+    contents:
+      - "travel_time_matrices/obtaining_travel_time_matrices/index.ipynb"
+      - "travel_time_matrices/obtaining_travel_time_matrices_limits/index.ipynb"
+    type: grid
+    sort: false
+    grid-columns: 3
+    template: ../lokigi_docs/resources/listing.ejs
+
   - id: sites-other
     contents:
       - "location/obtaining_travel_time_matrices/index.ipynb"
@@ -52,7 +61,7 @@ listing:
     template: ../lokigi_docs/resources/listing.ejs
 ---
 
-## Single Objective Location Optimization
+## Site Location Optimization
 
 Examples relating to optimizing the combination of sites to meet a single objective - for example, minimising the average travel time of individuals to a site.
 
@@ -61,12 +70,10 @@ Examples relating to optimizing the combination of sites to meet a single object
 ::: {#sites-problem-basic}
 :::
 
-
 ### Different Problem Types
 
 ::: {#sites-problem-type}
 :::
-
 
 ### Advanced Solver Options
 
@@ -80,7 +87,13 @@ When a problem is too big for evaluating and storing every combination, lokigi o
 ::: {#sites-solution-evaluation}
 :::
 
-### Other
+## Obtaining Travel Times
+
+:::{#travel-time-matrices}
+:::
+
+
+## Other
 
 :::{#sites-other}
 :::
