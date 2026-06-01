@@ -1,5 +1,17 @@
 ## lokigi - Generate, rank, analyse and visualise the best candidate solutions for facility location problems
 
+| | |
+| --- | --- |
+| **Project info:** | ![Code licence](https://img.shields.io/badge/Licence-MIT-A6CE39?&labelColor=gray)   [![ORCID](https://img.shields.io/badge/ORCID_Sammi_Rosser-0000--0002--9552--8988-A6CE39?&logo=orcid&logoColor=white)](https://orcid.org/0000-0002-9552-8988)  [![All Contributors](https://img.shields.io/github/all-contributors/hsma-tools/lokigi?color=ee8449&style=flat-square)](#contributors)  |
+| **Installation:** | [![PyPI](https://img.shields.io/pypi/v/lokigi?&labelColor=gray)](https://pypi.org/project/lokigi/)   |
+| **Metrics:** | [![PyPI downloads all time](https://static.pepy.tech/badge/lokigi)](https://pepy.tech/project/lokigi)    [![PyPI downloads monthly](https://static.pepy.tech/badge/lokigi/month)](https://pepy.tech/project/lokigi)    [![PyPI downloads weekly](https://static.pepy.tech/badge/lokigi/week)](https://pepy.tech/project/lokigi)      ![GitHub Repo stars](https://img.shields.io/github/stars/hsma-tools/lokigi)     |
+| **Activity:** | ![GitHub forks](https://img.shields.io/github/forks/hsma-tools/lokigi)    ![GitHub last commit](https://img.shields.io/github/last-commit/hsma-tools/lokigi)    ![GitHub Release Date](https://img.shields.io/github/release-date/hsma-tools/lokigi) [![GitHub open-pull-requests](https://badgen.net/github/open-prs/hsma-tools/lokigi)](https://GitHub.com/hsma-tools/lokigi/pulls?q=is%3Aopen) |
+| **Build & quality status:** | [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)    [![Tests](https://github.com/hsma-tools/lokigi/actions/workflows/tests.yml/badge.svg)](https://github.com/hsma-tools/lokigi/actions/workflows/tests.yml)   [![Documentation](https://github.com/hsma-tools/lokigi/actions/workflows/docker_quarto.yml/badge.svg)](https://github.com/hsma-tools/lokigi/actions/workflows/docker_quarto.yml)  |
+| **Supported platforms:** | ![3.11\|3.12\|3.13\|3.14](https://img.shields.io/badge/Python-3.10%7C3.11%7C3.12%7C3.13%7C3.14-blue)    ![OS](https://img.shields.io/badge/OS-Windows%20%7C%20Linux%20%7C%20macOS-blue?logo=windows&logo=linux&logo=apple) |
+
+
+---
+
 lokigi means 'to locate' or 'to place' in the Esperanto language.
 
 (or it's the backronym '**L**ocation **O**ptimisation: **K**-best solution **I**nspection, **G**eneration & **I**nsights' - whichever floats your boat)
