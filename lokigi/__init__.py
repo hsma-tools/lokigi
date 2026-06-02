@@ -6,4 +6,6 @@ from .mixins import (
     solution_comparator_plots,
     # routing_attributes,
     site_attributes,
+    # eda
+    site_eda,
 )

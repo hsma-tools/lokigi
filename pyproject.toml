@@ -35,6 +35,8 @@ dependencies = [
     "sweetpareto>=1.1.0",
     "seaborn>=0.13.0,<1.0.0",
     "plotly>=5.0.0,<6.0.0",
+    "esda>=2.9.0",
+    "pysal>=25.7",
 ]
 
 [project.urls]

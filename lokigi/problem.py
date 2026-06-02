@@ -7,6 +7,7 @@ from lokigi.utils import (
     _convert_crs,
 )
 from warnings import warn
+import hashlib
 
 
 class _Problem:
@@ -23,6 +24,11 @@ class _Problem:
         self.region_geometry_layer = None
         self._region_geometry_layer_type = None
         self._region_geometry_layer_common_col = None
+        self._region_geometry_hash = None
+
+        self.spatial_weights = None
+        self.spatial_weights_method = None
+        self.spatial_weights_k = None
 
         self.equity_data = None
         self._equity_data_type = None
@@ -231,6 +237,7 @@ class _Problem:
         self.region_geometry_layer = loaded_df
         self._region_geometry_layer_type = df_type
         self._region_geometry_layer_common_col = common_col
+        self._region_geometry_hash = self._get_geometry_hash(self.region_geometry_layer)
 
     def show_region_geometry_layer(self):
         """
@@ -425,3 +432,13 @@ class _Problem:
 
     def show_geo_lookup(self):
         return self.geo_lookup
+
+    def _get_geometry_hash(self, df) -> str:
+        # 1. Convert the entire geometry series to WKB
+        wkb_series = df.geometry.to_wkb()
+
+        # 2. Join all the byte strings in the series together
+        combined_bytes = b"".join(wkb_series)
+
+        # 3. Hash the resulting single byte string
+        return hashlib.sha256(combined_bytes).hexdigest()

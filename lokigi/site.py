@@ -16,12 +16,13 @@ import numpy as np
 from typing import Literal
 from .mixins.site_solvers import BruteForceMixin, GreedyMixin, GraspMixin
 from .mixins.site_attributes import SiteAttributeMixin
+from .mixins.site_eda import SiteEDAMixin
 import copy
 from lokigi.problem import _Problem
 
 
 class SiteProblem(
-    _Problem, SiteAttributeMixin, BruteForceMixin, GreedyMixin, GraspMixin
+    _Problem, SiteAttributeMixin, BruteForceMixin, GreedyMixin, GraspMixin, SiteEDAMixin
 ):
     """
     Facility location optimization for healthcare site planning.
