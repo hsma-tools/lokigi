@@ -8,6 +8,8 @@ from lokigi.utils import (
 )
 from warnings import warn
 import hashlib
+from typing import Literal
+import numpy as np
 
 
 class _Problem:
@@ -35,6 +37,7 @@ class _Problem:
         self._equity_data_equity_col = None
         self._equity_data_common_col = None
         self._equity_data_label = None
+        self._equity_data_direction = None
 
         self.geo_lookup = None
         self._geo_lookup_data_type = None
@@ -80,9 +83,11 @@ class _Problem:
         equity_col,
         common_col,
         label,
-        continuous_measure=False,
-        n_bins=10,
-        reverse=False,
+        direction: Literal["higher_is_better", "higher_is_worse"] = "higher_is_worse",
+        continuous_measure: bool = False,
+        n_bins: int = 10,
+        reverse: bool = False,
+        verbose: bool = True,
     ):
         """
         Add a dataframe containing equity data into your problem.
@@ -107,16 +112,42 @@ class _Problem:
             A human-readable label for the equity metric (e.g., 'IMD Decile',
             'Age Group'). This is used internally for auto-generating plot
             titles and table headers.
+        direction : {"higher_is_better", "higher_is_worse"}, default "higher_is_better"
+            Indicates whether higher values of `equity_col` represent a more or
+            less advantaged group. This is stored as metadata and applied at
+            analysis time — it does not modify the stored data.
+
+            - ``"higher_is_better"`` : higher values indicate a more favourable
+            equity position (e.g. IMD decile 10 = least deprived under the
+            standard DLUHC 1–10 scale).
+            - ``"higher_is_worse"`` : higher values indicate greater disadvantage
+            (e.g. raw IMD score, where a higher score means more deprived;
+            or a custom scale where 1 = least deprived).
+
+            .. note::
+                IMD *deciles* as published by DLUHC run 1 (most deprived) to 10
+                (least deprived), so for pre-binned IMD decile columns use
+                ``direction="higher_is_better"``. For raw IMD *scores* (higher =
+                more deprived) use ``direction="higher_is_worse"``.
         continuous_measure : bool, default False
             If True, treats `equity_col` as continuous numerical data and
             uses quantile-based discretization to convert it into deciles (1-10).
             The raw continuous data is preserved in a new column named
             `{equity_col}_raw`.
         reverse : bool, default False
-            Only applicable if `continuous_measure` is True. By default (False),
-            lower continuous values are assigned to lower deciles (e.g., 1).
-            If True, the mapping is inverted so that lower continuous values
-            are assigned to the highest deciles.
+            Only used when ``continuous_measure=True``. Controls the direction
+            of bin labelling relative to the raw values:
+
+            - ``False`` (default): lower raw values receive lower bin numbers.
+            - ``True``: lower raw values receive higher bin numbers (i.e. the
+            labelling is inverted).
+
+            This is purely a binning convenience — for instance, to convert a
+            raw IMD score (where lower = less deprived) into a decile where
+            1 = least deprived. It is independent of ``direction``, which
+            governs downstream analysis rather than how bins are labelled.
+        verbose: bool, default True
+            If True, output additional warnings and messages
 
         Raises
         ------
@@ -133,12 +164,17 @@ class _Problem:
         """
         loaded_df, df_type = _load_spatial_or_tabular_data(equity_data)
 
+        if verbose:
+            if df_type == "geopandas":
+                warn(
+                    "Equity_data appears to be a GeoDataFrame; geometry will be dropped.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
         if continuous_measure:
             loaded_df[f"{equity_col}_raw"] = loaded_df[equity_col]
 
-            # We use qcut to split into 10 even groups (or whatever the user passes, but we'll
-            # strongly recommend deciles).
-            # labels=False returns 0-9, so we add 1 to get 1-10 for 'deciles'.
             try:
                 bins = pd.qcut(
                     loaded_df[f"{equity_col}_raw"],
@@ -146,21 +182,29 @@ class _Problem:
                     labels=False,
                     duplicates="drop",
                 )
-
-                if reverse:
-                    # Dynamically invert based on the actual number of bins created
-                    max_bin = bins.max()
-                    loaded_df[equity_col] = (max_bin - bins) + 1
-                else:
-                    loaded_df[equity_col] = bins + 1
             except ValueError as e:
-                print(
-                    f"Warning: Could not create {n_bins} distinct categories for {equity_col}. "
-                    "Check if the data has too many identical values."
+                raise ValueError(
+                    f"Could not bin '{equity_col}' into any distinct quantile categories. "
+                    "The column may contain too many identical values."
+                ) from e
+
+            actual_bins = int(bins.max()) + 1
+            if actual_bins < n_bins:
+                warn(
+                    f"Requested {n_bins} bins for '{equity_col}' but only "
+                    f"{actual_bins} distinct quantile bins could be formed due to "
+                    "duplicate values. Consider inspecting the distribution.",
+                    UserWarning,
+                    stacklevel=2,
                 )
-                raise e
+
+            if reverse:
+                loaded_df[equity_col] = (bins.max() - bins) + 1
+            else:
+                loaded_df[equity_col] = bins + 1
 
         cols_to_include = [common_col, equity_col]
+
         if continuous_measure:
             cols_to_include.append(f"{equity_col}_raw")
 
@@ -169,6 +213,7 @@ class _Problem:
         self._equity_data_equity_col = equity_col
         self._equity_data_common_col = common_col
         self._equity_data_label = label
+        self._equity_data_direction = direction
 
     def show_equity_data(self):
         return self.equity_data
