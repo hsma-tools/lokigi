@@ -15,6 +15,7 @@ from lokigi.plot_utils import plot_solution_sets_comparison
 
 from lokigi.mixins.solution_comparator_plots import SolutionComparatorPlotsMixin
 from lokigi.mixins.solution_comparator_methods import SolutionComparatorMethodsMixin
+from lokigi.mixins.site_eda import HotspotPlotMixin
 
 
 class EvaluatedCombination:

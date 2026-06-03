@@ -23,12 +23,24 @@ ClusterDisplay = Literal[
     "outliers",
 ]
 
-SupportedInputs = Literal["demand", "equity", "combined"]
+SupportedProblemInputs = Literal["demand", "equity", "demand_equity_combined"]
+SupportedSolutionInputs = Literal["demand", "equity"]
+
+SupportedInputs = SupportedProblemInputs | SupportedSolutionInputs
 
 SupportedCombinationMethods = Literal["multiply", "sum", "rank"]
 
 
-class SiteEDAMixin:
+class SiteProblemEDAMixin:
+    @property
+    def _prob_ctx(self):
+        """
+        Dynamically routes requests to the object holding the problem data.
+        Returns 'self.site_problem' if attached to a SiteSolutionSet,
+        otherwise returns 'self' if attached directly to a Problem.
+        """
+        return getattr(self, "site_problem", self)
+
     def _get_weights(
         self,
         df,
@@ -84,17 +96,20 @@ class SiteEDAMixin:
             raise ValueError(
                 f"neighbourhood_method must be one of {valid_neighbourhood_method}, got {neighbourhood_method!r}"
             )
+        # Get the unified context object, meaning we handle this appropriately
+        # regardless of whether this is a Problem or SiteSolutionSet
+        ctx = self._prob_ctx
 
         # We look at the hash for the entire region geometry as we're just trying to capture
         # if the region geometry has changed, not whether it's the same region requested as
         # before
-        current_hash = self._get_geometry_hash(self.region_geometry_layer)
+        current_hash = ctx._get_geometry_hash(ctx.region_geometry_layer)
 
         if (
-            self.spatial_weights is None
-            or neighbourhood_method != self.spatial_weights_method
-            or k != self.spatial_weights_k
-            or current_hash != self._region_geometry_hash
+            ctx.spatial_weights is None
+            or neighbourhood_method != ctx.spatial_weights_method
+            or k != ctx.spatial_weights_k
+            or current_hash != ctx._region_geometry_hash
             or force_recalculation
         ):
             if neighbourhood_method == "queen":
@@ -110,10 +125,10 @@ class SiteEDAMixin:
 
             w.transform = "R"
 
-            self.spatial_weights = w
-            self.spatial_weights_method = neighbourhood_method
-            self.spatial_weights_k = k
-            self._region_geometry_hash = current_hash
+            ctx.spatial_weights = w
+            ctx.spatial_weights_method = neighbourhood_method
+            ctx.spatial_weights_k = k
+            ctx._region_geometry_hash = current_hash
         else:
             if verbose:
                 warnings.warn(
@@ -122,13 +137,120 @@ class SiteEDAMixin:
                 )
 
         if return_weights:
-            return self.spatial_weights
+            return ctx.spatial_weights
+
+
+class SiteProblemHotspotCalculationMixin:
+    @property
+    def _prob_ctx(self):
+        return getattr(self, "site_problem", self)
+
+    def _prepare_analysis_dataframe(
+        self, what: str, combination_method: str
+    ) -> tuple[pd.DataFrame, str, str]:
+        """
+        Base data-prep method. Handles standard Problem-level fields.
+        Returns: (working_dataframe, column_to_analyze, id_merge_column)
+        """
+        ctx = self._prob_ctx
+
+        if what == "demand":
+            df = ctx.demand_data.copy()
+            return df, ctx._demand_data_demand_col, ctx._demand_data_id_col
+
+        elif what == "equity":
+            df = ctx.equity_data.copy()
+            df_col = ctx._equity_data_equity_col
+            df_merge_col = ctx._equity_data_common_col
+
+            # Filter to active demand IDs
+            df = df[
+                df[df_merge_col].isin(ctx.demand_data[ctx._demand_data_id_col].unique())
+            ]
+
+            if ctx._equity_data_direction == "higher_is_worse":
+                analysis_col = f"_{df_col}_analysis"
+                df[analysis_col] = -df[df_col]
+                df_col = analysis_col
+            return df, df_col, df_merge_col
+
+        elif what == "demand_equity_combined":
+            if ctx.equity_data is None:
+                raise ValueError("No equity data loaded. Call add_equity_data() first.")
+
+            # --- Align & Merge (using ctx attributes) ---
+            demand_df = ctx.demand_data.copy()
+            equity_df = ctx.equity_data.copy()
+            shared_ids = demand_df[ctx._demand_data_id_col].unique()
+            equity_df = equity_df[
+                equity_df[ctx._equity_data_common_col].isin(shared_ids)
+            ]
+
+            equity_col = ctx._equity_data_equity_col
+            if ctx._equity_data_direction == "higher_is_worse":
+                equity_df["_equity_directed"] = -equity_df[equity_col]
+            else:
+                equity_df["_equity_directed"] = equity_df[equity_col]
+
+            df = demand_df.merge(
+                equity_df[
+                    [ctx._equity_data_common_col, "_equity_directed", equity_col]
+                ],
+                left_on=ctx._demand_data_id_col,
+                right_on=ctx._equity_data_common_col,
+                how="inner",
+            )
+
+            # --- MinMax Normalization ---
+            def _minmax(series):
+                mn, mx = series.min(), series.max()
+                return (
+                    pd.Series(0.5, index=series.index)
+                    if mx == mn
+                    else (series - mn) / (mx - mn)
+                )
+
+            df["_demand_norm"] = _minmax(df[ctx._demand_data_demand_col])
+            df["_equity_norm"] = _minmax(df["_equity_directed"])
+
+            # --- Combined Scoring ---
+            if combination_method == "multiply":
+                df["combined_score"] = df["_demand_norm"] * df["_equity_norm"]
+            elif combination_method == "sum":
+                df["combined_score"] = (df["_demand_norm"] + df["_equity_norm"]) / 2
+            elif combination_method == "rank":
+                df["combined_score"] = (
+                    df["_demand_norm"].rank() + df["_equity_norm"].rank()
+                ) / (2 * len(df))
+            else:
+                raise ValueError(f"Invalid combination_method: {combination_method}")
+
+            # --- Typology Calculation ---
+            demand_median = df["_demand_norm"].median()
+            equity_median = df["_equity_norm"].median()
+            high_demand = df["_demand_norm"] >= demand_median
+            high_deprivation = df["_equity_norm"] >= equity_median
+
+            df["attribute_typology"] = "Low Demand / Low Deprivation"
+            df.loc[high_demand & high_deprivation, "attribute_typology"] = (
+                "High Demand / High Deprivation"
+            )
+            df.loc[high_demand & ~high_deprivation, "attribute_typology"] = (
+                "High Demand / Low Deprivation"
+            )
+            df.loc[~high_demand & high_deprivation, "attribute_typology"] = (
+                "Low Demand / High Deprivation"
+            )
+
+            return df, "combined_score", ctx._demand_data_id_col
+
+        raise ValueError(f"Unsupported analysis input type: '{what}'")
 
     def get_hotspots(
         self,
-        what: SupportedInputs = "demand",
-        neighbourhood_method: NeighbourhoodMethod = "rook",
-        combination_method: SupportedCombinationMethods = "multiply",
+        what: str = "demand",
+        neighbourhood_method: str = "rook",
+        combination_method: str = "multiply",
         k: int | None = None,
         verbose: bool = True,
         significance_threshold: float = 0.05,
@@ -183,126 +305,23 @@ class SiteEDAMixin:
         # However, there's a good chance you'll have passed an unfiltered whole-country
         # equity dataset, so this needs to filter down too.
 
-        if what == "demand":
-            df = self.demand_data
-            df_col = self._demand_data_demand_col
-            df_merge_col = self._demand_data_id_col
-        elif what == "equity":
-            df = self.equity_data.copy()
-            df_col = self._equity_data_equity_col
-            df_merge_col = self._equity_data_common_col
-            df = df[
-                df[df_merge_col].isin(
-                    self.demand_data[self._demand_data_id_col].unique()
-                )
-            ]
-            # Apply direction at analysis time so stored data remains unmodified.
-            # For higher_is_worse (e.g. raw IMD score), we negate so that Moran's I
-            # clusters high values as hotspots of *disadvantage* consistently.
-            if self._equity_data_direction == "higher_is_worse":
-                analysis_col = f"_{df_col}_analysis"
-                df[analysis_col] = -df[df_col]
-                df_col = analysis_col
+        ctx = self._prob_ctx
 
-        elif what == "combined":
-            if self.equity_data is None:
-                raise ValueError(
-                    "No equity data loaded. Call add_equity_data() before running "
-                    "a combined demand/equity analysis."
-                )
-
-            # --- 1. Align demand and equity to the shared ID space ---
-            demand_df = self.demand_data.copy()
-            equity_df = self.equity_data.copy()
-
-            shared_ids = demand_df[self._demand_data_id_col].unique()
-            equity_df = equity_df[
-                equity_df[self._equity_data_common_col].isin(shared_ids)
-            ]
-
-            # --- 2. Apply direction to equity at analysis time ---
-            equity_col = self._equity_data_equity_col
-            if self._equity_data_direction == "higher_is_worse":
-                equity_df["_equity_directed"] = -equity_df[equity_col]
-            else:
-                equity_df["_equity_directed"] = equity_df[equity_col]
-
-            # --- 3. Merge demand and equity into a single working frame ---
-            df = demand_df.merge(
-                equity_df[
-                    [self._equity_data_common_col, "_equity_directed", equity_col]
-                ],
-                left_on=self._demand_data_id_col,
-                right_on=self._equity_data_common_col,
-                how="inner",
-            )
-
-            demand_col = self._demand_data_demand_col
-            df_merge_col = self._demand_data_id_col
-
-            # --- 4. Normalise both dimensions to [0, 1] ---
-            def _minmax(series):
-                mn, mx = series.min(), series.max()
-                if mx == mn:
-                    # Degenerate case: all values identical, return 0.5 rather than NaN
-                    return pd.Series(0.5, index=series.index)
-                return (series - mn) / (mx - mn)
-
-            df["_demand_norm"] = _minmax(df[demand_col])
-            df["_equity_norm"] = _minmax(df["_equity_directed"])
-
-            # --- 5. Compute combined score ---
-            valid_methods = ("multiply", "sum", "rank")
-            if combination_method not in valid_methods:
-                raise ValueError(
-                    f"combination_method must be one of {valid_methods}, "
-                    f"got '{combination_method}'."
-                )
-
-            if combination_method == "multiply":
-                df["combined_score"] = df["_demand_norm"] * df["_equity_norm"]
-            elif combination_method == "sum":
-                df["combined_score"] = (df["_demand_norm"] + df["_equity_norm"]) / 2
-            elif combination_method == "rank":
-                df["combined_score"] = (
-                    df["_demand_norm"].rank() + df["_equity_norm"].rank()
-                ) / (2 * len(df))
-
-            # --- 6. Pre-computed 2x2 attribute typology (median split) ---
-            # This is independent of spatial structure — it labels each area by
-            # whether demand and deprivation are each above/below their median.
-            # "High deprivation" means high *disadvantage*, accounting for direction.
-            demand_median = df["_demand_norm"].median()
-            equity_median = df["_equity_norm"].median()
-
-            high_demand = df["_demand_norm"] >= demand_median
-            high_deprivation = df["_equity_norm"] >= equity_median
-
-            df["attribute_typology"] = "Low Demand / Low Deprivation"
-            df.loc[high_demand & high_deprivation, "attribute_typology"] = (
-                "High Demand / High Deprivation"
-            )
-            df.loc[high_demand & ~high_deprivation, "attribute_typology"] = (
-                "High Demand / Low Deprivation"
-            )
-            df.loc[~high_demand & high_deprivation, "attribute_typology"] = (
-                "Low Demand / High Deprivation"
-            )
-
-            df_col = "combined_score"
-
-        # Filter down to only geometry regions that are actually present
+        # 1. Delegate data prep out to the extensible method
+        df, df_col, df_merge_col = self._prepare_analysis_dataframe(
+            what, combination_method
+        )
         result = df.copy()
 
-        filtered_region_geometry = self.region_geometry_layer.copy()
+        # 2. Geometry Filtering
+        filtered_region_geometry = ctx.region_geometry_layer.copy()
         filtered_region_geometry = filtered_region_geometry[
-            filtered_region_geometry[self._region_geometry_layer_common_col].isin(
-                self.demand_data[self._demand_data_id_col].unique()
+            filtered_region_geometry[ctx._region_geometry_layer_common_col].isin(
+                ctx.demand_data[ctx._demand_data_id_col].unique()
             )
         ]
 
-        # The weights need to be the same dimension as the dataset of interest, so we can't calculate
-        # them once upfront; they need to be done on the filtered dataset
+        # 3. Weights Resolution
         w = self._get_weights(
             df=filtered_region_geometry,
             neighbourhood_method=neighbourhood_method,
@@ -312,52 +331,62 @@ class SiteEDAMixin:
             force_recalculation=force_weight_recalculation,
         )
 
-        # Calculate Local Moran’s I
+        # 4. Local Moran's I Core Math Engine
         lisa = esda.moran.Moran_Local(result[df_col], w)
 
         result["local_moran_i"] = lisa.Is
         result["p_value"] = lisa.p_sim
         result["quadrant"] = lisa.q
-
         result["cluster_type"] = "Not Significant"
 
         significant = lisa.p_sim < significance_threshold
+        result.loc[significant & (lisa.q == 1), "cluster_type"] = "Hotspot"
+        result.loc[significant & (lisa.q == 3), "cluster_type"] = "Coldspot"
+        result.loc[significant & (lisa.q == 2), "cluster_type"] = "Low-High Outlier"
+        result.loc[significant & (lisa.q == 4), "cluster_type"] = "High-Low Outlier"
 
-        result.loc[
-            significant & (lisa.q == 1),
-            "cluster_type",
-        ] = "Hotspot"
-
-        result.loc[
-            significant & (lisa.q == 3),
-            "cluster_type",
-        ] = "Coldspot"
-
-        result.loc[
-            significant & (lisa.q == 2),
-            "cluster_type",
-        ] = "Low-High Outlier"
-
-        result.loc[
-            significant & (lisa.q == 4),
-            "cluster_type",
-        ] = "High-Low Outlier"
-
-        # Drop any working columns if this went via the combined branch
+        # Cleanup working columns
         result = result.drop(
             columns=["_demand_norm", "_equity_norm", "_equity_directed"],
             errors="ignore",
         )
 
-        return self.region_geometry_layer.merge(
+        return ctx.region_geometry_layer.merge(
             result,
-            left_on=self._region_geometry_layer_common_col,
+            left_on=ctx._region_geometry_layer_common_col,
             right_on=df_merge_col,
         )
 
+
+class SiteSolutionHotspotCalculationMixin(SiteProblemHotspotCalculationMixin):
+    """Overrides data preparation to inject solution-specific travel metrics."""
+
+    def _prepare_analysis_dataframe(
+        self, what: str, combination_method: str
+    ) -> tuple[pd.DataFrame, str, str]:
+        # intercept solution-specific metric calculations
+        if what == "travel_time":
+            # 1. Grab base context data
+            ctx = self._prob_ctx
+            df = ctx.demand_data.copy()
+
+            # 2. Compute your travel multiplier/metrics unique to this Solution Set
+            # (e.g., pulling allocation maps, routing arrays, etc. from 'self')
+            df["travel_metric"] = (
+                self.calculate_travel_times() * df[ctx._demand_data_demand_col]
+            )
+
+            # 3. Return the modified frame ready for the spatial math pipeline
+            return df, "travel_metric", ctx._demand_data_id_col
+
+        # Fallback to default problem parameters ("demand", "equity", "demand_equity_combined")
+        return super()._prepare_analysis_dataframe(what, combination_method)
+
+
+class HotspotPlotMixin:
     def plot_hotspots(
         self,
-        hotspots_df: pd.DataFrame | None,
+        hotspots_df: pd.DataFrame | None = None,
         ax: plt.Axes | None = None,
         interactive: bool = False,
         show_hotspots: bool = True,
@@ -647,7 +676,7 @@ class SiteEDAMixin:
 
             return ax
 
-    def plot_attribute_typology(
+    def plot_demand_deprivation_quadrants(
         self,
         hotspots_df: geopandas.GeoDataFrame | None = None,
         ax: plt.Axes | None = None,
@@ -679,7 +708,7 @@ class SiteEDAMixin:
 
         Each area is coloured according to whether it is high or low on demand
         and deprivation independently (the ``attribute_typology`` column produced
-        by :meth:`get_hotspots` with ``what="combined"``). Areas that are also
+        by :meth:`get_hotspots` with ``what="demand_equity_combined"``). Areas that are also
         statistically significant spatial clusters (Hotspot or Coldspot) are
         additionally highlighted with a bolder border.
 
@@ -691,7 +720,7 @@ class SiteEDAMixin:
         ----------
         hotspots_df : geopandas.GeoDataFrame, optional
             Pre-computed results from :meth:`get_hotspots` with
-            ``what="combined"``. If ``None``, the analysis is run automatically
+            ``what="demand_equity_combined"``. If ``None``, the analysis is run automatically
             using the supplied parameters.
         ax : matplotlib.axes.Axes, optional
             Axes to plot on. A new figure and axes are created if not provided.
@@ -755,7 +784,7 @@ class SiteEDAMixin:
         """
         if hotspots_df is None:
             hotspots_df = self.get_hotspots(
-                what="combined",
+                what="demand_equity_combined",
                 combination_method=combination_method,
                 neighbourhood_method=neighbourhood_method,
                 k=k,
@@ -767,14 +796,31 @@ class SiteEDAMixin:
         if "attribute_typology" not in hotspots_df.columns:
             raise ValueError(
                 "hotspots_df does not contain an 'attribute_typology' column. "
-                "Ensure it was produced by get_hotspots(what='combined')."
+                "Ensure it was produced by get_hotspots(what='demand_equity_combined')."
             )
 
+        def get_typology_colour(label: str) -> str:
+            left, right = label.split(" / ")
+
+            left_high = left.startswith("High")
+            right_high = right.startswith("High")
+
+            if left_high and right_high:
+                return high_high_colour
+            elif left_high and not right_high:
+                return high_low_colour
+            elif not left_high and right_high:
+                return low_high_colour
+            else:
+                return low_low_colour
+
+        hotspots_df["_plot_colour"] = hotspots_df["attribute_typology"].map(
+            get_typology_colour
+        )
+
         typology_colours = {
-            "High Demand / High Deprivation": high_high_colour,
-            "High Demand / Low Deprivation": high_low_colour,
-            "Low Demand / High Deprivation": low_high_colour,
-            "Low Demand / Low Deprivation": low_low_colour,
+            label: get_typology_colour(label)
+            for label in hotspots_df["attribute_typology"].unique()
         }
 
         # Significance overlay: bold border for spatial clusters, quiet for the rest
