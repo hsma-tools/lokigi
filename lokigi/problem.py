@@ -10,6 +10,7 @@ from warnings import warn
 import hashlib
 from typing import Literal
 import numpy as np
+import contextily as cx
 
 
 class _Problem:
@@ -296,10 +297,12 @@ class _Problem:
         plot_demand=False,
         plot_equity=False,
         cmap="Blues",
-        tiles="CartoDB positron",
         plot_region_of_interest_only=False,
         edgecolor="black",
         linewidth=0.5,
+        show_basemap: bool = True,
+        tiles="CartoDB positron",
+        show_axis: bool = False,
         **kwargs,
     ):
         """
@@ -378,13 +381,13 @@ class _Problem:
                     popup=True,  # show all values in popup (on click)
                     cmap=cmap,  # use "Blues" matplotlib colormap
                     style_kwds=dict(color="black"),
-                    tiles=tiles,
+                    tiles=tiles if show_basemap else None,
                     **kwargs,
                 )
 
                 return m
             else:
-                fig = plotting_df.plot(
+                ax = plotting_df.plot(
                     column=self._demand_data_demand_col,
                     legend=True,
                     cmap=cmap,
@@ -393,7 +396,13 @@ class _Problem:
                     **kwargs,
                 )
 
-                return fig
+                if show_basemap:
+                    cx.add_basemap(ax, crs=plotting_df.crs.to_string())
+
+                if not show_axis:
+                    ax.axis("off")
+
+                return ax
 
         if plot_equity:
             plotting_df = pd.merge(
@@ -405,9 +414,9 @@ class _Problem:
 
             if plot_region_of_interest_only:
                 if self.demand_data is None:
-                    warn(
-                        "No demand data provided so cannot restrict to region of interest."
-                    )
+                    warn("No demand data provided; estimating region of interest.")
+
+                    self._setup_equal_demand_df()
 
                 plotting_df = plotting_df.merge(
                     self.demand_data[[self._demand_data_id_col]],
@@ -429,7 +438,7 @@ class _Problem:
 
                 return m
             else:
-                fig = plotting_df.plot(
+                ax = plotting_df.plot(
                     column=self._equity_data_equity_col,
                     legend=True,
                     cmap=cmap,
@@ -438,13 +447,19 @@ class _Problem:
                     **kwargs,
                 )
 
-                return fig
+                if show_basemap:
+                    cx.add_basemap(ax, crs=plotting_df.crs.to_string())
+
+                if not show_axis:
+                    ax.axis("off")
+
+                return ax
 
         if plot_region_of_interest_only:
             if self.demand_data is None:
-                warn(
-                    "No demand data provided so cannot restrict to region of interest."
-                )
+                warn("No demand data provided; estimating region of interest.")
+
+                self._setup_equal_demand_df()
 
             plotting_df = plotting_df.merge(
                 self.demand_data[[self._demand_data_id_col]],
@@ -461,8 +476,15 @@ class _Problem:
             )
             return m
         else:
-            fig = self.region_geometry_layer.plot(**kwargs)
-            return fig
+            ax = self.region_geometry_layer.plot(**kwargs)
+
+            if show_basemap:
+                cx.add_basemap(ax, crs=plotting_df.crs.to_string())
+
+            if not show_axis:
+                ax.axis("off")
+
+            return ax
 
     def add_geo_lookup(self, lookup_df, common_col, rename=None):
 
