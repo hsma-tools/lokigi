@@ -679,6 +679,7 @@ class MapsMixin:
 
     def plot_best_combination(
         self,
+        ax=None,
         rank_on=None,
         solution_rank=1,
         site_names=None,
@@ -857,7 +858,8 @@ class MapsMixin:
             legend_kwargs["bbox_to_anchor"] = legend_bbox_to_anchor
 
         # Create figure and plot
-        fig, ax = plt.subplots(figsize=(height, width))
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(height, width))
 
         ax, has_required_sites = self._plot_single_solution_map(
             ax=ax,
