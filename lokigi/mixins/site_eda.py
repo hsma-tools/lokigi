@@ -28,12 +28,12 @@ ClusterDisplay = Literal[
     "outliers",
 ]
 
-SupportedProblemInputs = Literal["demand", "equity", "demand_equity_combined"]
+SupportedProblemInputs = Literal["demand", "equity", "demand_equity"]
+
 SupportedSolutionInputs = Literal[
     "demand",
     "equity",
-    "demand_equity_combined",
-    "travel_time",
+    "demand_equity",
     "travel_demand",
     "travel_equity",
 ]
@@ -43,12 +43,14 @@ SupportedInputs = SupportedProblemInputs | SupportedSolutionInputs
 SupportedCombinationMethods = Literal["multiply", "sum", "rank"]
 
 
+# MARK: Shared functions
 @staticmethod
 def _minmax(series: pd.Series) -> pd.Series:
     mn, mx = series.min(), series.max()
     return pd.Series(0.5, index=series.index) if mx == mn else (series - mn) / (mx - mn)
 
 
+# MARK: Weights
 class SiteProblemEDAMixin:
     @property
     def _prob_ctx(self):
@@ -158,6 +160,7 @@ class SiteProblemEDAMixin:
             return ctx.spatial_weights
 
 
+# MARK: Problem-level Calculations
 class SiteProblemHotspotCalculationMixin:
     @property
     def _prob_ctx(self):
@@ -192,7 +195,7 @@ class SiteProblemHotspotCalculationMixin:
                 df_col = analysis_col
             return df, df_col, df_merge_col
 
-        elif what == "demand_equity_combined":
+        elif what == "demand_equity":
             if ctx.equity_data is None:
                 raise ValueError("No equity data loaded. Call add_equity_data() first.")
 
@@ -382,13 +385,13 @@ class SiteProblemHotspotCalculationMixin:
         return df.drop(df.filter(regex="_y$").columns, axis=1)
 
 
+# MARK: Solution-level Calculations
 class SiteSolutionHotspotCalculationMixin(SiteProblemHotspotCalculationMixin):
     """
     Overrides data preparation to inject solution-specific travel time metrics.
 
-    Supports three additional ``what`` values beyond the base problem:
+    Supports two additional ``what`` values beyond the base problem:
 
-    - ``"travel_time"`` : hotspot analysis on minimum travel time alone.
     - ``"travel_demand"`` : combined minimum travel time + demand.
     - ``"travel_equity"`` : combined minimum travel time + equity (IMD etc.).
 
@@ -463,8 +466,8 @@ class SiteSolutionHotspotCalculationMixin(SiteProblemHotspotCalculationMixin):
             problem_df[[id_col, "min_cost"]].copy().drop_duplicates(subset=id_col)
         )
 
-        # Negate: lower travel time = better = higher directed score
-        travel_df["_travel_time_directed"] = -travel_df["min_cost"]
+        # In _get_solution_travel_times — return raw min_cost, no negation
+        travel_df["_travel_time_directed"] = travel_df["min_cost"]  # no negation here
 
         return travel_df[[id_col, "_travel_time_directed", "min_cost"]]
 
@@ -480,8 +483,8 @@ class SiteSolutionHotspotCalculationMixin(SiteProblemHotspotCalculationMixin):
         Parameters
         ----------
         what : str
-            One of ``"demand"``, ``"equity"``, ``"demand_equity_combined"``
-            (inherited), or ``"travel_time"``, ``"travel_demand"``,
+            One of ``"demand"``, ``"equity"``, ``"demand_equity"``
+            (inherited), or ``"travel_demand"``,
             ``"travel_equity"`` (solution-specific).
         combination_method : str
             Passed through to the base class for combined analyses.
@@ -493,7 +496,7 @@ class SiteSolutionHotspotCalculationMixin(SiteProblemHotspotCalculationMixin):
         tuple[pd.DataFrame, str, str]
             Working dataframe, column to analyse, ID merge column.
         """
-        if what not in ("travel_time", "travel_demand", "travel_equity"):
+        if what not in ("travel_demand", "travel_equity"):
             return super()._prepare_analysis_dataframe(what, combination_method)
 
         ctx = self._prob_ctx
@@ -504,20 +507,21 @@ class SiteSolutionHotspotCalculationMixin(SiteProblemHotspotCalculationMixin):
 
         travel_df = self._get_solution_travel_times(solution_rank)
 
-        if what == "travel_time":
-            df = ctx.demand_data.merge(
-                travel_df,
-                left_on=demand_id_col,
-                right_on=geometry_id_col,
-                how="inner",
-                suffixes=("", "_y"),
-            )
-            df = df.drop(df.filter(regex="_y$").columns, axis=1)
-            # Return geometry_id_col as the merge col so downstream geometry
-            # join in get_hotspots aligns correctly
-            return df, "_travel_time_directed", geometry_id_col
+        # if what == "travel_time":
+        #     df = ctx.demand_data.merge(
+        #         travel_df,
+        #         left_on=demand_id_col,
+        #         right_on=geometry_id_col,
+        #         how="inner",
+        #         suffixes=("", "_y"),
+        #     )
+        #     df = df.drop(df.filter(regex="_y$").columns, axis=1)
+        #     # Negate here so high raw travel time → low directed score,
+        #     # meaning HH clusters are areas of poor access (high need) = Hotspot
+        #     df["_travel_time_analysis"] = -df["_travel_time_directed"]
+        #     return df, "_travel_time_analysis", geometry_id_col
 
-        elif what == "travel_demand":
+        if what == "travel_demand":
             demand_df = ctx.demand_data.merge(
                 travel_df,
                 left_on=demand_id_col,
@@ -548,16 +552,17 @@ class SiteSolutionHotspotCalculationMixin(SiteProblemHotspotCalculationMixin):
             demand_median = demand_df["_demand_norm"].median()
             travel_median = demand_df["_travel_norm"].median()
             high_demand = demand_df["_demand_norm"] >= demand_median
-            high_access = demand_df["_travel_norm"] >= travel_median
+            # Good access means travel time is LESS than or equal to the median
+            good_access = demand_df["_travel_norm"] <= travel_median
 
             demand_df["attribute_typology"] = "Low Demand / Good Access"
-            demand_df.loc[high_demand & high_access, "attribute_typology"] = (
+            demand_df.loc[high_demand & good_access, "attribute_typology"] = (
                 "High Demand / Good Access"
             )
-            demand_df.loc[high_demand & ~high_access, "attribute_typology"] = (
+            demand_df.loc[high_demand & ~good_access, "attribute_typology"] = (
                 "High Demand / Poor Access"
             )
-            demand_df.loc[~high_demand & ~high_access, "attribute_typology"] = (
+            demand_df.loc[~high_demand & ~good_access, "attribute_typology"] = (
                 "Low Demand / Poor Access"
             )
 
@@ -611,40 +616,41 @@ class SiteSolutionHotspotCalculationMixin(SiteProblemHotspotCalculationMixin):
 
             travel_median = df["_travel_norm"].median()
             equity_median = df["_equity_norm"].median()
-            high_access = df["_travel_norm"] >= travel_median
+            # Good access means travel time is LESS than or equal to the median
+            good_access = df["_travel_norm"] <= travel_median
             high_deprivation = df["_equity_norm"] >= equity_median
 
             df["attribute_typology"] = "Low Deprivation / Good Access"
-            df.loc[high_deprivation & high_access, "attribute_typology"] = (
+            df.loc[high_deprivation & good_access, "attribute_typology"] = (
                 "High Deprivation / Good Access"
             )
-            df.loc[high_deprivation & ~high_access, "attribute_typology"] = (
+            df.loc[high_deprivation & ~good_access, "attribute_typology"] = (
                 "High Deprivation / Poor Access"
             )
-            df.loc[~high_deprivation & ~high_access, "attribute_typology"] = (
+            df.loc[~high_deprivation & ~good_access, "attribute_typology"] = (
                 "Low Deprivation / Poor Access"
             )
 
             return df, "combined_score", geometry_id_col
 
-        def get_hotspots(
-            self,
-            what="demand",
-            combination_method="multiply",
-            solution_rank=1,
-            **kwargs,
-        ):
-            """
-            prepare_analysis_dataframe now takes solution_rank as a parameter, which means get_hotspots
-            in the solution class needs to accept and pass it through too. The base class signature
-            doesn't need it, so override get_hotspots in the solution mixin to add it.
-            """
-            # store rank so _prepare_analysis_dataframe can access it,
-            # or pass explicitly depending on your call chain structure
-            self._active_solution_rank = solution_rank
-            return super().get_hotspots(
-                what=what, combination_method=combination_method, **kwargs
-            )
+    def get_hotspots(
+        self,
+        what="demand",
+        combination_method="multiply",
+        solution_rank=1,
+        **kwargs,
+    ):
+        """
+        prepare_analysis_dataframe now takes solution_rank as a parameter, which means get_hotspots
+        in the solution class needs to accept and pass it through too. The base class signature
+        doesn't need it, so override get_hotspots in the solution mixin to add it.
+        """
+        # store rank so _prepare_analysis_dataframe can access it,
+        # or pass explicitly depending on your call chain structure
+        self._active_solution_rank = solution_rank
+        return super().get_hotspots(
+            what=what, combination_method=combination_method, **kwargs
+        )
 
 
 class HotspotPlotMixin:
@@ -657,6 +663,7 @@ class HotspotPlotMixin:
         """
         return getattr(self, "site_problem", self)
 
+    # MARK: HOTSPOT map
     def plot_hotspots(
         self,
         hotspots_df: pd.DataFrame | None = None,
@@ -965,10 +972,11 @@ class HotspotPlotMixin:
 
             return ax
 
-    def plot_demand_deprivation_quadrants(
+    # MARK: QUADRANT MAP
+    def plot_quadrant_map(
         self,
         hotspots_df: geopandas.GeoDataFrame | None = None,
-        what: SupportedInputs | None = "demand_equity_combined",
+        what: SupportedInputs | None = "demand_equity",
         ax: plt.Axes | None = None,
         interactive: bool = False,
         combination_method: Literal["multiply", "sum", "rank"] = "multiply",
@@ -978,10 +986,10 @@ class HotspotPlotMixin:
         significance_threshold: float = 0.05,
         force_weight_recalculation: bool = False,
         # Typology colours — 2x2 quadrant palette
-        high_high_colour: str = "#d7191c",  # red   — high demand, high deprivation
-        high_low_colour: str = "#fee08b",  # amber — high demand, low deprivation
-        low_high_colour: str = "#abd9e9",  # light blue — low demand, high deprivation
-        low_low_colour: str = "#bdbdbd",  # grey  — low demand, low deprivation
+        priority_colour: str = "#d7191c",  # red   — needs intervention
+        concerning_colour: str = "#fdae61",  # amber — worth monitoring
+        positive_colour: str = "#2c7bb6",  # blue  — doing well
+        neutral_colour: str = "#bdbdbd",  # grey  — baseline, no action needed
         # Significance overlay
         significant_edgecolor: str = "#1a1a1a",
         significant_linewidth: float = 1.8,
@@ -991,6 +999,9 @@ class HotspotPlotMixin:
         show_basemap: bool = True,
         show_axis: bool = False,
         opacity: float = 0.7,
+        # Legend placement
+        legend_loc: str = "outside",  # "outside" | any matplotlib loc string e.g. "lower left"
+        legend_bbox_to_anchor: tuple | None = None,  # overrides default when set
         **kwargs,
     ):
         """
@@ -998,7 +1009,7 @@ class HotspotPlotMixin:
 
         Each area is coloured according to whether it is high or low on demand
         and deprivation independently (the ``attribute_typology`` column produced
-        by :meth:`get_hotspots` with ``what="demand_equity_combined"``). Areas that are also
+        by :meth:`get_hotspots` with ``what="demand_equity"``). Areas that are also
         statistically significant spatial clusters (Hotspot or Coldspot) are
         additionally highlighted with a bolder border.
 
@@ -1010,7 +1021,7 @@ class HotspotPlotMixin:
         ----------
         hotspots_df : geopandas.GeoDataFrame, optional
             Pre-computed results from :meth:`get_hotspots` with
-            ``what="demand_equity_combined"``. If ``None``, the analysis is run automatically
+            ``what="demand_equity"``. If ``None``, the analysis is run automatically
             using the supplied parameters.
         ax : matplotlib.axes.Axes, optional
             Axes to plot on. A new figure and axes are created if not provided.
@@ -1094,33 +1105,59 @@ class HotspotPlotMixin:
             )
 
         def get_typology_colour(label: str) -> str:
+            _URGENCY_MAP = {
+                # demand_equity_combined
+                (
+                    "High",
+                    "High",
+                ): priority_colour,  # high demand + high deprivation — intervene
+                (
+                    "High",
+                    "Low",
+                ): concerning_colour,  # high demand, less deprived — monitor
+                (
+                    "Low",
+                    "High",
+                ): concerning_colour,  # deprived but lower demand — monitor
+                ("Low", "Low"): neutral_colour,  # baseline
+                # travel_demand / travel_equity
+                (
+                    "High",
+                    "Poor",
+                ): priority_colour,  # high demand/deprivation + poor access — intervene
+                (
+                    "High",
+                    "Good",
+                ): positive_colour,  # high demand/deprivation + good access — doing well
+                (
+                    "Low",
+                    "Poor",
+                ): concerning_colour,  # poor access but lower demand — monitor
+                ("Low", "Good"): neutral_colour,  # baseline
+            }
+
             _POSITIVE = {"High", "Good"}
             _NEGATIVE = {"Low", "Poor"}
+            _ALL = _POSITIVE | _NEGATIVE
 
             left, right = label.split(" / ")
             left_word = left.split()[0]
             right_word = right.split()[0]
 
-            if (
-                left_word not in _POSITIVE | _NEGATIVE
-                or right_word not in _POSITIVE | _NEGATIVE
-            ):
+            if left_word not in _ALL or right_word not in _ALL:
                 raise ValueError(
                     f"Unrecognised typology label: '{label}'. "
-                    f"Each segment must start with one of {_POSITIVE | _NEGATIVE}."
+                    f"Each segment must start with one of {_ALL}."
                 )
 
-            left_positive = left_word in _POSITIVE
-            right_positive = right_word in _POSITIVE
+            key = (left_word, right_word)
+            if key not in _URGENCY_MAP:
+                raise ValueError(
+                    f"No urgency mapping defined for combination {key}. "
+                    f"Known combinations: {list(_URGENCY_MAP.keys())}"
+                )
 
-            if left_positive and right_positive:
-                return high_high_colour
-            elif left_positive and not right_positive:
-                return high_low_colour
-            elif not left_positive and right_positive:
-                return low_high_colour
-            else:
-                return low_low_colour
+            return _URGENCY_MAP[key]
 
         hotspots_df["_plot_colour"] = hotspots_df["attribute_typology"].map(
             get_typology_colour
@@ -1141,11 +1178,17 @@ class HotspotPlotMixin:
         hotspots_df["_edge_width"] = hotspots_df["_is_significant"].map(
             {True: significant_linewidth, False: non_significant_linewidth}
         )
+        # Base colour mapping
         hotspots_df["_fill_colour"] = hotspots_df["attribute_typology"].map(
             typology_colours
         )
-        hotspots_df["_fill_rgba"] = hotspots_df["_fill_colour"].apply(
-            lambda c: mcolors.to_rgba(c, opacity)
+
+        # Apply dynamic opacity. Full opacity for significant, muted for non-significant.
+        hotspots_df["_fill_rgba"] = hotspots_df.apply(
+            lambda row: mcolors.to_rgba(
+                row["_fill_colour"], opacity if row["_is_significant"] else 0.15
+            ),
+            axis=1,
         )
 
         if interactive:
@@ -1166,42 +1209,55 @@ class HotspotPlotMixin:
 
                 fg = folium.FeatureGroup(name=typology_label, show=True)
 
-                for _, row in subset.iterrows():
-                    edge_w = (
+                # 1. Define the style function to read properties directly from the GeoJSON feature
+                def style_fn(feature, c=colour):
+                    is_significant = feature["properties"]["_is_significant"]
+
+                    ew = (
                         significant_linewidth
-                        if row["_is_significant"]
+                        if is_significant
                         else non_significant_linewidth
                     )
-                    edge_c = (
+                    ec = (
                         significant_edgecolor
-                        if row["_is_significant"]
+                        if is_significant
                         else non_significant_edgecolor
                     )
-                    folium.GeoJson(
-                        row.geometry.__geo_interface__,
-                        style_function=lambda feature, c=colour, ew=edge_w, ec=edge_c: {
-                            "fillColor": c,
-                            "color": ec,
-                            "weight": ew,
-                            "fillOpacity": opacity,
-                        },
-                        tooltip=folium.GeoJsonTooltip(
-                            fields=[
-                                "attribute_typology",
-                                ctx._region_geometry_layer_common_col,
-                                "cluster_type",
-                                "combined_score",
-                                "p_value",
-                            ],
-                            aliases=[
-                                "Attribute Typology",
-                                "Region",
-                                "Spatial Cluster",
-                                "Combined Score",
-                                "p-value",
-                            ],
-                        ),
-                    ).add_to(fg)
+
+                    # FIX: Drop fill opacity to 0.15 for non-significant areas
+                    fill_op = opacity if is_significant else 0.15
+
+                    # Optional: Force non-significant areas to the neutral colour entirely
+                    # final_colour = c if is_significant else neutral_colour
+
+                    return {
+                        "fillColor": c,  # or final_colour
+                        "color": ec,
+                        "weight": ew,
+                        "fillOpacity": fill_op,
+                    }
+
+                # 2. Pass the entire 'subset' GeoDataFrame at once (No iterrows needed!)
+                folium.GeoJson(
+                    data=subset,
+                    style_function=style_fn,
+                    tooltip=folium.GeoJsonTooltip(
+                        fields=[
+                            "attribute_typology",
+                            ctx._region_geometry_layer_common_col,
+                            "cluster_type",
+                            "combined_score",
+                            "p_value",
+                        ],
+                        aliases=[
+                            "Attribute Typology",
+                            "Region",
+                            "Spatial Cluster",
+                            "Combined Score",
+                            "p-value",
+                        ],
+                    ),
+                ).add_to(fg)
 
                 fg.add_to(m)
 
@@ -1210,6 +1266,7 @@ class HotspotPlotMixin:
 
             return m
 
+        # Static map
         else:
             if ax is None:
                 _, ax = plt.subplots()
@@ -1233,12 +1290,10 @@ class HotspotPlotMixin:
                     **kwargs,
                 )
 
-            # Typology legend
             typology_handles = [
                 Patch(facecolor=colour, edgecolor="#555555", linewidth=0.5, label=label)
                 for label, colour in typology_colours.items()
             ]
-            # Significance legend
             significance_handles = [
                 Patch(
                     facecolor="white",
@@ -1254,24 +1309,66 @@ class HotspotPlotMixin:
                 ),
             ]
 
-            typology_legend = ax.legend(
-                handles=typology_handles,
-                title="Attribute Typology",
-                loc="lower left",
-                framealpha=0.9,
-            )
-            ax.add_artist(typology_legend)  # preserve first legend when adding second
-            ax.legend(
-                handles=significance_handles,
-                title="Spatial Significance",
-                loc="lower right",
-                framealpha=0.9,
+            # Legend placement — outside by default so it never occludes the map,
+            # especially important for small or dense study areas like Brighton LSOAs.
+            # Pass legend_loc="lower left" (or any matplotlib loc) to place inside.
+            if legend_loc == "outside":
+                typology_bbox = legend_bbox_to_anchor or (1.01, 1.0)
+                significance_bbox = (1.01, 0.25)
+                typology_legend = ax.legend(
+                    handles=typology_handles,
+                    title="Attribute Typology",
+                    loc="upper left",
+                    bbox_to_anchor=typology_bbox,
+                    borderaxespad=0,
+                    framealpha=0.9,
+                )
+                ax.add_artist(typology_legend)
+                ax.legend(
+                    handles=significance_handles,
+                    title="Spatial Significance",
+                    loc="upper left",
+                    bbox_to_anchor=significance_bbox,
+                    borderaxespad=0,
+                    framealpha=0.9,
+                )
+            else:
+                typology_bbox = (
+                    legend_bbox_to_anchor  # None is fine, matplotlib ignores it
+                )
+                typology_legend = ax.legend(
+                    handles=typology_handles,
+                    title="Attribute Typology",
+                    loc=legend_loc,
+                    bbox_to_anchor=typology_bbox,
+                    framealpha=0.9,
+                )
+                ax.add_artist(typology_legend)
+                ax.legend(
+                    handles=significance_handles,
+                    title="Spatial Significance",
+                    loc="lower right" if legend_loc != "lower right" else "lower left",
+                    framealpha=0.9,
+                )
+
+            _TYPOLOGY_TITLES = {
+                "demand_equity": (
+                    "Demand / Deprivation",
+                    "demand & deprivation",
+                ),
+                "travel_time": ("Travel Time Access", "travel time"),
+                "travel_demand": ("Demand / Access", "demand & access"),
+                "travel_equity": ("Deprivation / Access", "deprivation & access"),
+            }
+
+            title_label, method_label = _TYPOLOGY_TITLES.get(
+                what, (what.replace("_", " ").title(), what)
             )
 
             ax.set_title(
-                f"Demand / Deprivation Attribute Typology\n"
+                f"{title_label} Typology\n"
                 f"(bold border = significant spatial cluster, "
-                f"method: {combination_method})",
+                f"combination: {method_label}, method: {combination_method})",
                 fontsize=10,
             )
 
