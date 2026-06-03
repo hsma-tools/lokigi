@@ -454,6 +454,11 @@ class MapsMixin:
             solution_df,
             left_on=self.site_problem._region_geometry_layer_common_col,
             right_on=self.site_problem._demand_data_id_col,
+            suffixes=("", "_y"),
+        )
+
+        nearest_site_travel_gdf = nearest_site_travel_gdf.drop(
+            nearest_site_travel_gdf.filter(regex="_y$").columns, axis=1
         )
 
         # Plot regions based on selected mode
@@ -2145,6 +2150,11 @@ class EquityPlotsMixin:
             plotting_row["problem_df"],
             left_on=self.site_problem._region_geometry_layer_common_col,
             right_on=self.site_problem._demand_data_id_col,
+            suffixes=("", "_y"),
+        )
+
+        nearest_site_travel_gdf = nearest_site_travel_gdf.drop(
+            nearest_site_travel_gdf.filter(regex="_y$").columns, axis=1
         )
 
         # ---- Shared color scale ----

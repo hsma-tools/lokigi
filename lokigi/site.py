@@ -333,6 +333,11 @@ class SiteProblem(
                 left_on=afi,
                 right_on=self._demand_data_id_col,
                 how="inner",
+                suffixes=("", "_y"),
+            )
+
+            active_facilities = active_facilities.drop(
+                active_facilities.filter(regex="_y$").columns, axis=1
             )
 
         else:
@@ -346,6 +351,11 @@ class SiteProblem(
                 self.equity_data,
                 left_on=self._joined_demand_travel_df_key_col,
                 right_on=self._equity_data_common_col,
+                suffixes=("", "_y"),
+            )
+
+            active_facilities = active_facilities.drop(
+                active_facilities.filter(regex="_y$").columns, axis=1
             )
 
         return EvaluatedCombination(

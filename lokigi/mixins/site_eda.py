@@ -199,7 +199,10 @@ class SiteProblemHotspotCalculationMixin:
                 left_on=ctx._demand_data_id_col,
                 right_on=ctx._equity_data_common_col,
                 how="inner",
+                suffixes=("", "_y"),
             )
+
+            df = df.drop(df.filter(regex="_y$").columns, axis=1)
 
             # --- MinMax Normalization ---
             def _minmax(series):
@@ -384,6 +387,15 @@ class SiteSolutionHotspotCalculationMixin(SiteProblemHotspotCalculationMixin):
 
 
 class HotspotPlotMixin:
+    @property
+    def _prob_ctx(self):
+        """
+        Dynamically routes requests to the object holding the problem data.
+        Returns 'self.site_problem' if attached to a SiteSolutionSet,
+        otherwise returns 'self' if attached directly to a Problem.
+        """
+        return getattr(self, "site_problem", self)
+
     def plot_hotspots(
         self,
         hotspots_df: pd.DataFrame | None = None,
@@ -506,6 +518,10 @@ class HotspotPlotMixin:
         used in GeoDa and PySAL visualisations.
         """
 
+        # Get the unified context object, meaning we handle this appropriately
+        # regardless of whether this is a Problem or SiteSolutionSet
+        ctx = self._prob_ctx
+
         if hotspots_df is None:
             hotspots_df = self.get_hotspots(
                 what=what,
@@ -521,8 +537,20 @@ class HotspotPlotMixin:
 
         # Determine which tooltip fields are available — attribute_typology
         # is only present for combined runs
-        _base_tooltip_fields = ["cluster_type", "local_moran_i", "p_value", "quadrant"]
-        _base_tooltip_aliases = ["Cluster", "Local Moran I", "p-value", "Quadrant"]
+        _base_tooltip_fields = [
+            "cluster_type",
+            ctx._region_geometry_layer_common_col,
+            "local_moran_i",
+            "p_value",
+            "quadrant",
+        ]
+        _base_tooltip_aliases = [
+            "Cluster",
+            "Region",
+            "Local Moran I",
+            "p-value",
+            "Quadrant",
+        ]
 
         if "attribute_typology" in (
             hotspots_df.columns if hotspots_df is not None else []
@@ -782,6 +810,10 @@ class HotspotPlotMixin:
             ``attribute_typology`` column, suggesting it was not produced
             by a combined analysis.
         """
+        # Get the unified context object, meaning we handle this appropriately
+        # regardless of whether this is a Problem or SiteSolutionSet
+        ctx = self._prob_ctx
+
         if hotspots_df is None:
             hotspots_df = self.get_hotspots(
                 what="demand_equity_combined",
@@ -880,12 +912,14 @@ class HotspotPlotMixin:
                         tooltip=folium.GeoJsonTooltip(
                             fields=[
                                 "attribute_typology",
+                                ctx._region_geometry_layer_common_col,
                                 "cluster_type",
                                 "combined_score",
                                 "p_value",
                             ],
                             aliases=[
                                 "Attribute Typology",
+                                "Region",
                                 "Spatial Cluster",
                                 "Combined Score",
                                 "p-value",
