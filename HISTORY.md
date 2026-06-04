@@ -1,3 +1,8 @@
+## v0.2.0
+
+- Add hotspot calculation and plotting
+- Add quadrant/ninth plots for demand/deprivation, travel/deprivation, travel/demand
+
 ## v0.1.1
 
 - Added missing plotly requirement.
