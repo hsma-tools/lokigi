@@ -2,234 +2,250 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/travel_time_matrices/obtaining_travel_time_matrices_limits/index.html</loc>
-    <lastmod>2026-05-28T16:12:43.322Z</lastmod>
+    <lastmod>2026-06-04T13:23:54.063Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/routing/staffing_feasibility_routing/index.html</loc>
-    <lastmod>2026-05-28T16:12:43.313Z</lastmod>
+    <lastmod>2026-06-04T13:23:54.049Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/location/simple/index.html</loc>
-    <lastmod>2026-05-28T16:21:55.778Z</lastmod>
+    <lastmod>2026-06-04T13:42:15.405Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/location/no_geometry/index.html</loc>
-    <lastmod>2026-05-28T16:20:37.150Z</lastmod>
+    <lastmod>2026-06-04T13:39:45.414Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/location/larger_problems/index.html</loc>
-    <lastmod>2026-05-28T16:12:43.104Z</lastmod>
+    <lastmod>2026-06-04T13:23:53.731Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/location/existing_sites/index.html</loc>
-    <lastmod>2026-05-28T16:15:18.003Z</lastmod>
+    <lastmod>2026-06-04T13:29:41.921Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/location/equity/index.html</loc>
-    <lastmod>2026-05-28T16:14:35.458Z</lastmod>
+    <lastmod>2026-06-04T13:28:37.916Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/location/comparing_n_sites/index.html</loc>
-    <lastmod>2026-05-28T16:13:40.007Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/site.SiteProblem.html</loc>
-    <lastmod>2026-05-28T16:12:50.641Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/mixins.site_solvers.html</loc>
-    <lastmod>2026-05-28T16:12:50.699Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.return_best_combination_site_names.html</loc>
-    <lastmod>2026-05-28T16:12:50.648Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.return_best_combination_details.html</loc>
-    <lastmod>2026-05-28T16:12:50.644Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.plot_top_n_solution_equity.html</loc>
-    <lastmod>2026-05-28T16:12:50.681Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.plot_n_best_combinations_bar.html</loc>
-    <lastmod>2026-05-28T16:12:50.658Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.plot_combination_by_equity.html</loc>
-    <lastmod>2026-05-28T16:12:50.683Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.plot_all_metric_pareto_front.html</loc>
-    <lastmod>2026-05-28T16:12:50.654Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.solve.html</loc>
-    <lastmod>2026-05-28T16:12:50.634Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.show_travel_format.html</loc>
-    <lastmod>2026-05-28T16:12:50.626Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.show_region_geometry_layer.html</loc>
-    <lastmod>2026-05-28T16:12:50.624Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.show_demand.html</loc>
-    <lastmod>2026-05-28T16:12:50.623Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.plot_region_geometry_layer.html</loc>
-    <lastmod>2026-05-28T16:12:50.619Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.describe_models.html</loc>
-    <lastmod>2026-05-28T16:12:50.612Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.add_sites.html</loc>
-    <lastmod>2026-05-28T16:12:50.607Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.add_equity_data.html</loc>
-    <lastmod>2026-05-28T16:12:50.601Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.mixins.site_solvers.GreedyMixin._greedy.html</loc>
-    <lastmod>2026-05-28T16:12:50.696Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.mixins.site_solvers.BruteForceMixin._brute_force.html</loc>
-    <lastmod>2026-05-28T16:12:50.695Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/lokigi_docs/structure.html</loc>
-    <lastmod>2026-05-28T16:12:43.360Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/lokigi_docs/getting_started.html</loc>
-    <lastmod>2026-05-28T16:12:43.325Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/examples/examples.html</loc>
-    <lastmod>2026-05-28T16:12:42.972Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/lokigi_docs/changelog.html</loc>
-    <lastmod>2026-05-28T16:12:43.325Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/lokigi_docs/index.html</loc>
-    <lastmod>2026-05-28T16:12:43.325Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/index.html</loc>
-    <lastmod>2026-05-28T16:12:50.585Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.mixins.site_solvers.GraspMixin._grasp.html</loc>
-    <lastmod>2026-05-28T16:12:50.698Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.add_demand.html</loc>
-    <lastmod>2026-05-28T16:12:50.598Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.add_region_geometry_layer.html</loc>
-    <lastmod>2026-05-28T16:12:50.603Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.add_travel_matrix.html</loc>
-    <lastmod>2026-05-28T16:12:50.611Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.evaluate_single_solution_single_objective.html</loc>
-    <lastmod>2026-05-28T16:12:50.616Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.plot_sites.html</loc>
-    <lastmod>2026-05-28T16:12:50.622Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.show_demand_format.html</loc>
-    <lastmod>2026-05-28T16:12:50.623Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.show_sites.html</loc>
-    <lastmod>2026-05-28T16:12:50.625Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.show_travel_matrix.html</loc>
-    <lastmod>2026-05-28T16:12:50.627Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.check_solution_equity.html</loc>
-    <lastmod>2026-05-28T16:12:50.679Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.plot_best_combination.html</loc>
-    <lastmod>2026-05-28T16:12:50.665Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.plot_n_best_combinations.html</loc>
-    <lastmod>2026-05-28T16:12:50.671Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.plot_simple_pareto_front.html</loc>
-    <lastmod>2026-05-28T16:12:50.651Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.plot_travel_time_distribution.html</loc>
-    <lastmod>2026-05-28T16:12:50.675Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.return_best_combination_site_indices.html</loc>
-    <lastmod>2026-05-28T16:12:50.646Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.show_solutions.html</loc>
-    <lastmod>2026-05-28T16:12:50.642Z</lastmod>
-  </url>
-  <url>
-    <loc>https://hsma-tools.github.io/lokigi/reference/site.EvaluatedCombination.html</loc>
-    <lastmod>2026-05-28T16:12:50.693Z</lastmod>
+    <lastmod>2026-06-04T13:27:01.312Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/reference/site.SiteSolutionSet.html</loc>
-    <lastmod>2026-05-28T16:12:50.689Z</lastmod>
+    <lastmod>2026-06-04T13:24:06.684Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/site.EvaluatedCombination.html</loc>
+    <lastmod>2026-06-04T13:24:06.691Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.show_solutions.html</loc>
+    <lastmod>2026-06-04T13:24:06.599Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.return_best_combination_site_indices.html</loc>
+    <lastmod>2026-06-04T13:24:06.605Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.plot_travel_time_distribution.html</loc>
+    <lastmod>2026-06-04T13:24:06.658Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.plot_simple_pareto_front.html</loc>
+    <lastmod>2026-06-04T13:24:06.614Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.plot_n_best_combinations.html</loc>
+    <lastmod>2026-06-04T13:24:06.651Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.plot_best_combination.html</loc>
+    <lastmod>2026-06-04T13:24:06.640Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.check_solution_equity.html</loc>
+    <lastmod>2026-06-04T13:24:06.665Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.show_travel_matrix.html</loc>
+    <lastmod>2026-06-04T13:24:06.570Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.show_sites.html</loc>
+    <lastmod>2026-06-04T13:24:06.566Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.show_demand_format.html</loc>
+    <lastmod>2026-06-04T13:24:06.563Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.plot_sites.html</loc>
+    <lastmod>2026-06-04T13:24:06.560Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.plot_quadrant_map.html</loc>
+    <lastmod>2026-06-04T13:24:06.548Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.get_hotspots.html</loc>
+    <lastmod>2026-06-04T13:24:06.520Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.describe_models.html</loc>
+    <lastmod>2026-06-04T13:24:06.508Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.add_sites.html</loc>
+    <lastmod>2026-06-04T13:24:06.499Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.add_equity_data.html</loc>
+    <lastmod>2026-06-04T13:24:06.487Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.mixins.site_solvers.GreedyMixin._greedy.html</loc>
+    <lastmod>2026-06-04T13:24:06.696Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.mixins.site_solvers.BruteForceMixin._brute_force.html</loc>
+    <lastmod>2026-06-04T13:24:06.694Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/lokigi_docs/structure.html</loc>
+    <lastmod>2026-06-04T13:23:54.123Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/lokigi_docs/getting_started.html</loc>
+    <lastmod>2026-06-04T13:23:54.068Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/examples/examples.html</loc>
+    <lastmod>2026-06-04T13:23:53.526Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/lokigi_docs/changelog.html</loc>
+    <lastmod>2026-06-04T13:23:54.067Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/lokigi_docs/index.html</loc>
+    <lastmod>2026-06-04T13:23:54.068Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/index.html</loc>
+    <lastmod>2026-06-04T13:24:06.457Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.mixins.site_solvers.GraspMixin._grasp.html</loc>
+    <lastmod>2026-06-04T13:24:06.700Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.add_demand.html</loc>
+    <lastmod>2026-06-04T13:24:06.480Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.add_region_geometry_layer.html</loc>
+    <lastmod>2026-06-04T13:24:06.492Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.add_travel_matrix.html</loc>
+    <lastmod>2026-06-04T13:24:06.506Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.evaluate_single_solution_single_objective.html</loc>
+    <lastmod>2026-06-04T13:24:06.515Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.plot_hotspots.html</loc>
+    <lastmod>2026-06-04T13:24:06.534Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.plot_region_geometry_layer.html</loc>
+    <lastmod>2026-06-04T13:24:06.555Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.show_demand.html</loc>
+    <lastmod>2026-06-04T13:24:06.561Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.show_region_geometry_layer.html</loc>
+    <lastmod>2026-06-04T13:24:06.564Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.show_travel_format.html</loc>
+    <lastmod>2026-06-04T13:24:06.568Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteProblem.solve.html</loc>
+    <lastmod>2026-06-04T13:24:06.581Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.plot_all_metric_pareto_front.html</loc>
+    <lastmod>2026-06-04T13:24:06.620Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.plot_combination_by_equity.html</loc>
+    <lastmod>2026-06-04T13:24:06.673Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.plot_n_best_combinations_bar.html</loc>
+    <lastmod>2026-06-04T13:24:06.627Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.plot_top_n_solution_equity.html</loc>
+    <lastmod>2026-06-04T13:24:06.670Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.return_best_combination_details.html</loc>
+    <lastmod>2026-06-04T13:24:06.602Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/lokigi.site.SiteSolutionSet.return_best_combination_site_names.html</loc>
+    <lastmod>2026-06-04T13:24:06.608Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/mixins.site_solvers.html</loc>
+    <lastmod>2026-06-04T13:24:06.702Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/reference/site.SiteProblem.html</loc>
+    <lastmod>2026-06-04T13:24:06.595Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hsma-tools.github.io/lokigi/examples/eda/hotspots_coldspots/index.html</loc>
+    <lastmod>2026-06-04T13:26:43.450Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/location/comparing_solutions/index.html</loc>
-    <lastmod>2026-05-28T16:14:10.845Z</lastmod>
+    <lastmod>2026-06-04T13:27:46.323Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/location/evaluating_current_baseline/index.html</loc>
-    <lastmod>2026-05-28T16:14:57.082Z</lastmod>
+    <lastmod>2026-06-04T13:29:07.290Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/location/greedy_and_grasp/index.html</loc>
-    <lastmod>2026-05-28T16:19:57.097Z</lastmod>
+    <lastmod>2026-06-04T13:38:34.534Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/location/mclp/index.html</loc>
-    <lastmod>2026-05-28T16:20:23.551Z</lastmod>
+    <lastmod>2026-06-04T13:39:20.150Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/location/p_median_and_p_center_variants/index.html</loc>
-    <lastmod>2026-05-28T16:21:13.861Z</lastmod>
+    <lastmod>2026-06-04T13:40:49.387Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/location/site_closures/index.html</loc>
-    <lastmod>2026-05-28T16:22:52.301Z</lastmod>
+    <lastmod>2026-06-04T13:43:29.733Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/other/modifying_osm_max_speeds/index.html</loc>
-    <lastmod>2026-05-28T16:12:43.312Z</lastmod>
+    <lastmod>2026-06-04T13:23:54.047Z</lastmod>
   </url>
   <url>
     <loc>https://hsma-tools.github.io/lokigi/examples/travel_time_matrices/obtaining_travel_time_matrices/index.html</loc>
-    <lastmod>2026-05-28T16:12:43.321Z</lastmod>
+    <lastmod>2026-06-04T13:23:54.061Z</lastmod>
   </url>
 </urlset>

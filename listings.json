@@ -15,7 +15,8 @@
       "/examples/location/comparing_solutions/index.html",
       "/examples/location/comparing_n_sites/index.html",
       "/examples/travel_time_matrices/obtaining_travel_time_matrices/index.html",
-      "/examples/travel_time_matrices/obtaining_travel_time_matrices_limits/index.html"
+      "/examples/travel_time_matrices/obtaining_travel_time_matrices_limits/index.html",
+      "/examples/eda/hotspots_coldspots/index.html"
     ]
   }
 ]
