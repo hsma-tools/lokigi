@@ -554,6 +554,11 @@ class SiteAttributeMixin:
                 left_on=self._demand_data_id_col,
                 right_on=self._travel_matrix_source_col,
                 how="inner",
+                suffixes=("", "_y"),
+            )
+
+            travel_and_demand_df = travel_and_demand_df.drop(
+                travel_and_demand_df.filter(regex="_y$").columns, axis=1
             )
 
             self._joined_demand_travel_df_key_col = self._demand_data_id_col
@@ -565,6 +570,11 @@ class SiteAttributeMixin:
                 left_on=self._travel_matrix_source_col,
                 right_on=self._demand_data_id_col,
                 how="inner",
+                suffixes=("", "_y"),
+            )
+
+            travel_and_demand_df = travel_and_demand_df.drop(
+                travel_and_demand_df.filter(regex="_y$").columns, axis=1
             )
 
             self._joined_demand_travel_df_key_col = self._travel_matrix_source_col

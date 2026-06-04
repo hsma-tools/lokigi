@@ -59,6 +59,14 @@ listing:
     sort: false
     grid-columns: 3
     template: ../lokigi_docs/resources/listing.ejs
+
+  - id: eda
+    contents:
+      - "eda/hotspots_coldspots/index.ipynb"
+    type: grid
+    sort: false
+    grid-columns: 3
+    template: ../lokigi_docs/resources/listing.ejs
 ---
 
 ## Site Location Optimization
@@ -86,6 +94,14 @@ When a problem is too big for evaluating and storing every combination, lokigi o
 
 ::: {#sites-solution-evaluation}
 :::
+
+## Exploratory Data Analysis
+
+Lokigi provides a range of helpers to explore the patterns present in demand, equity and other data.
+
+:::{#eda}
+:::
+
 
 ## Obtaining Travel Times
 

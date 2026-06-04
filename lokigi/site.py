@@ -16,12 +16,24 @@ import numpy as np
 from typing import Literal
 from .mixins.site_solvers import BruteForceMixin, GreedyMixin, GraspMixin
 from .mixins.site_attributes import SiteAttributeMixin
+from .mixins.site_eda import (
+    SiteProblemEDAMixin,
+    HotspotPlotMixin,
+    SiteProblemHotspotCalculationMixin,
+)
 import copy
 from lokigi.problem import _Problem
 
 
 class SiteProblem(
-    _Problem, SiteAttributeMixin, BruteForceMixin, GreedyMixin, GraspMixin
+    _Problem,
+    SiteAttributeMixin,
+    BruteForceMixin,
+    GreedyMixin,
+    GraspMixin,
+    SiteProblemEDAMixin,
+    HotspotPlotMixin,
+    SiteProblemHotspotCalculationMixin,
 ):
     """
     Facility location optimization for healthcare site planning.
@@ -321,6 +333,11 @@ class SiteProblem(
                 left_on=afi,
                 right_on=self._demand_data_id_col,
                 how="inner",
+                suffixes=("", "_y"),
+            )
+
+            active_facilities = active_facilities.drop(
+                active_facilities.filter(regex="_y$").columns, axis=1
             )
 
         else:
@@ -334,6 +351,11 @@ class SiteProblem(
                 self.equity_data,
                 left_on=self._joined_demand_travel_df_key_col,
                 right_on=self._equity_data_common_col,
+                suffixes=("", "_y"),
+            )
+
+            active_facilities = active_facilities.drop(
+                active_facilities.filter(regex="_y$").columns, axis=1
             )
 
         return EvaluatedCombination(

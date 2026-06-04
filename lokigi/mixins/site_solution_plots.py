@@ -454,6 +454,11 @@ class MapsMixin:
             solution_df,
             left_on=self.site_problem._region_geometry_layer_common_col,
             right_on=self.site_problem._demand_data_id_col,
+            suffixes=("", "_y"),
+        )
+
+        nearest_site_travel_gdf = nearest_site_travel_gdf.drop(
+            nearest_site_travel_gdf.filter(regex="_y$").columns, axis=1
         )
 
         # Plot regions based on selected mode
@@ -674,6 +679,7 @@ class MapsMixin:
 
     def plot_best_combination(
         self,
+        ax=None,
         rank_on=None,
         solution_rank=1,
         site_names=None,
@@ -852,7 +858,8 @@ class MapsMixin:
             legend_kwargs["bbox_to_anchor"] = legend_bbox_to_anchor
 
         # Create figure and plot
-        fig, ax = plt.subplots(figsize=(height, width))
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(height, width))
 
         ax, has_required_sites = self._plot_single_solution_map(
             ax=ax,
@@ -2145,6 +2152,11 @@ class EquityPlotsMixin:
             plotting_row["problem_df"],
             left_on=self.site_problem._region_geometry_layer_common_col,
             right_on=self.site_problem._demand_data_id_col,
+            suffixes=("", "_y"),
+        )
+
+        nearest_site_travel_gdf = nearest_site_travel_gdf.drop(
+            nearest_site_travel_gdf.filter(regex="_y$").columns, axis=1
         )
 
         # ---- Shared color scale ----

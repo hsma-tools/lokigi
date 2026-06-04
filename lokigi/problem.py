@@ -7,6 +7,10 @@ from lokigi.utils import (
     _convert_crs,
 )
 from warnings import warn
+import hashlib
+from typing import Literal
+import numpy as np
+import contextily as cx
 
 
 class _Problem:
@@ -23,12 +27,18 @@ class _Problem:
         self.region_geometry_layer = None
         self._region_geometry_layer_type = None
         self._region_geometry_layer_common_col = None
+        self._region_geometry_hash = None
+
+        self.spatial_weights = None
+        self.spatial_weights_method = None
+        self.spatial_weights_k = None
 
         self.equity_data = None
         self._equity_data_type = None
         self._equity_data_equity_col = None
         self._equity_data_common_col = None
         self._equity_data_label = None
+        self._equity_data_direction = None
 
         self.geo_lookup = None
         self._geo_lookup_data_type = None
@@ -74,9 +84,11 @@ class _Problem:
         equity_col,
         common_col,
         label,
-        continuous_measure=False,
-        n_bins=10,
-        reverse=False,
+        direction: Literal["higher_is_better", "higher_is_worse"] = "higher_is_worse",
+        continuous_measure: bool = False,
+        n_bins: int = 10,
+        reverse: bool = False,
+        verbose: bool = True,
     ):
         """
         Add a dataframe containing equity data into your problem.
@@ -101,16 +113,42 @@ class _Problem:
             A human-readable label for the equity metric (e.g., 'IMD Decile',
             'Age Group'). This is used internally for auto-generating plot
             titles and table headers.
+        direction : {"higher_is_better", "higher_is_worse"}, default "higher_is_better"
+            Indicates whether higher values of `equity_col` represent a more or
+            less advantaged group. This is stored as metadata and applied at
+            analysis time — it does not modify the stored data.
+
+            - ``"higher_is_better"`` : higher values indicate a more favourable
+            equity position (e.g. IMD decile 10 = least deprived under the
+            standard DLUHC 1–10 scale).
+            - ``"higher_is_worse"`` : higher values indicate greater disadvantage
+            (e.g. raw IMD score, where a higher score means more deprived;
+            or a custom scale where 1 = least deprived).
+
+            .. note::
+                IMD *deciles* as published by DLUHC run 1 (most deprived) to 10
+                (least deprived), so for pre-binned IMD decile columns use
+                ``direction="higher_is_better"``. For raw IMD *scores* (higher =
+                more deprived) use ``direction="higher_is_worse"``.
         continuous_measure : bool, default False
             If True, treats `equity_col` as continuous numerical data and
             uses quantile-based discretization to convert it into deciles (1-10).
             The raw continuous data is preserved in a new column named
             `{equity_col}_raw`.
         reverse : bool, default False
-            Only applicable if `continuous_measure` is True. By default (False),
-            lower continuous values are assigned to lower deciles (e.g., 1).
-            If True, the mapping is inverted so that lower continuous values
-            are assigned to the highest deciles.
+            Only used when ``continuous_measure=True``. Controls the direction
+            of bin labelling relative to the raw values:
+
+            - ``False`` (default): lower raw values receive lower bin numbers.
+            - ``True``: lower raw values receive higher bin numbers (i.e. the
+            labelling is inverted).
+
+            This is purely a binning convenience — for instance, to convert a
+            raw IMD score (where lower = less deprived) into a decile where
+            1 = least deprived. It is independent of ``direction``, which
+            governs downstream analysis rather than how bins are labelled.
+        verbose: bool, default True
+            If True, output additional warnings and messages
 
         Raises
         ------
@@ -127,12 +165,17 @@ class _Problem:
         """
         loaded_df, df_type = _load_spatial_or_tabular_data(equity_data)
 
+        if verbose:
+            if df_type == "geopandas":
+                warn(
+                    "Equity_data appears to be a GeoDataFrame; geometry will be dropped.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
         if continuous_measure:
             loaded_df[f"{equity_col}_raw"] = loaded_df[equity_col]
 
-            # We use qcut to split into 10 even groups (or whatever the user passes, but we'll
-            # strongly recommend deciles).
-            # labels=False returns 0-9, so we add 1 to get 1-10 for 'deciles'.
             try:
                 bins = pd.qcut(
                     loaded_df[f"{equity_col}_raw"],
@@ -140,21 +183,29 @@ class _Problem:
                     labels=False,
                     duplicates="drop",
                 )
-
-                if reverse:
-                    # Dynamically invert based on the actual number of bins created
-                    max_bin = bins.max()
-                    loaded_df[equity_col] = (max_bin - bins) + 1
-                else:
-                    loaded_df[equity_col] = bins + 1
             except ValueError as e:
-                print(
-                    f"Warning: Could not create {n_bins} distinct categories for {equity_col}. "
-                    "Check if the data has too many identical values."
+                raise ValueError(
+                    f"Could not bin '{equity_col}' into any distinct quantile categories. "
+                    "The column may contain too many identical values."
+                ) from e
+
+            actual_bins = int(bins.max()) + 1
+            if actual_bins < n_bins:
+                warn(
+                    f"Requested {n_bins} bins for '{equity_col}' but only "
+                    f"{actual_bins} distinct quantile bins could be formed due to "
+                    "duplicate values. Consider inspecting the distribution.",
+                    UserWarning,
+                    stacklevel=2,
                 )
-                raise e
+
+            if reverse:
+                loaded_df[equity_col] = (bins.max() - bins) + 1
+            else:
+                loaded_df[equity_col] = bins + 1
 
         cols_to_include = [common_col, equity_col]
+
         if continuous_measure:
             cols_to_include.append(f"{equity_col}_raw")
 
@@ -163,6 +214,7 @@ class _Problem:
         self._equity_data_equity_col = equity_col
         self._equity_data_common_col = common_col
         self._equity_data_label = label
+        self._equity_data_direction = direction
 
     def show_equity_data(self):
         return self.equity_data
@@ -231,6 +283,7 @@ class _Problem:
         self.region_geometry_layer = loaded_df
         self._region_geometry_layer_type = df_type
         self._region_geometry_layer_common_col = common_col
+        self._region_geometry_hash = self._get_geometry_hash(self.region_geometry_layer)
 
     def show_region_geometry_layer(self):
         """
@@ -244,10 +297,12 @@ class _Problem:
         plot_demand=False,
         plot_equity=False,
         cmap="Blues",
-        tiles="CartoDB positron",
         plot_region_of_interest_only=False,
         edgecolor="black",
         linewidth=0.5,
+        show_basemap: bool = True,
+        tiles="CartoDB positron",
+        show_axis: bool = False,
         **kwargs,
     ):
         """
@@ -326,13 +381,13 @@ class _Problem:
                     popup=True,  # show all values in popup (on click)
                     cmap=cmap,  # use "Blues" matplotlib colormap
                     style_kwds=dict(color="black"),
-                    tiles=tiles,
+                    tiles=tiles if show_basemap else None,
                     **kwargs,
                 )
 
                 return m
             else:
-                fig = plotting_df.plot(
+                ax = plotting_df.plot(
                     column=self._demand_data_demand_col,
                     legend=True,
                     cmap=cmap,
@@ -341,7 +396,13 @@ class _Problem:
                     **kwargs,
                 )
 
-                return fig
+                if show_basemap:
+                    cx.add_basemap(ax, crs=plotting_df.crs.to_string())
+
+                if not show_axis:
+                    ax.axis("off")
+
+                return ax
 
         if plot_equity:
             plotting_df = pd.merge(
@@ -353,9 +414,9 @@ class _Problem:
 
             if plot_region_of_interest_only:
                 if self.demand_data is None:
-                    warn(
-                        "No demand data provided so cannot restrict to region of interest."
-                    )
+                    warn("No demand data provided; estimating region of interest.")
+
+                    self._setup_equal_demand_df()
 
                 plotting_df = plotting_df.merge(
                     self.demand_data[[self._demand_data_id_col]],
@@ -377,7 +438,7 @@ class _Problem:
 
                 return m
             else:
-                fig = plotting_df.plot(
+                ax = plotting_df.plot(
                     column=self._equity_data_equity_col,
                     legend=True,
                     cmap=cmap,
@@ -386,13 +447,19 @@ class _Problem:
                     **kwargs,
                 )
 
-                return fig
+                if show_basemap:
+                    cx.add_basemap(ax, crs=plotting_df.crs.to_string())
+
+                if not show_axis:
+                    ax.axis("off")
+
+                return ax
 
         if plot_region_of_interest_only:
             if self.demand_data is None:
-                warn(
-                    "No demand data provided so cannot restrict to region of interest."
-                )
+                warn("No demand data provided; estimating region of interest.")
+
+                self._setup_equal_demand_df()
 
             plotting_df = plotting_df.merge(
                 self.demand_data[[self._demand_data_id_col]],
@@ -409,8 +476,15 @@ class _Problem:
             )
             return m
         else:
-            fig = self.region_geometry_layer.plot(**kwargs)
-            return fig
+            ax = self.region_geometry_layer.plot(**kwargs)
+
+            if show_basemap:
+                cx.add_basemap(ax, crs=plotting_df.crs.to_string())
+
+            if not show_axis:
+                ax.axis("off")
+
+            return ax
 
     def add_geo_lookup(self, lookup_df, common_col, rename=None):
 
@@ -425,3 +499,13 @@ class _Problem:
 
     def show_geo_lookup(self):
         return self.geo_lookup
+
+    def _get_geometry_hash(self, df) -> str:
+        # 1. Convert the entire geometry series to WKB
+        wkb_series = df.geometry.to_wkb()
+
+        # 2. Join all the byte strings in the series together
+        combined_bytes = b"".join(wkb_series)
+
+        # 3. Hash the resulting single byte string
+        return hashlib.sha256(combined_bytes).hexdigest()
