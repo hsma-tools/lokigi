@@ -33,7 +33,7 @@ website:
         href: examples/examples.qmd
       - text: "API Reference"
         href: reference/index.qmd
-      - href: vidigi_docs/changelog.qmd
+      - href: lokigi_docs/changelog.qmd
         text: "Changelog"
     right:
       - icon: github
