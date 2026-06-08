@@ -1,6 +1,5 @@
 import pandas as pd
 from lokigi.utils import (
-    _validate_columns,
     _load_spatial_or_tabular_data,
     GEOPANDAS_EXTS,
     _check_crs_match_pref,
@@ -9,7 +8,6 @@ from lokigi.utils import (
 from warnings import warn
 import hashlib
 from typing import Literal
-import numpy as np
 import contextily as cx
 
 

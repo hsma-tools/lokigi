@@ -17,7 +17,6 @@ import geopandas
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import matplotlib.colors as mcolors
-import matplotlib.cm as mcm
 
 
 NeighbourhoodMethod = Literal[

@@ -14,7 +14,6 @@ from lokigi.utils import _safe_evaluate
 import sweetpareto.vis as spv
 import itertools
 from typing import Literal, Optional
-import textwrap
 from lokigi.utils import _wrap_label, _select_solution, _get_ordinal_suffix
 
 

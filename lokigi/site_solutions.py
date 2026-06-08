@@ -1,7 +1,5 @@
 import numpy as np
-import pandas as pd
 
-from lokigi.utils import _add_rank_column
 
 from lokigi.mixins.site_solution_plots import (
     MapsMixin,
@@ -11,7 +9,6 @@ from lokigi.mixins.site_solution_plots import (
     EquityPlotsMixin,
 )
 
-from lokigi.plot_utils import plot_solution_sets_comparison
 
 from lokigi.mixins.solution_comparator_plots import SolutionComparatorPlotsMixin
 from lokigi.mixins.solution_comparator_methods import SolutionComparatorMethodsMixin
