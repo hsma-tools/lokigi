@@ -738,21 +738,21 @@ class HotspotPlotMixin:
             If ``True``, return an interactive Folium map. Otherwise,
             return a static GeoPandas plot.
 
-        hotspot_color : str, default="#d7191c"
+        hotspot_colour : str, default="#d7191c"
             Colour used for statistically significant hotspot
             (high-high) regions.
 
-        coldspot_color : str, default="#2c7bb6"
+        coldspot_colour : str, default="#2c7bb6"
             Colour used for statistically significant coldspot
             (low-low) regions.
 
-        low_high_outlier_color : str, default="#abd9e9"
+        low_high_outlier_colour : str, default="#abd9e9"
             Colour used for low-high spatial outliers.
 
-        high_low_outlier_color : str, default="#fee08b"
+        high_low_outlier_colour : str, default="#fee08b"
             Colour used for high-low spatial outliers.
 
-        not_significant_color : str, default="#bdbdbd"
+        not_significant_colour : str, default="#bdbdbd"
             Colour used for regions that are not statistically
             significant.
 

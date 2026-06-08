@@ -696,7 +696,7 @@ class MapsMixin:
         legend_loc="upper right",
         legend_bbox_to_anchor=(1.75, 0.5),
         legend_fontsize=10,
-        title_font_size=12,
+        title_fontsize=12,
         annotation_size=6,
         label_wrap_width=40,
         height=12,
@@ -952,11 +952,11 @@ class MapsMixin:
                     )
 
                 title = plt.title(
-                    f"{title_prefix} \n{metrics}", fontsize=title_font_size
+                    f"{title_prefix} \n{metrics}", fontsize=title_fontsize
                 )
             else:
                 title = plt.title(
-                    _safe_evaluate(title, solution=solution), fontsize=title_font_size
+                    _safe_evaluate(title, solution=solution), fontsize=title_fontsize
                 )
 
         return ax
