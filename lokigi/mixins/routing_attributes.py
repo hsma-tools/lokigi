@@ -1,7 +1,6 @@
 import pandas as pd
-from typing import Literal, Optional, Union, Callable
+from typing import Literal, Optional
 from pathlib import Path
-import json
 import warnings
 from lokigi.travel_utils import prepare_valhalla_network
 from shapely.geometry import Point

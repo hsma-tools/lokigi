@@ -141,9 +141,6 @@ def prepare_valhalla_network(
 
 
 import os
-import numpy as np
-import pandas as pd
-from tqdm import tqdm
 
 
 def build_time_matrix_valhalla(

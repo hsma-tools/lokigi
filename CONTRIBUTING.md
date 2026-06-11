@@ -61,23 +61,30 @@ npx all-contributors generate
 
 ## Development environment
 
-### Python
+Set up a Python environment using your preferred tool (e.g., `conda`, `uv`, etc.) then active it. For example, to work with conda:
 
-A development environment is provided in `dev_environment/`. You can choose between:
+```{.bash}
+conda create -n lokigi python=3.12
+conda activate lokigi
+```
 
-* A conda environment (`environment.yml`).
-* A virtualenv (`requirements.txt`).
+From the project root, install the package in editable mode, along with the optional dependencies required for routing:
 
-You will also want to install the local lokigi package by running `pip install -e .`.
+```{.bash}
+pip install -e ".[routing]"
+```
 
-The conda environment will also install a suitable version of Python - if using virtualenv, you will need to configure this yourself.
+Then install the development dependencies declared in `pyproject.toml`. These are required for building documentation, running tests, etc.
 
-This environment differs from `lokigi`'s dependencies (`pyproject.toml`), as it contains the packages needed to e.g., generate documentation, run tests, lint code, and build the package.
+```{.bash}
+pip install --group dev
+```
 
-If you make changes to the development environment, please ensure you change it in all locations:
+Alternatively, you can work with the provided uv environment. From the project root, run the following command. This will install the dependency versions recorded in `uv.lock`.
 
-* [ ] `dev_environment/environment.yml`
-* [ ] `dev_environment/requirements.txt`
+```{.bash}
+uv sync -all-extras
+```
 
 ## Documentation
 
