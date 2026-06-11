@@ -2,6 +2,9 @@
 
 - Add hotspot calculation and plotting
 - Add quadrant/ninth plots for demand/deprivation, travel/deprivation, travel/demand
+- Add helpers and examples for travel time calculation with Valhalla and r5py
+- Add helpers and examples for modification of max speeds in .osm.pbf files
+- Add exploratory code for routing optimization (unfinished - paused indefinitely)
 
 ## v0.1.1
 
