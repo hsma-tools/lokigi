@@ -9,6 +9,7 @@ import re
 import numpy as np
 from collections import defaultdict
 from tqdm import tqdm
+import os
 
 
 def prepare_valhalla_network(
@@ -50,7 +51,6 @@ def prepare_valhalla_network(
             "traffic_path": ...
         }
     """
-
     osm_path = Path(osm_path).resolve()
 
     if not osm_path.exists():
@@ -103,7 +103,7 @@ def prepare_valhalla_network(
     print("Generating Valhalla config...")
 
     with open(config_path, "w") as f:
-        subprocess.run(
+        result = subprocess.run(
             [
                 "valhalla_build_config",
                 "--mjolnir-tile-dir",
@@ -115,13 +115,20 @@ def prepare_valhalla_network(
             check=True,
         )
 
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"valhalla_build_tiles failed (exit {result.returncode}):\n"
+            f"STDOUT:\n{result.stdout}\n"
+            f"STDERR:\n{result.stderr}"
+        )
+
     # ------------------------------------------------------------
     # Build routing tiles
     # ------------------------------------------------------------
 
     print("Building Valhalla tiles (this may take a while)...")
 
-    subprocess.run(
+    result = subprocess.run(
         [
             "valhalla_build_tiles",
             "-c",
@@ -129,7 +136,16 @@ def prepare_valhalla_network(
             str(osm_path),
         ],
         check=True,
+        capture_output=True,
+        text=True,
     )
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"valhalla_build_tiles failed (exit {result.returncode}):\n"
+            f"STDOUT:\n{result.stdout}\n"
+            f"STDERR:\n{result.stderr}"
+        )
 
     print("Valhalla build complete")
 
@@ -138,9 +154,6 @@ def prepare_valhalla_network(
         "tile_dir": str(tile_dir),
         "traffic_path": str(traffic_path),
     }
-
-
-import os
 
 
 def build_time_matrix_valhalla(
