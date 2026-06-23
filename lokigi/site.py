@@ -89,6 +89,7 @@ class SiteProblem(
     - 'mclp': Maximize coverage within a distance/time threshold
     """
 
+    # MARK: init
     def __init__(self, preferred_crs="EPSG:27700", debug_mode=True):
         self.preferred_crs = preferred_crs
 
@@ -117,6 +118,7 @@ class SiteProblem(
     def evaluate_single_solution_single_objective(
         self,
         objective: str = "p_median",
+        weights=None,
         site_names=None,
         site_indices=None,
         capacitated=False,
@@ -199,11 +201,13 @@ class SiteProblem(
                 "This helps prevent 'off-by-one' errors with numeric site IDs."
             )
 
-        # Ensure travel data is ready
-        if self.travel_and_demand_df is None:
-            self._create_joined_demand_travel_df(index_col=self._demand_data_id_col)
-
         try:
+            # If we haven't come via the solve method, we will need to make the joined
+            # demand and travel dataframe. Otherwise, that's handled once in that method.
+            # Otherwise
+            if self.travel_and_demand_df is None:
+                self._create_joined_demand_travel_df(index_col=self._demand_data_id_col)
+
             # We need to make sure that we use IDs and names completely consistently throughout.
             # 1. Resolve site_indices to actual Site IDs (names)
             if site_indices is not None:
@@ -236,7 +240,7 @@ class SiteProblem(
                 ]
                 raise KeyError(f"Sites not found in travel matrix: {missing}")
 
-            # 3. SMART SORTING:
+            # Smart sorting
             if site_indices is not None:
                 original_indices = site_indices
             else:
@@ -340,22 +344,35 @@ class SiteProblem(
                 active_facilities.filter(regex="_y$").columns, axis=1
             )
 
+            # Re-add any additional data
+            if self.additional_data is not None:
+                for additional_data in self.additional_data:
+                    active_facilities = active_facilities.merge(
+                        additional_data["data"],
+                        left_on=afi,
+                        right_on=additional_data["common_col"],
+                        how="inner",
+                        suffixes=("", "_y"),
+                    )
+                    active_facilities = active_facilities.drop(
+                        active_facilities.filter(regex="_y$").columns, axis=1
+                    )
+            # Add equity data to the dataframe if present
+            if self.equity_data is not None:
+                active_facilities = pd.merge(
+                    active_facilities,
+                    self.equity_data,
+                    left_on=self._joined_demand_travel_df_key_col,
+                    right_on=self._equity_data_common_col,
+                    suffixes=("", "_y"),
+                )
+
+                active_facilities = active_facilities.drop(
+                    active_facilities.filter(regex="_y$").columns, axis=1
+                )
         else:
             raise NotImplementedError(
                 "Capacitated solving not yet supported. Please rerun with capacitated=False."
-            )
-
-        if self.equity_data is not None:
-            active_facilities = pd.merge(
-                active_facilities,
-                self.equity_data,
-                left_on=self._joined_demand_travel_df_key_col,
-                right_on=self._equity_data_common_col,
-                suffixes=("", "_y"),
-            )
-
-            active_facilities = active_facilities.drop(
-                active_facilities.filter(regex="_y$").columns, axis=1
             )
 
         return EvaluatedCombination(
@@ -363,14 +380,17 @@ class SiteProblem(
             site_indices=final_indices,
             site_names=final_names,
             evaluated_combination_df=active_facilities,
+            weights=weights,
             site_problem=self,
             coverage_threshold=threshold_for_coverage,
         )
 
+    # MARK: solve()
     def solve(
         self,
         p: int,
         objectives: str = "p_median",
+        weights: dict = None,
         capacitated=False,  # Not yet implemented
         search_strategy: Literal["brute-force", "greedy", "grasp"] = "brute-force",
         brute_force_ignore_limit=False,
@@ -403,6 +423,9 @@ class SiteProblem(
             The optimization objective(s). Currently, only single-objective
             optimization is supported; if a list is provided, only the first
             element is used. Supported: "p_median", "p_center", "mclp", etc.
+        weights: dict
+            Only used with p_median.
+            A dictionary of weights
         capacitated : bool, default False
             Whether to enforce site capacity constraints.
             *Note: Currently not implemented.*
@@ -473,6 +496,68 @@ class SiteProblem(
         prior to calling `.solve()`, the method will automatically initialize
         them based on the travel matrix.
         """
+        # Error early for common errors
+        if search_strategy not in ["brute-force", "greedy", "grasp"]:
+            raise ValueError(
+                f"Unsupported search strategy ({search_strategy}) passed. Only 'brute-force', 'greedy' and 'grasp' are currently supported."
+            )
+
+        objective = objectives if isinstance(objectives, str) else objectives[0]
+
+        if objective not in SUPPORTED_OBJECTIVES:
+            raise ValueError(f"Unsupported objective ({objective}) passed.")
+
+        # Error early if trying to use weights with unsupported or inadvisable problem types
+        if objective in ["lscp", "p-center"]:
+            raise ValueError(
+                f"Multi-column weights are not supported for the '{self.objective_type}' objective. "
+                f"Weights are only valid for 'p-median' and 'mclp'."
+            )
+
+        # Handle weights
+        if weights is None:
+            # Fall back to legacy behavior
+            weights = {self.site_problem._demand_data_demand_col: 1.0}
+
+        if not isinstance(weights, dict):
+            raise TypeError(
+                f"Expected 'weights' to be a dict, got {type(weights).__name__}."
+            )
+
+        # Data Existence Check
+        # Ensure the user didn't typo a name in their weights dictionary
+        missing_cols = []
+        for col in weights.keys():
+            col_lower = col.lower()
+
+            if col_lower == "demand":
+                if self.demand_data is None:
+                    missing_cols.append(col)
+
+            elif col_lower == "equity":
+                if self.equity_data is None:
+                    missing_cols.append(col)
+
+            elif col not in self._additional_data_labels:
+                missing_cols.append(col)
+
+        if missing_cols:
+            raise KeyError(
+                f"The following weight keys are missing from the problem data: {missing_cols}"
+            )
+
+        if any(w < 0 for w in weights.values()):
+            raise ValueError("Weights cannot be negative.")
+
+        total_weight = sum(weights.values())
+        if total_weight <= 0:
+            raise ValueError("The sum of the weights must be greater than zero.")
+
+        # Normalise weights to ensure they sum to exactly 1.0
+        # This safely handles {"demand": 80, "equity": 20} -> {"demand": 0.8, "equity": 0.2}
+        normalised_weights = {
+            col: float(weight) / total_weight for col, weight in weights.items()
+        }
 
         if capacitated:
             raise ValueError(
@@ -480,11 +565,13 @@ class SiteProblem(
             )
 
         # Check minimum required information is provided
+        # If travel matrix (or any cost matrix) is not provided, cannot continue
         if self.travel_matrix is None:
             raise ValueError(
                 "No travel matrix or other cost matrix has been provided. Please add this using the .add_travel_matrix() method before running .solve() again."
             )
 
+        # If demand data not present,a ssume equal demand
         if self.demand_data is None:
             self._setup_equal_demand_df()
             if objectives != "mclp":
@@ -494,6 +581,7 @@ class SiteProblem(
                     "You can use the .show_demand_format() to see the expected format beforehand."
                 )
 
+        # If candidate sites not provided, make assumption from columns of travel/cost matrix
         if self.candidate_sites is None:
             self._setup_sites_df_from_travel_matrix()
             warn(
@@ -503,16 +591,13 @@ class SiteProblem(
                 "\nYou can use the .show_sites_format() to see the expected format beforehand."
             )
 
+        self._create_joined_demand_travel_df(index_col=self._demand_data_id_col)
+
         if isinstance(objectives, list) and len(objectives) > 1:
             warn(
                 "Multi-objective optimization is coming in a future release."
                 f"For now, just your first objective {objectives[0]} has been taken."
             )
-
-        objective = objectives if isinstance(objectives, str) else objectives[0]
-
-        if objective not in SUPPORTED_OBJECTIVES:
-            raise ValueError(f"Unsupported objective ({objective}) passed.")
 
         if max_value_cutoff is not None and objective not in [
             "hybrid_p_median",
@@ -521,11 +606,6 @@ class SiteProblem(
             raise ValueError(
                 f"A max value cutoff of {max_value_cutoff} has been provided for a model objective ({objective} that doesn't support it.)"
                 "Please rerun with hybrid_p_median or hybrid_simple_p_median."
-            )
-
-        if search_strategy not in ["brute-force", "greedy", "grasp"]:
-            raise ValueError(
-                f"Unsupported search strategy ({search_strategy}) passed. Only 'brute-force', 'greedy' and 'grasp' are currently supported."
             )
 
         if max_value_cutoff is not None and objective not in [
@@ -549,6 +629,7 @@ class SiteProblem(
                 p,
                 search_strategy=search_strategy,
                 objective=objective,
+                weights=normalised_weights,
                 brute_force_ignore_limit=brute_force_ignore_limit,
                 show_progress=show_progress,
                 brute_force_keep_best_n=brute_force_keep_best_n,
@@ -566,10 +647,12 @@ class SiteProblem(
         else:
             raise ValueError(f"Unknown objective '{objective}'.")
 
+    # MARK: solve pmed pcen mclp
     def _solve_pmedian_pcenter_mclp_problem(
         self,
         p: int,
         objective="p_median",
+        weights=None,
         search_strategy="brute-force",
         show_progress=False,
         brute_force_ignore_limit=False,
@@ -673,6 +756,7 @@ class SiteProblem(
             outputs = self._brute_force(
                 p=p,
                 objectives=objective,
+                weights=weights,
                 brute_force_ignore_limit=brute_force_ignore_limit,
                 show_progress=show_progress,
                 brute_force_keep_best_n=brute_force_keep_best_n,
@@ -687,6 +771,7 @@ class SiteProblem(
             # filtering out solutions, when using greedy search strategy
             outputs = self._greedy(
                 p=p,
+                weights=weights,
                 objectives=objective,
                 show_progress=show_progress,
                 threshold_for_coverage=threshold_for_coverage,
@@ -698,6 +783,7 @@ class SiteProblem(
             outputs = self._grasp(
                 p=p,
                 objectives=objective,
+                weights=weights,
                 threshold_for_coverage=threshold_for_coverage,
                 num_solutions=grasp_num_solutions,
                 alpha=grasp_alpha,
@@ -732,7 +818,10 @@ class SiteProblem(
         )
 
     def evaluate_n_sites(self, min_sites, max_sites):
-        pass
+        raise NotImplementedError(
+            "This method is not yet available, but is on the roadmap for future."
+            "Please see examples in docs for how to do this manually."
+        )
 
     def describe_models(self, available_only=True):
         """

@@ -19,6 +19,7 @@ from lokigi.mixins.site_eda import (
 )
 
 
+# MARK: CLASS EvaluatedCombination
 class EvaluatedCombination:
     """
     Container for results and summary metrics of an evaluated site combination.
@@ -86,6 +87,7 @@ class EvaluatedCombination:
         site_names,
         site_indices,
         evaluated_combination_df,
+        weights,
         site_problem,
         coverage_threshold=None,
     ):
@@ -120,18 +122,33 @@ class EvaluatedCombination:
         # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
         # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
         # SOFTWARE.
-        self.weighted_average = np.average(
-            self.evaluated_combination_df["min_cost"],
-            weights=self.evaluated_combination_df[
-                self.site_problem._demand_data_demand_col
-            ],
-        )
+
+        # If weights is purely the demand data, as was the default behaviour prior to 0.3.0,
+        # then calculate the weighted average metric in the existing way
+        if weights is None or (len(weights) == 1 and weights[0]["label"] == "demand"):
+            print(f"Weights: {weights}")
+            self.weighted_average = np.average(
+                self.evaluated_combination_df["min_cost"],
+                weights=self.evaluated_combination_df[
+                    self.site_problem._demand_data_demand_col
+                ],
+            )
+        else:
+            # calculate weights based on all passed weights
+            print(f"Weights: {weights}")
+            print("Not implemented")
+            pass
+
         self.unweighted_average = np.average(self.evaluated_combination_df["min_cost"])
+
         self.percentile_90th = np.percentile(
             self.evaluated_combination_df["min_cost"], q=90
         )
+
         self.max = np.max(self.evaluated_combination_df["min_cost"])
+
         self.coverage_threshold = coverage_threshold
+
         self.proportion_within_coverage_threshold = np.sum(
             self.evaluated_combination_df["within_threshold"]
         ) / len(self.evaluated_combination_df)
@@ -154,6 +171,7 @@ class EvaluatedCombination:
         }
 
 
+# MARK: CLASS SiteSolutionSet
 class SiteSolutionSet(
     MapsMixin,
     NonMapPlotsMixin,

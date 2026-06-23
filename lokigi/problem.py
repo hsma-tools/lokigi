@@ -42,6 +42,9 @@ class _Problem:
         self._geo_lookup_data_type = None
         self._geo_lookup_common_col = None
 
+        self.additional_data = None
+        self._additional_data_labels = None
+
         if debug_mode:
             self._verbose = True
         else:
@@ -507,3 +510,89 @@ class _Problem:
 
         # 3. Hash the resulting single byte string
         return hashlib.sha256(combined_bytes).hexdigest()
+
+    ###############################
+    # MARK: Additional Data
+    ###############################
+    def add_additional_data(
+        self,
+        df,
+        column_of_interest: str,
+        common_col: str,
+        label: str,
+        direction: Literal["higher_better", "lower_better"],
+    ):
+        """
+        Append a user-defined dataset to be tracked during optimization.
+
+        Allows analysts to register secondary spatial or tabular datasets (e.g.,
+        additional travel matrices, mileage, CO2, additional demand)
+        to evaluate trade-offs alongside the primary optimization metrics.
+
+        Parameters
+        ----------
+        df : pandas.DataFrame or geopandas.GeoDataFrame
+            The input dataset containing the secondary metric attributes.
+            This dataframe may contain multiple columns, but only a single column can be
+            added at a time, which is specified as column_of_interest.
+        column_of_interest: str
+            The name of the column containing the required metric.
+            This is the only column that will be included.
+        common_col : str
+            The name of the column in the dataset used to join or map the data
+            back to the demand regions or candidate facility sites.
+        label : str
+            A unique human-readable identifier for the dataset (e.g., 'distance_matrix'),
+            which will serve as the column header in the final wide results matrix.
+        direction : {'higher_better', 'lower_better'}
+            The optimization objective direction. Determines whether the library
+            should maximize ('higher_better') or minimize ('lower_better') this
+            metric during downstream trade-off calculations or Pareto sorting.
+
+        Returns
+        -------
+        None
+
+        """
+
+        if direction not in ["higher_better", "lower_better"]:
+            raise ValueError(
+                f"direction must be one of 'higher_better' or 'lower_better'. You provided '{direction}'."
+            )
+
+        if common_col not in [
+            self._region_geometry_layer_common_col,
+            self._site_candidate_sites_candidate_id_col,
+        ]:
+            warn(
+                "Provided common col not found in the region geometry or site dataset."
+                "You can ignore this warning if you haven't provided those datasets yet."
+            )
+
+        loaded_df, df_type = _load_spatial_or_tabular_data(df)
+
+        loaded_df = loaded_df.rename(columns={column_of_interest: label})
+
+        # Filter to only the joining col and a single column of interest
+        loaded_df = loaded_df[[common_col, label]]
+
+        self.additional_data.append(
+            {
+                "label": label,
+                "data": loaded_df,
+                "join_col": common_col,
+                "direction": direction,
+                "data_type": df_type,
+            }
+        )
+        self._additional_data_labels.append(label)
+
+    def plot_additional_data_map(label):
+        pass
+        # TODO - general method that will join to region geometry and plot a map
+        # Support one at a time rather than trying to plot all
+
+    def plot_additional_data_bar(label):
+        pass
+        # TODO - general method to show spread of additional data
+        # Support one at a time rather than trying to plot all

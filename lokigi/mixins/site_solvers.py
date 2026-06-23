@@ -27,6 +27,7 @@ class BruteForceMixin:
         self,
         p: int,
         objectives,
+        weights,
         brute_force_ignore_limit: bool = False,
         show_progress: bool = False,
         brute_force_keep_best_n=None,
@@ -87,7 +88,9 @@ class BruteForceMixin:
             # We store -score to simulate a Max-Heap using heapq
             else:
                 metrics = self.evaluate_single_solution_single_objective(
-                    site_indices=possible_solution, objective=objectives
+                    site_indices=possible_solution,
+                    objective=objectives,
+                    weights=weights,
                 ).return_solution_metrics()
 
                 score = metrics[rank_best_n_on]
@@ -138,6 +141,7 @@ class GreedyMixin:
         self,
         p: int,
         objectives,
+        weights,
         show_progress: bool = False,
         threshold_for_coverage=None,
     ):
@@ -169,6 +173,7 @@ class GreedyMixin:
                     self.evaluate_single_solution_single_objective(
                         site_indices=possible_solution,
                         objective=objectives,
+                        weights=weights,
                     ).return_solution_metrics()
                 )
 
@@ -213,6 +218,7 @@ class GraspMixin:
         self,
         p: int,
         objectives,
+        weights,
         num_solutions: int = 5,
         show_progress: bool = False,
         threshold_for_coverage=None,
@@ -243,25 +249,13 @@ class GraspMixin:
         attempts = 0
 
         # -------------------------------------------------------------------
-        # [NEW] CACHING: Memoize evaluations to prevent redundant compute.
+        # CACHING: Memoize evaluations to prevent redundant compute.
         # Uses a tuple of sorted indices as a canonical, hashable key.
         # -------------------------------------------------------------------
-        evaluation_cache = {}
-
-        # def _get_cached_metrics(indices: list[int]):
-        #     sig = tuple(sorted(indices))
-        #     if sig not in evaluation_cache:
-        #         evaluation_cache[sig] = self.evaluate_single_solution_single_objective(
-        #             site_indices=list(indices),
-        #             objective=objectives,
-        #         ).return_solution_metrics()
-        #     return evaluation_cache[sig]
-
         @lru_cache(maxsize=10000)
         def _get_cached_metrics(indices_tuple: tuple):
             return self.evaluate_single_solution_single_objective(
-                site_indices=list(indices_tuple),
-                objective=objectives,
+                site_indices=list(indices_tuple), objective=objectives, weights=weights
             ).return_solution_metrics()
 
         pbar = None
