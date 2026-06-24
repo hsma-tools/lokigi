@@ -346,12 +346,15 @@ class SiteProblem(
 
             # Re-add any additional data
             if self.additional_data is not None:
-                for additional_data in self.additional_data:
+                for additional_dataset in self.additional_data:
+                    # print(f"Right {additional_dataset['join_col']}")
+                    # print(f"Left {afi}")
+
                     active_facilities = active_facilities.merge(
-                        additional_data["data"],
+                        additional_dataset["data"],
                         left_on=afi,
-                        right_on=additional_data["common_col"],
-                        how="inner",
+                        right_on=additional_dataset["join_col"],
+                        how="left",
                         suffixes=("", "_y"),
                     )
                     active_facilities = active_facilities.drop(
@@ -359,10 +362,17 @@ class SiteProblem(
                     )
             # Add equity data to the dataframe if present
             if self.equity_data is not None:
+                # print(
+                #     f"self._joined_demand_travel_df_key_col: {self._joined_demand_travel_df_key_col}"
+                # )
+                # print(f"self._equity_data_common_col: {self._equity_data_common_col}")
+                # print(f"active_facilities: {active_facilities.head(1)}")
+                # print(f"self.equity_data: {self.equity_data.head(1)}")
+
                 active_facilities = pd.merge(
                     active_facilities,
                     self.equity_data,
-                    left_on=self._joined_demand_travel_df_key_col,
+                    left_on=afi,
                     right_on=self._equity_data_common_col,
                     suffixes=("", "_y"),
                 )
@@ -517,7 +527,7 @@ class SiteProblem(
         # Handle weights
         if weights is None:
             # Fall back to legacy behavior
-            weights = {self.site_problem._demand_data_demand_col: 1.0}
+            weights = {"demand": 1.0}
 
         if not isinstance(weights, dict):
             raise TypeError(
@@ -538,8 +548,9 @@ class SiteProblem(
                 if self.equity_data is None:
                     missing_cols.append(col)
 
-            elif col not in self._additional_data_labels:
-                missing_cols.append(col)
+            elif self._additional_data_labels is not None:
+                if col not in self._additional_data_labels:
+                    missing_cols.append(col)
 
         if missing_cols:
             raise KeyError(

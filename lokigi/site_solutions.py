@@ -125,7 +125,10 @@ class EvaluatedCombination:
 
         # If weights is purely the demand data, as was the default behaviour prior to 0.3.0,
         # then calculate the weighted average metric in the existing way
-        if weights is None or (len(weights) == 1 and weights[0]["label"] == "demand"):
+        if weights is None or (
+            isinstance(weights, dict) and len(weights) == 1 and "demand" in weights
+        ):
+            print("Falling back to default: weighting p-median by demand only")
             print(f"Weights: {weights}")
             self.weighted_average = np.average(
                 self.evaluated_combination_df["min_cost"],
@@ -134,11 +137,79 @@ class EvaluatedCombination:
                 ],
             )
         else:
-            # calculate weights based on all passed weights
+            print("Weighting p-median by custom options")
             print(f"Weights: {weights}")
-            print("Not implemented")
-            pass
 
+            # Initialize an array of zeros to build our blended row-level weights
+            compound_weights = np.zeros(len(self.evaluated_combination_df))
+            self.extra_metrics = {}
+
+            for label, weight in weights.items():
+                # Map the user's label to the correct DataFrame column name
+                if label == "demand":
+                    col_name = self.site_problem._demand_data_demand_col
+                elif label == "equity":
+                    col_name = self.site_problem._equity_data_equity_col
+                else:
+                    col_name = label
+
+                if col_name in self.evaluated_combination_df.columns:
+                    # Extract raw data
+                    column_data = self.evaluated_combination_df[col_name].astype(float)
+
+                    # Min-Max Normalization to a 0.0 - 1.0 scale
+                    col_min = column_data.min()
+                    col_max = column_data.max()
+
+                    if col_max != col_min:
+                        norm_data = (column_data - col_min) / (col_max - col_min)
+                    else:
+                        # Edge case: If all values are identical, give them equal baseline weight
+                        norm_data = np.ones(len(column_data))
+
+                    # if demand, assume higher_better
+                    # if equity, get direction from equity data
+
+                    if label.lower() == "demand":
+                        direction = (
+                            "higher_better"  # 'demand' defaults to higher_better
+                        )
+
+                    elif label.lower() == "equity":
+                        direction = (
+                            "higher_better"
+                            if self.site_problem._equity_data_direction
+                            == "higher_is_better"
+                            else "lower_better"
+                        )  # 'demand' defaults to higher_better
+
+                    # Look up directionality from the problem configuration
+                    elif self.site_problem.additional_data is not None:
+                        # Find the metadata dict matching this label
+                        meta = next(
+                            (
+                                item
+                                for item in self.site_problem.additional_data
+                                if item["label"] == label
+                            ),
+                            None,
+                        )
+                        if meta:
+                            direction = meta.get("direction", "higher_better")
+
+                    # Handle Directionality (Invert weights if lower_better)
+                    if direction == "lower_better":
+                        norm_data = 1.0 - norm_data
+
+                    # Accumulate the normalized, directional weight
+                    compound_weights += norm_data * weight
+
+            # Calculate the final composite weighted average across all objectives
+            self.weighted_average = np.average(
+                self.evaluated_combination_df["min_cost"], weights=compound_weights
+            )
+
+        # Calculate the unweighted travel/cost statistics
         self.unweighted_average = np.average(self.evaluated_combination_df["min_cost"])
 
         self.percentile_90th = np.percentile(

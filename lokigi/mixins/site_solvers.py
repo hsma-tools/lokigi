@@ -75,6 +75,7 @@ class BruteForceMixin:
                         site_indices=possible_solution,
                         objective=objectives,
                         threshold_for_coverage=threshold_for_coverage,
+                        weights=weights,
                     ).return_solution_metrics()
                 )
 
@@ -208,6 +209,7 @@ class GreedyMixin:
             site_indices=best_indices,
             objective=objectives,
             threshold_for_coverage=threshold_for_coverage,
+            weights=weights,
         ).return_solution_metrics()
 
         return [best_solution_metrics]
@@ -399,6 +401,7 @@ class GraspMixin:
                 site_indices=current_solution,
                 objective=objectives,
                 threshold_for_coverage=threshold_for_coverage,  # Applied only at the end
+                weights=weights,
             ).return_solution_metrics()
 
             accepted_solution_sets.append(current_solution_set)

@@ -560,14 +560,14 @@ class _Problem:
                 f"direction must be one of 'higher_better' or 'lower_better'. You provided '{direction}'."
             )
 
-        if common_col not in [
-            self._region_geometry_layer_common_col,
-            self._site_candidate_sites_candidate_id_col,
-        ]:
-            warn(
-                "Provided common col not found in the region geometry or site dataset."
-                "You can ignore this warning if you haven't provided those datasets yet."
-            )
+        # if common_col not in [
+        #     self._region_geometry_layer_common_col,
+        #     self._candidate_sites_candidate_id_col,
+        # ]:
+        #     warn(
+        #         "Provided common col not found in the region geometry or site dataset."
+        #         "You can ignore this warning if you haven't provided those datasets yet."
+        #     )
 
         loaded_df, df_type = _load_spatial_or_tabular_data(df)
 
@@ -575,6 +575,15 @@ class _Problem:
 
         # Filter to only the joining col and a single column of interest
         loaded_df = loaded_df[[common_col, label]]
+
+        # If this is the first bit of additional data being added, convert from None to a list.
+        # Easier for general checking elsewhere if additional_data attribute is initialised to
+        # None as more in keeping with defaults for other attributes so less chance of accidentally
+        # checking for Noneness and getting False when it's actually an empty list
+        if self.additional_data is None:
+            self.additional_data = []
+        if self._additional_data_labels is None:
+            self._additional_data_labels = []
 
         self.additional_data.append(
             {

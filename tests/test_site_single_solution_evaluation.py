@@ -45,3 +45,6 @@ class TestEvaluateSingleSolution:
             loaded_problem.evaluate_single_solution_single_objective(
                 objective="p_median", site_indices=[999]
             )
+
+    def test_uses_weights():
+        pass
