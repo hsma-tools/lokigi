@@ -1,3 +1,7 @@
+## v0.2.1
+
+- Initial multiobjective optimisation work
+
 ## v0.2.0
 
 - Add hotspot calculation and plotting
