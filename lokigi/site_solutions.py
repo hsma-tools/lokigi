@@ -1,5 +1,5 @@
 import numpy as np
-
+import pandas as pd
 
 from lokigi.mixins.site_solution_plots import (
     MapsMixin,
@@ -76,6 +76,8 @@ class EvaluatedCombination:
     proportion_within_coverage_threshold : float
         Proportion of demand points that fall within the coverage threshold.
 
+
+
     Notes
     -----
     The weighted average is computed using demand values as weights.
@@ -96,6 +98,23 @@ class EvaluatedCombination:
         self.site_indices = site_indices
         self.evaluated_combination_df = evaluated_combination_df
         self.site_problem = site_problem
+
+        self.weighted_by_equity_group = {}
+        self.unweighted_by_equity_group = {}
+        self.gap_absolute_weighted = None
+        self.gap_absolute_desc = "N/A (No equity data)"
+
+        self.gap_relative_weighted = None
+        self.gap_relative_desc = "N/A (No equity data)"
+
+        self.inter_tertile_ratio = None
+        self.inter_tertile_desc = "N/A (No equity data)"
+
+        self.coverage_by_equity_group = {}
+        self.max_cost_by_equity_group = {}
+        self.avg_lower_third_bins = None
+        self.avg_middle_third_bins = None
+        self.avg_upper_third_bins = None
 
         # Weighted average code modified from
         # https://github.com/health-data-science-OR/healthcare-logistics/blob/8d03b890a8ce861b64f6f834710dc50f2d85f68e/optimisation/metapy/evolutionary/evolutionary.py#L722
@@ -128,17 +147,19 @@ class EvaluatedCombination:
         if weights is None or (
             isinstance(weights, dict) and len(weights) == 1 and "demand" in weights
         ):
-            print("Falling back to default: weighting p-median by demand only")
-            print(f"Weights: {weights}")
+            active_weights = self.evaluated_combination_df[
+                self.site_problem._demand_data_demand_col
+            ]
+
+            # print("Falling back to default: weighting p-median by demand only")
+            # print(f"Weights: {weights}")
             self.weighted_average = np.average(
                 self.evaluated_combination_df["min_cost"],
-                weights=self.evaluated_combination_df[
-                    self.site_problem._demand_data_demand_col
-                ],
+                weights=active_weights,
             )
         else:
-            print("Weighting p-median by custom options")
-            print(f"Weights: {weights}")
+            # print("Weighting p-median by custom options")
+            # print(f"Weights: {weights}")
 
             # Initialize an array of zeros to build our blended row-level weights
             compound_weights = np.zeros(len(self.evaluated_combination_df))
@@ -208,6 +229,9 @@ class EvaluatedCombination:
             self.weighted_average = np.average(
                 self.evaluated_combination_df["min_cost"], weights=compound_weights
             )
+            active_weights = pd.Series(
+                compound_weights, index=self.evaluated_combination_df.index
+            )
 
         # Calculate the unweighted travel/cost statistics
         self.unweighted_average = np.average(self.evaluated_combination_df["min_cost"])
@@ -224,10 +248,154 @@ class EvaluatedCombination:
             self.evaluated_combination_df["within_threshold"]
         ) / len(self.evaluated_combination_df)
 
+        # Calculate the weighted and unweighted cost per equity band
+        # if equity data present
+        self.weighted_by_equity_group = {}
+        self.unweighted_by_equity_group = {}
+
+        equity_col = getattr(self.site_problem, "_equity_data_equity_col", None)
+
+        if equity_col and equity_col in self.evaluated_combination_df.columns:
+            grouped_df = self.evaluated_combination_df.groupby(equity_col)
+
+            # 1. Unweighted average by equity group
+            self.unweighted_by_equity_group = (
+                grouped_df["min_cost"].mean().round(2).to_dict()
+            )
+
+            # 2. Weighted average by equity group (matching global composite weights logic)
+            for band, group in grouped_df:
+                # Extract matching row weights for this specific group
+                group_weights = active_weights.loc[group.index]
+
+                # Avoid ZeroDivisionError if the combined weight for this band is 0
+                if group_weights.sum() > 0:
+                    self.weighted_by_equity_group[band] = np.average(
+                        group["min_cost"], weights=group_weights
+                    ).round(2)
+                else:
+                    self.weighted_by_equity_group[band] = group["min_cost"].mean()
+
+            # 3. Disparity Metrics & Verbal Descriptors
+            if self.weighted_by_equity_group:
+                weighted_vals = list(self.weighted_by_equity_group.values())
+                min_cost = min(weighted_vals)
+                max_cost = max(weighted_vals)
+
+                self.gap_absolute_weighted = max_cost - min_cost
+                self.gap_absolute_desc = f"Spread of {self.gap_absolute_weighted:.1f} units between best and worst groups"
+
+                if min_cost > 0:
+                    self.gap_relative_weighted = max_cost / min_cost
+
+                    # Generate Relative Gap Descriptor
+                    if self.gap_relative_weighted <= 1.005:
+                        self.gap_relative_desc = "Perfect Parity"
+                    elif self.gap_relative_weighted <= 1.10:
+                        self.gap_relative_desc = (
+                            "Minimal Disparity (Worst group travels <10% longer)"
+                        )
+                    elif self.gap_relative_weighted <= 1.30:
+                        self.gap_relative_desc = (
+                            "Moderate Disparity (Worst group travels 10-30% longer)"
+                        )
+                    else:
+                        pct_longer = (self.gap_relative_weighted - 1.0) * 100
+                        self.gap_relative_desc = f"Significant Disparity (Worst group travels {pct_longer:.0f}% longer)"
+                else:
+                    self.gap_relative_weighted = np.nan
+                    self.gap_relative_desc = "N/A (Zero baseline cost)"
+
+            # 4. Coverage Equity (Thresholds by Group)
+            if "within_threshold" in self.evaluated_combination_df.columns:
+                self.coverage_by_equity_group = (
+                    grouped_df["within_threshold"].mean().round(2).to_dict(),
+                )
+
+            # 5. Worst-Case Scenarios by Group
+            self.max_cost_by_equity_group = (
+                grouped_df["min_cost"].max().round(2).to_dict()
+            )
+
+            # 6. Tertile Groupings (Averaging the bin results into thirds)
+            # Sorts the bins (e.g., 1-10) and splits them into 3 roughly equal chunks
+            unique_bins = sorted(list(self.weighted_by_equity_group.keys()))
+            if len(unique_bins) >= 3:
+                chunks = np.array_split(unique_bins, 3)
+                self.avg_lower_third_bins = np.mean(
+                    [self.weighted_by_equity_group[b] for b in chunks[0]]
+                )
+                self.avg_middle_third_bins = np.mean(
+                    [self.weighted_by_equity_group[b] for b in chunks[1]]
+                )
+                self.avg_upper_third_bins = np.mean(
+                    [self.weighted_by_equity_group[b] for b in chunks[2]]
+                )
+
+                if self.avg_upper_third_bins and self.avg_upper_third_bins > 0:
+                    self.inter_tertile_ratio = (
+                        self.avg_lower_third_bins / self.avg_upper_third_bins
+                    )
+
+                    # Generate Inter-Tertile Ratio Descriptor
+                    # (Assuming lower bins = higher deprivation, e.g., IMD Deciles 1-3)
+                    if 0.95 <= self.inter_tertile_ratio <= 1.05:
+                        self.inter_tertile_desc = (
+                            "Balanced (Macro travel times are broadly equal)"
+                        )
+                    elif 1.05 < self.inter_tertile_ratio <= 1.25:
+                        pct = (self.inter_tertile_ratio - 1.0) * 100
+                        self.inter_tertile_desc = f"Slightly Inequitable (Most deprived travel {pct:.0f}% longer)"
+                    elif self.inter_tertile_ratio > 1.25:
+                        pct = (self.inter_tertile_ratio - 1.0) * 100
+                        self.inter_tertile_desc = f"Highly Inequitable (Most deprived travel {pct:.0f}% longer)"
+                    elif 0.75 <= self.inter_tertile_ratio < 0.95:
+                        pct = (1.0 - self.inter_tertile_ratio) * 100
+                        self.inter_tertile_desc = f"Slightly Progressive (Most deprived travel {pct:.0f}% shorter)"
+                    else:
+                        pct = (1.0 - self.inter_tertile_ratio) * 100
+                        self.inter_tertile_desc = f"Highly Progressive (Most deprived travel {pct:.0f}% shorter)"
+                else:
+                    self.inter_tertile_ratio = np.nan
+                    self.inter_tertile_desc = "N/A (Zero upper-third travel time)"
+
     def show_result_df(self):
         return self.evaluated_combination_df
 
     def return_solution_metrics(self):
+        """
+        INTERPRETATION GUIDE FOR SUMMARY TABLES & SORTING:
+
+        1a. 'weighted_average'
+            - LOWER is better. Represents travel time adjusted for specified weighting factors.
+
+        1b. Travel Costs ('unweighted_average', '90th_percentile', 'max'):
+           - LOWER is better. Represents travel time or distance.
+
+        2. Absolute Equity Gap ('gap_absolute_weighted'):
+           - CLOSER TO 0 is better. Measures the flat minute/distance difference
+             between the best-served and worst-served equity bands. High numbers
+             mean severe geographical disparity.
+
+        3. Relative Equity Gap ('gap_relative_weighted'):
+           - CLOSER TO 1.0 is better. If it's 1.5, the worst-served group travels
+             1.5x longer than the best-served group.
+
+        4. Inter-Tertile Ratio ('inter_tertile_ratio'):
+           - Measures macro-equity assuming lower bins = higher deprivation (e.g., IMD 1-3).
+           - SORTING CRITERIA:
+             * ITR > 1.0: Inequity. The most deprived third faces longer travel times
+                          than the least deprived third (e.g., 1.25 = 25% longer travel).
+             * ITR = 1.0: Perfect equality in macro travel times.
+             * ITR < 1.0: Progressive equity. Travel times are shorter for the most
+                          deprived communities.
+
+        5. Coverage Metrics ('proportion_within_coverage_threshold', 'coverage_by_equity_group'):
+           - HIGHER is better (Scale: 0.0 to 1.0). Represents accessibility. Look for
+             solutions where coverage is both globally high and uniformly distributed
+             across groups.
+        """
+
         # Return weighted average
         return {
             "site_names": self.site_names,
@@ -238,6 +406,23 @@ class EvaluatedCombination:
             "90th_percentile": self.percentile_90th,
             "max": self.max,
             "proportion_within_coverage_threshold": self.proportion_within_coverage_threshold,
+            # Granular Equity Collections
+            "weighted_by_equity_group": self.weighted_by_equity_group,
+            "unweighted_by_equity_group": self.unweighted_by_equity_group,
+            "coverage_by_equity_group": self.coverage_by_equity_group,
+            "max_cost_by_equity_group": self.max_cost_by_equity_group,
+            # Numeric Aggregations
+            "gap_absolute_weighted": self.gap_absolute_weighted,
+            "gap_relative_weighted": self.gap_relative_weighted,
+            "avg_lower_third_bins": self.avg_lower_third_bins,
+            "avg_middle_third_bins": self.avg_middle_third_bins,
+            "avg_upper_third_bins": self.avg_upper_third_bins,
+            "inter_tertile_ratio": self.inter_tertile_ratio,
+            # Verbal Interpretation Columns
+            "gap_absolute_description": self.gap_absolute_desc,
+            "gap_relative_description": self.gap_relative_desc,
+            "inter_tertile_description": self.inter_tertile_desc,
+            # Underlying per-region df
             "problem_df": self.evaluated_combination_df,
         }
 

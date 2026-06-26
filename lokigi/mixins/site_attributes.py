@@ -33,7 +33,14 @@ class SiteAttributeMixin:
     ########################
     # MARK: Demand
     ########################
-    def add_demand(self, demand_df, demand_col, location_id_col, skip_cols=None):
+    def add_demand(
+        self,
+        demand_df,
+        demand_col,
+        location_id_col,
+        drop_extra_cols=True,
+        skip_cols=None,
+    ):
         """
         Add demand data to the site problem and validate its structure.
 
@@ -53,6 +60,10 @@ class SiteAttributeMixin:
         location_id_col : str
             The name of the column in `demand_df` used as a unique identifier
             for demand locations.
+        drop_extra_cols: bool, optional
+            Whether to drop (remove) additional columns present in the dataset other than the demand_col
+            and location_id_col.
+            Defaults to True.
         skip_cols : list of str, optional
             A list of column names to ignore during the data loading process.
             Defaults to None.
@@ -97,7 +108,10 @@ class SiteAttributeMixin:
             ),
         )
 
-        self.demand_data = loaded_df
+        if drop_extra_cols:
+            self.demand_data = loaded_df[[location_id_col, demand_col]]
+        else:
+            self.demand_data = loaded_df
         self._demand_data_type = df_type
         self._demand_data_demand_col = demand_col
         self._demand_data_id_col = location_id_col
