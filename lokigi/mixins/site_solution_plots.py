@@ -15,6 +15,8 @@ import sweetpareto.vis as spv
 import itertools
 from typing import Literal, Optional
 from lokigi.utils import _wrap_label, _select_solution, _get_ordinal_suffix
+import warnings
+from requests.exceptions import RequestException
 
 
 ##################################
@@ -667,11 +669,14 @@ class MapsMixin:
             has_required_sites = False
 
         # Add basemap
-        cx.add_basemap(
-            ax,
-            crs=nearest_site_travel_gdf.crs.to_string(),
-        )
-
+        try:
+            cx.add_basemap(ax, crs=nearest_site_travel_gdf.crs.to_string(), timeout=30)
+        except RequestException as e:
+            warnings.warn(
+                f"Unable to download background map tiles ({type(e).__name__}). "
+                "Continuing without a basemap.",
+                stacklevel=2,
+            )
         ax.axis("off")
 
         return ax, has_required_sites
@@ -2201,10 +2206,16 @@ class EquityPlotsMixin:
 
             ax.set_title(f"{equity_col}: {label}")
 
-            cx.add_basemap(
-                ax,
-                crs=nearest_site_travel_gdf.crs.to_string(),
-            )
+            try:
+                cx.add_basemap(
+                    ax, crs=nearest_site_travel_gdf.crs.to_string(), timeout=30
+                )
+            except RequestException as e:
+                warnings.warn(
+                    f"Unable to download background map tiles ({type(e).__name__}). "
+                    "Continuing without a basemap.",
+                    stacklevel=2,
+                )
 
             ax.axis("off")
 

@@ -18,6 +18,9 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import matplotlib.colors as mcolors
 
+import warnings
+from requests.exceptions import RequestException
+
 
 NeighbourhoodMethod = Literal[
     "rook",
@@ -992,10 +995,14 @@ class HotspotPlotMixin:
                 )
 
             if show_basemap:
-                cx.add_basemap(
-                    ax,
-                    crs=hotspots_df.crs.to_string(),
-                )
+                try:
+                    cx.add_basemap(ax, crs=hotspots_df.crs.to_string(), timeout=30)
+                except RequestException as e:
+                    warnings.warn(
+                        f"Unable to download background map tiles ({type(e).__name__}). "
+                        "Continuing without a basemap.",
+                        stacklevel=2,
+                    )
 
             if not show_axis:
                 ax.axis("off")
@@ -1391,7 +1398,14 @@ class HotspotPlotMixin:
                 )
 
             if show_basemap:
-                cx.add_basemap(ax, crs=hotspots_df.crs.to_string())
+                try:
+                    cx.add_basemap(ax, crs=hotspots_df.crs.to_string(), timeout=30)
+                except RequestException as e:
+                    warnings.warn(
+                        f"Unable to download background map tiles ({type(e).__name__}). "
+                        "Continuing without a basemap.",
+                        stacklevel=2,
+                    )
 
             if not show_axis:
                 ax.axis("off")
