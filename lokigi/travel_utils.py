@@ -1,15 +1,24 @@
-from valhalla import Actor
 import pandas as pd
 
 from pathlib import Path
 import subprocess
 
-import osmium
 import re
 import numpy as np
 from collections import defaultdict
 from tqdm import tqdm
 import os
+
+
+try:
+    from valhalla import Actor
+    import osmium
+except ImportError as e:
+    raise ImportError(
+        "Routing support requires optional dependencies.\n"
+        "Install with:\n"
+        "    pip install lokigi[routing]"
+    ) from e
 
 
 def prepare_valhalla_network(
