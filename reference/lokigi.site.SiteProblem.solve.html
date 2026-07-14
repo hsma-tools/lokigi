@@ -347,23 +347,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>site.SiteProblem.solve(</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    p,</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    objectives<span class="op">=</span><span class="st">'p_median'</span>,</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    capacitated<span class="op">=</span><span class="va">False</span>,</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    search_strategy<span class="op">=</span><span class="st">'brute-force'</span>,</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    brute_force_ignore_limit<span class="op">=</span><span class="va">False</span>,</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    show_progress<span class="op">=</span><span class="va">True</span>,</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    brute_force_keep_best_n<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    brute_force_keep_worst_n<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    max_value_cutoff<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    threshold_for_coverage<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    grasp_num_solutions<span class="op">=</span><span class="dv">5</span>,</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    grasp_alpha<span class="op">=</span><span class="fl">0.2</span>,</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    grasp_max_attempts<span class="op">=</span><span class="st">'default'</span>,</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    grasp_min_sites_different<span class="op">=</span><span class="dv">1</span>,</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    grasp_local_search_chance<span class="op">=</span><span class="fl">0.8</span>,</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    grasp_max_swap_count_local_search<span class="op">=</span><span class="dv">10</span>,</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    random_seed<span class="op">=</span><span class="dv">42</span>,</span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    weights<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    capacitated<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    search_strategy<span class="op">=</span><span class="st">'brute-force'</span>,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    brute_force_ignore_limit<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    show_progress<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    brute_force_keep_best_n<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    brute_force_keep_worst_n<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    max_value_cutoff<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    threshold_for_coverage<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    grasp_num_solutions<span class="op">=</span><span class="dv">5</span>,</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    grasp_alpha<span class="op">=</span><span class="fl">0.2</span>,</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    grasp_max_attempts<span class="op">=</span><span class="st">'default'</span>,</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    grasp_min_sites_different<span class="op">=</span><span class="dv">1</span>,</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    grasp_local_search_chance<span class="op">=</span><span class="fl">0.8</span>,</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    grasp_max_swap_count_local_search<span class="op">=</span><span class="dv">10</span>,</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    random_seed<span class="op">=</span><span class="dv">42</span>,</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Solve the site location problem using the specified objective and strategy.</p>
 <p>This method validates the problem configuration, handles automatic setup of missing demand or site data, and dispatches the optimization task to the appropriate internal solver.</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">
@@ -397,90 +398,96 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>"p_median"</code></td>
 </tr>
 <tr class="odd">
+<td>weights</td>
+<td>dict</td>
+<td>Only used with p_median. A dictionary of weights</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
 <td>capacitated</td>
 <td>bool</td>
 <td>Whether to enforce site capacity constraints. <em>Note: Currently not implemented.</em></td>
 <td><code>False</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>search_strategy</td>
 <td>(brute - force, greedy, grasp)</td>
 <td>The algorithm used to find the solution: - “brute-force”: Exhaustively checks all combinations (if p is small). - “greedy”: Iteratively adds the best performing site. - “grasp”: Greedy Randomized Adaptive Search Procedure.</td>
 <td><code>"brute-force"</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>brute_force_ignore_limit</td>
 <td>bool</td>
 <td>(Brute Force only) If True, allows brute-force searching even if the number of combinations is extremely high.</td>
 <td><code>False</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>show_progress</td>
 <td>bool</td>
 <td>If True, displays a progress bar during the optimization process.</td>
 <td><code>True</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>brute_force_keep_best_n</td>
 <td></td>
 <td>(Brute Force only) The number of top or bottom results to retain during a brute-force search.</td>
 <td><code>None</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>max_value_cutoff</td>
 <td>float</td>
 <td>The maximum allowable travel cost. Only applicable for hybrid objective models.</td>
 <td><code>None</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>threshold_for_coverage</td>
 <td>float</td>
 <td>The distance or time threshold. Used as a hard filter for MCLP objectives or as a scoring metric for others.</td>
 <td><code>None</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>grasp_num_solutions</td>
 <td>int</td>
 <td>(GRASP only) The number of high-quality solutions to generate.</td>
 <td><code>5</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>grasp_alpha</td>
 <td>float</td>
 <td>(GRASP only) The selection restriction parameter (0 is fully greedy, 1 is fully random).</td>
 <td><code>0.2</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>grasp_max_attempts</td>
 <td>int or default</td>
 <td>(GRASP only) Maximum iterations to find a valid solution.</td>
 <td><code>"default"</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>grasp_min_sites_different</td>
 <td>int</td>
 <td>(GRASP only) Minimum number of sites that must differ between generated solutions. Useful for generating a more diverse solution pool, though you may need to increase the max_attempts at the same time.</td>
 <td><code>1</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>grasp_local_search_chance</td>
 <td>float</td>
 <td>(GRASP only) The probability (0.0 to 1.0) of performing a local search to improve a found solution.</td>
 <td><code>0.8</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>grasp_max_swap_count_local_search</td>
 <td>int</td>
 <td>(GRASP only) Maximum number of site swaps allowed during the local search phase.</td>
 <td><code>10</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>random_seed</td>
 <td>int</td>
 <td>(GRASP only) Seed for reproducibility in randomized strategies like GRASP.</td>
 <td><code>42</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>**kwargs</td>
 <td>dict</td>
 <td>Additional arguments passed to the internal solver.</td>

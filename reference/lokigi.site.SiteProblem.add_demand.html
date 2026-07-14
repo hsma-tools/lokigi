@@ -348,8 +348,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    demand_df,</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    demand_col,</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    location_id_col,</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    skip_cols<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    drop_extra_cols<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    skip_cols<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Add demand data to the site problem and validate its structure.</p>
 <p>This method processes an input DataFrame or GeoDataFrame (or path) containing observed demand. It validates the presence of required columns and aligns the spatial or tabular data for use within the SiteProblem context.</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">
@@ -389,6 +390,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><em>required</em></td>
 </tr>
 <tr class="even">
+<td>drop_extra_cols</td>
+<td></td>
+<td>Whether to drop (remove) additional columns present in the dataset other than the demand_col and location_id_col.&nbsp;Defaults to True.</td>
+<td><code>True</code></td>
+</tr>
+<tr class="odd">
 <td>skip_cols</td>
 <td>list of str</td>
 <td>A list of column names to ignore during the data loading process. Defaults to None.</td>

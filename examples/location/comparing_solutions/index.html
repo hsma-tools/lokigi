@@ -423,25 +423,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>solution_car <span class="op">=</span> problem_car.solve(p<span class="op">=</span><span class="dv">11</span>, threshold_for_coverage<span class="op">=</span><span class="dv">20</span>)</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>solution_public_transport <span class="op">=</span> problem_public_transport.solve(p<span class="op">=</span><span class="dv">11</span>, threshold_for_coverage<span class="op">=</span><span class="dv">60</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stderr">
-<pre><code>/__w/lokigi/lokigi/lokigi/site.py:491: UserWarning:
+<pre><code>/__w/lokigi/lokigi/lokigi/site.py:566: UserWarning:
 
 No demand data was provided. Demand from all regions has been assumed to be equal.If you wish to override this, run .add_demand() to add your site dataframe before running .solve() again.You can use the .show_demand_format() to see the expected format beforehand.
 </code></pre>
 </div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"2f012eef0fed4ca48bef416bb76812c8","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+{"model_id":"d977bbb12dc447959c392343a9057b34","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
 </script>
 </div>
 <div class="cell-output cell-output-stderr">
-<pre><code>/__w/lokigi/lokigi/lokigi/site.py:491: UserWarning:
+<pre><code>/__w/lokigi/lokigi/lokigi/site.py:566: UserWarning:
 
 No demand data was provided. Demand from all regions has been assumed to be equal.If you wish to override this, run .add_demand() to add your site dataframe before running .solve() again.You can use the .show_demand_format() to see the expected format beforehand.
 </code></pre>
 </div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"cbbe7c1e9c9d41c2ab3d8d1542eb729d","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+{"model_id":"87b1df6c8c2541278a97e212ceb7be79","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
 </script>
 </div>
 </div>
@@ -465,6 +465,17 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <th data-quarto-table-cell-role="th">90th_percentile</th>
 <th data-quarto-table-cell-role="th">max</th>
 <th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_by_equity_group</th>
+<th data-quarto-table-cell-role="th">...</th>
+<th data-quarto-table-cell-role="th">gap_absolute_weighted</th>
+<th data-quarto-table-cell-role="th">gap_relative_weighted</th>
+<th data-quarto-table-cell-role="th">avg_lower_third_bins</th>
+<th data-quarto-table-cell-role="th">avg_middle_third_bins</th>
+<th data-quarto-table-cell-role="th">avg_upper_third_bins</th>
+<th data-quarto-table-cell-role="th">inter_tertile_ratio</th>
+<th data-quarto-table-cell-role="th">gap_absolute_description</th>
+<th data-quarto-table-cell-role="th">gap_relative_description</th>
+<th data-quarto-table-cell-role="th">inter_tertile_description</th>
 <th data-quarto-table-cell-role="th">problem_df</th>
 </tr>
 </thead>
@@ -480,6 +491,17 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <td>26.0</td>
 <td>54.0</td>
 <td>0.74</td>
+<td>{}</td>
+<td>...</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>N/A (No equity data)</td>
+<td>N/A (No equity data)</td>
+<td>N/A (No equity data)</td>
 <td>from_id&nbsp;&nbsp;North Devon District Hos...</td>
 </tr>
 <tr class="even">
@@ -493,11 +515,23 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <td>26.0</td>
 <td>54.0</td>
 <td>0.74</td>
+<td>{}</td>
+<td>...</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>N/A (No equity data)</td>
+<td>N/A (No equity data)</td>
+<td>N/A (No equity data)</td>
 <td>from_id&nbsp;&nbsp;North Devon District Hos...</td>
 </tr>
 </tbody>
 </table>
 
+<p>2 rows × 23 columns</p>
 </div>
 </div>
 </div>
@@ -521,6 +555,17 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <th data-quarto-table-cell-role="th">90th_percentile</th>
 <th data-quarto-table-cell-role="th">max</th>
 <th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_by_equity_group</th>
+<th data-quarto-table-cell-role="th">...</th>
+<th data-quarto-table-cell-role="th">gap_absolute_weighted</th>
+<th data-quarto-table-cell-role="th">gap_relative_weighted</th>
+<th data-quarto-table-cell-role="th">avg_lower_third_bins</th>
+<th data-quarto-table-cell-role="th">avg_middle_third_bins</th>
+<th data-quarto-table-cell-role="th">avg_upper_third_bins</th>
+<th data-quarto-table-cell-role="th">inter_tertile_ratio</th>
+<th data-quarto-table-cell-role="th">gap_absolute_description</th>
+<th data-quarto-table-cell-role="th">gap_relative_description</th>
+<th data-quarto-table-cell-role="th">inter_tertile_description</th>
 <th data-quarto-table-cell-role="th">problem_df</th>
 </tr>
 </thead>
@@ -536,6 +581,17 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <td>99.4</td>
 <td>262.0</td>
 <td>0.58</td>
+<td>{}</td>
+<td>...</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>N/A (No equity data)</td>
+<td>N/A (No equity data)</td>
+<td>N/A (No equity data)</td>
 <td>from_id&nbsp;&nbsp;North Devon District Hos...</td>
 </tr>
 <tr class="even">
@@ -549,11 +605,23 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <td>100.4</td>
 <td>262.0</td>
 <td>0.58</td>
+<td>{}</td>
+<td>...</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>N/A (No equity data)</td>
+<td>N/A (No equity data)</td>
+<td>N/A (No equity data)</td>
 <td>from_id&nbsp;&nbsp;North Devon District Hos...</td>
 </tr>
 </tbody>
 </table>
 
+<p>2 rows × 23 columns</p>
 </div>
 </div>
 </div>
@@ -587,6 +655,17 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <th data-quarto-table-cell-role="th">90th_percentile</th>
 <th data-quarto-table-cell-role="th">max</th>
 <th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_by_equity_group</th>
+<th data-quarto-table-cell-role="th">...</th>
+<th data-quarto-table-cell-role="th">gap_absolute_weighted</th>
+<th data-quarto-table-cell-role="th">gap_relative_weighted</th>
+<th data-quarto-table-cell-role="th">avg_lower_third_bins</th>
+<th data-quarto-table-cell-role="th">avg_middle_third_bins</th>
+<th data-quarto-table-cell-role="th">avg_upper_third_bins</th>
+<th data-quarto-table-cell-role="th">inter_tertile_ratio</th>
+<th data-quarto-table-cell-role="th">gap_absolute_description</th>
+<th data-quarto-table-cell-role="th">gap_relative_description</th>
+<th data-quarto-table-cell-role="th">inter_tertile_description</th>
 <th data-quarto-table-cell-role="th">problem_df</th>
 </tr>
 </thead>
@@ -602,11 +681,23 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <td>102.0</td>
 <td>262.0</td>
 <td>0.57</td>
+<td>{}</td>
+<td>...</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>N/A (No equity data)</td>
+<td>N/A (No equity data)</td>
+<td>N/A (No equity data)</td>
 <td>from_id&nbsp;&nbsp;North Devon District Hos...</td>
 </tr>
 </tbody>
 </table>
 
+<p>1 rows × 23 columns</p>
 </div>
 </div>
 </div>
@@ -637,6 +728,17 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <th data-quarto-table-cell-role="th">90th_percentile</th>
 <th data-quarto-table-cell-role="th">max</th>
 <th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_by_equity_group</th>
+<th data-quarto-table-cell-role="th">...</th>
+<th data-quarto-table-cell-role="th">gap_absolute_weighted</th>
+<th data-quarto-table-cell-role="th">gap_relative_weighted</th>
+<th data-quarto-table-cell-role="th">avg_lower_third_bins</th>
+<th data-quarto-table-cell-role="th">avg_middle_third_bins</th>
+<th data-quarto-table-cell-role="th">avg_upper_third_bins</th>
+<th data-quarto-table-cell-role="th">inter_tertile_ratio</th>
+<th data-quarto-table-cell-role="th">gap_absolute_description</th>
+<th data-quarto-table-cell-role="th">gap_relative_description</th>
+<th data-quarto-table-cell-role="th">inter_tertile_description</th>
 <th data-quarto-table-cell-role="th">problem_df</th>
 </tr>
 </thead>
@@ -652,11 +754,23 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <td>26.0</td>
 <td>54.0</td>
 <td>0.72</td>
+<td>{}</td>
+<td>...</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>N/A (No equity data)</td>
+<td>N/A (No equity data)</td>
+<td>N/A (No equity data)</td>
 <td>from_id&nbsp;&nbsp;North Devon District Hos...</td>
 </tr>
 </tbody>
 </table>
 
+<p>1 rows × 23 columns</p>
 </div>
 </div>
 </div>
@@ -696,6 +810,16 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <th data-quarto-table-cell-role="th">90th_percentile</th>
 <th data-quarto-table-cell-role="th">max</th>
 <th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_by_equity_group</th>
+<th data-quarto-table-cell-role="th">...</th>
+<th data-quarto-table-cell-role="th">gap_relative_weighted</th>
+<th data-quarto-table-cell-role="th">avg_lower_third_bins</th>
+<th data-quarto-table-cell-role="th">avg_middle_third_bins</th>
+<th data-quarto-table-cell-role="th">avg_upper_third_bins</th>
+<th data-quarto-table-cell-role="th">inter_tertile_ratio</th>
+<th data-quarto-table-cell-role="th">gap_absolute_description</th>
+<th data-quarto-table-cell-role="th">gap_relative_description</th>
+<th data-quarto-table-cell-role="th">inter_tertile_description</th>
 <th data-quarto-table-cell-role="th">problem_df</th>
 <th data-quarto-table-cell-role="th">origin</th>
 </tr>
@@ -712,6 +836,16 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <td>26.0</td>
 <td>54.0</td>
 <td>0.735502</td>
+<td>{}</td>
+<td>...</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>N/A (No equity data)</td>
+<td>N/A (No equity data)</td>
+<td>N/A (No equity data)</td>
 <td>from_id&nbsp;&nbsp;North Devon District Hos...</td>
 <td>Car</td>
 </tr>
@@ -726,12 +860,23 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <td>99.4</td>
 <td>262.0</td>
 <td>0.575672</td>
+<td>{}</td>
+<td>...</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>N/A (No equity data)</td>
+<td>N/A (No equity data)</td>
+<td>N/A (No equity data)</td>
 <td>from_id&nbsp;&nbsp;North Devon District Hos...</td>
 <td>Public Transport</td>
 </tr>
 </tbody>
 </table>
 
+<p>2 rows × 24 columns</p>
 </div>
 </div>
 </div>
@@ -824,6 +969,19 @@ unweighted_average                                                              
 90th_percentile                                                                      26.0
 max                                                                                  54.0
 proportion_within_coverage_threshold                                             0.718529
+weighted_by_equity_group                                                               {}
+unweighted_by_equity_group                                                             {}
+coverage_by_equity_group                                                               {}
+max_cost_by_equity_group                                                               {}
+gap_absolute_weighted                                                                None
+gap_relative_weighted                                                                None
+avg_lower_third_bins                                                                 None
+avg_middle_third_bins                                                                None
+avg_upper_third_bins                                                                 None
+inter_tertile_ratio                                                                  None
+gap_absolute_description                                             N/A (No equity data)
+gap_relative_description                                             N/A (No equity data)
+inter_tertile_description                                            N/A (No equity data)
 problem_df                                           from_id  North Devon District Hos...
 Name: 5, dtype: object</code></pre>
 </div>
@@ -840,6 +998,19 @@ unweighted_average                                                              
 90th_percentile                                                                      99.4
 max                                                                                 262.0
 proportion_within_coverage_threshold                                             0.575672
+weighted_by_equity_group                                                               {}
+unweighted_by_equity_group                                                             {}
+coverage_by_equity_group                                                               {}
+max_cost_by_equity_group                                                               {}
+gap_absolute_weighted                                                                None
+gap_relative_weighted                                                                None
+avg_lower_third_bins                                                                 None
+avg_middle_third_bins                                                                None
+avg_upper_third_bins                                                                 None
+inter_tertile_ratio                                                                  None
+gap_absolute_description                                             N/A (No equity data)
+gap_relative_description                                             N/A (No equity data)
+inter_tertile_description                                            N/A (No equity data)
 problem_df                                           from_id  North Devon District Hos...
 Name: 0, dtype: object</code></pre>
 </div>
@@ -944,6 +1115,19 @@ unweighted_average                                                              
 90th_percentile                                                                      26.0
 max                                                                                  64.0
 proportion_within_coverage_threshold                                             0.735502
+weighted_by_equity_group                                                               {}
+unweighted_by_equity_group                                                             {}
+coverage_by_equity_group                                                               {}
+max_cost_by_equity_group                                                               {}
+gap_absolute_weighted                                                                None
+gap_relative_weighted                                                                None
+avg_lower_third_bins                                                                 None
+avg_middle_third_bins                                                                None
+avg_upper_third_bins                                                                 None
+inter_tertile_ratio                                                                  None
+gap_absolute_description                                             N/A (No equity data)
+gap_relative_description                                             N/A (No equity data)
+inter_tertile_description                                            N/A (No equity data)
 problem_df                                           from_id  North Devon District Hos...
 Name: 3, dtype: object</code></pre>
 </div>
@@ -960,6 +1144,19 @@ unweighted_average                                                              
 90th_percentile                                                                     104.8
 max                                                                                 262.0
 proportion_within_coverage_threshold                                              0.58133
+weighted_by_equity_group                                                               {}
+unweighted_by_equity_group                                                             {}
+coverage_by_equity_group                                                               {}
+max_cost_by_equity_group                                                               {}
+gap_absolute_weighted                                                                None
+gap_relative_weighted                                                                None
+avg_lower_third_bins                                                                 None
+avg_middle_third_bins                                                                None
+avg_upper_third_bins                                                                 None
+inter_tertile_ratio                                                                  None
+gap_absolute_description                                             N/A (No equity data)
+gap_relative_description                                             N/A (No equity data)
+inter_tertile_description                                            N/A (No equity data)
 problem_df                                           from_id  North Devon District Hos...
 Name: 15, dtype: object</code></pre>
 </div>
@@ -1006,7 +1203,7 @@ Note
 
 <a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
 <script type="application/vnd.jupyter.widget-state+json">
-{"state":{"0739f2bbace147bda4c5d858471929ac":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"219e6ffa44c94b90989a219dbcf0a21f":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_222a6f650d8b4e1a9806e37e5199e050","max":1365,"min":0,"orientation":"horizontal","style":"IPY_MODEL_b96bd5f052334e939faea7721fd9a2c2","tabbable":null,"tooltip":null,"value":1365}},"222a6f650d8b4e1a9806e37e5199e050":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"277808259f0d49dd8d40da586890d654":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"2f012eef0fed4ca48bef416bb76812c8":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_412f59402619460f8b12c12ce259313d","IPY_MODEL_219e6ffa44c94b90989a219dbcf0a21f","IPY_MODEL_62853e7697924870a8c89db6adb1bcc6"],"layout":"IPY_MODEL_0739f2bbace147bda4c5d858471929ac","tabbable":null,"tooltip":null}},"34f4857b4126406486d16b561952f52f":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_98903b0b89cd4b9a8244614d1bdba143","max":1365,"min":0,"orientation":"horizontal","style":"IPY_MODEL_d6476e05cd6546ad805c94c806a0d076","tabbable":null,"tooltip":null,"value":1365}},"34f953a0908a4754a40bb78a3f696df7":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"412f59402619460f8b12c12ce259313d":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_b28cf1d530c14fe88e618177ad641a03","placeholder":"​","style":"IPY_MODEL_c0f4e7af8e2d40e5a7046ae949a20fbb","tabbable":null,"tooltip":null,"value":"100%"}},"47017d2ecad949fd91a495932c0a533c":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"62853e7697924870a8c89db6adb1bcc6":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_f6de09a925a24002959a5f5c25f0409e","placeholder":"​","style":"IPY_MODEL_277808259f0d49dd8d40da586890d654","tabbable":null,"tooltip":null,"value":" 1365/1365 [00:06&lt;00:00, 214.72it/s]"}},"78a706eb6b5445e2bc38c98652aded53":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_eb7b3cc6fd74426395f8d79c92327d84","placeholder":"​","style":"IPY_MODEL_34f953a0908a4754a40bb78a3f696df7","tabbable":null,"tooltip":null,"value":"100%"}},"98903b0b89cd4b9a8244614d1bdba143":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"ae293bd72f514848b5d978e78634082a":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"b28cf1d530c14fe88e618177ad641a03":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"b96bd5f052334e939faea7721fd9a2c2":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"c0f4e7af8e2d40e5a7046ae949a20fbb":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"cbbe7c1e9c9d41c2ab3d8d1542eb729d":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_78a706eb6b5445e2bc38c98652aded53","IPY_MODEL_34f4857b4126406486d16b561952f52f","IPY_MODEL_ce9a76f1d2274f22b3aaa2360f59b3e4"],"layout":"IPY_MODEL_47017d2ecad949fd91a495932c0a533c","tabbable":null,"tooltip":null}},"ce9a76f1d2274f22b3aaa2360f59b3e4":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_ddf7ffe8627745edb0406dd714140fc6","placeholder":"​","style":"IPY_MODEL_ae293bd72f514848b5d978e78634082a","tabbable":null,"tooltip":null,"value":" 1365/1365 [00:06&lt;00:00, 215.60it/s]"}},"d6476e05cd6546ad805c94c806a0d076":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"ddf7ffe8627745edb0406dd714140fc6":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"eb7b3cc6fd74426395f8d79c92327d84":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"f6de09a925a24002959a5f5c25f0409e":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}}},"version_major":2,"version_minor":0}
+{"state":{"1f476dd60747476f8e270ee995012c73":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"283e842f1c744b0c90263c2ea3a600e4":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"2d6f848f790e4ee2896b1d64c2cd4e8a":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"38dbd01b47e348f6a08a83218b158380":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"48474f4311e54b209d6b1f3c91c925c1":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"52b6126c14c74f87bbb911b542a64c6d":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"5ced873714db4d18a75ca93504427404":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_52b6126c14c74f87bbb911b542a64c6d","max":1365,"min":0,"orientation":"horizontal","style":"IPY_MODEL_b1cd23863df34359a46c6a297179a70e","tabbable":null,"tooltip":null,"value":1365}},"63126ad89fd5456684e4056a73688ea7":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"64793cc901a9458cbaa984bcc113e843":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"69bf35409d42412ab8ee9626eed6942b":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_9e62330112bf4cf4a30553207e21c037","placeholder":"​","style":"IPY_MODEL_2d6f848f790e4ee2896b1d64c2cd4e8a","tabbable":null,"tooltip":null,"value":"100%"}},"6aa57d0b400e423db1b486c83fc9a64a":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_283e842f1c744b0c90263c2ea3a600e4","placeholder":"​","style":"IPY_MODEL_64793cc901a9458cbaa984bcc113e843","tabbable":null,"tooltip":null,"value":" 1365/1365 [00:06&lt;00:00, 231.64it/s]"}},"771cfa7904034986b7425e40d05b5d59":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_a5151a1b36c548af90bcb8f1c0ca3aca","max":1365,"min":0,"orientation":"horizontal","style":"IPY_MODEL_48474f4311e54b209d6b1f3c91c925c1","tabbable":null,"tooltip":null,"value":1365}},"87b1df6c8c2541278a97e212ceb7be79":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_f66fa36166044dafb34aa37a4954017d","IPY_MODEL_771cfa7904034986b7425e40d05b5d59","IPY_MODEL_e6f3e9c0d91442929447b2d4c8cafbac"],"layout":"IPY_MODEL_cdf701fbf3fe4fc09bc783d532ebb1b6","tabbable":null,"tooltip":null}},"9e62330112bf4cf4a30553207e21c037":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"a5151a1b36c548af90bcb8f1c0ca3aca":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"b1cd23863df34359a46c6a297179a70e":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"bbda4bd421744a719c1eb8324b860cc7":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"cdf701fbf3fe4fc09bc783d532ebb1b6":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"d977bbb12dc447959c392343a9057b34":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_69bf35409d42412ab8ee9626eed6942b","IPY_MODEL_5ced873714db4d18a75ca93504427404","IPY_MODEL_6aa57d0b400e423db1b486c83fc9a64a"],"layout":"IPY_MODEL_1f476dd60747476f8e270ee995012c73","tabbable":null,"tooltip":null}},"e6f3e9c0d91442929447b2d4c8cafbac":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_bbda4bd421744a719c1eb8324b860cc7","placeholder":"​","style":"IPY_MODEL_63126ad89fd5456684e4056a73688ea7","tabbable":null,"tooltip":null,"value":" 1365/1365 [00:06&lt;00:00, 230.13it/s]"}},"ea91a35ea6d44de9ad6e52025639df6a":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"f66fa36166044dafb34aa37a4954017d":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_ea91a35ea6d44de9ad6e52025639df6a","placeholder":"​","style":"IPY_MODEL_38dbd01b47e348f6a08a83218b158380","tabbable":null,"tooltip":null,"value":"100%"}}},"version_major":2,"version_minor":0}
 </script>
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
