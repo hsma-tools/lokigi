@@ -142,7 +142,7 @@ class SiteAttributeMixin:
           and a demand column 'n'.
         - `self._demand_data_type`: Set to "pandas".
         - `self._demand_data_id_col`: Set to match the travel matrix source column.
-        - `self._demand_data_demand_col`: Set to "n".
+        - `self._demand_data_demand_col`: Set to "demand".
 
         This ensures that optimization objectives like p-median can still
         function by minimizing average travel time across all known
@@ -152,12 +152,12 @@ class SiteAttributeMixin:
             self.travel_matrix[self._travel_matrix_source_col],
             columns=[self._travel_matrix_source_col],
         )
-        demand_data_temp["n"] = 1
+        demand_data_temp["demand"] = 1
 
         self.demand_data = demand_data_temp
         self._demand_data_type = "pandas"
         self._demand_data_id_col = self._travel_matrix_source_col
-        self._demand_data_demand_col = "n"
+        self._demand_data_demand_col = "demand"
 
     ###############################
     # MARK: Sites

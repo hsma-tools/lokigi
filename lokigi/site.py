@@ -534,29 +534,6 @@ class SiteProblem(
                 f"Expected 'weights' to be a dict, got {type(weights).__name__}."
             )
 
-        # Data Existence Check
-        # Ensure the user didn't typo a name in their weights dictionary
-        missing_cols = []
-        for col in weights.keys():
-            col_lower = col.lower()
-
-            if col_lower == "demand":
-                if self.demand_data is None:
-                    missing_cols.append(col)
-
-            elif col_lower == "equity":
-                if self.equity_data is None:
-                    missing_cols.append(col)
-
-            elif self._additional_data_labels is not None:
-                if col not in self._additional_data_labels:
-                    missing_cols.append(col)
-
-        if missing_cols:
-            raise KeyError(
-                f"The following weight keys are missing from the problem data: {missing_cols}"
-            )
-
         if any(w < 0 for w in weights.values()):
             raise ValueError("Weights cannot be negative.")
 
@@ -603,6 +580,31 @@ class SiteProblem(
             )
 
         self._create_joined_demand_travel_df(index_col=self._demand_data_id_col)
+
+        # Data Existence Check
+        # Ensure the user didn't typo a name in their weights dictionary
+        # This has to happen after any auto demand matrix is created
+        # else demand will not exist in those cases
+        missing_cols = []
+        for col in weights.keys():
+            col_lower = col.lower()
+
+            if col_lower == "demand":
+                if self.demand_data is None:
+                    missing_cols.append(col)
+
+            elif col_lower == "equity":
+                if self.equity_data is None:
+                    missing_cols.append(col)
+
+            elif self._additional_data_labels is not None:
+                if col not in self._additional_data_labels:
+                    missing_cols.append(col)
+
+        if missing_cols:
+            raise KeyError(
+                f"The following weight keys are missing from the problem data: {missing_cols}"
+            )
 
         if isinstance(objectives, list) and len(objectives) > 1:
             warn(
