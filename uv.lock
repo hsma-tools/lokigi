@@ -40,6 +40,7 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/4c/d4/6585f3b6fdb75648bca294664af4becc8aa2fb3fb08f4e4e9fd27e10d773/adjusttext-1.3.0.tar.gz", hash = "sha256:4ab75cd4453af4828876ac3e964f2c49be642ea834f0c1f7449558d5f12cbca1", size = 15724, upload-time = "2024-10-31T16:45:36.101Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/53/1c/8feedd607cc14c5df9aef74fe3af9a99bf660743b842a9b5b1865326b4aa/adjustText-1.3.0-py3-none-any.whl", hash = "sha256:da23d7b24b6db5ffa039bb136bfa556207365e32f48ac74b07ad26dd485bc691", size = 13154, upload-time = "2024-10-31T16:45:35.227Z" },
+    { url = "https://files.pythonhosted.org/packages/2d/80/7ad35ee5321a86b842f9e8516c8ae4c86f58db7b40e82ce9759f94517a50/adjusttext-1.3.0-py3-none-any.whl", hash = "sha256:bc6c118cd9d7caf6ae37f9355e51d840a2d7f64b4fb2956b8401de27c5af803b", size = 13264, upload-time = "2026-06-08T16:40:05.041Z" },
 ]
 
 [[package]]
@@ -649,7 +650,7 @@ wheels = [
 
 [[package]]
 name = "contextily"
-version = "1.7.0"
+version = "1.7.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "geopy" },
@@ -662,9 +663,9 @@ dependencies = [
     { name = "requests" },
     { name = "xyzservices" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cc/f3/4c7fdb1ef92c8e3db1de9741595ae1815ddc8a7e2088539e6107c83e2268/contextily-1.7.0.tar.gz", hash = "sha256:6534faa5702b89b46d0d81b4c538754f2d8b3dd8cc298454b11ccedfa67e73ac", size = 22462157, upload-time = "2025-11-24T19:54:39.199Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7f/69/099a9a03eb558c8dc118e1fdcdeb702081140db2d3bc0827fad144987192/contextily-1.7.1.tar.gz", hash = "sha256:e00372357a93a9028f75ea7343d867893bd8d4b89833de17b18438725929c885", size = 22463466, upload-time = "2026-07-10T07:46:17.876Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6a/bb/6c824d0da874eef900ecf0a71e0889f0d4624560b0160fd9e333a146ee4f/contextily-1.7.0-py3-none-any.whl", hash = "sha256:38393b8e7dc38580ef1f60211a9ba1c3eb142a439c260509c201987754fa9dba", size = 16849, upload-time = "2025-11-24T19:54:37.018Z" },
+    { url = "https://files.pythonhosted.org/packages/90/44/9d2b679ed85b98d16c78d354ea60c2c3ed4eb70e8a1b508c94f5347b6bb3/contextily-1.7.1-py3-none-any.whl", hash = "sha256:82ca36a4a51cf49e43700ad1113b50531b3637e4f12b407b54e0a1fd8950a49c", size = 18250, upload-time = "2026-07-10T07:46:15.562Z" },
 ]
 
 [[package]]
@@ -1918,7 +1919,7 @@ wheels = [
 
 [[package]]
 name = "lokigi"
-version = "0.1.1"
+version = "0.2.1"
 source = { editable = "." }
 dependencies = [
     { name = "adjusttext" },
@@ -1928,6 +1929,7 @@ dependencies = [
     { name = "geopandas" },
     { name = "mapclassify" },
     { name = "numpy" },
+    { name = "osmium" },
     { name = "pandas" },
     { name = "plotly" },
     { name = "pydantic" },
@@ -1940,7 +1942,6 @@ dependencies = [
 
 [package.optional-dependencies]
 routing = [
-    { name = "osmium" },
     { name = "polyline" },
     { name = "pyvalhalla" },
     { name = "r5py" },
@@ -1967,15 +1968,15 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "adjusttext", specifier = ">=1.3.0" },
-    { name = "contextily", specifier = ">=1.5.0,<2.0.0" },
+    { name = "contextily", specifier = ">=1.7.1,<2.0.0" },
     { name = "esda", specifier = ">=2.9.0" },
     { name = "folium", specifier = ">=0.14.0,<1.0.0" },
     { name = "geopandas", specifier = ">=1.0.0,<2.0.0" },
     { name = "mapclassify", specifier = ">=2.0.0,<4.0.0" },
     { name = "numpy", specifier = ">=1.26.2,<3.0.0" },
-    { name = "osmium", marker = "extra == 'routing'", specifier = ">=4.3.1" },
+    { name = "osmium", specifier = ">=4.3.1" },
     { name = "pandas", specifier = ">=2.0.1,<4.0.0" },
-    { name = "plotly", specifier = ">=5.0.0,<6.0.0" },
+    { name = "plotly", specifier = ">=5.0.0,<7.0.0" },
     { name = "polyline", marker = "extra == 'routing'", specifier = ">=2.0.4" },
     { name = "pydantic", specifier = ">=2.0.0,<3.0.0" },
     { name = "pysal", specifier = ">=25.7" },

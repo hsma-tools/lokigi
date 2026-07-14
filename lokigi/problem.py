@@ -9,6 +9,8 @@ from warnings import warn
 import hashlib
 from typing import Literal
 import contextily as cx
+import warnings
+from requests.exceptions import RequestException
 
 
 class _Problem:
@@ -398,7 +400,14 @@ class _Problem:
                 )
 
                 if show_basemap:
-                    cx.add_basemap(ax, crs=plotting_df.crs.to_string())
+                    try:
+                        cx.add_basemap(ax, crs=plotting_df.crs.to_string(), timeout=30)
+                    except RequestException as e:
+                        warnings.warn(
+                            f"Unable to download background map tiles ({type(e).__name__}). "
+                            "Continuing without a basemap.",
+                            stacklevel=2,
+                        )
 
                 if not show_axis:
                     ax.axis("off")
@@ -449,7 +458,14 @@ class _Problem:
                 )
 
                 if show_basemap:
-                    cx.add_basemap(ax, crs=plotting_df.crs.to_string())
+                    try:
+                        cx.add_basemap(ax, crs=plotting_df.crs.to_string(), timeout=30)
+                    except RequestException as e:
+                        warnings.warn(
+                            f"Unable to download background map tiles ({type(e).__name__}). "
+                            "Continuing without a basemap.",
+                            stacklevel=2,
+                        )
 
                 if not show_axis:
                     ax.axis("off")
@@ -480,7 +496,14 @@ class _Problem:
             ax = self.region_geometry_layer.plot(**kwargs)
 
             if show_basemap:
-                cx.add_basemap(ax, crs=plotting_df.crs.to_string())
+                try:
+                    cx.add_basemap(ax, crs=plotting_df.crs.to_string(), timeout=30)
+                except RequestException as e:
+                    warnings.warn(
+                        f"Unable to download background map tiles ({type(e).__name__}). "
+                        "Continuing without a basemap.",
+                        stacklevel=2,
+                    )
 
             if not show_axis:
                 ax.axis("off")

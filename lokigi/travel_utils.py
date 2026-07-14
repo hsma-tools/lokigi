@@ -8,17 +8,20 @@ import numpy as np
 from collections import defaultdict
 from tqdm import tqdm
 import os
+import osmium
 
 
-try:
-    from valhalla import Actor
-    import osmium
-except ImportError as e:
-    raise ImportError(
-        "Routing support requires optional dependencies.\n"
-        "Install with:\n"
-        "    pip install lokigi[routing]"
-    ) from e
+def _require_valhalla_actor():
+    try:
+        from valhalla import Actor
+    except ImportError as e:
+        raise ImportError(
+            "Routing support requires optional dependencies.\n"
+            "Install with:\n"
+            "    pip install lokigi[routing]"
+        ) from e
+
+    return Actor
 
 
 def prepare_valhalla_network(
@@ -60,6 +63,8 @@ def prepare_valhalla_network(
             "traffic_path": ...
         }
     """
+    Actor = _require_valhalla_actor()
+
     osm_path = Path(osm_path).resolve()
 
     if not osm_path.exists():
@@ -178,6 +183,8 @@ def build_time_matrix_valhalla(
     Build a time/distance matrix between origins and destinations using Valhalla
     and stream results directly to a CSV to maintain a near-zero memory footprint.
     """
+    Actor = _require_valhalla_actor()
+
     actor = Actor(valhalla_config_path)
 
     # Fast extraction of coordinates

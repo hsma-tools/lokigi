@@ -11,6 +11,9 @@ import matplotlib.pyplot as plt
 import textwrap
 from adjustText import adjust_text
 import folium
+import warnings
+from requests.exceptions import RequestException
+
 
 try:
     from valhalla import Actor
@@ -470,7 +473,14 @@ class RoutingAttributeMixin:
                 adjust_text(texts, force_explode=(0.05, 0.05))
 
             if add_basemap:
-                cx.add_basemap(ax, crs=grouped.crs.to_string())
+                try:
+                    cx.add_basemap(ax, crs=grouped.crs.to_string(), timeout=30)
+                except RequestException as e:
+                    warnings.warn(
+                        f"Unable to download background map tiles ({type(e).__name__}). "
+                        "Continuing without a basemap.",
+                        stacklevel=2,
+                    )
 
             return ax
 
