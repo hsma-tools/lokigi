@@ -4,11 +4,13 @@ import pandas as pd
 from lokigi.mixins.site_solution_plots import (
     MapsMixin,
     NonMapPlotsMixin,
-    ParetoPlotsMixin,
     DistributionPlotsMixin,
     EquityPlotsMixin,
 )
 
+from lokigi.mixins.site_solution_pareto import ParetoMixin
+
+import copy
 
 from lokigi.mixins.solution_comparator_plots import SolutionComparatorPlotsMixin
 from lokigi.mixins.solution_comparator_methods import SolutionComparatorMethodsMixin
@@ -431,7 +433,7 @@ class EvaluatedCombination:
 class SiteSolutionSet(
     MapsMixin,
     NonMapPlotsMixin,
-    ParetoPlotsMixin,
+    ParetoMixin,
     DistributionPlotsMixin,
     EquityPlotsMixin,
     SiteSolutionHotspotCalculationMixin,
@@ -513,6 +515,17 @@ class SiteSolutionSet(
         self.site_problem = site_problem
         self.objectives = objectives
         self.n_sites = n_sites
+
+        self.pareto_metrics = None
+
+    def copy(self):
+        return copy.deepcopy(self)
+
+    def show_solutions_colnames(self, return_list=False):
+        if not return_list:
+            print(self.solution_df.columns)
+        else:
+            return self.solution_df.columns
 
     def show_solutions(self, rounding=2, n_best=None):
         """

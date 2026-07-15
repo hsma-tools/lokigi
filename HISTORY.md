@@ -1,6 +1,15 @@
+## v0.3.0
+
+- Add pareto front calculation and visualisation
+- Add timeout to basemap calculations
+- Documentation cleanups
+- Bugfixes for weights
+    - fix a failure when using equal demand
+- Dependecy fixes to avoid importing optional dependencies by default
+
 ## v0.2.1
 
-- Initial multiobjective optimisation work
+- Initial multiobjective optimisation work using weights
 
 ## v0.2.0
 
