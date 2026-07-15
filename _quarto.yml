@@ -102,6 +102,17 @@ quartodoc:
             - plot_pareto_facets
         - name: multiobjective.ParetoMetric
           children: separate
+    - title: Travel Matrix Helpers
+      desc: "Classes and methods which can help with generation of travel matrices"
+      contents:
+        - name: travel_utils.prepare_valhalla_network
+        - name: travel_utils.build_time_matrix_valhalla
+        - name: travel_utils.valhalla_detailed_route
+        - name: travel_utils.valhalla_audit_route_speeds
+        - name: travel_utils.valhalla_maneuvers_to_gdf
+        - name: travel_utils.AdvancedSpeedUpdater
+        - name: travel_utils.WayInspector
+        - name: travel_utils.process_uk_network
     - title: Location Optimization Problem Classes (Developer)
       desc: "Classes and methods which may be of interest to those looking to extend and enhance lokigi's functionality"
       contents:
