@@ -88,8 +88,6 @@ quartodoc:
             - return_best_combination_details
             - return_best_combination_site_indices
             - return_best_combination_site_names
-            - plot_simple_pareto_front
-            - plot_all_metric_pareto_front
             - plot_n_best_combinations_bar
             - plot_best_combination
             - plot_n_best_combinations
@@ -97,6 +95,13 @@ quartodoc:
             - check_solution_equity
             - plot_top_n_solution_equity
             - plot_combination_by_equity
+            - plot_simple_pareto_front_pairs
+            - plot_all_metric_pareto_front_pairs
+            - compute_pareto_front
+            - pareto_summary
+            - plot_pareto_facets
+        - name: multiobjective.ParetoMetric
+          children: separate
     - title: Location Optimization Problem Classes (Developer)
       desc: "Classes and methods which may be of interest to those looking to extend and enhance lokigi's functionality"
       contents:
