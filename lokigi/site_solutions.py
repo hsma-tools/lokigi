@@ -516,6 +516,8 @@ class SiteSolutionSet(
         self.objectives = objectives
         self.n_sites = n_sites
 
+        self.pareto_metrics = None
+
     def copy(self):
         return copy.deepcopy(self)
 

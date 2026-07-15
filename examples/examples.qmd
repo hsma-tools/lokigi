@@ -36,8 +36,17 @@ listing:
   - id: sites-solution-evaluation
     contents:
       - "location/equity/index.ipynb"
-      - "location/comparing_solutions/index.ipynb"
       - "location/comparing_n_sites/index.ipynb"
+    type: grid
+    sort: false
+    grid-columns: 3
+    template: ../lokigi_docs/resources/listing.ejs
+
+  - id: sites-solution-multiobjective
+    contents:
+      - "location/comparing_solutions/index.ipynb"
+      - "location/multiobjective_optimisation_weights/index.ipynb"
+      - "location/multiobjective_optimisation_pareto/index.ipynb"
     type: grid
     sort: false
     grid-columns: 3
@@ -70,6 +79,7 @@ Examples relating to optimizing the combination of sites to meet a single object
 ::: {#sites-problem-basic}
 :::
 
+
 ### Different Problem Types
 
 ::: {#sites-problem-type}
@@ -87,13 +97,17 @@ When a problem is too big for evaluating and storing every combination, lokigi o
 ::: {#sites-solution-evaluation}
 :::
 
+### Multiobjective Solution Evaluation
+
+::: {#sites-solution-multiobjective}
+:::
+
 ## Exploratory Data Analysis
 
 Lokigi provides a range of helpers to explore the patterns present in demand, equity and other data.
 
 :::{#eda}
 :::
-
 
 ## Obtaining Travel Times
 

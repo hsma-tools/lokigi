@@ -9,6 +9,8 @@ import requests
 from io import BytesIO
 import textwrap
 from warnings import warn
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 PANDAS_EXTS = [".csv", ".parquet", ".xlsx", ".xls"]
 GEOPANDAS_EXTS = [".shp", ".geojson", ".gpkg"]
@@ -662,3 +664,45 @@ def _get_ordinal_suffix(n):
         return "th"
     else:
         return {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+
+
+def _colours_and_styles(n: int, palette: str):
+    """
+    Return n (colour, linestyle, marker) tuples for a given palette name.
+
+    Qualitative palettes (tab10, Set2, Dark2, ...) have a small fixed
+    number of genuinely distinct colours. If more lines are needed than
+    the palette provides, colours are cycled and paired with a different
+    linestyle/marker each time round, so repeated colours stay visually
+    distinguishable rather than becoming ambiguous duplicates. Continuous
+    palettes (viridis, husl, mako, ...) generate a fresh distinct colour
+    per line and never need to cycle.
+    """
+    try:
+        cmap = plt.get_cmap(palette)
+        is_qualitative = cmap.N < 256  # matplotlib's convention for discrete cmaps
+        n_native = cmap.N if is_qualitative else n
+    except ValueError:
+        # seaborn-only palette names (husl, hls, ...) generate n evenly
+        # spaced distinct hues on demand -- no fixed palette size, so
+        # there's never a need to cycle
+        n_native = n
+
+    if n <= n_native:
+        colours = sns.color_palette(palette, n_colors=n)
+        return list(zip(colours, ["-"] * n, ["o"] * n))
+
+    colours_base = sns.color_palette(palette, n_colors=n_native)
+    linestyle_cycle = ["-", "--", "-.", ":"]
+    marker_cycle = ["o", "s", "^", "D", "v", "P", "X"]
+    out = []
+    for i in range(n):
+        cycle_pass = i // n_native
+        out.append(
+            (
+                colours_base[i % n_native],
+                linestyle_cycle[cycle_pass % len(linestyle_cycle)],
+                marker_cycle[cycle_pass % len(marker_cycle)],
+            )
+        )
+    return out
