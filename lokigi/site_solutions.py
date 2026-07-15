@@ -9,6 +9,7 @@ from lokigi.mixins.site_solution_plots import (
     EquityPlotsMixin,
 )
 
+from lokigi.mixins.site_solution_pareto import ParetoMixin
 
 from lokigi.mixins.solution_comparator_plots import SolutionComparatorPlotsMixin
 from lokigi.mixins.solution_comparator_methods import SolutionComparatorMethodsMixin
@@ -431,7 +432,7 @@ class EvaluatedCombination:
 class SiteSolutionSet(
     MapsMixin,
     NonMapPlotsMixin,
-    ParetoPlotsMixin,
+    ParetoMixin,
     DistributionPlotsMixin,
     EquityPlotsMixin,
     SiteSolutionHotspotCalculationMixin,
