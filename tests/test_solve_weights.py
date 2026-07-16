@@ -93,6 +93,25 @@ def test_custom_equity_weighting_changes_the_ranking(loaded_problem_with_equity)
     assert blended_best != pytest.approx(demand_only_best)
 
 
+# --- planned-but-unimplemented objectives ---
+
+
+@pytest.mark.parametrize("weights", [None, {"demand": 1.0}])
+def test_lscp_raises_not_implemented(loaded_problem, weights):
+    """'lscp' is listed in PLANNED_OBJECTIVES, not SUPPORTED_OBJECTIVES --
+    it should get a specific, clear "not yet implemented" error regardless
+    of whether weights were also passed, rather than being lumped in with
+    genuinely unsupported/typo'd objective names."""
+    with pytest.raises(NotImplementedError, match="not yet implemented"):
+        loaded_problem.solve(
+            p=2,
+            objectives="lscp",
+            search_strategy="brute-force",
+            show_progress=False,
+            weights=weights,
+        )
+
+
 # --- weight-rejection guard for p_center ---
 
 

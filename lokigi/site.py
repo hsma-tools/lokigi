@@ -1,6 +1,7 @@
 from lokigi.utils import (
     SOLVER_DEFINITIONS,
     SUPPORTED_OBJECTIVES,
+    PLANNED_OBJECTIVES,
     _get_ranking_by_objective,
     _add_rank_column,
 )
@@ -513,6 +514,12 @@ class SiteProblem(
             )
 
         objective = objectives if isinstance(objectives, str) else objectives[0]
+
+        if objective in PLANNED_OBJECTIVES:
+            raise NotImplementedError(
+                f"The '{objective}' objective is planned but not yet implemented. "
+                f"Currently supported objectives are: {SUPPORTED_OBJECTIVES}."
+            )
 
         if objective not in SUPPORTED_OBJECTIVES:
             raise ValueError(f"Unsupported objective ({objective}) passed.")
