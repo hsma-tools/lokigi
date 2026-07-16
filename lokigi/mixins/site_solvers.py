@@ -492,6 +492,26 @@ class GraspMixin:
                                 )
 
                         if swap_candidates:
+                            # `higher_is_better` is consumed *inside*
+                            # _apply_cost_weighting: it inverts the raw
+                            # ranking column into "badness" (0=best) before
+                            # blending in cost, and the returned score_col
+                            # ("composite_score") is unconditionally on that
+                            # same lower-is-better, 0-is-best scale --
+                            # regardless of whether the underlying objective
+                            # is minimized (e.g. weighted_average) or
+                            # maximized (e.g. mclp's coverage proportion).
+                            #
+                            # That's why the comparison below is a plain "<"
+                            # with no is_minimization/higher_is_better branch,
+                            # unlike the raw-metric comparison in the
+                            # non-cost branch above. Do NOT wrap it in an
+                            # `if is_minimization: ... else: ...` to mirror
+                            # that branch -- the direction has already been
+                            # normalized once by _apply_cost_weighting, and
+                            # inverting it a second time here would make this
+                            # code pick the worst swap instead of the best
+                            # one for every maximizing objective (mclp).
                             batch_df, score_col = _apply_cost_weighting(
                                 pd.DataFrame(rows),
                                 ranking_col=ranking,
@@ -503,6 +523,16 @@ class GraspMixin:
                                 "weighted_average"
                             ]
 
+                            # rows[0] / batch_df.iloc[0] is the current
+                            # solution's own metrics (appended first, above);
+                            # rows[1:] are the swap candidates in the same
+                            # order they were appended to swap_candidates.
+                            # reset_index(drop=True) re-bases that slice to
+                            # 0..n-1 so the loop index `i` lines up exactly
+                            # with swap_candidates[i] -- without it, `i`
+                            # would instead be the original batch_df index
+                            # (1..n), which would misalign by one and pick
+                            # the wrong candidate solution.
                             for i, row in batch_df.iloc[1:].reset_index(
                                 drop=True
                             ).iterrows():
