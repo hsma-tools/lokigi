@@ -203,11 +203,6 @@ class EvaluatedCombination:
                     # Extract raw data
                     column_data = self.evaluated_combination_df[col_name].astype(float)
 
-                    # Min-Max Normalization to a 0.0 - 1.0 scale. Edge case:
-                    # if all values are identical, give them equal (full)
-                    # baseline weight rather than 0.
-                    norm_data = _min_max_normalize(column_data, constant_fill=1.0)
-
                     # if demand, assume higher_better
                     # if equity, get direction from equity data
                     direction = None
@@ -218,12 +213,19 @@ class EvaluatedCombination:
                         )
 
                     elif label.lower() == "equity":
+                        # Equity weighting exists to prioritise WORSE-off
+                        # regions, so the row-weight direction is the
+                        # OPPOSITE of the equity value's "goodness": when
+                        # higher values mean better-off (e.g. IMD decile 10
+                        # = least deprived), lower values must receive the
+                        # higher weight, and vice versa for raw scores where
+                        # higher = more deprived.
                         direction = (
-                            "higher_better"
+                            "lower_better"
                             if self.site_problem._equity_data_direction
                             == "higher_is_better"
-                            else "lower_better"
-                        )  # 'demand' defaults to higher_better
+                            else "higher_better"
+                        )
 
                     # Look up directionality from the problem configuration
                     elif self.site_problem.additional_data is not None:
@@ -247,9 +249,21 @@ class EvaluatedCombination:
                             "the weights dict."
                         )
 
-                    # Handle Directionality (Invert weights if lower_better)
+                    # Handle directionality by negating BEFORE normalising:
+                    # for lower_better this maps the smallest raw value to
+                    # 1.0 and the largest to 0.0 (identical to inverting
+                    # afterwards), but keeps the identical-values edge case
+                    # on the equal (full) baseline weight from constant_fill.
+                    # Inverting after normalising would turn that neutral
+                    # 1.0 into an all-zero weight vector and crash
+                    # np.average with "Weights sum to zero".
                     if direction == "lower_better":
-                        norm_data = 1.0 - norm_data
+                        column_data = -column_data
+
+                    # Min-Max Normalization to a 0.0 - 1.0 scale. Edge case:
+                    # if all values are identical, give them equal (full)
+                    # baseline weight rather than 0.
+                    norm_data = _min_max_normalize(column_data, constant_fill=1.0)
 
                     # Accumulate the normalized, directional weight
                     compound_weights += norm_data * weight

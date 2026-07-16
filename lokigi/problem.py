@@ -87,7 +87,7 @@ class _Problem:
         equity_col,
         common_col,
         label,
-        direction: Literal["higher_is_better", "higher_is_worse"] = "higher_is_worse",
+        direction: Literal["higher_is_better", "higher_is_worse"] = "higher_is_better",
         continuous_measure: bool = False,
         n_bins: int = 10,
         reverse: bool = False,
