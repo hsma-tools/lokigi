@@ -197,3 +197,24 @@ def test_cost_flips_the_winner_when_weighted(cost_flips_winner_problem, search_s
     )
     best = result.solution_df.iloc[0]
     assert best["site_names"] == ["Site_Cheap"]
+
+
+@pytest.mark.parametrize("cost_key", ["Cost", "COST", "CoSt"])
+def test_cost_flips_the_winner_regardless_of_weight_key_casing(
+    cost_flips_winner_problem, cost_key
+):
+    """Regression test: the "cost" weight key used to be validated
+    case-insensitively but applied via an exact-case dict lookup, so a
+    differently-cased key (e.g. "Cost") passed validation but silently
+    never influenced the solution. Brute-force only, since this is about
+    weight-key handling, not search-strategy behaviour."""
+    result = cost_flips_winner_problem.solve(
+        p=1,
+        objectives="p_median",
+        search_strategy="brute-force",
+        show_progress=False,
+        random_seed=42,
+        weights={"demand": 0.1, cost_key: 0.9},
+    )
+    best = result.solution_df.iloc[0]
+    assert best["site_names"] == ["Site_Cheap"]
