@@ -1,0 +1,1900 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Multiobjective Optimisation with Pareto Fronts – lokigi</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script><script src="../../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../../">
+<script src="../../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../../site_libs/bootstrap/bootstrap-b9db622ab4cfbe3cb3a5c3b0cfe31a38.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../../site_libs/bootstrap/bootstrap-dark-c2cb4ca64c758ea54772214a9ed67472.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.min.js" integrity="sha384-c9c+LnTbwQ3aujuU7ULEPVvgLs+Fn6fJUvIGTsuu1ZcCf11fiEubah0ttpca4ntM sha384-6V1/AdqZRWk1KAlWbKBlGhN7VG4iE/yAZcO6NZPMF8od0vukrvr0tg4qY6NSrItx" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+<script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@*/dist/embed-amd.js" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+
+<link rel="stylesheet" href="../../../lokigi_docs/resources/styles.css">
+</head>
+
+<body class="nav-fixed quarto-dark"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = true;
+    const darkModeDefault = authorPrefersDark;
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../../index.html">
+    <span class="navbar-title">lokigi</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../../lokigi_docs/index.html"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../../lokigi_docs/getting_started.html"> 
+<span class="menu-text">Getting Started</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../../examples/examples.html"> 
+<span class="menu-text">Examples</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../../reference/index.html"> 
+<span class="menu-text">API Reference</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../../lokigi_docs/changelog.html"> 
+<span class="menu-text">Changelog</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/hsma-tools/lokigi/"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://pypi.org/project/lokigi/"> <i class="bi bi-box-fill" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#advanced-pareto-plots" id="toc-advanced-pareto-plots" class="nav-link active" data-scroll-target="#advanced-pareto-plots">Advanced Pareto Plots</a></li>
+  <li><a href="#adjusting-metrics" id="toc-adjusting-metrics" class="nav-link" data-scroll-target="#adjusting-metrics">Adjusting metrics</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Multiobjective Optimisation with Pareto Fronts</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>When we want to optimize for multiple metrics, we can use a <strong>pareto front</strong> to pull out solutions that are good across multiple dimensions.</p>
+<p>Let’s first imagine we’re just interested in weighted average travel time, and coverage, and we are trying to work out the best single option to select.</p>
+<p>Hospital A gives a weighted average travel time of 30 minutes, with coverage of 40% of people being within 60 minutes.</p>
+<p>Hospital B gives a weighted average travel time of 20 minutes, with coverage of 30% of people being within 60 minutes.</p>
+<p>Hospital C gives a weighted average travel time of 40 minutes, with coverage of 50% of people being within 60 minutes.</p>
+<p>Hospital D gives a weighted average travel time of 45 minutes and a coverage of 25%.</p>
+<p>In pareto frontiers, we look at whether a solution is <em>dominated</em> by other options.</p>
+<p>Hospital B is not dominated by hospital A, because hospital A has better coverage despite worse weighted average travel time.</p>
+<p>Hospital B is not dominated by hospital C, because hospital C was worse travel time despite better coverage.</p>
+<p>However, hospital D is worse in every respect than the other solutions; this is a <em>dominated</em> solution and so can be disregarded from our list.</p>
+<p>Let’s first remind ourselves of pareto fronts when just looking at two metrics at a time.</p>
+<div id="57f4afcf" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.site <span class="im">import</span> SiteProblem</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.multiobjective <span class="im">import</span> ParetoMetric</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="f8e0e101" class="cell" data-execution_count="2">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>problem <span class="op">=</span> SiteProblem()</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>problem.add_sites(</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"../../../sample_data/devon_cdcs.csv"</span>,</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    candidate_id_col<span class="op">=</span><span class="st">"Facility_Name"</span>,</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    vertical_geometry_col<span class="op">=</span><span class="st">"Latitude"</span>,</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    horizontal_geometry_col<span class="op">=</span><span class="st">"Longitude"</span>,</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    required_sites_col<span class="op">=</span><span class="st">"Existing"</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>problem.add_region_geometry_layer(</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">"../../../sample_data/LSOA_Devon_2021_EW_BSC_V4.gpkg"</span>,</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    common_col<span class="op">=</span><span class="st">"LSOA21NM"</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>problem.add_travel_matrix(</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    travel_matrix_df<span class="op">=</span><span class="st">"../../../sample_data/travel_matrix_car_devon_cdcs.csv"</span>,</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    source_col<span class="op">=</span><span class="st">"from_id"</span>,</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    unit<span class="op">=</span><span class="st">"minutes"</span>,</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>problem.add_demand(</span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="st">"../../../sample_data/demand_MF_50_84.csv"</span>,</span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>    demand_col<span class="op">=</span><span class="st">"Total"</span>,</span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    location_id_col<span class="op">=</span><span class="st">"LSOA 2021 Name"</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>problem.add_equity_data(</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    <span class="st">"../../../sample_data/devon_imd_2025_2021_LSOAs.csv"</span>,</span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>    equity_col<span class="op">=</span><span class="st">"Index of Multiple Deprivation (IMD) Decile (where 1 is most deprived 10</span><span class="sc">% o</span><span class="st">f LSOA"</span>,</span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>    common_col<span class="op">=</span><span class="st">"LSOA name (2021)"</span>,</span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>    label<span class="op">=</span><span class="st">"IMD Decile (1 = most deprived)"</span></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Guessed CRS: EPSG:4326 (Values fall within longitude/latitude bounds)</code></pre>
+</div>
+</div>
+<div id="90cc9afd" class="cell" data-execution_count="3">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>solution <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">6</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, threshold_for_coverage<span class="op">=</span><span class="dv">20</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<script type="application/vnd.jupyter.widget-view+json">
+{"model_id":"0736d66a72a746d6b70a311a29214877","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+</script>
+</div>
+</div>
+<div id="3c693f29" class="cell" data-execution_count="4">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>solution.show_solutions()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="4">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">solution_rank</th>
+<th data-quarto-table-cell-role="th">site_names</th>
+<th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average</th>
+<th data-quarto-table-cell-role="th">unweighted_average</th>
+<th data-quarto-table-cell-role="th">90th_percentile</th>
+<th data-quarto-table-cell-role="th">max</th>
+<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_by_equity_group</th>
+<th data-quarto-table-cell-role="th">...</th>
+<th data-quarto-table-cell-role="th">gap_absolute_weighted</th>
+<th data-quarto-table-cell-role="th">gap_relative_weighted</th>
+<th data-quarto-table-cell-role="th">avg_lower_third_bins</th>
+<th data-quarto-table-cell-role="th">avg_middle_third_bins</th>
+<th data-quarto-table-cell-role="th">avg_upper_third_bins</th>
+<th data-quarto-table-cell-role="th">inter_tertile_ratio</th>
+<th data-quarto-table-cell-role="th">gap_absolute_description</th>
+<th data-quarto-table-cell-role="th">gap_relative_description</th>
+<th data-quarto-table-cell-role="th">inter_tertile_description</th>
+<th data-quarto-table-cell-role="th">problem_df</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>1</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 8, 12]</td>
+<td>20</td>
+<td>19.07</td>
+<td>18.81</td>
+<td>38.69</td>
+<td>61.18</td>
+<td>0.63</td>
+<td>{1: 9.82, 2: 11.59, 3: 15.73, 4: 23.48, 5: 24....</td>
+<td>...</td>
+<td>14.51</td>
+<td>2.48</td>
+<td>15.16</td>
+<td>21.78</td>
+<td>16.51</td>
+<td>0.92</td>
+<td>Spread of 14.5 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 148...</td>
+<td>Slightly Progressive (Most deprived travel 8% ...</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>2</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 5, 12]</td>
+<td>20</td>
+<td>19.09</td>
+<td>19.01</td>
+<td>34.43</td>
+<td>61.53</td>
+<td>0.58</td>
+<td>{1: 9.82, 2: 12.63, 3: 15.62, 4: 20.9, 5: 23.8...</td>
+<td>...</td>
+<td>14.06</td>
+<td>2.43</td>
+<td>14.74</td>
+<td>22.09</td>
+<td>17.55</td>
+<td>0.84</td>
+<td>Spread of 14.1 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 143...</td>
+<td>Slightly Progressive (Most deprived travel 16%...</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>3</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 9, 12]</td>
+<td>20</td>
+<td>19.20</td>
+<td>18.99</td>
+<td>38.18</td>
+<td>61.53</td>
+<td>0.62</td>
+<td>{1: 9.82, 2: 12.32, 3: 16.09, 4: 23.12, 5: 24....</td>
+<td>...</td>
+<td>14.34</td>
+<td>2.46</td>
+<td>15.34</td>
+<td>21.77</td>
+<td>17.01</td>
+<td>0.90</td>
+<td>Spread of 14.3 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 146...</td>
+<td>Slightly Progressive (Most deprived travel 10%...</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">3</th>
+<td>4</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 4, 12]</td>
+<td>20</td>
+<td>19.20</td>
+<td>19.08</td>
+<td>38.11</td>
+<td>61.53</td>
+<td>0.60</td>
+<td>{1: 9.82, 2: 11.61, 3: 14.46, 4: 23.26, 5: 25....</td>
+<td>...</td>
+<td>15.33</td>
+<td>2.56</td>
+<td>14.79</td>
+<td>22.07</td>
+<td>17.22</td>
+<td>0.86</td>
+<td>Spread of 15.3 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 156...</td>
+<td>Slightly Progressive (Most deprived travel 14%...</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">4</th>
+<td>5</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 12, 17]</td>
+<td>20</td>
+<td>19.25</td>
+<td>18.98</td>
+<td>38.18</td>
+<td>61.18</td>
+<td>0.60</td>
+<td>{1: 8.7, 2: 11.55, 3: 15.52, 4: 23.78, 5: 24.0...</td>
+<td>...</td>
+<td>15.35</td>
+<td>2.76</td>
+<td>14.89</td>
+<td>21.84</td>
+<td>17.28</td>
+<td>0.86</td>
+<td>Spread of 15.4 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 176...</td>
+<td>Slightly Progressive (Most deprived travel 14%...</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">...</th>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">86</th>
+<td>87</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 6, 16]</td>
+<td>20</td>
+<td>20.19</td>
+<td>20.18</td>
+<td>38.69</td>
+<td>61.53</td>
+<td>0.55</td>
+<td>{1: 11.54, 2: 13.98, 3: 14.81, 4: 22.55, 5: 25...</td>
+<td>...</td>
+<td>14.31</td>
+<td>2.24</td>
+<td>15.72</td>
+<td>23.61</td>
+<td>17.96</td>
+<td>0.88</td>
+<td>Spread of 14.3 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 124...</td>
+<td>Slightly Progressive (Most deprived travel 12%...</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">87</th>
+<td>88</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 7, 11]</td>
+<td>20</td>
+<td>20.21</td>
+<td>20.12</td>
+<td>39.84</td>
+<td>61.53</td>
+<td>0.57</td>
+<td>{1: 11.26, 2: 13.33, 3: 17.16, 4: 22.57, 5: 26...</td>
+<td>...</td>
+<td>14.82</td>
+<td>2.32</td>
+<td>16.08</td>
+<td>23.60</td>
+<td>17.14</td>
+<td>0.94</td>
+<td>Spread of 14.8 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 132...</td>
+<td>Slightly Progressive (Most deprived travel 6% ...</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">88</th>
+<td>89</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 15, 16]</td>
+<td>20</td>
+<td>20.22</td>
+<td>20.15</td>
+<td>38.48</td>
+<td>61.53</td>
+<td>0.56</td>
+<td>{1: 11.54, 2: 14.18, 3: 15.65, 4: 23.11, 5: 25...</td>
+<td>...</td>
+<td>13.99</td>
+<td>2.21</td>
+<td>16.12</td>
+<td>23.44</td>
+<td>17.43</td>
+<td>0.92</td>
+<td>Spread of 14.0 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 121...</td>
+<td>Slightly Progressive (Most deprived travel 8% ...</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">89</th>
+<td>90</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 11, 13]</td>
+<td>20</td>
+<td>20.24</td>
+<td>19.94</td>
+<td>39.84</td>
+<td>61.53</td>
+<td>0.58</td>
+<td>{1: 10.34, 2: 12.22, 3: 17.0, 4: 24.77, 5: 25....</td>
+<td>...</td>
+<td>15.46</td>
+<td>2.50</td>
+<td>16.08</td>
+<td>23.27</td>
+<td>16.96</td>
+<td>0.95</td>
+<td>Spread of 15.5 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 150...</td>
+<td>Slightly Progressive (Most deprived travel 5% ...</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">90</th>
+<td>91</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 11, 16]</td>
+<td>20</td>
+<td>20.37</td>
+<td>20.27</td>
+<td>39.84</td>
+<td>61.53</td>
+<td>0.57</td>
+<td>{1: 11.54, 2: 13.62, 3: 15.27, 4: 23.56, 5: 26...</td>
+<td>...</td>
+<td>14.92</td>
+<td>2.29</td>
+<td>16.00</td>
+<td>23.94</td>
+<td>17.17</td>
+<td>0.93</td>
+<td>Spread of 14.9 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 129...</td>
+<td>Slightly Progressive (Most deprived travel 7% ...</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+</tr>
+</tbody>
+</table>
+
+<p>91 rows × 23 columns</p>
+</div>
+</div>
+</div>
+<p>Let’s recap all of the column names we have.</p>
+<div id="380ed85e" class="cell" data-execution_count="5">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>solution.show_solutions_colnames()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Index(['solution_rank', 'site_names', 'site_indices', 'coverage_threshold',
+       'weighted_average', 'unweighted_average', '90th_percentile', 'max',
+       'proportion_within_coverage_threshold', 'weighted_by_equity_group',
+       'unweighted_by_equity_group', 'coverage_by_equity_group',
+       'max_cost_by_equity_group', 'gap_absolute_weighted',
+       'gap_relative_weighted', 'avg_lower_third_bins',
+       'avg_middle_third_bins', 'avg_upper_third_bins', 'inter_tertile_ratio',
+       'gap_absolute_description', 'gap_relative_description',
+       'inter_tertile_description', 'problem_df'],
+      dtype='str')</code></pre>
+</div>
+</div>
+<p>Let’s look at a couple of trade-offs.</p>
+<p>In the plot below, the line indicates the <strong>pareto front</strong> - the non-dominated solutions.</p>
+<div id="865c302a" class="cell" data-execution_count="6">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>solution.plot_simple_pareto_front_pairs(x_axis<span class="op">=</span><span class="st">"weighted_average"</span>, y_axis<span class="op">=</span><span class="st">"max"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="6">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-7-output-1.png" width="369" height="369" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>We can see that there are three non-dominated solutions joined by this line:</p>
+<ul>
+<li>Weighted average travel time of 19.45, max travel time of 55.6 minutes</li>
+<li>Weighted average travel time of 19.27 (better), max travel time of 56.4 minutes (worse)</li>
+<li>Weighted average travel time of 19.1 (better again), max travel time of 61.2 minutes (worse again)</li>
+</ul>
+<p>We can repeat this for another metric, like weighted average travel time against coverage.</p>
+<p>Here, we can see that there is one single best solution in the top left corner - a coverage of 0.628, with a weighted average travel time of 19.12. Therefore, no pareto front is plotted.</p>
+<div id="053a4b3e" class="cell" data-execution_count="7">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>solution.plot_simple_pareto_front_pairs(</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    x_axis<span class="op">=</span><span class="st">"weighted_average"</span>,</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    y_axis<span class="op">=</span><span class="st">"proportion_within_coverage_threshold"</span>,</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    maxx<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    maxy<span class="op">=</span><span class="va">True</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="7">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-8-output-1.png" width="369" height="369" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>But often we will want to consider more metrics than just two.</p>
+<p>When this is the case, we can use lokigi’s ParetoMetric to define a list of metrics we wish to consider.</p>
+<div id="b76afcdb" class="cell" data-execution_count="8">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>metrics <span class="op">=</span> [</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>        ParetoMetric(column<span class="op">=</span><span class="st">"weighted_average"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>                     label<span class="op">=</span><span class="st">"weighted average travel time"</span>, unit<span class="op">=</span><span class="st">"minutes"</span>),</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>        ParetoMetric(column<span class="op">=</span><span class="st">"max"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>                     label<span class="op">=</span><span class="st">"maximum travel time"</span>, unit<span class="op">=</span><span class="st">"minutes"</span>),</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>        ParetoMetric(column<span class="op">=</span><span class="st">"proportion_within_coverage_threshold"</span>, direction<span class="op">=</span><span class="st">"higher_better"</span>,</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>                     label<span class="op">=</span><span class="st">"proportion within coverage threshold"</span>),</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>        ParetoMetric(column<span class="op">=</span><span class="st">"inter_tertile_ratio"</span>, direction<span class="op">=</span><span class="st">"closest_to_target"</span>, target<span class="op">=</span><span class="fl">1.0</span>,</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>                     label <span class="op">=</span> <span class="st">"ratio of weighted travel times in IMD 1-3 to IMD 7-10"</span>)</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>        ]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>We then pass these metrics in and can see that some new columns have been added to our solutions dataframe, identifying which solutions are considered ‘pareto optimal’ in any given cases.</p>
+<div id="53e2bed5" class="cell" data-execution_count="9">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>solution.compute_pareto_front(</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    metrics<span class="op">=</span>metrics</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>solution.show_solutions()[[<span class="st">"solution_rank"</span>, <span class="st">"is_pareto_optimal"</span>, <span class="st">"dominated_by"</span>]]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="9">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">solution_rank</th>
+<th data-quarto-table-cell-role="th">is_pareto_optimal</th>
+<th data-quarto-table-cell-role="th">dominated_by</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>1</td>
+<td>True</td>
+<td>[]</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>2</td>
+<td>False</td>
+<td>[1]</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>3</td>
+<td>False</td>
+<td>[1]</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">3</th>
+<td>4</td>
+<td>False</td>
+<td>[1, 3]</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">4</th>
+<td>5</td>
+<td>False</td>
+<td>[1]</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">...</th>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">86</th>
+<td>87</td>
+<td>False</td>
+<td>[1, 3, 6, 7, 8, 9, 10, 13, 15, 16, 17, 18, 19,...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">87</th>
+<td>88</td>
+<td>False</td>
+<td>[17, 22, 24, 25, 27, 28, 30, 34, 36, 38, 40, 4...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">88</th>
+<td>89</td>
+<td>False</td>
+<td>[9, 10, 17, 19, 21, 22, 24, 25, 26, 27, 28, 30...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">89</th>
+<td>90</td>
+<td>False</td>
+<td>[17, 22, 24, 27, 28, 34, 36, 38, 58, 73, 75, 77]</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">90</th>
+<td>91</td>
+<td>False</td>
+<td>[9, 10, 17, 22, 24, 25, 27, 28, 30, 33, 34, 36...</td>
+</tr>
+</tbody>
+</table>
+
+<p>91 rows × 3 columns</p>
+</div>
+</div>
+</div>
+<p>The pareto_summary() method returns only solutions that are non-dominated.</p>
+<div id="c0aca816" class="cell" data-execution_count="10">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>solution.pareto_summary()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="10">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">solution_rank</th>
+<th data-quarto-table-cell-role="th">weighted_average</th>
+<th data-quarto-table-cell-role="th">max</th>
+<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">inter_tertile_ratio</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>1</td>
+<td>19.067738</td>
+<td>61.183334</td>
+<td>0.628258</td>
+<td>0.918114</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>6</td>
+<td>19.281145</td>
+<td>56.350000</td>
+<td>0.600823</td>
+<td>0.922975</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>9</td>
+<td>19.307562</td>
+<td>61.183334</td>
+<td>0.620027</td>
+<td>0.938325</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">3</th>
+<td>14</td>
+<td>19.454259</td>
+<td>55.633335</td>
+<td>0.573388</td>
+<td>0.867636</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">4</th>
+<td>16</td>
+<td>19.494915</td>
+<td>55.633335</td>
+<td>0.558299</td>
+<td>0.904269</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">5</th>
+<td>17</td>
+<td>19.515019</td>
+<td>59.766666</td>
+<td>0.609053</td>
+<td>0.998318</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">6</th>
+<td>28</td>
+<td>19.626803</td>
+<td>61.183334</td>
+<td>0.614540</td>
+<td>0.950538</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">7</th>
+<td>58</td>
+<td>19.870268</td>
+<td>61.183334</td>
+<td>0.618656</td>
+<td>1.021753</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">8</th>
+<td>73</td>
+<td>20.001618</td>
+<td>61.533333</td>
+<td>0.614540</td>
+<td>1.001758</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>By default, it only returns the metrics of interest, but we can opt to return all.</p>
+<div id="db49db50" class="cell" data-execution_count="11">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>solution.pareto_summary(return_full_df<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="11">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">solution_rank</th>
+<th data-quarto-table-cell-role="th">site_names</th>
+<th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average</th>
+<th data-quarto-table-cell-role="th">unweighted_average</th>
+<th data-quarto-table-cell-role="th">90th_percentile</th>
+<th data-quarto-table-cell-role="th">max</th>
+<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_by_equity_group</th>
+<th data-quarto-table-cell-role="th">...</th>
+<th data-quarto-table-cell-role="th">avg_lower_third_bins</th>
+<th data-quarto-table-cell-role="th">avg_middle_third_bins</th>
+<th data-quarto-table-cell-role="th">avg_upper_third_bins</th>
+<th data-quarto-table-cell-role="th">inter_tertile_ratio</th>
+<th data-quarto-table-cell-role="th">gap_absolute_description</th>
+<th data-quarto-table-cell-role="th">gap_relative_description</th>
+<th data-quarto-table-cell-role="th">inter_tertile_description</th>
+<th data-quarto-table-cell-role="th">problem_df</th>
+<th data-quarto-table-cell-role="th">is_pareto_optimal</th>
+<th data-quarto-table-cell-role="th">dominated_by</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>1</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 8, 12]</td>
+<td>20</td>
+<td>19.067738</td>
+<td>18.811545</td>
+<td>38.690000</td>
+<td>61.183334</td>
+<td>0.628258</td>
+<td>{1: 9.82, 2: 11.59, 3: 15.73, 4: 23.48, 5: 24....</td>
+<td>...</td>
+<td>15.1550</td>
+<td>21.776667</td>
+<td>16.506667</td>
+<td>0.918114</td>
+<td>Spread of 14.5 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 148...</td>
+<td>Slightly Progressive (Most deprived travel 8% ...</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>True</td>
+<td>[]</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>6</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 5, 8]</td>
+<td>20</td>
+<td>19.281145</td>
+<td>19.176315</td>
+<td>36.410000</td>
+<td>56.350000</td>
+<td>0.600823</td>
+<td>{1: 11.54, 2: 13.13, 3: 16.07, 4: 22.01, 5: 23...</td>
+<td>...</td>
+<td>15.6875</td>
+<td>22.093333</td>
+<td>16.996667</td>
+<td>0.922975</td>
+<td>Spread of 12.0 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 104...</td>
+<td>Slightly Progressive (Most deprived travel 8% ...</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>True</td>
+<td>[]</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>9</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 4, 8]</td>
+<td>20</td>
+<td>19.307562</td>
+<td>19.178669</td>
+<td>40.630000</td>
+<td>61.183334</td>
+<td>0.620027</td>
+<td>{1: 11.54, 2: 12.11, 3: 14.9, 4: 23.98, 5: 24....</td>
+<td>...</td>
+<td>15.6325</td>
+<td>22.020000</td>
+<td>16.660000</td>
+<td>0.938325</td>
+<td>Spread of 13.2 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 114...</td>
+<td>Slightly Progressive (Most deprived travel 6% ...</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>True</td>
+<td>[]</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">3</th>
+<td>14</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 5, 17]</td>
+<td>20</td>
+<td>19.454259</td>
+<td>19.327115</td>
+<td>35.893332</td>
+<td>55.633335</td>
+<td>0.573388</td>
+<td>{1: 10.41, 2: 13.09, 3: 15.85, 4: 22.31, 5: 23...</td>
+<td>...</td>
+<td>15.4150</td>
+<td>22.123333</td>
+<td>17.766667</td>
+<td>0.867636</td>
+<td>Spread of 12.7 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 122...</td>
+<td>Slightly Progressive (Most deprived travel 13%...</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>True</td>
+<td>[]</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">4</th>
+<td>16</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 5, 14]</td>
+<td>20</td>
+<td>19.494915</td>
+<td>19.554390</td>
+<td>34.653334</td>
+<td>55.633335</td>
+<td>0.558299</td>
+<td>{1: 11.54, 2: 14.18, 3: 16.62, 4: 22.9, 5: 22....</td>
+<td>...</td>
+<td>16.3100</td>
+<td>21.250000</td>
+<td>18.036667</td>
+<td>0.904269</td>
+<td>Spread of 11.4 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 98%...</td>
+<td>Slightly Progressive (Most deprived travel 10%...</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>True</td>
+<td>[]</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">5</th>
+<td>17</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 8, 15]</td>
+<td>20</td>
+<td>19.515019</td>
+<td>19.324166</td>
+<td>39.430001</td>
+<td>59.766666</td>
+<td>0.609053</td>
+<td>{1: 11.54, 2: 13.13, 3: 17.0, 4: 23.62, 5: 23....</td>
+<td>...</td>
+<td>16.3225</td>
+<td>22.076667</td>
+<td>16.350000</td>
+<td>0.998318</td>
+<td>Spread of 12.4 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 107...</td>
+<td>Balanced (Macro travel times are broadly equal)</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>True</td>
+<td>[]</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">6</th>
+<td>28</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 8, 17]</td>
+<td>20</td>
+<td>19.626803</td>
+<td>19.301166</td>
+<td>41.746667</td>
+<td>61.183334</td>
+<td>0.614540</td>
+<td>{1: 10.41, 2: 12.04, 3: 16.07, 4: 25.09, 5: 24...</td>
+<td>...</td>
+<td>15.9025</td>
+<td>22.173333</td>
+<td>16.730000</td>
+<td>0.950538</td>
+<td>Spread of 14.7 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 141...</td>
+<td>Balanced (Macro travel times are broadly equal)</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>True</td>
+<td>[]</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">7</th>
+<td>58</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 8, 11]</td>
+<td>20</td>
+<td>19.870268</td>
+<td>19.635940</td>
+<td>42.073333</td>
+<td>61.183334</td>
+<td>0.618656</td>
+<td>{1: 11.54, 2: 12.57, 3: 16.68, 4: 24.97, 5: 25...</td>
+<td>...</td>
+<td>16.4400</td>
+<td>22.710000</td>
+<td>16.090000</td>
+<td>1.021753</td>
+<td>Spread of 13.6 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 118...</td>
+<td>Balanced (Macro travel times are broadly equal)</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>True</td>
+<td>[]</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">8</th>
+<td>73</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 9, 11]</td>
+<td>20</td>
+<td>20.001618</td>
+<td>19.811660</td>
+<td>41.273333</td>
+<td>61.533333</td>
+<td>0.614540</td>
+<td>{1: 11.54, 2: 13.31, 3: 17.04, 4: 24.6, 5: 24....</td>
+<td>...</td>
+<td>16.6225</td>
+<td>22.703333</td>
+<td>16.593333</td>
+<td>1.001758</td>
+<td>Spread of 13.4 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 116...</td>
+<td>Balanced (Macro travel times are broadly equal)</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>True</td>
+<td>[]</td>
+</tr>
+</tbody>
+</table>
+
+<p>9 rows × 25 columns</p>
+</div>
+</div>
+</div>
+<p>We can also look at the tradeoffs of each solution compared to the winner for weighted average.</p>
+<div id="24d84d57" class="cell" data-execution_count="12">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>solution.describe_tradeoffs()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="12">
+<pre><code>['Solution 6 vs solution 1: costs weighted average travel time by 0.21; improves maximum travel time by 4.83; costs proportion within coverage threshold by 0.03; improves ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.00',
+ 'Solution 9 vs solution 1: costs weighted average travel time by 0.24; costs proportion within coverage threshold by 0.01; improves ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.02',
+ 'Solution 14 vs solution 1: costs weighted average travel time by 0.39; improves maximum travel time by 5.55; costs proportion within coverage threshold by 0.05; costs ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.05',
+ 'Solution 16 vs solution 1: costs weighted average travel time by 0.43; improves maximum travel time by 5.55; costs proportion within coverage threshold by 0.07; costs ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.01',
+ 'Solution 17 vs solution 1: costs weighted average travel time by 0.45; improves maximum travel time by 1.42; costs proportion within coverage threshold by 0.02; improves ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.08',
+ 'Solution 28 vs solution 1: costs weighted average travel time by 0.56; costs proportion within coverage threshold by 0.01; improves ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.03',
+ 'Solution 58 vs solution 1: costs weighted average travel time by 0.80; costs proportion within coverage threshold by 0.01; improves ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.10',
+ 'Solution 73 vs solution 1: costs weighted average travel time by 0.93; costs maximum travel time by 0.35; costs proportion within coverage threshold by 0.01; improves ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.08']</code></pre>
+</div>
+</div>
+<p>We can opt for a more stakeholder-focussed output, which is returned as a list of markdown strings for easy inclusion in a Quarto report or Streamlit frontend.</p>
+<div id="b0c559a4" class="cell" data-execution_count="13">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>solution.describe_tradeoffs_for_stakeholders()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="13">
+<pre><code>['We found 9 genuinely different options -- each one is the best choice on at least one measure, so no single option wins on everything. The trade-offs are between weighted average travel time, maximum travel time, proportion within coverage threshold, ratio of weighted travel times in imd 1-3 to imd 7-10.',
+ '**Option 6** (compared with Option 1)\n- Gains: maximum travel time improves by 4.8 minutes; ratio of weighted travel times in IMD 1-3 to IMD 7-10 improves by 0.0\n- Costs: weighted average travel time is 0.2 minutes worse; proportion within coverage threshold is 0.0 worse',
+ '**Option 9** (compared with Option 1)\n- Gains: ratio of weighted travel times in IMD 1-3 to IMD 7-10 improves by 0.0\n- Costs: weighted average travel time is 0.2 minutes worse; proportion within coverage threshold is 0.0 worse',
+ '**Option 14** (compared with Option 1)\n- Gains: maximum travel time improves by 5.5 minutes\n- Costs: weighted average travel time is 0.4 minutes worse; proportion within coverage threshold is 0.1 worse; ratio of weighted travel times in IMD 1-3 to IMD 7-10 is 0.1 worse',
+ '**Option 16** (compared with Option 1)\n- Gains: maximum travel time improves by 5.5 minutes\n- Costs: weighted average travel time is 0.4 minutes worse; proportion within coverage threshold is 0.1 worse; ratio of weighted travel times in IMD 1-3 to IMD 7-10 is 0.0 worse',
+ '**Option 17** (compared with Option 1)\n- Gains: maximum travel time improves by 1.4 minutes; ratio of weighted travel times in IMD 1-3 to IMD 7-10 improves by 0.1\n- Costs: weighted average travel time is 0.4 minutes worse; proportion within coverage threshold is 0.0 worse',
+ '**Option 28** (compared with Option 1)\n- Gains: ratio of weighted travel times in IMD 1-3 to IMD 7-10 improves by 0.0\n- Costs: weighted average travel time is 0.6 minutes worse; proportion within coverage threshold is 0.0 worse',
+ '**Option 58** (compared with Option 1)\n- Gains: ratio of weighted travel times in IMD 1-3 to IMD 7-10 improves by 0.1\n- Costs: weighted average travel time is 0.8 minutes worse; proportion within coverage threshold is 0.0 worse',
+ '**Option 73** (compared with Option 1)\n- Gains: ratio of weighted travel times in IMD 1-3 to IMD 7-10 improves by 0.1\n- Costs: weighted average travel time is 0.9 minutes worse; maximum travel time is 0.3 minutes worse; proportion within coverage threshold is 0.0 worse']</code></pre>
+</div>
+</div>
+<section id="advanced-pareto-plots" class="level2">
+<h2 class="anchored" data-anchor-id="advanced-pareto-plots">Advanced Pareto Plots</h2>
+<p>When we are looking at more than 2 metrics, the pareto plots from before stop being so useful for interpretation.</p>
+<p>Instead, we can use plot_pareto_summary.</p>
+<p>This plots every non-dominated solution as a coloured line. Grey lines indicate other solutions to give context for the range of values of each metric.</p>
+<p>Metrics are scaled in such a way that values further up the axis will always be better, even if that means flipping the direction.</p>
+<p>For example, we have the shortest travel time (a smaller number) at the top, but the best coverage (a higher number) both appearing as the points at the top of the graph. So to interpret, we can just read it as values further up the y axis being better, and values further down being worse. This is also true for values that are aiming for a target - for example, for the IMD travel ratio, in this case we want it to be close to 1 (i.e.&nbsp;minimal difference between travel times across the upper and lower three deciles), so the values at the top are those that are closest to 1, and the values further down are those that are higher or lower than 1, with the direction being shown in the labels.</p>
+<div id="e7c56114" class="cell" data-execution_count="14">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>solution.plot_pareto_summary(width_multiplier<span class="op">=</span><span class="dv">3</span>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-15-output-1.png" width="1145" height="572" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>We can also use faceted plots to help investigate solutions in more detail. This can help us to understand the tradeoffs in more detail.</p>
+<div id="90a6134a" class="cell" data-execution_count="15">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>solution.plot_pareto_facets()<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-16-output-1.png" width="833" height="3426" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="adjusting-metrics" class="level2">
+<h2 class="anchored" data-anchor-id="adjusting-metrics">Adjusting metrics</h2>
+<p>Let’s imagine that rather than wanting to make the inter_tertile ratio as equal as possible, we instead want to prioritise access in the most deprived areas. We simply change the direction to lower_better.</p>
+<div id="66fb8b27" class="cell" data-execution_count="16">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>metrics <span class="op">=</span> [</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>        ParetoMetric(column<span class="op">=</span><span class="st">"weighted_average"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>                     label<span class="op">=</span><span class="st">"weighted average travel time"</span>, unit<span class="op">=</span><span class="st">"minutes"</span>),</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>        ParetoMetric(column<span class="op">=</span><span class="st">"max"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>                     label<span class="op">=</span><span class="st">"maximum travel time"</span>, unit<span class="op">=</span><span class="st">"minutes"</span>),</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>        ParetoMetric(column<span class="op">=</span><span class="st">"proportion_within_coverage_threshold"</span>, direction<span class="op">=</span><span class="st">"higher_better"</span>,</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>                     label<span class="op">=</span><span class="st">"proportion within coverage threshold"</span>),</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>        ParetoMetric(column<span class="op">=</span><span class="st">"inter_tertile_ratio"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>                     label <span class="op">=</span> <span class="st">"ratio of weighted travel times in IMD 1-3 to IMD 7-10"</span>),</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>        <span class="co"># ParetoMetric(column="avg_lower_third_bins", direction="lower_better",</span></span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>        <span class="co">#              label = "Weighted travel times in IMD 1-3")</span></span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>        ]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Then we can just recompute our pareto front, which will overwrite the relevant flags in the solution dataframe.</p>
+<div id="03832a29" class="cell" data-execution_count="17">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>solution.compute_pareto_front(</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>    metrics<span class="op">=</span>metrics</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>        )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Then we can recreate any required plots.</p>
+<div id="f0adcf8d" class="cell" data-execution_count="18">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>solution.plot_pareto_facets()<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-19-output-1.png" width="833" height="4189" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<div id="0758ef4b" class="cell" data-execution_count="19">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>solution.pareto_summary(return_full_df<span class="op">=</span><span class="va">True</span>)[[</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"solution_rank"</span>, <span class="st">"inter_tertile_ratio"</span>, <span class="st">"inter_tertile_ratio"</span>,</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"avg_lower_third_bins"</span>, <span class="st">"avg_upper_third_bins"</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>    ]].<span class="bu">round</span>(<span class="dv">2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="19">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">solution_rank</th>
+<th data-quarto-table-cell-role="th">inter_tertile_ratio</th>
+<th data-quarto-table-cell-role="th">inter_tertile_ratio</th>
+<th data-quarto-table-cell-role="th">avg_lower_third_bins</th>
+<th data-quarto-table-cell-role="th">avg_upper_third_bins</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>1</td>
+<td>0.92</td>
+<td>0.92</td>
+<td>15.16</td>
+<td>16.51</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>2</td>
+<td>0.84</td>
+<td>0.84</td>
+<td>14.74</td>
+<td>17.55</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>3</td>
+<td>0.90</td>
+<td>0.90</td>
+<td>15.34</td>
+<td>17.01</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">3</th>
+<td>4</td>
+<td>0.86</td>
+<td>0.86</td>
+<td>14.79</td>
+<td>17.22</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">4</th>
+<td>5</td>
+<td>0.86</td>
+<td>0.86</td>
+<td>14.89</td>
+<td>17.28</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">5</th>
+<td>6</td>
+<td>0.92</td>
+<td>0.92</td>
+<td>15.69</td>
+<td>17.00</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">6</th>
+<td>14</td>
+<td>0.87</td>
+<td>0.87</td>
+<td>15.42</td>
+<td>17.77</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">7</th>
+<td>17</td>
+<td>1.00</td>
+<td>1.00</td>
+<td>16.32</td>
+<td>16.35</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">8</th>
+<td>23</td>
+<td>0.84</td>
+<td>0.84</td>
+<td>14.71</td>
+<td>17.60</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">9</th>
+<td>43</td>
+<td>0.92</td>
+<td>0.92</td>
+<td>15.71</td>
+<td>17.04</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">10</th>
+<td>71</td>
+<td>0.87</td>
+<td>0.87</td>
+<td>15.44</td>
+<td>17.81</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+
+
+</section>
+
+<a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
+<script type="application/vnd.jupyter.widget-state+json">
+{"state":{"03f6d1c2dc5e42668419d1e647d15907":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"0736d66a72a746d6b70a311a29214877":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_2bdbdc407006435d816ac1319e2d4891","IPY_MODEL_6deb5b0a57234de0af19840dc4c687be","IPY_MODEL_36e38033247b45999c5bb44567abd126"],"layout":"IPY_MODEL_e544cd5f61ee41949208717270b0425f","tabbable":null,"tooltip":null}},"26ac124e4fbb4933af56684cac23d530":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"2bdbdc407006435d816ac1319e2d4891":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_a0c3292d9fd0408483c904db4ae03ff6","placeholder":"​","style":"IPY_MODEL_c5a2f447e7104931bfad25a1e8ec8637","tabbable":null,"tooltip":null,"value":"100%"}},"36e38033247b45999c5bb44567abd126":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_63824e0e3e7647a385c2a830d1904742","placeholder":"​","style":"IPY_MODEL_b147f66466414aec9f92bed9f8b3e716","tabbable":null,"tooltip":null,"value":" 91/91 [00:00&lt;00:00, 101.22it/s]"}},"63824e0e3e7647a385c2a830d1904742":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"6deb5b0a57234de0af19840dc4c687be":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_26ac124e4fbb4933af56684cac23d530","max":91,"min":0,"orientation":"horizontal","style":"IPY_MODEL_03f6d1c2dc5e42668419d1e647d15907","tabbable":null,"tooltip":null,"value":91}},"a0c3292d9fd0408483c904db4ae03ff6":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"b147f66466414aec9f92bed9f8b3e716":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"c5a2f447e7104931bfad25a1e8ec8637":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"e544cd5f61ee41949208717270b0425f":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}}},"version_major":2,"version_minor":0}
+</script>
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/hsma-tools\.github\.io\/lokigi\/");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+<p><a href="https://www.hsma.co.uk/"><img src="../../../lokigi_docs/assets/hsma_logo.png" class="img-fluid" width="150"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <a href="https://arc-swp.nihr.ac.uk/"><img src="../../../lokigi_docs/assets/nihr_logo.png" class="img-fluid" width="250"></a><br><br> <em>This work is independent research supported by the National Institute for Health and Care Research Applied Research Collaboration South West Peninsula.<br> The views expressed in this publication are those of the author(s) and not necessarily those of the National Institute for Health and Care Research or the Department of Health and Social Care.</em> <br><br></p>
+</div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>

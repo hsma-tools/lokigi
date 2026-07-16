@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Weighting by demand, equity, or both – lokigi</title>
+<title>Multiobjective Optimisation with Weights – lokigi</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -78,8 +78,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../../site_libs/bootstrap/bootstrap-b64b0724666ecde2c18d535cd26c4c91.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../../../site_libs/bootstrap/bootstrap-dark-bdbb6e8e4b532b55eaee762fd03e2c1f.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../../../site_libs/bootstrap/bootstrap-b9db622ab4cfbe3cb3a5c3b0cfe31a38.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../../site_libs/bootstrap/bootstrap-dark-c2cb4ca64c758ea54772214a9ed67472.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -117,7 +117,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link rel="stylesheet" href="../../../lokigi_docs/resources/styles.css">
 </head>
 
-<body class="nav-fixed fullcontent quarto-dark"><script id="quarto-html-before-body" type="application/javascript">
+<body class="nav-fixed quarto-dark"><script id="quarto-html-before-body" type="application/javascript">
     const toggleBodyColorMode = (bsSheetEl) => {
       const mode = bsSheetEl.getAttribute("data-mode");
       const bodyEl = window.document.querySelector("body");
@@ -338,14 +338,27 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
 <!-- margin-sidebar -->
-    
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#weighting-by-demand-equity-or-both" id="toc-weighting-by-demand-equity-or-both" class="nav-link active" data-scroll-target="#weighting-by-demand-equity-or-both">Weighting by demand, equity, or both</a>
+  <ul class="collapse">
+  <li><a href="#weighting-by-equity-instead" id="toc-weighting-by-equity-instead" class="nav-link" data-scroll-target="#weighting-by-equity-instead">Weighting by equity instead</a></li>
+  <li><a href="#weighting-by-both-demand-and-equity" id="toc-weighting-by-both-demand-and-equity" class="nav-link" data-scroll-target="#weighting-by-both-demand-and-equity">Weighting by both demand and equity</a></li>
+  </ul></li>
+  <li><a href="#additional-datasets" id="toc-additional-datasets" class="nav-link" data-scroll-target="#additional-datasets">Additional datasets</a></li>
+  </ul>
+</nav>
+    </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Weighting by demand, equity, or both</h1>
+<h1 class="title">Multiobjective Optimisation with Weights</h1>
 </div>
 
 
@@ -362,6 +375,36 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
+<p>There are a few different ways we can handle multiple competing objectives that we need to balance.</p>
+<p>In lokigi, by default, we will weight a p-median problem on <em>demand</em>.</p>
+<p>Let’s imagine we have two regions, A and B.</p>
+<p>We are trying out a combination of 3 sites.</p>
+<p>Region A has an expected demand of 100 people per month. In this solution, we see that the journey time to their nearest centre is 10 minutes.</p>
+<p>Region B has an expected demand of 500 people per month. In this solution, the journey time to their nearest centre is 40 minutes.</p>
+<p>Now we look at another solution. For region A, the time is now 20 minutes. For region B, the time is now 15 minutes.</p>
+<p>While this is worse for the people in region A, more people in region B will benefit, bringing the average travel time across all people down.</p>
+<p>This can lead to a better solution overall than assuming demand is equal across a region.</p>
+<p>But what happens if demand isn’t the only thing we care about?</p>
+<p>What if we want to put more importance on improving access in the most deprived areas, for example?</p>
+<p>Using additional weights can help us to do this.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>While lokigi offers weights as an option for multi-objective problems, weights have a few drawbacks:</p>
+<ul>
+<li>they can be quite opaque and challenging to understand for stakeholders</li>
+<li>they can have limited effect on the outcome</li>
+</ul>
+<p>Therefore you may wish to consider alternative approaches to multiobjective optimisation, such as those shown in the sections <a href="../../../examples/location/comparing_solutions/index.html">comparing two solutions</a> and <a href="../../../examples/location/multiobjective_optimisation_pareto/index.html">pareto optimisation</a>.</p>
+</div>
+</div>
 <div id="710f6284" class="cell" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.site <span class="im">import</span> SiteProblem</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -407,7 +450,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/cell-3-output-1.png" class="img-fluid figure-img"></p>
+<p><img src="index_files/figure-html/cell-3-output-1.png" width="487" height="402" class="figure-img"></p>
 </figure>
 </div>
 </div>
@@ -417,7 +460,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/cell-4-output-1.png" class="img-fluid figure-img"></p>
+<p><img src="index_files/figure-html/cell-4-output-1.png" width="504" height="394" class="figure-img"></p>
 </figure>
 </div>
 </div>
@@ -427,11 +470,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/cell-5-output-1.png" class="img-fluid figure-img"></p>
+<p><img src="index_files/figure-html/cell-5-output-1.png" width="377" height="411" class="figure-img"></p>
 </figure>
 </div>
 </div>
 </div>
+<section id="weighting-by-demand-equity-or-both" class="level1">
+<h1>Weighting by demand, equity, or both</h1>
 <p>The default behaviour in lokigi, if no weights are stated for a standard (unsimplified) p-median problem</p>
 <p>As a reminder, an unsimplified p-median problem will solve for raw travel times rather than applying any weighting.</p>
 <div id="1ca43e04" class="cell" data-execution_count="5">
@@ -439,7 +484,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>solution_standard_demand_weighted_p_median.show_solutions(n_best<span class="op">=</span><span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"fc0405cfa8464805a538b4634009ca47","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+{"model_id":"5cc4c4b306324f15b5e2ce1a03e75fd4","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
 </script>
 </div>
 <div class="cell-output cell-output-display" data-execution_count="5">
@@ -553,9 +598,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
-<div id="769a5d15" class="cell" data-execution_count="12">
+<div id="769a5d15" class="cell" data-execution_count="6">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>solution_standard_demand_weighted_p_median.show_solutions().sort_values(<span class="st">'inter_tertile_ratio'</span>).head(<span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-display" data-execution_count="12">
+<div class="cell-output cell-output-display" data-execution_count="6">
 <div>
 
 
@@ -666,9 +711,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
-<div id="c6a44728" class="cell" data-execution_count="13">
+<div id="c6a44728" class="cell" data-execution_count="7">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>solution_standard_demand_weighted_p_median.show_solutions().sort_values(<span class="st">'inter_tertile_ratio'</span>, ascending<span class="op">=</span><span class="va">False</span>).head(<span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-display" data-execution_count="13">
+<div class="cell-output cell-output-display" data-execution_count="7">
 <div>
 
 
@@ -782,15 +827,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="weighting-by-equity-instead" class="level2">
 <h2 class="anchored" data-anchor-id="weighting-by-equity-instead">Weighting by equity instead</h2>
 <p>We can instead weight by equity by passing in a dictionary of weights.</p>
-<div id="f6024d4c" class="cell" data-execution_count="6">
+<div id="f6024d4c" class="cell" data-execution_count="8">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>solution_equity_weighted_p_median <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">5</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, weights<span class="op">=</span>{<span class="st">'equity'</span>: <span class="fl">1.0</span>}, threshold_for_coverage<span class="op">=</span><span class="dv">30</span>)</span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>solution_equity_weighted_p_median.show_solutions(n_best<span class="op">=</span><span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"032549a6b6134a4d827c489d254a7c97","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+{"model_id":"d3a8ca1f1a8345739a65030493635779","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
 </script>
 </div>
-<div class="cell-output cell-output-display" data-execution_count="6">
+<div class="cell-output cell-output-display" data-execution_count="8">
 <div>
 
 
@@ -904,148 +949,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="weighting-by-both-demand-and-equity" class="level2">
 <h2 class="anchored" data-anchor-id="weighting-by-both-demand-and-equity">Weighting by both demand and equity</h2>
-<div id="a387e069" class="cell" data-execution_count="7">
+<div id="a387e069" class="cell" data-execution_count="9">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>solution_equity_and_demand_weighted_p_median <span class="op">=</span> problem.solve(</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    p<span class="op">=</span><span class="dv">5</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, weights<span class="op">=</span>{<span class="st">'equity'</span>: <span class="fl">1.0</span>, <span class="st">'demand'</span>: <span class="fl">1.0</span>}, threshold_for_coverage<span class="op">=</span><span class="dv">30</span>,</span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    )</span>
 <span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>solution_equity_and_demand_weighted_p_median.show_solutions(n_best<span class="op">=</span><span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"e6901dde605940aeb82dab6576df9073","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
-</script>
-</div>
-<div class="cell-output cell-output-display" data-execution_count="7">
-<div>
-
-
-<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
-<thead>
-<tr class="header">
-<th data-quarto-table-cell-role="th"></th>
-<th data-quarto-table-cell-role="th">solution_rank</th>
-<th data-quarto-table-cell-role="th">site_names</th>
-<th data-quarto-table-cell-role="th">site_indices</th>
-<th data-quarto-table-cell-role="th">coverage_threshold</th>
-<th data-quarto-table-cell-role="th">weighted_average</th>
-<th data-quarto-table-cell-role="th">unweighted_average</th>
-<th data-quarto-table-cell-role="th">90th_percentile</th>
-<th data-quarto-table-cell-role="th">max</th>
-<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
-<th data-quarto-table-cell-role="th">weighted_by_equity_group</th>
-<th data-quarto-table-cell-role="th">...</th>
-<th data-quarto-table-cell-role="th">gap_absolute_weighted</th>
-<th data-quarto-table-cell-role="th">gap_relative_weighted</th>
-<th data-quarto-table-cell-role="th">avg_lower_third_bins</th>
-<th data-quarto-table-cell-role="th">avg_middle_third_bins</th>
-<th data-quarto-table-cell-role="th">avg_upper_third_bins</th>
-<th data-quarto-table-cell-role="th">inter_tertile_ratio</th>
-<th data-quarto-table-cell-role="th">gap_absolute_description</th>
-<th data-quarto-table-cell-role="th">gap_relative_description</th>
-<th data-quarto-table-cell-role="th">inter_tertile_description</th>
-<th data-quarto-table-cell-role="th">problem_df</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<th data-quarto-table-cell-role="th">0</th>
-<td>1</td>
-<td>[Bideford Community Hospital, NHS Nightingale ...</td>
-<td>[0, 1, 2, 3, 12]</td>
-<td>30</td>
-<td>19.84</td>
-<td>20.03</td>
-<td>39.41</td>
-<td>61.53</td>
-<td>0.80</td>
-<td>{1: 10.09, 2: 12.74, 3: 16.58, 4: 24.2, 5: 25....</td>
-<td>...</td>
-<td>15.78</td>
-<td>2.56</td>
-<td>15.90</td>
-<td>23.08</td>
-<td>17.46</td>
-<td>0.91</td>
-<td>Spread of 15.8 units between best and worst gr...</td>
-<td>Significant Disparity (Worst group travels 156...</td>
-<td>Slightly Progressive (Most deprived travel 9% ...</td>
-<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
-</tr>
-<tr class="even">
-<th data-quarto-table-cell-role="th">1</th>
-<td>2</td>
-<td>[Bideford Community Hospital, NHS Nightingale ...</td>
-<td>[0, 1, 2, 3, 5]</td>
-<td>30</td>
-<td>20.08</td>
-<td>20.37</td>
-<td>37.61</td>
-<td>61.53</td>
-<td>0.79</td>
-<td>{1: 11.89, 2: 14.38, 3: 17.12, 4: 22.8, 5: 25....</td>
-<td>...</td>
-<td>13.17</td>
-<td>2.11</td>
-<td>16.55</td>
-<td>23.40</td>
-<td>17.94</td>
-<td>0.92</td>
-<td>Spread of 13.2 units between best and worst gr...</td>
-<td>Significant Disparity (Worst group travels 111...</td>
-<td>Slightly Progressive (Most deprived travel 8% ...</td>
-<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
-</tr>
-<tr class="odd">
-<th data-quarto-table-cell-role="th">2</th>
-<td>3</td>
-<td>[Bideford Community Hospital, NHS Nightingale ...</td>
-<td>[0, 1, 2, 3, 4]</td>
-<td>30</td>
-<td>20.17</td>
-<td>20.39</td>
-<td>41.07</td>
-<td>61.53</td>
-<td>0.80</td>
-<td>{1: 11.89, 2: 13.34, 3: 15.87, 4: 24.78, 5: 26...</td>
-<td>...</td>
-<td>14.35</td>
-<td>2.21</td>
-<td>16.47</td>
-<td>23.35</td>
-<td>17.61</td>
-<td>0.94</td>
-<td>Spread of 14.3 units between best and worst gr...</td>
-<td>Significant Disparity (Worst group travels 121...</td>
-<td>Slightly Progressive (Most deprived travel 6% ...</td>
-<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
-</tr>
-</tbody>
-</table>
-
-<p>3 rows × 23 columns</p>
-</div>
-</div>
-</div>
-</section>
-<section id="additional-datasets" class="level1">
-<h1>Additional datasets</h1>
-<p>Let’s now add an additional dataset. We’re going to add in demand for patients 50-84.</p>
-<div id="15d32193" class="cell" data-execution_count="8">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>problem.add_additional_data(</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    df<span class="op">=</span><span class="st">"../../../sample_data/demand_MF_50_84.csv"</span>,</span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    column_of_interest<span class="op">=</span><span class="st">"MF50-84"</span>,</span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    common_col<span class="op">=</span><span class="st">"LSOA 2021 Name"</span>,</span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    label<span class="op">=</span><span class="st">"Demand 50-84"</span>,</span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    direction<span class="op">=</span><span class="st">"higher_better"</span></span>
-<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</div>
-<div id="94fecaec" class="cell" data-execution_count="9">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>solution_additional_dataset_weighted_p_median <span class="op">=</span> problem.solve(</span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    p<span class="op">=</span><span class="dv">5</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, weights<span class="op">=</span>{<span class="st">'equity'</span>: <span class="fl">0.1</span>, <span class="st">'demand'</span>: <span class="fl">0.1</span>, <span class="st">'Demand 50-84'</span>: <span class="fl">0.6</span>}, threshold_for_coverage<span class="op">=</span><span class="dv">30</span></span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>solution_equity_and_demand_weighted_p_median.show_solutions(n_best<span class="op">=</span><span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-display">
-<script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"c58584bdf8ce45fea3cd548c08721342","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+{"model_id":"2af792fa8f3043e9909d24b558fdb600","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
 </script>
 </div>
 <div class="cell-output cell-output-display" data-execution_count="9">
@@ -1159,9 +1070,144 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
-<div id="6ba534ed" class="cell" data-execution_count="10">
+</section>
+</section>
+<section id="additional-datasets" class="level1">
+<h1>Additional datasets</h1>
+<p>Let’s now add an additional dataset. We’re going to add in demand for patients 50-84.</p>
+<div id="15d32193" class="cell" data-execution_count="10">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>problem.add_additional_data(</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    df<span class="op">=</span><span class="st">"../../../sample_data/demand_MF_50_84.csv"</span>,</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    column_of_interest<span class="op">=</span><span class="st">"MF50-84"</span>,</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    common_col<span class="op">=</span><span class="st">"LSOA 2021 Name"</span>,</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    label<span class="op">=</span><span class="st">"Demand 50-84"</span>,</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    direction<span class="op">=</span><span class="st">"higher_better"</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="94fecaec" class="cell" data-execution_count="11">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>solution_additional_dataset_weighted_p_median <span class="op">=</span> problem.solve(</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    p<span class="op">=</span><span class="dv">5</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, weights<span class="op">=</span>{<span class="st">'equity'</span>: <span class="fl">0.1</span>, <span class="st">'demand'</span>: <span class="fl">0.1</span>, <span class="st">'Demand 50-84'</span>: <span class="fl">0.6</span>}, threshold_for_coverage<span class="op">=</span><span class="dv">30</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>solution_equity_and_demand_weighted_p_median.show_solutions(n_best<span class="op">=</span><span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<script type="application/vnd.jupyter.widget-view+json">
+{"model_id":"9915c435288a4f45b616584e0724f9ec","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+</script>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="11">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">solution_rank</th>
+<th data-quarto-table-cell-role="th">site_names</th>
+<th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average</th>
+<th data-quarto-table-cell-role="th">unweighted_average</th>
+<th data-quarto-table-cell-role="th">90th_percentile</th>
+<th data-quarto-table-cell-role="th">max</th>
+<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_by_equity_group</th>
+<th data-quarto-table-cell-role="th">...</th>
+<th data-quarto-table-cell-role="th">gap_absolute_weighted</th>
+<th data-quarto-table-cell-role="th">gap_relative_weighted</th>
+<th data-quarto-table-cell-role="th">avg_lower_third_bins</th>
+<th data-quarto-table-cell-role="th">avg_middle_third_bins</th>
+<th data-quarto-table-cell-role="th">avg_upper_third_bins</th>
+<th data-quarto-table-cell-role="th">inter_tertile_ratio</th>
+<th data-quarto-table-cell-role="th">gap_absolute_description</th>
+<th data-quarto-table-cell-role="th">gap_relative_description</th>
+<th data-quarto-table-cell-role="th">inter_tertile_description</th>
+<th data-quarto-table-cell-role="th">problem_df</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>1</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 12]</td>
+<td>30</td>
+<td>19.84</td>
+<td>20.03</td>
+<td>39.41</td>
+<td>61.53</td>
+<td>0.80</td>
+<td>{1: 10.09, 2: 12.74, 3: 16.58, 4: 24.2, 5: 25....</td>
+<td>...</td>
+<td>15.78</td>
+<td>2.56</td>
+<td>15.90</td>
+<td>23.08</td>
+<td>17.46</td>
+<td>0.91</td>
+<td>Spread of 15.8 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 156...</td>
+<td>Slightly Progressive (Most deprived travel 9% ...</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>2</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 5]</td>
+<td>30</td>
+<td>20.08</td>
+<td>20.37</td>
+<td>37.61</td>
+<td>61.53</td>
+<td>0.79</td>
+<td>{1: 11.89, 2: 14.38, 3: 17.12, 4: 22.8, 5: 25....</td>
+<td>...</td>
+<td>13.17</td>
+<td>2.11</td>
+<td>16.55</td>
+<td>23.40</td>
+<td>17.94</td>
+<td>0.92</td>
+<td>Spread of 13.2 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 111...</td>
+<td>Slightly Progressive (Most deprived travel 8% ...</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2</th>
+<td>3</td>
+<td>[Bideford Community Hospital, NHS Nightingale ...</td>
+<td>[0, 1, 2, 3, 4]</td>
+<td>30</td>
+<td>20.17</td>
+<td>20.39</td>
+<td>41.07</td>
+<td>61.53</td>
+<td>0.80</td>
+<td>{1: 11.89, 2: 13.34, 3: 15.87, 4: 24.78, 5: 26...</td>
+<td>...</td>
+<td>14.35</td>
+<td>2.21</td>
+<td>16.47</td>
+<td>23.35</td>
+<td>17.61</td>
+<td>0.94</td>
+<td>Spread of 14.3 units between best and worst gr...</td>
+<td>Significant Disparity (Worst group travels 121...</td>
+<td>Slightly Progressive (Most deprived travel 6% ...</td>
+<td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+</tr>
+</tbody>
+</table>
+
+<p>3 rows × 23 columns</p>
+</div>
+</div>
+</div>
+<div id="6ba534ed" class="cell" data-execution_count="12">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>solution_additional_dataset_weighted_p_median.show_solutions().iloc[<span class="dv">0</span>][<span class="st">'problem_df'</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-display" data-execution_count="10">
+<div class="cell-output cell-output-display" data-execution_count="12">
 <div>
 
 
@@ -1373,6 +1419,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 
 <a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
+<script type="application/vnd.jupyter.widget-state+json">
+{"state":{"08afae6f6e774703896f3a0bb1c30035":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"1555f1293de143d385e7d8f82351228b":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_5409d495a2d34e9e87e01903e76cc0d9","max":14,"min":0,"orientation":"horizontal","style":"IPY_MODEL_97a81b416b3c432993fd277931d258f7","tabbable":null,"tooltip":null,"value":14}},"17bd4e34cab946a9b0918a9128f920d3":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_5853fa9d227b4c608a38ba928792fe13","placeholder":"​","style":"IPY_MODEL_a0bd35ea457f4aa8a1d0e5362358dad1","tabbable":null,"tooltip":null,"value":" 14/14 [00:00&lt;00:00, 97.89it/s]"}},"1885870b9b5e4076a1a45398d33ec8a2":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"228fe9c0b4654ab59119d719e000e4c4":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_b06c832dcb244a99b1b5b811b7414e59","placeholder":"​","style":"IPY_MODEL_8745e9d189794bc8b79ff378b929468a","tabbable":null,"tooltip":null,"value":" 14/14 [00:00&lt;00:00, 89.49it/s]"}},"29a0b7481b0d4c58923ae99626a0cda5":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"2af792fa8f3043e9909d24b558fdb600":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_e101043ab8474a0189ad50f6e63bec0b","IPY_MODEL_643b64578fa9404db285e7f709e1ced8","IPY_MODEL_228fe9c0b4654ab59119d719e000e4c4"],"layout":"IPY_MODEL_b9fbf59d398e40479bd535bbd4f82b98","tabbable":null,"tooltip":null}},"2f8238a18d86431eba9d48b41cf46340":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"3ee38984c1a24d2cb2433ad5ab86e8fc":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"42e2b0ce6ad04425b2a20cb51461aa28":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"5409d495a2d34e9e87e01903e76cc0d9":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"5546b61849444438bd1382d5907301a4":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"56f739f5de0948998f43aaea948e7eae":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"5853fa9d227b4c608a38ba928792fe13":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"5cc4c4b306324f15b5e2ce1a03e75fd4":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_ec4daffb2f8b4cbf8cdcebca12ec8c94","IPY_MODEL_9342aebe5f8e4ebfaf60d582b7ec86ba","IPY_MODEL_17bd4e34cab946a9b0918a9128f920d3"],"layout":"IPY_MODEL_a7a2ae5b65fc44179580dfc89c391cf9","tabbable":null,"tooltip":null}},"5d02928488e741f9bf2037a8a8d02da3":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"5eb67d3390014884aecff091b752fbdc":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_08afae6f6e774703896f3a0bb1c30035","placeholder":"​","style":"IPY_MODEL_f244167eca9a4903b722a22f86344950","tabbable":null,"tooltip":null,"value":" 14/14 [00:00&lt;00:00, 94.34it/s]"}},"643b64578fa9404db285e7f709e1ced8":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_56f739f5de0948998f43aaea948e7eae","max":14,"min":0,"orientation":"horizontal","style":"IPY_MODEL_5546b61849444438bd1382d5907301a4","tabbable":null,"tooltip":null,"value":14}},"6d5b8c6066f94111a2935dbe3e82566d":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"79315c3e18e24c64b93d944d2f0c10bd":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"8139f4dbe7ea4f439d9324b04630fd02":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"8426a03d0f2547718add6246ebe6a2fd":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"8745e9d189794bc8b79ff378b929468a":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"8d0a2a9ba5ed454f9607f1093f2d46d6":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"9342aebe5f8e4ebfaf60d582b7ec86ba":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_5d02928488e741f9bf2037a8a8d02da3","max":14,"min":0,"orientation":"horizontal","style":"IPY_MODEL_29a0b7481b0d4c58923ae99626a0cda5","tabbable":null,"tooltip":null,"value":14}},"93fcacbe29044471a5d869335fe0bdd9":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"97a81b416b3c432993fd277931d258f7":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"9915c435288a4f45b616584e0724f9ec":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_b694ac25b7554e62a94d947a03bb74d7","IPY_MODEL_1555f1293de143d385e7d8f82351228b","IPY_MODEL_ec270ea190684161813404eb7ab6a490"],"layout":"IPY_MODEL_8d0a2a9ba5ed454f9607f1093f2d46d6","tabbable":null,"tooltip":null}},"a0bd35ea457f4aa8a1d0e5362358dad1":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"a7a2ae5b65fc44179580dfc89c391cf9":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"b06c832dcb244a99b1b5b811b7414e59":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"b694ac25b7554e62a94d947a03bb74d7":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_8426a03d0f2547718add6246ebe6a2fd","placeholder":"​","style":"IPY_MODEL_ca5aa512517b4ad486804f83ce37450e","tabbable":null,"tooltip":null,"value":"100%"}},"b9fbf59d398e40479bd535bbd4f82b98":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"ca5aa512517b4ad486804f83ce37450e":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"d0dd4e3fa64b45969bf1c4a30b8b53f7":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_e6e859fe42104fe5baee1668f880ed95","max":14,"min":0,"orientation":"horizontal","style":"IPY_MODEL_2f8238a18d86431eba9d48b41cf46340","tabbable":null,"tooltip":null,"value":14}},"d3a8ca1f1a8345739a65030493635779":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_fcd3009d1d12482a963784d06e10c853","IPY_MODEL_d0dd4e3fa64b45969bf1c4a30b8b53f7","IPY_MODEL_5eb67d3390014884aecff091b752fbdc"],"layout":"IPY_MODEL_3ee38984c1a24d2cb2433ad5ab86e8fc","tabbable":null,"tooltip":null}},"e101043ab8474a0189ad50f6e63bec0b":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_f246ef77260c46ac820930b090ccceed","placeholder":"​","style":"IPY_MODEL_42e2b0ce6ad04425b2a20cb51461aa28","tabbable":null,"tooltip":null,"value":"100%"}},"e6e859fe42104fe5baee1668f880ed95":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"ec270ea190684161813404eb7ab6a490":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_79315c3e18e24c64b93d944d2f0c10bd","placeholder":"​","style":"IPY_MODEL_8139f4dbe7ea4f439d9324b04630fd02","tabbable":null,"tooltip":null,"value":" 14/14 [00:00&lt;00:00, 75.45it/s]"}},"ec4daffb2f8b4cbf8cdcebca12ec8c94":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_f9f1510deb9d45f6adbe568ee7c1deee","placeholder":"​","style":"IPY_MODEL_93fcacbe29044471a5d869335fe0bdd9","tabbable":null,"tooltip":null,"value":"100%"}},"f244167eca9a4903b722a22f86344950":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"f246ef77260c46ac820930b090ccceed":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"f9f1510deb9d45f6adbe568ee7c1deee":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"fcd3009d1d12482a963784d06e10c853":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_1885870b9b5e4076a1a45398d33ec8a2","placeholder":"​","style":"IPY_MODEL_6d5b8c6066f94111a2935dbe3e82566d","tabbable":null,"tooltip":null,"value":"100%"}}},"version_major":2,"version_minor":0}
+</script>
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
     // Ensure there is a toggle, if there isn't float one in the top right

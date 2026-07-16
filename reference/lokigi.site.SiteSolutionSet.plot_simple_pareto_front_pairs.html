@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>lokigi.site.sitesolutionset.plot_all_metric_pareto_front – lokigi</title>
+<title>lokigi.site.sitesolutionset.plot_simple_pareto_front_pairs – lokigi</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -78,8 +78,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-b64b0724666ecde2c18d535cd26c4c91.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-bdbb6e8e4b532b55eaee762fd03e2c1f.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-b9db622ab4cfbe3cb3a5c3b0cfe31a38.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-c2cb4ca64c758ea54772214a9ed67472.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -342,27 +342,28 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<section id="lokigi.site.SiteSolutionSet.plot_all_metric_pareto_front" class="level1">
-<h1>plot_all_metric_pareto_front</h1>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet.plot_all_metric_pareto_front(</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    height<span class="op">=</span><span class="dv">4</span>,</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    show_points<span class="op">=</span><span class="va">True</span>,</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    theme<span class="op">=</span><span class="st">'whitegrid'</span>,</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    maxx<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    maxy<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    cols<span class="op">=</span><span class="dv">3</span>,</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Plot Pareto fronts for all pairs of solution metrics.</p>
-<p>This method generates a grid of subplots, each showing the Pareto front for a pairwise combination of performance metrics. It provides a comprehensive view of trade-offs between all available objectives.</p>
+<section id="lokigi.site.SiteSolutionSet.plot_simple_pareto_front_pairs" class="level1">
+<h1>plot_simple_pareto_front_pairs</h1>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet.plot_simple_pareto_front_pairs(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    x_axis<span class="op">=</span><span class="st">'weighted_average'</span>,</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    y_axis<span class="op">=</span><span class="st">'max'</span>,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    height<span class="op">=</span><span class="dv">4</span>,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    show_points<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    theme<span class="op">=</span><span class="st">'whitegrid'</span>,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    maxx<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    maxy<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Plot a Pareto front for two selected solution metrics.</p>
+<p>This method generates a Pareto front visualisation comparing two performance metrics across all evaluated solutions. It highlights the trade-offs between objectives and optionally displays all points alongside the Pareto-optimal frontier.</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
 <table class="caption-top table">
 <colgroup>
+<col style="width: 3%">
+<col style="width: 35%">
+<col style="width: 54%">
 <col style="width: 6%">
-<col style="width: 6%">
-<col style="width: 80%">
-<col style="width: 7%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -374,15 +375,27 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
+<td>x_axis</td>
+<td>('weighted_average', 'unweighted_average', '90th_percentile', 'max', 'proportion_within_coverage_threshold')</td>
+<td>Column name representing the metric to plot on the x-axis.</td>
+<td><code>"weighted_average"</code></td>
+</tr>
+<tr class="even">
+<td>y_axis</td>
+<td>('weighted_average', 'unweighted_average', '90th_percentile', 'max', 'proportion_within_coverage_threshold')</td>
+<td>Column name representing the metric to plot on the y-axis.</td>
+<td><code>"weighted_average"</code></td>
+</tr>
+<tr class="odd">
 <td>height</td>
 <td>float</td>
-<td>Height (in inches) allocated to each subplot.</td>
+<td>Height of the plot in inches.</td>
 <td><code>4</code></td>
 </tr>
 <tr class="even">
 <td>show_points</td>
 <td>bool</td>
-<td>If True, all solutions are plotted as points in addition to the Pareto front in each subplot.</td>
+<td>If True, all solutions are plotted as points in addition to the Pareto front.</td>
 <td><code>True</code></td>
 </tr>
 <tr class="odd">
@@ -393,23 +406,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="even">
 <td>maxx</td>
-<td>bool or None</td>
-<td>If True, x-axis metrics are treated as maximisation objectives when computing Pareto fronts. If False, they are minimised. If None, the direction is inferred per metric.</td>
+<td>bool</td>
+<td>If True, the Pareto front is computed assuming the x-axis metric is to be maximised. If False, it is minimised. If None, the function automatically infers the value based on the metric.</td>
 <td><code>None</code></td>
 </tr>
 <tr class="odd">
 <td>maxy</td>
-<td>bool or None</td>
-<td>If True, y-axis metrics are treated as maximisation objectives when computing Pareto fronts. If False, they are minimised. If None, the direction is inferred per metric.</td>
+<td>bool</td>
+<td>If True, the Pareto front is computed assuming the y-axis metric is to be maximised. If False, it is minimised. If None, the function automatically infers the value based on the metric.</td>
 <td><code>None</code></td>
 </tr>
 <tr class="even">
-<td>cols</td>
-<td>int</td>
-<td>Number of columns in the subplot grid.</td>
-<td><code>3</code></td>
-</tr>
-<tr class="odd">
 <td>**kwargs</td>
 <td></td>
 <td>Additional keyword arguments passed to <code>spv.pareto_plot</code>.</td>
@@ -422,9 +429,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-returns anchored" data-anchor-id="returns">Returns</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 8%">
-<col style="width: 27%">
-<col style="width: 64%">
+<col style="width: 5%">
+<col style="width: 5%">
+<col style="width: 88%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -436,19 +443,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tbody>
 <tr class="odd">
 <td></td>
-<td>matplotlib.figure.Figure</td>
-<td>The matplotlib Figure containing all Pareto front subplots.</td>
+<td>object</td>
+<td>A Pareto plot object returned by <code>spv.pareto_plot</code>. This is typically a wrapper that can be rendered or further customised.</td>
 </tr>
 </tbody>
 </table>
 </section>
 <section id="notes" class="level2 doc-section doc-section-notes">
 <h2 class="doc-section doc-section-notes anchored" data-anchor-id="notes">Notes</h2>
-<p>The method constructs all pairwise combinations of the following metrics: - “weighted_average” - “unweighted_average” - “90th_percentile” - “max” - “proportion_within_coverage_threshold” (included only if available)</p>
-<p>Each subplot visualises the Pareto front for a pair of metrics using the <code>spv.pareto_plot</code> function.</p>
-<p>Subplots are arranged in a grid with a specified number of columns, and rows are determined automatically.</p>
-<p>Any unused subplot axes (if the grid is larger than required) are removed from the figure.</p>
-<p>The figure is closed before returning to prevent duplicate display in some environments (e.g., Jupyter notebooks).</p>
+<p>The method relies on the external <code>spv.pareto_plot</code> function for computation and visualisation of the Pareto front.</p>
+<p>The interpretation of “optimal” depends on the <code>maxx</code> and <code>maxy</code> flags, which determine whether each axis is treated as a maximisation or minimisation objective.</p>
 
 
 </section>

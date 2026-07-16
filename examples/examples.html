@@ -45,8 +45,8 @@ ul.task-list li input[type="checkbox"] {
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-b64b0724666ecde2c18d535cd26c4c91.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-bdbb6e8e4b532b55eaee762fd03e2c1f.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-b9db622ab4cfbe3cb3a5c3b0cfe31a38.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-c2cb4ca64c758ea54772214a9ed67472.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -175,6 +175,34 @@ ul.task-list li input[type="checkbox"] {
 
     window['quarto-listings'] = window['quarto-listings'] || {};
     window['quarto-listings']['listing-sites-solution-evaluation'] = new List('listing-sites-solution-evaluation', options);
+
+    if (window['quarto-listing-loaded']) {
+      window['quarto-listing-loaded']();
+    }
+  });
+
+  window.addEventListener('hashchange',() => {
+    if (window['quarto-listing-loaded']) {
+      window['quarto-listing-loaded']();
+    }
+  })
+  
+
+  window.document.addEventListener("DOMContentLoaded", function (_event) {
+    const listingTargetEl = window.document.querySelector('#listing-sites-solution-multiobjective .list');
+    if (!listingTargetEl) {
+      // No listing discovered, do not attach.
+      return; 
+    }
+
+    const options = {
+      valueNames: ['listing-project','listing-website','listing-quartodoc','listing-format','listing-engines','listing-language','listing-title','listing-image','listing-toc','listing-execute','listing-path','listing-outputHref','listing-author','listing-description','listing-filename','listing-file-modified','listing-reading-time','listing-word-count',{ data: ['index'] },{ data: ['categories'] },{ data: ['listing-file-modified-sort'] },{ data: ['listing-reading-time-sort'] },{ data: ['listing-word-count-sort'] }],
+      
+      searchColumns: ["listing-project","listing-website","listing-quartodoc","listing-format","listing-engines","listing-language","listing-title","listing-image","listing-toc","listing-execute","listing-path","listing-outputHref","listing-author","listing-description","listing-filename","listing-file-modified","listing-reading-time","listing-word-count"],
+    };
+
+    window['quarto-listings'] = window['quarto-listings'] || {};
+    window['quarto-listings']['listing-sites-solution-multiobjective'] = new List('listing-sites-solution-multiobjective', options);
 
     if (window['quarto-listing-loaded']) {
       window['quarto-listing-loaded']();
@@ -510,6 +538,7 @@ window.Quarto = {
   <li><a href="#different-problem-types" id="toc-different-problem-types" class="nav-link" data-scroll-target="#different-problem-types">Different Problem Types</a></li>
   <li><a href="#advanced-solver-options" id="toc-advanced-solver-options" class="nav-link" data-scroll-target="#advanced-solver-options">Advanced Solver Options</a></li>
   <li><a href="#advanced-solution-evaluation" id="toc-advanced-solution-evaluation" class="nav-link" data-scroll-target="#advanced-solution-evaluation">Advanced Solution Evaluation</a></li>
+  <li><a href="#multiobjective-solution-evaluation" id="toc-multiobjective-solution-evaluation" class="nav-link" data-scroll-target="#multiobjective-solution-evaluation">Multiobjective Solution Evaluation</a></li>
   </ul></li>
   <li><a href="#exploratory-data-analysis" id="toc-exploratory-data-analysis" class="nav-link" data-scroll-target="#exploratory-data-analysis">Exploratory Data Analysis</a></li>
   <li><a href="#obtaining-travel-times" id="toc-obtaining-travel-times" class="nav-link" data-scroll-target="#obtaining-travel-times">Obtaining Travel Times</a></li>
@@ -549,7 +578,7 @@ window.Quarto = {
 <div class="list grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 450px)); gap: 20px;">
 
   
-    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1784035098582" data-listing-reading-time-sort="3" data-listing-word-count-sort="525">
+    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1784203044681" data-listing-reading-time-sort="3" data-listing-word-count-sort="525">
           <div class="main-card-content">
             
               <a href="../examples/location/simple/index.html">
@@ -572,7 +601,7 @@ window.Quarto = {
               </div>
 
             
-    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1784035098346" data-listing-reading-time-sort="3" data-listing-word-count-sort="436">
+    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1784203044440" data-listing-reading-time-sort="3" data-listing-word-count-sort="436">
           <div class="main-card-content">
             
               <a href="../examples/location/existing_sites/index.html">
@@ -595,7 +624,7 @@ window.Quarto = {
               </div>
 
             
-    <div class="custom-grid-card border-2 rounded-3" data-index="2" data-listing-file-modified-sort="1784035098410" data-listing-reading-time-sort="3" data-listing-word-count-sort="514">
+    <div class="custom-grid-card border-2 rounded-3" data-index="2" data-listing-file-modified-sort="1784203044516" data-listing-reading-time-sort="3" data-listing-word-count-sort="514">
           <div class="main-card-content">
             
               <a href="../examples/location/no_geometry/index.html">
@@ -618,7 +647,7 @@ window.Quarto = {
               </div>
 
             
-    <div class="custom-grid-card border-2 rounded-3" data-index="3" data-listing-file-modified-sort="1784035098308" data-listing-reading-time-sort="1" data-listing-word-count-sort="111">
+    <div class="custom-grid-card border-2 rounded-3" data-index="3" data-listing-file-modified-sort="1784203044404" data-listing-reading-time-sort="1" data-listing-word-count-sort="111">
           <div class="main-card-content">
             
               <a href="../examples/location/evaluating_current_baseline/index.html">
@@ -641,7 +670,7 @@ window.Quarto = {
               </div>
 
             
-    <div class="custom-grid-card border-2 rounded-3" data-index="4" data-listing-file-modified-sort="1784035098622" data-listing-reading-time-sort="2" data-listing-word-count-sort="333">
+    <div class="custom-grid-card border-2 rounded-3" data-index="4" data-listing-file-modified-sort="1784203044719" data-listing-reading-time-sort="2" data-listing-word-count-sort="333">
           <div class="main-card-content">
             
               <a href="../examples/location/site_closures/index.html">
@@ -675,7 +704,7 @@ window.Quarto = {
 <div class="list grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 450px)); gap: 20px;">
 
   
-    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1784035098468" data-listing-reading-time-sort="3" data-listing-word-count-sort="453">
+    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1784203044570" data-listing-reading-time-sort="3" data-listing-word-count-sort="453">
           <div class="main-card-content">
             
               <a href="../examples/location/p_median_and_p_center_variants/index.html">
@@ -698,7 +727,7 @@ window.Quarto = {
               </div>
 
             
-    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1784035098399" data-listing-reading-time-sort="4" data-listing-word-count-sort="768">
+    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1784203044490" data-listing-reading-time-sort="4" data-listing-word-count-sort="768">
           <div class="main-card-content">
             
               <a href="../examples/location/mclp/index.html">
@@ -733,7 +762,7 @@ window.Quarto = {
 <div class="list grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 450px)); gap: 20px;">
 
   
-    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1784035098353" data-listing-reading-time-sort="3" data-listing-word-count-sort="476">
+    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1784203044446" data-listing-reading-time-sort="3" data-listing-word-count-sort="476">
           <div class="main-card-content">
             
               <a href="../examples/location/larger_problems/index.html">
@@ -756,7 +785,7 @@ window.Quarto = {
               </div>
 
             
-    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1784035098349" data-listing-reading-time-sort="5" data-listing-word-count-sort="942">
+    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1784203044443" data-listing-reading-time-sort="5" data-listing-word-count-sort="942">
           <div class="main-card-content">
             
               <a href="../examples/location/greedy_and_grasp/index.html">
@@ -790,7 +819,7 @@ window.Quarto = {
 <div class="list grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 450px)); gap: 20px;">
 
   
-    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1784035098263" data-listing-reading-time-sort="2" data-listing-word-count-sort="273">
+    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1784203044362" data-listing-reading-time-sort="2" data-listing-word-count-sort="273">
           <div class="main-card-content">
             
               <a href="../examples/location/equity/index.html">
@@ -813,30 +842,7 @@ window.Quarto = {
               </div>
 
             
-    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1784035098232" data-listing-reading-time-sort="4" data-listing-word-count-sort="754">
-          <div class="main-card-content">
-            
-              <a href="../examples/location/comparing_solutions/index.html">
-                <img class="card-img" src="../examples/location/comparing_solutions/image.png" alt="Comparing Solutions">
-              </a>
-              
-
-              <div class="listing-title">
-                <h5 class="no-anchor card-title listing-title">Comparing Solutions</h5>
-            </div>
-
-            
-
-              </div>
-
-                <div class="details-listing">
-                  <button class="link-listing-button"><a href="../examples/location/comparing_solutions/index.html"><i class="fa fa-info-circle"></i> Details </a></button>
-                </div>
-
-              </div>
-
-            
-    <div class="custom-grid-card border-2 rounded-3" data-index="2" data-listing-file-modified-sort="1784035098175" data-listing-reading-time-sort="3" data-listing-word-count-sort="491">
+    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1784203044277" data-listing-reading-time-sort="3" data-listing-word-count-sort="491">
           <div class="main-card-content">
             
               <a href="../examples/location/comparing_n_sites/index.html">
@@ -864,6 +870,86 @@ window.Quarto = {
 <div class="listing-no-matching d-none">No matching items</div>
 </div>
 </section>
+<section id="multiobjective-solution-evaluation" class="level3">
+<h3 class="anchored" data-anchor-id="multiobjective-solution-evaluation">Multiobjective Solution Evaluation</h3>
+<div id="listing-sites-solution-multiobjective" class="quarto-listing quarto-listing-container-custom">
+<div class="list grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 450px)); gap: 20px;">
+
+  
+    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1784203044332" data-listing-reading-time-sort="4" data-listing-word-count-sort="754">
+          <div class="main-card-content">
+            
+              <a href="../examples/location/comparing_solutions/index.html">
+                <img class="card-img" src="../examples/location/comparing_solutions/image.png" alt="Comparing Solutions">
+              </a>
+              
+
+              <div class="listing-title">
+                <h5 class="no-anchor card-title listing-title">Comparing Solutions</h5>
+            </div>
+
+            
+
+              </div>
+
+                <div class="details-listing">
+                  <button class="link-listing-button"><a href="../examples/location/comparing_solutions/index.html"><i class="fa fa-info-circle"></i> Details </a></button>
+                </div>
+
+              </div>
+
+            
+    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1784203044510" data-listing-reading-time-sort="2" data-listing-word-count-sort="333">
+          <div class="main-card-content">
+            
+              <a href="../examples/location/multiobjective_optimisation_weights/index.html">
+                <img class="card-img" src="../examples/location/multiobjective_optimisation_weights/image.png" alt="Multiobjective Optimisation with Weights">
+              </a>
+              
+
+              <div class="listing-title">
+                <h5 class="no-anchor card-title listing-title">Multiobjective Optimisation with Weights</h5>
+            </div>
+
+            
+
+              </div>
+
+                <div class="details-listing">
+                  <button class="link-listing-button"><a href="../examples/location/multiobjective_optimisation_weights/index.html"><i class="fa fa-info-circle"></i> Details </a></button>
+                </div>
+
+              </div>
+
+            
+    <div class="custom-grid-card border-2 rounded-3" data-index="2" data-listing-file-modified-sort="1784203044506" data-listing-reading-time-sort="4" data-listing-word-count-sort="777">
+          <div class="main-card-content">
+            
+              <a href="../examples/location/multiobjective_optimisation_pareto/index.html">
+                <img class="card-img" src="../examples/location/multiobjective_optimisation_pareto/image.png" alt="Multiobjective Optimisation with Pareto Fronts">
+              </a>
+              
+
+              <div class="listing-title">
+                <h5 class="no-anchor card-title listing-title">Multiobjective Optimisation with Pareto Fronts</h5>
+            </div>
+
+            
+
+              </div>
+
+                <div class="details-listing">
+                  <button class="link-listing-button"><a href="../examples/location/multiobjective_optimisation_pareto/index.html"><i class="fa fa-info-circle"></i> Details </a></button>
+                </div>
+
+              </div>
+
+            
+          </div>
+
+<div class="listing-no-matching d-none">No matching items</div>
+</div>
+</section>
 </section>
 <section id="exploratory-data-analysis" class="level2">
 <h2 class="anchored" data-anchor-id="exploratory-data-analysis">Exploratory Data Analysis</h2>
@@ -872,7 +958,7 @@ window.Quarto = {
 <div class="list grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 450px)); gap: 20px;">
 
   
-    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1784035098147" data-listing-reading-time-sort="4" data-listing-word-count-sort="767">
+    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1784203044251" data-listing-reading-time-sort="4" data-listing-word-count-sort="767">
           <div class="main-card-content">
             
               <a href="../examples/eda/hotspots_coldspots/index.html">
@@ -906,7 +992,7 @@ window.Quarto = {
 <div class="list grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 450px)); gap: 20px;">
 
   
-    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1784035098648" data-listing-reading-time-sort="5" data-listing-word-count-sort="946">
+    <div class="custom-grid-card border-2 rounded-3" data-index="0" data-listing-file-modified-sort="1784203044743" data-listing-reading-time-sort="5" data-listing-word-count-sort="946">
           <div class="main-card-content">
             
               <a href="../examples/travel_time_matrices/obtaining_travel_time_matrices/index.html">
@@ -929,7 +1015,7 @@ window.Quarto = {
               </div>
 
             
-    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1784035098649" data-listing-reading-time-sort="4" data-listing-word-count-sort="731">
+    <div class="custom-grid-card border-2 rounded-3" data-index="1" data-listing-file-modified-sort="1784203044745" data-listing-reading-time-sort="4" data-listing-word-count-sort="731">
           <div class="main-card-content">
             
               <a href="../examples/travel_time_matrices/obtaining_travel_time_matrices_limits/index.html">
