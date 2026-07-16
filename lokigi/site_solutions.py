@@ -213,17 +213,13 @@ class EvaluatedCombination:
                         )
 
                     elif label.lower() == "equity":
-                        # Equity weighting exists to prioritise WORSE-off
-                        # regions, so the row-weight direction is the
-                        # OPPOSITE of the equity value's "goodness": when
-                        # higher values mean better-off (e.g. IMD decile 10
-                        # = least deprived), lower values must receive the
-                        # higher weight, and vice versa for raw scores where
-                        # higher = more deprived.
+                        # Equity weighting exists to prioritise worse-off
+                        # regions, so whichever end of the equity scale is
+                        # disadvantaged is the end that gets the weight.
                         direction = (
                             "lower_better"
-                            if self.site_problem._equity_data_direction
-                            == "higher_is_better"
+                            if self.site_problem._equity_data_disadvantaged_end
+                            == "low"
                             else "higher_better"
                         )
 

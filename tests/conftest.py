@@ -457,13 +457,13 @@ def equity_df():
 @pytest.fixture
 def loaded_problem_with_equity(loaded_problem, equity_df):
     """`loaded_problem` with equity data wired in via add_equity_data().
-    IMD deciles: 10 = least deprived, so higher is better."""
+    IMD deciles: 1 = most deprived, so the disadvantaged end is low."""
     loaded_problem.add_equity_data(
         equity_df,
         equity_col="imd_decile",
         common_col="location_id",
         label="equity",
-        direction="higher_is_better",
+        disadvantaged_end="low",
     )
     return loaded_problem
 

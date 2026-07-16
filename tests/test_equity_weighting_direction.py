@@ -1,23 +1,26 @@
 """
-Tests for the direction of equity weighting in solve()/EvaluatedCombination.
+Tests for the direction of equity weighting in solve()/EvaluatedCombination,
+and for add_equity_data()'s `disadvantaged_end` parameter.
 
 These pin the fix for an inversion bug in EvaluatedCombination's
-compound-weight blending (site_solutions.py): the mapping from
-`_equity_data_direction` to the row-weight direction was backwards, so
+compound-weight blending (site_solutions.py): the mapping from the equity
+direction metadata to the row-weight direction was backwards, so
 weights={"equity": ...} gave the MOST weight to the LEAST deprived regions
 -- the exact opposite of the feature's purpose ("put more importance on
 improving access in the most deprived areas").
 
-Equity weighting must up-weight worse-off regions under BOTH encodings:
+Part of that fix replaced the ambiguous direction vocabulary
+("higher_is_better"/"higher_is_worse" -- better for whom?) with
+`disadvantaged_end`, which names the thing the feature acts on: whichever
+end of the equity scale is disadvantaged is the end that gets the weight.
 
-- direction="higher_is_better" (e.g. DLUHC IMD deciles, 10 = least
-  deprived): LOW values are the deprived regions and must get the weight.
-- direction="higher_is_worse" (e.g. raw IMD scores, higher = more
-  deprived): HIGH values are the deprived regions and must get the weight.
+- disadvantaged_end="low" (e.g. DLUHC IMD deciles, 1 = most deprived):
+  LOW values are the deprived regions and must get the weight.
+- disadvantaged_end="high" (e.g. raw IMD scores, higher = more deprived):
+  HIGH values are the deprived regions and must get the weight.
 
-The same fix also aligned add_equity_data()'s signature default with its
-docstring ("higher_is_better") -- previously the signature said
-"higher_is_worse" while the docstring said "higher_is_better".
+The old `direction` argument remains as a deprecated alias
+("higher_is_better" -> "low", "higher_is_worse" -> "high").
 """
 
 import pandas as pd
@@ -102,10 +105,10 @@ def _solve_equity_weighted(problem):
 
 
 def test_decile_data_prioritises_most_deprived_region():
-    """IMD deciles (1 = most deprived) with the documented
-    direction="higher_is_better": the deprived LSOA must dominate the
-    weighting, so the best site is the one nearest to it."""
-    problem = _add_equity(_two_site_problem(), [1, 5, 10], direction="higher_is_better")
+    """IMD deciles (1 = most deprived) with disadvantaged_end="low": the
+    deprived LSOA must dominate the weighting, so the best site is the one
+    nearest to it."""
+    problem = _add_equity(_two_site_problem(), [1, 5, 10], disadvantaged_end="low")
     result = _solve_equity_weighted(problem)
 
     best = result.solution_df.iloc[0]
@@ -115,9 +118,9 @@ def test_decile_data_prioritises_most_deprived_region():
 
 def test_raw_score_data_prioritises_most_deprived_region():
     """Raw IMD-style scores (higher = more deprived) with
-    direction="higher_is_worse": high-score (deprived) regions must get
-    the weight, so the same site wins."""
-    problem = _add_equity(_two_site_problem(), [90, 50, 0], direction="higher_is_worse")
+    disadvantaged_end="high": high-score (deprived) regions must get the
+    weight, so the same site wins."""
+    problem = _add_equity(_two_site_problem(), [90, 50, 0], disadvantaged_end="high")
     result = _solve_equity_weighted(problem)
 
     best = result.solution_df.iloc[0]
@@ -131,10 +134,10 @@ def test_equivalent_decile_and_score_encodings_agree():
     """The two encodings of the same underlying deprivation ordering must
     produce identical weighted averages for every combination."""
     decile_problem = _add_equity(
-        _two_site_problem(), [1, 5, 10], direction="higher_is_better"
+        _two_site_problem(), [1, 5, 10], disadvantaged_end="low"
     )
     score_problem = _add_equity(
-        _two_site_problem(), [10, 6, 1], direction="higher_is_worse"
+        _two_site_problem(), [10, 6, 1], disadvantaged_end="high"
     )
 
     decile_result = _solve_equity_weighted(decile_problem)
@@ -160,7 +163,7 @@ def test_equivalent_decile_and_score_encodings_agree():
 def test_equity_weighted_ranking_orders_all_combinations_correctly():
     """Not just the winner: the full solution_df must rank the
     deprived-serving site above the affluent-serving one."""
-    problem = _add_equity(_two_site_problem(), [1, 5, 10], direction="higher_is_better")
+    problem = _add_equity(_two_site_problem(), [1, 5, 10], disadvantaged_end="low")
     result = _solve_equity_weighted(problem)
 
     ranked_sites = [names[0] for names in result.solution_df["site_names"]]
@@ -168,19 +171,77 @@ def test_equity_weighted_ranking_orders_all_combinations_correctly():
     assert result.solution_df.iloc[1]["weighted_average"] == pytest.approx(550 / 14)
 
 
-# --- default direction ---
+# --- default ---
 
 
-def test_default_direction_is_the_documented_decile_convention():
-    """add_equity_data()'s docstring documents the default as
-    "higher_is_better" (the DLUHC IMD decile convention); the signature
-    must match, so decile data with no explicit direction still
+def test_default_disadvantaged_end_is_low():
+    """The default matches the most common input (DLUHC IMD deciles,
+    1 = most deprived), so decile data with no explicit argument still
     prioritises the most deprived region."""
-    problem = _add_equity(_two_site_problem(), [1, 5, 10])  # direction omitted
+    problem = _add_equity(_two_site_problem(), [1, 5, 10])  # end omitted
     result = _solve_equity_weighted(problem)
 
     assert result.solution_df.iloc[0]["site_names"] == ["Site_NearDeprived"]
-    assert problem._equity_data_direction == "higher_is_better"
+    assert problem._equity_data_disadvantaged_end == "low"
+
+
+# --- deprecated `direction` alias ---
+
+
+@pytest.mark.parametrize(
+    "legacy_direction,expected_end",
+    [("higher_is_better", "low"), ("higher_is_worse", "high")],
+)
+def test_legacy_direction_maps_to_disadvantaged_end_and_warns(
+    legacy_direction, expected_end
+):
+    """The deprecated direction vocabulary must keep working, emit a
+    FutureWarning pointing at the replacement, and resolve to the
+    equivalent disadvantaged_end."""
+    problem = _two_site_problem()
+    with pytest.warns(FutureWarning, match="disadvantaged_end"):
+        _add_equity(problem, [1, 5, 10], direction=legacy_direction)
+
+    assert problem._equity_data_disadvantaged_end == expected_end
+
+
+def test_legacy_direction_produces_identical_results_to_new_spelling():
+    """direction="higher_is_better" and disadvantaged_end="low" must be
+    behaviourally indistinguishable end-to-end."""
+    new_problem = _add_equity(_two_site_problem(), [1, 5, 10], disadvantaged_end="low")
+    legacy_problem = _two_site_problem()
+    with pytest.warns(FutureWarning):
+        _add_equity(legacy_problem, [1, 5, 10], direction="higher_is_better")
+
+    new_result = _solve_equity_weighted(new_problem)
+    legacy_result = _solve_equity_weighted(legacy_problem)
+
+    assert list(new_result.solution_df["site_names"]) == list(
+        legacy_result.solution_df["site_names"]
+    )
+    assert list(new_result.solution_df["weighted_average"]) == pytest.approx(
+        list(legacy_result.solution_df["weighted_average"])
+    )
+
+
+def test_passing_both_direction_and_disadvantaged_end_raises():
+    with pytest.raises(ValueError, match="deprecated alias"):
+        _add_equity(
+            _two_site_problem(),
+            [1, 5, 10],
+            disadvantaged_end="low",
+            direction="higher_is_better",
+        )
+
+
+def test_invalid_disadvantaged_end_raises():
+    with pytest.raises(ValueError, match="'low' or 'high'"):
+        _add_equity(_two_site_problem(), [1, 5, 10], disadvantaged_end="lowest")
+
+
+def test_invalid_legacy_direction_raises():
+    with pytest.raises(ValueError, match="higher_is_better"):
+        _add_equity(_two_site_problem(), [1, 5, 10], direction="better")
 
 
 # --- blending and degenerate cases ---
@@ -205,7 +266,7 @@ def test_blended_demand_and_equity_weights_use_corrected_direction():
     problem.demand_data.loc[
         problem.demand_data["location_id"] == "LSOA_AFFLUENT", "demand"
     ] = 200
-    _add_equity(problem, [1, 5, 10], direction="higher_is_better")
+    _add_equity(problem, [1, 5, 10], disadvantaged_end="low")
 
     result = problem.solve(
         p=1,
@@ -230,7 +291,7 @@ def test_uniform_equity_values_give_equal_weights():
     """When every region has the same equity value there is nothing to
     normalise against; each region gets an equal (full) weight and the
     equity-weighted average collapses to the plain mean."""
-    problem = _add_equity(_two_site_problem(), [5, 5, 5], direction="higher_is_better")
+    problem = _add_equity(_two_site_problem(), [5, 5, 5], disadvantaged_end="low")
     result = _solve_equity_weighted(problem)
 
     for _, row in result.solution_df.iterrows():
@@ -245,7 +306,7 @@ def test_equity_weighting_beats_demand_weighting_at_serving_deprived_areas():
     problem.demand_data.loc[
         problem.demand_data["location_id"] == "LSOA_AFFLUENT", "demand"
     ] = 1000
-    _add_equity(problem, [1, 5, 10], direction="higher_is_better")
+    _add_equity(problem, [1, 5, 10], disadvantaged_end="low")
 
     demand_choice = problem.solve(
         p=1,
