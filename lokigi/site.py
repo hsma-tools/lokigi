@@ -568,8 +568,16 @@ class SiteProblem(
 
         # Normalise weights to ensure they sum to exactly 1.0
         # This safely handles {"demand": 80, "equity": 20} -> {"demand": 0.8, "equity": 0.2}
+        #
+        # The "cost" key is canonicalised to lowercase here because every
+        # downstream consumer (site_solvers.py, utils._apply_cost_weighting)
+        # looks it up via an exact-case weights.get("cost", ...), even though
+        # the validation above accepts it case-insensitively -- without this,
+        # a differently-cased key like "Cost" would pass validation but
+        # silently never influence the solution.
         normalised_weights = {
-            col: float(weight) / total_weight for col, weight in weights.items()
+            ("cost" if col.lower() == "cost" else col): float(weight) / total_weight
+            for col, weight in weights.items()
         }
 
         if capacitated:
