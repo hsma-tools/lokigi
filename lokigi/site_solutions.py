@@ -320,7 +320,7 @@ class EvaluatedCombination:
             # 4. Coverage Equity (Thresholds by Group)
             if "within_threshold" in self.evaluated_combination_df.columns:
                 self.coverage_by_equity_group = (
-                    grouped_df["within_threshold"].mean().round(2).to_dict(),
+                    grouped_df["within_threshold"].mean().round(2).to_dict()
                 )
 
             # 5. Worst-Case Scenarios by Group
