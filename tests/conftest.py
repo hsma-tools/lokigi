@@ -285,6 +285,80 @@ def hybrid_p_median_problem():
     return problem
 
 
+def _demand_sensitivity_candidate_and_travel_dfs():
+    """Shared 3-site/3-demand-point travel matrix for the p_median vs.
+    simple_p_median demand-sensitivity fixtures below -- only the demand
+    column differs between them."""
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": ["Site_A", "Site_B", "Site_C"],
+            "lat": [51.1, 51.2, 51.3],
+            "long": [-0.1, -0.2, -0.3],
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["LSOA_1", "LSOA_2", "LSOA_3"],
+            "Site_A": [20, 4, 6],
+            "Site_B": [8, 10, 8],
+            "Site_C": [20, 20, 3],
+        }
+    )
+    return candidate_df, travel_df
+
+
+@pytest.fixture
+def demand_sensitivity_skewed_problem():
+    """
+    Demand is heavily skewed towards LSOA_3 (40 vs. 10 and 10), so the
+    demand-weighted (p_median) and plain (simple_p_median) rankings of the
+    three p=2 combinations disagree on which is best:
+
+      {Site_A, Site_B}: mins [8, 4, 6]  -> weighted 6.0, unweighted 6.0
+      {Site_A, Site_C}: mins [20, 4, 3] -> weighted 6.0, unweighted 9.0
+      {Site_B, Site_C}: mins [8, 10, 3] -> weighted 5.0, unweighted 7.0
+
+    p_median (lowest weighted_average) picks {Site_B, Site_C} (5.0), while
+    simple_p_median (lowest unweighted_average) picks {Site_A, Site_B} (6.0)
+    -- a different combination.
+    """
+    demand_df = pd.DataFrame(
+        {
+            "location_id": ["LSOA_1", "LSOA_2", "LSOA_3"],
+            "demand": [10, 10, 40],
+        }
+    )
+    candidate_df, travel_df = _demand_sensitivity_candidate_and_travel_dfs()
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+    return problem
+
+
+@pytest.fixture
+def demand_sensitivity_uniform_problem():
+    """Same site/travel data as `demand_sensitivity_skewed_problem`, but with
+    identical demand at every location -- so weighted_average and
+    unweighted_average are mathematically identical for every combination,
+    and p_median/simple_p_median must agree on the best one:
+    {Site_A, Site_B}, at 6.0."""
+    demand_df = pd.DataFrame(
+        {
+            "location_id": ["LSOA_1", "LSOA_2", "LSOA_3"],
+            "demand": [100, 100, 100],
+        }
+    )
+    candidate_df, travel_df = _demand_sensitivity_candidate_and_travel_dfs()
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+    return problem
+
+
 @pytest.fixture
 def equity_df():
     """Three distinct equity bins (1, 5, 10) -- one per demand location --
