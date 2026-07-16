@@ -1,3 +1,15 @@
+## v0.4.0
+
+- Add support for setting site costs
+    - `add_sites()` accepts a new `cost_col` parameter for each site's fixed (e.g. build or operating) cost
+    - The total cost of the selected sites is now always reported in `solution_df` via `total_cost`, regardless of whether cost is used to rank solutions
+    - `solve(weights={"cost": ...})` allows cost to influence which solution is chosen
+    - Sites with a missing cost value now raise an error by default; pass `add_sites(..., allow_missing_cost=True)` to opt out and have `total_cost` propagate as `NaN` instead
+    - Added an example notebook and sample dataset (Devon CDCs) demonstrating site costs
+- Bugfixes for weights
+    - Fix the `"cost"` weight key being silently ignored when passed with non-lowercase casing (e.g. `"Cost"`)
+    - Fix `total_cost` silently treating a missing per-site cost as $0 instead of propagating it as unknown
+
 ## v0.3.0
 
 - Add pareto front calculation and visualisation

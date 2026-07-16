@@ -87,6 +87,21 @@ def candidate_gdf():
 
 
 @pytest.fixture
+def candidate_df_with_cost():
+    """Same sites/coordinates as `candidate_df`, plus a deliberately
+    non-generically-named cost column ("build_cost", not "cost") to exercise
+    flexible column naming in add_sites(cost_col=...)."""
+    return pd.DataFrame(
+        {
+            "site_id": ["Site_A", "Site_B", "Site_C"],
+            "lat": [51.5, 51.6, 51.7],
+            "long": [-0.1, -0.2, -0.3],
+            "build_cost": [10.0, 500.0, 50.0],
+        }
+    )
+
+
+@pytest.fixture
 def travel_df():
     """Rows = demand locations, columns = candidate sites."""
     return pd.DataFrame(
@@ -108,6 +123,74 @@ def loaded_problem(basic_problem, demand_df, candidate_df, travel_df):
     basic_problem.add_sites(candidate_df, candidate_id_col="site_id")
     basic_problem.add_travel_matrix(travel_df, source_col="source_id")
     return basic_problem
+
+
+@pytest.fixture
+def loaded_problem_with_cost(basic_problem, demand_df, candidate_df_with_cost, travel_df):
+    """Same as `loaded_problem`, but sites carry a "build_cost" column
+    (site_id -> cost: Site_A=10.0, Site_B=500.0, Site_C=50.0), so total_cost
+    per p=2 combination is trivially hand-computable:
+      {Site_A, Site_B}: 510.0
+      {Site_A, Site_C}: 60.0
+      {Site_B, Site_C}: 550.0
+    """
+    basic_problem.add_demand(
+        demand_df, demand_col="demand", location_id_col="location_id"
+    )
+    basic_problem.add_sites(
+        candidate_df_with_cost, candidate_id_col="site_id", cost_col="build_cost"
+    )
+    basic_problem.add_travel_matrix(travel_df, source_col="source_id")
+    return basic_problem
+
+
+@pytest.fixture
+def cost_flips_winner_problem():
+    """
+    A minimal 2-site/1-demand-point problem (p=1) built so that the
+    travel-optimal site is drastically the most expensive, and the
+    slightly-worse-travel site is far cheaper:
+
+      Site_Fast: travel=10, build_cost=1000.0
+      Site_Cheap: travel=20, build_cost=10.0
+
+    With a single demand point, weighted_average always equals the selected
+    site's travel time regardless of the demand weight, so with no "cost"
+    weight (or weights=None) the winner is always Site_Fast (10 < 20) --
+    identical to what an equivalent problem with no cost_col configured
+    would pick. Once a strong "cost" weight is supplied (e.g.
+    weights={"demand": 0.1, "cost": 0.9}), batch-relative cost normalization
+    flips the winner to Site_Cheap. Deterministic across brute-force,
+    greedy, and GRASP (the RCL/local-search batches only ever contain these
+    two candidates, so there is no seed-dependent ambiguity).
+    """
+    demand_df = pd.DataFrame(
+        {
+            "location_id": ["LSOA_1"],
+            "demand": [100],
+        }
+    )
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": ["Site_Fast", "Site_Cheap"],
+            "lat": [51.1, 51.2],
+            "long": [-0.1, -0.2],
+            "build_cost": [1000.0, 10.0],
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["LSOA_1"],
+            "Site_Fast": [10.0],
+            "Site_Cheap": [20.0],
+        }
+    )
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id", cost_col="build_cost")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+    return problem
 
 
 @pytest.fixture

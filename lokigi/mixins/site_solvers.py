@@ -2,6 +2,7 @@ from lokigi.utils import (
     _generate_all_combinations,
     _get_ranking_by_objective,
     _too_similar_to_accepted,
+    _apply_cost_weighting,
 )
 
 from lokigi.site_solutions import SiteSolutionSet
@@ -192,8 +193,23 @@ class GreedyMixin:
 
             # mclp's ranking column (coverage proportion) is higher-is-better,
             # while every other objective's ranking column is lower-is-better
-            evaluated_solutions = pd.DataFrame(outputs).sort_values(
-                [ranking, "weighted_average"], ascending=[objectives != "mclp", True]
+            outputs_df = pd.DataFrame(outputs)
+            higher_is_better = objectives == "mclp"
+
+            if weights and weights.get("cost", 0) > 0:
+                outputs_df, score_col = _apply_cost_weighting(
+                    outputs_df,
+                    ranking_col=ranking,
+                    weights=weights,
+                    higher_is_better=higher_is_better,
+                )
+                sort_ascending = [True, True]
+            else:
+                score_col = ranking
+                sort_ascending = [not higher_is_better, True]
+
+            evaluated_solutions = outputs_df.sort_values(
+                [score_col, "weighted_average"], ascending=sort_ascending
             )
 
             # print("==Evaluated solution dataframe==")
@@ -306,18 +322,48 @@ class GraspMixin:
                     construction_failed = True
                     break
 
-                candidate_scores: list[tuple[float, float, int]] = []
+                candidate_rows = []
                 for site in remaining_sites:
                     candidate_indices = current_solution + [site]
                     metrics = _get_cached_metrics(tuple(sorted(candidate_indices)))
+                    candidate_rows.append(
+                        {
+                            "site": site,
+                            ranking: metrics[ranking],
+                            "weighted_average": metrics["weighted_average"],
+                            "total_cost": metrics["total_cost"],
+                        }
+                    )
 
-                    primary_score = metrics[ranking]
-                    secondary_score = metrics["weighted_average"]
-                    candidate_scores.append((primary_score, secondary_score, site))
+                use_cost = bool(weights) and weights.get("cost", 0) > 0
+                if use_cost:
+                    # Cost weighting needs batch-relative normalization, which
+                    # only pandas' vectorised operations give us cheaply, so
+                    # only pay for the DataFrame here.
+                    candidates_df, score_col = _apply_cost_weighting(
+                        pd.DataFrame(candidate_rows),
+                        ranking_col=ranking,
+                        weights=weights,
+                        higher_is_better=not is_minimization,
+                    )
+                    scores_minimized = True
+                    candidate_scores: list[tuple[float, float, int]] = list(
+                        zip(
+                            candidates_df[score_col],
+                            candidates_df["weighted_average"],
+                            candidates_df["site"],
+                        )
+                    )
+                else:
+                    scores_minimized = is_minimization
+                    candidate_scores: list[tuple[float, float, int]] = [
+                        (row[ranking], row["weighted_average"], row["site"])
+                        for row in candidate_rows
+                    ]
 
                 # [UPDATED] Sort and construct RCL based on minimization vs maximization
                 candidate_scores.sort(
-                    key=lambda x: (x[0], x[1]), reverse=not is_minimization
+                    key=lambda x: (x[0], x[1]), reverse=not scores_minimized
                 )
 
                 f_best = candidate_scores[0][0]
@@ -328,7 +374,7 @@ class GraspMixin:
                     # All candidates are tied; picking any of them is equally greedy.
                     rcl = [s for _, _, s in candidate_scores]
                 else:
-                    if is_minimization:
+                    if scores_minimized:
                         threshold = f_best + alpha * value_range
                         rcl = [
                             s for score, _, s in candidate_scores if score <= threshold
@@ -354,6 +400,8 @@ class GraspMixin:
             # [UPDATED] Shifted to First-Improvement for massive speed gains.
             # ---------------------------------------------------------------
             # 20% of the time, keep the raw GRASP construction to ensure pool diversity
+            use_cost = bool(weights) and weights.get("cost", 0) > 0
+
             if rng.random() > (1 - local_search_chance):
                 improved = True
                 max_swaps = max_swap_count_local_search
@@ -372,36 +420,130 @@ class GraspMixin:
                         s for s in all_site_indices if s not in current_solution_set
                     ]
 
-                    for old_site in current_solution:
-                        for new_site in outside_sites:
-                            candidate = [
-                                s for s in current_solution if s != old_site
-                            ] + [new_site]
+                    if not use_cost:
+                        # Lazy pairwise first-improvement scan (unchanged from
+                        # before cost weighting was introduced).
+                        for old_site in current_solution:
+                            for new_site in outside_sites:
+                                candidate = [
+                                    s for s in current_solution if s != old_site
+                                ] + [new_site]
 
-                            swap_metrics = _get_cached_metrics(tuple(sorted(candidate)))
-                            swap_primary = swap_metrics[ranking]
-                            swap_secondary = swap_metrics["weighted_average"]
-
-                            if is_minimization:
-                                is_better = (swap_primary, swap_secondary) < (
-                                    current_primary,
-                                    current_secondary,
+                                swap_metrics = _get_cached_metrics(
+                                    tuple(sorted(candidate))
                                 )
-                            else:
-                                is_better = (swap_primary, swap_secondary) > (
-                                    current_primary,
-                                    current_secondary,
+                                swap_primary = swap_metrics[ranking]
+                                swap_secondary = swap_metrics["weighted_average"]
+
+                                if is_minimization:
+                                    is_better = (swap_primary, swap_secondary) < (
+                                        current_primary,
+                                        current_secondary,
+                                    )
+                                else:
+                                    is_better = (swap_primary, swap_secondary) > (
+                                        current_primary,
+                                        current_secondary,
+                                    )
+
+                                if is_better:
+                                    # First-Improvement: Apply immediately, break loops, restart neighborhood
+                                    current_solution = candidate
+                                    current_solution_set = set(current_solution)
+                                    improved = True
+                                    break
+
+                            if improved:
+                                break  # Break outer loop to restart the `while improved` check
+                    else:
+                        # Cost weighting is active: total_cost is a per-combination
+                        # scalar, so it can only be normalized fairly against a
+                        # batch of alternatives, not compared pairwise/lazily.
+                        # Precompute the whole 1-opt neighborhood up front, blend
+                        # cost in via the same batch-relative normalization used
+                        # elsewhere, then scan for the first improving swap.
+                        rows = [
+                            {
+                                "total_cost": current_metrics["total_cost"],
+                                ranking: current_metrics[ranking],
+                                "weighted_average": current_metrics[
+                                    "weighted_average"
+                                ],
+                            }
+                        ]
+                        swap_candidates = []
+                        for old_site in current_solution:
+                            for new_site in outside_sites:
+                                candidate = [
+                                    s for s in current_solution if s != old_site
+                                ] + [new_site]
+                                swap_metrics = _get_cached_metrics(
+                                    tuple(sorted(candidate))
+                                )
+                                swap_candidates.append(candidate)
+                                rows.append(
+                                    {
+                                        "total_cost": swap_metrics["total_cost"],
+                                        ranking: swap_metrics[ranking],
+                                        "weighted_average": swap_metrics[
+                                            "weighted_average"
+                                        ],
+                                    }
                                 )
 
-                            if is_better:
-                                # First-Improvement: Apply immediately, break loops, restart neighborhood
-                                current_solution = candidate
-                                current_solution_set = set(current_solution)
-                                improved = True
-                                break
+                        if swap_candidates:
+                            # `higher_is_better` is consumed *inside*
+                            # _apply_cost_weighting: it inverts the raw
+                            # ranking column into "badness" (0=best) before
+                            # blending in cost, and the returned score_col
+                            # ("composite_score") is unconditionally on that
+                            # same lower-is-better, 0-is-best scale --
+                            # regardless of whether the underlying objective
+                            # is minimized (e.g. weighted_average) or
+                            # maximized (e.g. mclp's coverage proportion).
+                            #
+                            # That's why the comparison below is a plain "<"
+                            # with no is_minimization/higher_is_better branch,
+                            # unlike the raw-metric comparison in the
+                            # non-cost branch above. Do NOT wrap it in an
+                            # `if is_minimization: ... else: ...` to mirror
+                            # that branch -- the direction has already been
+                            # normalized once by _apply_cost_weighting, and
+                            # inverting it a second time here would make this
+                            # code pick the worst swap instead of the best
+                            # one for every maximizing objective (mclp).
+                            batch_df, score_col = _apply_cost_weighting(
+                                pd.DataFrame(rows),
+                                ranking_col=ranking,
+                                weights=weights,
+                                higher_is_better=not is_minimization,
+                            )
+                            current_score = batch_df.iloc[0][score_col]
+                            current_secondary_score = batch_df.iloc[0][
+                                "weighted_average"
+                            ]
 
-                        if improved:
-                            break  # Break outer loop to restart the `while improved` check
+                            # rows[0] / batch_df.iloc[0] is the current
+                            # solution's own metrics (appended first, above);
+                            # rows[1:] are the swap candidates in the same
+                            # order they were appended to swap_candidates.
+                            # reset_index(drop=True) re-bases that slice to
+                            # 0..n-1 so the loop index `i` lines up exactly
+                            # with swap_candidates[i] -- without it, `i`
+                            # would instead be the original batch_df index
+                            # (1..n), which would misalign by one and pick
+                            # the wrong candidate solution.
+                            for i, row in batch_df.iloc[1:].reset_index(
+                                drop=True
+                            ).iterrows():
+                                if (row[score_col], row["weighted_average"]) < (
+                                    current_score,
+                                    current_secondary_score,
+                                ):
+                                    current_solution = swap_candidates[i]
+                                    current_solution_set = set(current_solution)
+                                    improved = True
+                                    break
 
             # ---------------------------------------------------------------
             # DIVERSITY CHECK

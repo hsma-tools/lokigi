@@ -489,6 +489,100 @@ def _get_ranking_by_objective(objective):
         return "proportion_within_coverage_threshold"
 
 
+def _min_max_normalize(series, constant_fill=0.0):
+    """
+    Min-max normalize a numeric series to a 0.0-1.0 scale, where the lowest
+    value maps to 0.0 and the highest to 1.0.
+
+    Parameters
+    ----------
+    series : pandas.Series
+        The values to normalize.
+    constant_fill : float, default 0.0
+        The value every entry is set to when `series` has no range to
+        normalize against (i.e. every value is identical). Callers pick
+        this based on how the normalized result is used -- e.g. 0.0 for a
+        "badness" scale where a tie should look as good as possible, or 1.0
+        for a "weight" scale where a tie should contribute a full, neutral
+        weight.
+
+    Returns
+    -------
+    pandas.Series
+        The normalized series, indexed the same as `series`.
+    """
+    lo, hi = series.min(), series.max()
+    if hi == lo:
+        return pd.Series(constant_fill, index=series.index)
+    return (series - lo) / (hi - lo)
+
+
+def _apply_cost_weighting(
+    df,
+    ranking_col,
+    weights,
+    higher_is_better,
+    cost_col="total_cost",
+    output_col="composite_score",
+):
+    """
+    Blend a batch of evaluated combinations' primary ranking column with
+    their total_cost, via batch-relative min-max normalization -- but only
+    when a positive 'cost' weight is present in `weights`. No-ops (returns
+    `df` and `ranking_col` unchanged) otherwise, which is what guarantees
+    site cost never influences a solution unless explicitly requested via
+    weights={"cost": ...}.
+
+    The resulting `output_col` is always on a "lower is better" (0=best)
+    scale, regardless of the underlying objective's direction.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        A batch of evaluated combinations to compare against each other.
+        Must contain `ranking_col` and (if cost weighting is active)
+        `cost_col`.
+    ranking_col : str
+        The column holding each combination's primary objective value.
+    weights : dict or None
+        The (already-normalised) weights dict passed to `solve()`.
+    higher_is_better : bool
+        Whether higher values of `ranking_col` are better (e.g. True for
+        mclp's coverage proportion, False for weighted_average/max).
+    cost_col : str, default "total_cost"
+        The column holding each combination's total site cost.
+    output_col : str, default "composite_score"
+        The name of the blended score column to add to `df`.
+
+    Returns
+    -------
+    tuple[pandas.DataFrame, str]
+        The (possibly unmodified) DataFrame, and the name of the column
+        that should be used for ranking/sorting/comparison from here on.
+    """
+    cost_weight = (weights or {}).get("cost", 0.0)
+    if (
+        not cost_weight
+        or cost_col not in df.columns
+        or df[cost_col].isna().all()
+        or len(df) == 0
+    ):
+        return df, ranking_col
+
+    def _normalize_to_badness(series, invert):
+        norm = _min_max_normalize(series, constant_fill=0.0)
+        return (1.0 - norm) if invert else norm
+
+    primary_badness = _normalize_to_badness(
+        df[ranking_col].astype(float), invert=higher_is_better
+    )
+    cost_badness = _normalize_to_badness(df[cost_col].astype(float), invert=False)
+
+    df = df.copy()
+    df[output_col] = (1.0 - cost_weight) * primary_badness + cost_weight * cost_badness
+    return df, output_col
+
+
 def _too_similar_to_accepted(
     new_set: set,
     accepted_sets: list[set],

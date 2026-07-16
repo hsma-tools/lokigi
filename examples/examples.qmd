@@ -47,6 +47,7 @@ listing:
       - "location/comparing_solutions/index.ipynb"
       - "location/multiobjective_optimisation_weights/index.ipynb"
       - "location/multiobjective_optimisation_pareto/index.ipynb"
+      - "location/site_costs/index.ipynb"
     type: grid
     sort: false
     grid-columns: 3

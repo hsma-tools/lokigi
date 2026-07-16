@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 
+from lokigi.utils import _min_max_normalize
+
 from lokigi.mixins.site_solution_plots import (
     MapsMixin,
     NonMapPlotsMixin,
@@ -75,6 +77,11 @@ class EvaluatedCombination:
         90th percentile of the minimum cost distribution.
     max : float
         Maximum minimum cost across all demand points.
+    total_cost : float
+        Total fixed cost of the selected sites (sum of the `cost_col`
+        values configured via `add_sites()`). `NaN` if no `cost_col` was
+        configured. Always calculated; only influences which solution is
+        selected if explicitly passed as a weight (`weights={"cost": ...}`).
     proportion_within_coverage_threshold : float
         Proportion of demand points that fall within the coverage threshold.
 
@@ -144,10 +151,26 @@ class EvaluatedCombination:
         # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
         # SOFTWARE.
 
+        # "cost" is a combination-level weight (total cost of the selected
+        # sites), not a per-demand-point value like demand/equity/additional
+        # data, so it cannot be blended via the row-level mechanism below
+        # (a constant column would normalize to all-ones and have no
+        # effect). It is excluded here and handled separately by the
+        # solver's combination-comparison logic (see _apply_cost_weighting).
+        row_level_weights = (
+            None
+            if weights is None
+            else {k: v for k, v in weights.items() if k.lower() != "cost"}
+        )
+
         # If weights is purely the demand data, as was the default behaviour prior to 0.3.0,
         # then calculate the weighted average metric in the existing way
-        if weights is None or (
-            isinstance(weights, dict) and len(weights) == 1 and "demand" in weights
+        if row_level_weights is None or (
+            isinstance(row_level_weights, dict)
+            and (
+                len(row_level_weights) == 0
+                or (len(row_level_weights) == 1 and "demand" in row_level_weights)
+            )
         ):
             active_weights = self.evaluated_combination_df[
                 self.site_problem._demand_data_demand_col
@@ -167,7 +190,7 @@ class EvaluatedCombination:
             compound_weights = np.zeros(len(self.evaluated_combination_df))
             self.extra_metrics = {}
 
-            for label, weight in weights.items():
+            for label, weight in row_level_weights.items():
                 # Map the user's label to the correct DataFrame column name
                 if label == "demand":
                     col_name = self.site_problem._demand_data_demand_col
@@ -180,15 +203,10 @@ class EvaluatedCombination:
                     # Extract raw data
                     column_data = self.evaluated_combination_df[col_name].astype(float)
 
-                    # Min-Max Normalization to a 0.0 - 1.0 scale
-                    col_min = column_data.min()
-                    col_max = column_data.max()
-
-                    if col_max != col_min:
-                        norm_data = (column_data - col_min) / (col_max - col_min)
-                    else:
-                        # Edge case: If all values are identical, give them equal baseline weight
-                        norm_data = np.ones(len(column_data))
+                    # Min-Max Normalization to a 0.0 - 1.0 scale. Edge case:
+                    # if all values are identical, give them equal (full)
+                    # baseline weight rather than 0.
+                    norm_data = _min_max_normalize(column_data, constant_fill=1.0)
 
                     # if demand, assume higher_better
                     # if equity, get direction from equity data
@@ -252,6 +270,26 @@ class EvaluatedCombination:
         )
 
         self.max = np.max(self.evaluated_combination_df["min_cost"])
+
+        # Total fixed cost of the selected sites (e.g. build/operating cost).
+        # Always calculated when a cost column has been configured via
+        # add_sites(cost_col=...), regardless of whether "cost" is used as a
+        # weight -- it is purely a reporting metric unless explicitly opted
+        # into via weights={"cost": ...}.
+        cost_col = getattr(self.site_problem, "_candidate_sites_cost_col", None)
+        if cost_col is None or self.site_problem.candidate_sites is None:
+            self.total_cost = np.nan
+        else:
+            cost_lookup = self.site_problem.candidate_sites.set_index(
+                "canonical_site_index"
+            )[cost_col]
+            # skipna=False: if any selected site has a missing (NaN) cost,
+            # the combination's total cost is genuinely unknown, not zero.
+            # pandas' default skipna=True would otherwise silently treat a
+            # missing cost as $0, making that site look free.
+            self.total_cost = cost_lookup.loc[sorted(set(self.site_indices))].sum(
+                skipna=False
+            )
 
         self.coverage_threshold = coverage_threshold
 
@@ -383,6 +421,12 @@ class EvaluatedCombination:
         1b. Travel Costs ('unweighted_average', '90th_percentile', 'max'):
            - LOWER is better. Represents travel time or distance.
 
+        1c. 'total_cost'
+           - LOWER is better. Total fixed cost of the selected sites (sum of
+             the `cost_col` configured via `add_sites()`). `NaN` if no
+             `cost_col` was configured. Only influences which solution is
+             selected if explicitly passed as a weight (weights={"cost": ...}).
+
         2. Absolute Equity Gap ('gap_absolute_weighted'):
            - CLOSER TO 0 is better. Measures the flat minute/distance difference
              between the best-served and worst-served equity bands. High numbers
@@ -416,6 +460,7 @@ class EvaluatedCombination:
             "unweighted_average": self.unweighted_average,
             "90th_percentile": self.percentile_90th,
             "max": self.max,
+            "total_cost": self.total_cost,
             "proportion_within_coverage_threshold": self.proportion_within_coverage_threshold,
             # Granular Equity Collections
             "weighted_by_equity_group": self.weighted_by_equity_group,
