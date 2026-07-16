@@ -279,6 +279,33 @@ def _validate_columns(
         )
 
 
+def _get_required_site_indices(site_problem) -> list:
+    """
+    Integer positions of candidate sites flagged as required via
+    `add_sites(required_sites_col=...)`, or an empty list if no required
+    sites column is configured.
+
+    Flag values are matched case-insensitively against a set of sensible
+    "truthy" markers, so the column may hold booleans, integers, or messy
+    strings ("Y", " true ", 1, ...).
+    """
+    if site_problem is None or site_problem._candidate_sites_required_sites_col is None:
+        return []
+
+    truthy_values = {"y", "yes", "true", "t", "required", "1"}
+
+    col_data = (
+        site_problem.candidate_sites[site_problem._candidate_sites_required_sites_col]
+        .astype(str)
+        .str.lower()
+        .str.strip()
+    )
+
+    is_required = col_data.isin(truthy_values)
+
+    return [int(i) for i in np.where(is_required)[0]]
+
+
 def _generate_all_combinations(
     n_facilities: int, p: int, site_problem=None, force_include_indices=None
 ) -> list:
@@ -327,29 +354,10 @@ def _generate_all_combinations(
     #     )
 
     if site_problem is not None:
-        if site_problem._candidate_sites_required_sites_col is not None:
-            # Define a set of sensible "truthy" values (all lowercase)
-            truthy_values = {"y", "yes", "true", "t", "required", "1"}
-
-            # Normalize the column data: convert to string, lowercase, and strip whitespace
-            # This prevents errors if the column contains actual booleans, integers, or messy strings
-            col_data = (
-                site_problem.candidate_sites[
-                    site_problem._candidate_sites_required_sites_col
-                ]
-                .astype(str)
-                .str.lower()
-                .str.strip()
-            )
-
-            # Create the boolean mask using .isin()
-            is_required = col_data.isin(truthy_values)
-
-            # Extract the integer indices (e.g., [0, 1, 2])
-            site_indices = np.where(is_required)[0]
-
+        required_indices = _get_required_site_indices(site_problem)
+        if required_indices:
             # Convert required indices to a set for O(1) lookups
-            required_set = set(site_indices)
+            required_set = set(required_indices)
 
             # Filter the combinations to only keep those containing ALL required sites
             result = [a for a in result if required_set.issubset(a)]

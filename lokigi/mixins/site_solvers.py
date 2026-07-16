@@ -1,6 +1,7 @@
 from lokigi.utils import (
     _generate_all_combinations,
     _get_ranking_by_objective,
+    _get_required_site_indices,
     _too_similar_to_accepted,
     _apply_cost_weighting,
 )
@@ -304,9 +305,28 @@ class GraspMixin:
         ranking = _get_ranking_by_objective(objective=objectives)
         all_site_indices = list(range(self.total_n_sites))
 
+        # Brute force and greedy enforce required_sites_col through
+        # _generate_all_combinations, but GRASP builds solutions
+        # incrementally and never calls it -- so required sites must be
+        # pinned here: seeded into every construction, and protected from
+        # being swapped out during local search.
+        required_site_indices = _get_required_site_indices(self)
+        required_site_set = set(required_site_indices)
+        if len(required_site_indices) > p:
+            raise ValueError(
+                f"{len(required_site_indices)} sites are marked as required "
+                f"in '{self._candidate_sites_required_sites_col}', but p={p}. "
+                "Increase p to at least the number of required sites."
+            )
+
         min_jaccard_distance = float(min_sites_different) / float(p)
 
-        total_combinations = math.comb(self.total_n_sites, p)
+        # Only the non-required slots are free to vary, so that's the true
+        # size of the search space the attempt budget is drawn from.
+        total_combinations = math.comb(
+            self.total_n_sites - len(required_site_indices),
+            p - len(required_site_indices),
+        )
         if max_attempts == "default":
             max_attempts = min(num_solutions * 20, total_combinations)
 
@@ -343,11 +363,11 @@ class GraspMixin:
             # ---------------------------------------------------------------
             # CONSTRUCTION PHASE
             # ---------------------------------------------------------------
-            current_solution: list[int] = []
-            current_solution_set: set[int] = set()
+            current_solution: list[int] = list(required_site_indices)
+            current_solution_set: set[int] = set(current_solution)
             construction_failed = False
 
-            for step in range(p):
+            for step in range(p - len(required_site_indices)):
                 remaining_sites = [
                     s for s in all_site_indices if s not in current_solution_set
                 ]
@@ -458,6 +478,8 @@ class GraspMixin:
                         # Lazy pairwise first-improvement scan (unchanged from
                         # before cost weighting was introduced).
                         for old_site in current_solution:
+                            if old_site in required_site_set:
+                                continue
                             for new_site in outside_sites:
                                 candidate = [
                                     s for s in current_solution if s != old_site
@@ -507,6 +529,8 @@ class GraspMixin:
                         ]
                         swap_candidates = []
                         for old_site in current_solution:
+                            if old_site in required_site_set:
+                                continue
                             for new_site in outside_sites:
                                 candidate = [
                                     s for s in current_solution if s != old_site
