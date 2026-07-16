@@ -179,8 +179,10 @@ class GreedyMixin:
                     ).return_solution_metrics()
                 )
 
+            # mclp's ranking column (coverage proportion) is higher-is-better,
+            # while every other objective's ranking column is lower-is-better
             evaluated_solutions = pd.DataFrame(outputs).sort_values(
-                [ranking, "weighted_average"]
+                [ranking, "weighted_average"], ascending=[objectives != "mclp", True]
             )
 
             # print("==Evaluated solution dataframe==")
