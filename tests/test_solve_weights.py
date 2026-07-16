@@ -93,19 +93,13 @@ def test_custom_equity_weighting_changes_the_ranking(loaded_problem_with_equity)
     assert blended_best != pytest.approx(demand_only_best)
 
 
-# --- dead weight-rejection guard for p_center ---
+# --- weight-rejection guard for p_center ---
 
 
 def test_p_center_rejects_custom_weights(loaded_problem):
-    """
-    BUG: site.py:521 checks `objective in ["lscp", "p-center"]` (hyphen) to
-    block weighted p_center runs, but the objective reaching this point is
-    always a SUPPORTED_OBJECTIVES value -- "p_center" (underscore), not
-    "p-center" -- so the guard can never fire; it's dead code. It also
-    references `self.objective_type`, which doesn't exist anywhere in the
-    codebase, so even a fixed condition would raise AttributeError instead
-    of the intended ValueError.
-    """
+    """p_center ranks solely by worst-case travel time (max), so a weights
+    dict has no effect on the outcome -- solve() should reject it explicitly
+    rather than silently accepting and ignoring it."""
     with pytest.raises(ValueError):
         loaded_problem.solve(
             p=2,
@@ -114,6 +108,16 @@ def test_p_center_rejects_custom_weights(loaded_problem):
             show_progress=False,
             weights={"demand": 1.0},
         )
+
+
+def test_p_center_works_fine_with_default_weights(loaded_problem):
+    """The implicit demand-only default (no `weights` argument at all)
+    should keep working -- only an explicitly-passed weights dict is
+    rejected."""
+    result = loaded_problem.solve(
+        p=2, objectives="p_center", search_strategy="brute-force", show_progress=False
+    )
+    assert len(result.solution_df) == 3
 
 
 # --- max_value_cutoff (hybrid objectives only) ---

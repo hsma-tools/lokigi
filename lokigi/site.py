@@ -524,11 +524,16 @@ class SiteProblem(
                 "to count as covered)."
             )
 
-        # Error early if trying to use weights with unsupported or inadvisable problem types
-        if objective in ["lscp", "p-center"]:
+        # Error early if trying to use weights with unsupported or inadvisable problem types.
+        # p_center ranks solely by worst-case travel time (max), so a weights
+        # dict would have no effect on the outcome -- reject it explicitly
+        # rather than silently ignoring it. Only applies when the caller
+        # actually passed something; the implicit demand-only default is fine.
+        if objective == "p_center" and weights is not None:
             raise ValueError(
-                f"Multi-column weights are not supported for the '{self.objective_type}' objective. "
-                f"Weights are only valid for 'p-median' and 'mclp'."
+                "Custom weights are not supported for the 'p_center' objective, "
+                "since it ranks by worst-case travel time (max) rather than a "
+                "weighted average. Please rerun without the 'weights' argument."
             )
 
         # Handle weights
