@@ -174,6 +174,7 @@ class GreedyMixin:
                     self.evaluate_single_solution_single_objective(
                         site_indices=possible_solution,
                         objective=objectives,
+                        threshold_for_coverage=threshold_for_coverage,
                         weights=weights,
                     ).return_solution_metrics()
                 )
