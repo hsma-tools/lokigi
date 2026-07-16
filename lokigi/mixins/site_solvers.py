@@ -334,28 +334,32 @@ class GraspMixin:
                             "total_cost": metrics["total_cost"],
                         }
                     )
-                candidates_df = pd.DataFrame(candidate_rows)
 
                 use_cost = bool(weights) and weights.get("cost", 0) > 0
                 if use_cost:
+                    # Cost weighting needs batch-relative normalization, which
+                    # only pandas' vectorised operations give us cheaply, so
+                    # only pay for the DataFrame here.
                     candidates_df, score_col = _apply_cost_weighting(
-                        candidates_df,
+                        pd.DataFrame(candidate_rows),
                         ranking_col=ranking,
                         weights=weights,
                         higher_is_better=not is_minimization,
                     )
                     scores_minimized = True
-                else:
-                    score_col = ranking
-                    scores_minimized = is_minimization
-
-                candidate_scores: list[tuple[float, float, int]] = list(
-                    zip(
-                        candidates_df[score_col],
-                        candidates_df["weighted_average"],
-                        candidates_df["site"],
+                    candidate_scores: list[tuple[float, float, int]] = list(
+                        zip(
+                            candidates_df[score_col],
+                            candidates_df["weighted_average"],
+                            candidates_df["site"],
+                        )
                     )
-                )
+                else:
+                    scores_minimized = is_minimization
+                    candidate_scores: list[tuple[float, float, int]] = [
+                        (row[ranking], row["weighted_average"], row["site"])
+                        for row in candidate_rows
+                    ]
 
                 # [UPDATED] Sort and construct RCL based on minimization vs maximization
                 candidate_scores.sort(

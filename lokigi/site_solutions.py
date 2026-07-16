@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 
+from lokigi.utils import _min_max_normalize
+
 from lokigi.mixins.site_solution_plots import (
     MapsMixin,
     NonMapPlotsMixin,
@@ -201,15 +203,10 @@ class EvaluatedCombination:
                     # Extract raw data
                     column_data = self.evaluated_combination_df[col_name].astype(float)
 
-                    # Min-Max Normalization to a 0.0 - 1.0 scale
-                    col_min = column_data.min()
-                    col_max = column_data.max()
-
-                    if col_max != col_min:
-                        norm_data = (column_data - col_min) / (col_max - col_min)
-                    else:
-                        # Edge case: If all values are identical, give them equal baseline weight
-                        norm_data = np.ones(len(column_data))
+                    # Min-Max Normalization to a 0.0 - 1.0 scale. Edge case:
+                    # if all values are identical, give them equal (full)
+                    # baseline weight rather than 0.
+                    norm_data = _min_max_normalize(column_data, constant_fill=1.0)
 
                     # if demand, assume higher_better
                     # if equity, get direction from equity data

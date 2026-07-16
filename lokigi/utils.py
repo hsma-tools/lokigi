@@ -489,6 +489,34 @@ def _get_ranking_by_objective(objective):
         return "proportion_within_coverage_threshold"
 
 
+def _min_max_normalize(series, constant_fill=0.0):
+    """
+    Min-max normalize a numeric series to a 0.0-1.0 scale, where the lowest
+    value maps to 0.0 and the highest to 1.0.
+
+    Parameters
+    ----------
+    series : pandas.Series
+        The values to normalize.
+    constant_fill : float, default 0.0
+        The value every entry is set to when `series` has no range to
+        normalize against (i.e. every value is identical). Callers pick
+        this based on how the normalized result is used -- e.g. 0.0 for a
+        "badness" scale where a tie should look as good as possible, or 1.0
+        for a "weight" scale where a tie should contribute a full, neutral
+        weight.
+
+    Returns
+    -------
+    pandas.Series
+        The normalized series, indexed the same as `series`.
+    """
+    lo, hi = series.min(), series.max()
+    if hi == lo:
+        return pd.Series(constant_fill, index=series.index)
+    return (series - lo) / (hi - lo)
+
+
 def _apply_cost_weighting(
     df,
     ranking_col,
@@ -542,11 +570,7 @@ def _apply_cost_weighting(
         return df, ranking_col
 
     def _normalize_to_badness(series, invert):
-        lo, hi = series.min(), series.max()
-        if hi == lo:
-            norm = pd.Series(0.0, index=series.index)
-        else:
-            norm = (series - lo) / (hi - lo)
+        norm = _min_max_normalize(series, constant_fill=0.0)
         return (1.0 - norm) if invert else norm
 
     primary_badness = _normalize_to_badness(
