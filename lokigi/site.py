@@ -1,6 +1,7 @@
 from lokigi.utils import (
     SOLVER_DEFINITIONS,
     SUPPORTED_OBJECTIVES,
+    PLANNED_OBJECTIVES,
     _get_ranking_by_objective,
     _add_rank_column,
 )
@@ -514,14 +515,32 @@ class SiteProblem(
 
         objective = objectives if isinstance(objectives, str) else objectives[0]
 
+        if objective in PLANNED_OBJECTIVES:
+            raise NotImplementedError(
+                f"The '{objective}' objective is planned but not yet implemented. "
+                f"Currently supported objectives are: {SUPPORTED_OBJECTIVES}."
+            )
+
         if objective not in SUPPORTED_OBJECTIVES:
             raise ValueError(f"Unsupported objective ({objective}) passed.")
 
-        # Error early if trying to use weights with unsupported or inadvisable problem types
-        if objective in ["lscp", "p-center"]:
+        if objective == "mclp" and threshold_for_coverage is None:
             raise ValueError(
-                f"Multi-column weights are not supported for the '{self.objective_type}' objective. "
-                f"Weights are only valid for 'p-median' and 'mclp'."
+                "The 'mclp' objective requires a threshold_for_coverage to be "
+                "provided (the maximum travel time/distance for a demand point "
+                "to count as covered)."
+            )
+
+        # Error early if trying to use weights with unsupported or inadvisable problem types.
+        # p_center ranks solely by worst-case travel time (max), so a weights
+        # dict would have no effect on the outcome -- reject it explicitly
+        # rather than silently ignoring it. Only applies when the caller
+        # actually passed something; the implicit demand-only default is fine.
+        if objective == "p_center" and weights is not None:
+            raise ValueError(
+                "Custom weights are not supported for the 'p_center' objective, "
+                "since it ranks by worst-case travel time (max) rather than a "
+                "weighted average. Please rerun without the 'weights' argument."
             )
 
         # Handle weights
@@ -597,9 +616,8 @@ class SiteProblem(
                 if self.equity_data is None:
                     missing_cols.append(col)
 
-            elif self._additional_data_labels is not None:
-                if col not in self._additional_data_labels:
-                    missing_cols.append(col)
+            elif col not in (self._additional_data_labels or []):
+                missing_cols.append(col)
 
         if missing_cols:
             raise KeyError(
@@ -628,6 +646,24 @@ class SiteProblem(
             raise ValueError(
                 f"A max value cutoff of {max_value_cutoff} has been provided for a model variant ({objective}) that doesn't support it."
                 "Please rerun with hybrid_p_median or hybrid_simple_p_median."
+            )
+
+        if max_value_cutoff is None and objective == "hybrid_p_median":
+            raise ValueError(
+                "hybrid_p_median requires a max_value_cutoff (the maximum allowable "
+                "travel cost every demand point must be guaranteed) -- without one, "
+                "it has no 'safety net' constraint to apply. Please either provide "
+                "max_value_cutoff, or use objective='p_median' if you don't need "
+                "that guarantee."
+            )
+
+        if max_value_cutoff is None and objective == "hybrid_simple_p_median":
+            raise ValueError(
+                "hybrid_simple_p_median requires a max_value_cutoff (the maximum "
+                "allowable travel cost every demand point must be guaranteed) -- "
+                "without one, it has no 'safety net' constraint to apply. Please "
+                "either provide max_value_cutoff, or use objective='simple_p_median' "
+                "if you don't need that guarantee."
             )
 
         if objective in [
@@ -804,6 +840,7 @@ class SiteProblem(
                 show_progress=show_progress,
                 random_seed=random_seed,
                 min_sites_different=grasp_min_sites_different,
+                is_minimization=objective != "mclp",
                 local_search_chance=grasp_local_search_chance,  # Chance that local searching will happen to improve found solution
                 max_swap_count_local_search=grasp_max_swap_count_local_search,
             )

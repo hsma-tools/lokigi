@@ -10,6 +10,7 @@ from lokigi.site_solutions import SiteSolutionSet
 import pandas as pd
 import random
 import math
+import itertools
 
 # Other imports
 from warnings import warn
@@ -43,6 +44,12 @@ class BruteForceMixin:
         if brute_force_keep_worst_n is not None:
             bottom_n_heap = []  # To store the largest scores (worst)
             # print(f"Keeping worst {brute_force_keep_worst_n}")
+
+        # A unique, monotonically increasing tie-breaker sits between the
+        # score and the metrics dict in every heap entry, so that exact
+        # score ties never fall through to comparing two dicts (which
+        # aren't orderable and would raise TypeError).
+        tie_breaker = itertools.count()
 
         possible_combinations = _generate_all_combinations(
             n_facilities=self.total_n_sites, p=p, site_problem=self
@@ -102,17 +109,21 @@ class BruteForceMixin:
                 ):
                     if brute_force_keep_best_n is not None:
                         if len(top_n_heap) < brute_force_keep_best_n:
-                            heapq.heappush(top_n_heap, (-score, metrics))
+                            heapq.heappush(top_n_heap, (-score, next(tie_breaker), metrics))
                         elif -score > top_n_heap[0][0]:
-                            heapq.heapreplace(top_n_heap, (-score, metrics))
+                            heapq.heapreplace(
+                                top_n_heap, (-score, next(tie_breaker), metrics)
+                            )
 
                     # --- Logic for Bottom N (Largest Scores) ---
                     # Standard Min-Heap to keep the largest values
                     if brute_force_keep_worst_n is not None:
                         if len(bottom_n_heap) < brute_force_keep_worst_n:
-                            heapq.heappush(bottom_n_heap, (score, metrics))
+                            heapq.heappush(bottom_n_heap, (score, next(tie_breaker), metrics))
                         elif score > bottom_n_heap[0][0]:
-                            heapq.heapreplace(bottom_n_heap, (score, metrics))
+                            heapq.heapreplace(
+                                bottom_n_heap, (score, next(tie_breaker), metrics)
+                            )
 
         if brute_force_keep_best_n is None and brute_force_keep_worst_n is None:
             return outputs
@@ -120,11 +131,11 @@ class BruteForceMixin:
             # Reconstruct the 'outputs' list
             # Extract dictionaries from heaps and sort them
             if brute_force_keep_best_n is not None:
-                best_list = [item[1] for item in sorted(top_n_heap, key=lambda x: x[0])]
+                best_list = [item[2] for item in sorted(top_n_heap, key=lambda x: x[0])]
 
             if brute_force_keep_worst_n is not None:
                 worst_list = [
-                    item[1] for item in sorted(bottom_n_heap, key=lambda x: x[0])
+                    item[2] for item in sorted(bottom_n_heap, key=lambda x: x[0])
                 ]
 
             if brute_force_keep_best_n is not None and brute_force_keep_worst_n is None:
@@ -174,12 +185,15 @@ class GreedyMixin:
                     self.evaluate_single_solution_single_objective(
                         site_indices=possible_solution,
                         objective=objectives,
+                        threshold_for_coverage=threshold_for_coverage,
                         weights=weights,
                     ).return_solution_metrics()
                 )
 
+            # mclp's ranking column (coverage proportion) is higher-is-better,
+            # while every other objective's ranking column is lower-is-better
             evaluated_solutions = pd.DataFrame(outputs).sort_values(
-                [ranking, "weighted_average"]
+                [ranking, "weighted_average"], ascending=[objectives != "mclp", True]
             )
 
             # print("==Evaluated solution dataframe==")
@@ -257,7 +271,10 @@ class GraspMixin:
         @lru_cache(maxsize=10000)
         def _get_cached_metrics(indices_tuple: tuple):
             return self.evaluate_single_solution_single_objective(
-                site_indices=list(indices_tuple), objective=objectives, weights=weights
+                site_indices=list(indices_tuple),
+                objective=objectives,
+                threshold_for_coverage=threshold_for_coverage,
+                weights=weights,
             ).return_solution_metrics()
 
         pbar = None

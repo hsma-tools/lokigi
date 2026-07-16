@@ -192,6 +192,7 @@ class EvaluatedCombination:
 
                     # if demand, assume higher_better
                     # if equity, get direction from equity data
+                    direction = None
 
                     if label.lower() == "demand":
                         direction = (
@@ -219,6 +220,14 @@ class EvaluatedCombination:
                         )
                         if meta:
                             direction = meta.get("direction", "higher_better")
+
+                    if direction is None:
+                        raise ValueError(
+                            f"Weight key '{label}' does not correspond to demand, "
+                            "equity, or any registered additional dataset. Register "
+                            "it via add_additional_data() first, or remove it from "
+                            "the weights dict."
+                        )
 
                     # Handle Directionality (Invert weights if lower_better)
                     if direction == "lower_better":
@@ -311,7 +320,7 @@ class EvaluatedCombination:
             # 4. Coverage Equity (Thresholds by Group)
             if "within_threshold" in self.evaluated_combination_df.columns:
                 self.coverage_by_equity_group = (
-                    grouped_df["within_threshold"].mean().round(2).to_dict(),
+                    grouped_df["within_threshold"].mean().round(2).to_dict()
                 )
 
             # 5. Worst-Case Scenarios by Group
