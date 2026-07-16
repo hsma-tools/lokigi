@@ -517,6 +517,13 @@ class SiteProblem(
         if objective not in SUPPORTED_OBJECTIVES:
             raise ValueError(f"Unsupported objective ({objective}) passed.")
 
+        if objective == "mclp" and threshold_for_coverage is None:
+            raise ValueError(
+                "The 'mclp' objective requires a threshold_for_coverage to be "
+                "provided (the maximum travel time/distance for a demand point "
+                "to count as covered)."
+            )
+
         # Error early if trying to use weights with unsupported or inadvisable problem types
         if objective in ["lscp", "p-center"]:
             raise ValueError(
