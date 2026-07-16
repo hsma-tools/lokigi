@@ -286,7 +286,13 @@ class EvaluatedCombination:
             cost_lookup = self.site_problem.candidate_sites.set_index(
                 "canonical_site_index"
             )[cost_col]
-            self.total_cost = cost_lookup.loc[sorted(set(self.site_indices))].sum()
+            # skipna=False: if any selected site has a missing (NaN) cost,
+            # the combination's total cost is genuinely unknown, not zero.
+            # pandas' default skipna=True would otherwise silently treat a
+            # missing cost as $0, making that site look free.
+            self.total_cost = cost_lookup.loc[sorted(set(self.site_indices))].sum(
+                skipna=False
+            )
 
         self.coverage_threshold = coverage_threshold
 
