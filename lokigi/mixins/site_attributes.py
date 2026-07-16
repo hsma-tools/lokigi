@@ -175,6 +175,7 @@ class SiteAttributeMixin:
         horizontal_geometry_col="long",
         crs=None,
         capacity_col=None,
+        cost_col=None,
         skip_cols=None,
     ):
         """
@@ -209,6 +210,13 @@ class SiteAttributeMixin:
             input is tabular, the method will attempt to guess the CRS.
         capacity_col : str, optional
             The column name representing the capacity of each site. Defaults to None.
+        cost_col : str, optional
+            The column name representing the fixed cost (e.g. build or
+            operating cost) of each site. Must contain numeric values.
+            Defaults to None. The total cost of the sites selected in a
+            solution is reported in `solutions_df`, but cost only
+            influences which solution is chosen if it is explicitly passed
+            as a weight via `solve(weights={"cost": ...})`.
         skip_cols : list of str, optional
             A list of column names to ignore during the data loading process.
 
@@ -241,12 +249,17 @@ class SiteAttributeMixin:
         col_list = [candidate_id_col]
         if capacity_col is not None:
             col_list.extend([capacity_col])
+        if cost_col is not None:
+            col_list.extend([cost_col])
+
+        numeric_col_names = [cost_col] if cost_col is not None else None
 
         if df_type == "geopandas":
             col_list.extend([geometry_col])
             _validate_columns(
                 df=loaded_df,
                 col_names=col_list,
+                numeric_col_names=numeric_col_names,
                 msg_template=(
                     "It looks like your candidate site data is missing these columns: {missing}. "
                     "We found these instead: {available}. Please double-check the column names you are "
@@ -258,6 +271,7 @@ class SiteAttributeMixin:
             _validate_columns(
                 df=loaded_df,
                 col_names=col_list,
+                numeric_col_names=numeric_col_names,
                 msg_template=(
                     "It looks like your candidate site data is missing these columns: {missing}. "
                     "We found these instead: {available}. Please double-check the column names you are "
@@ -296,6 +310,7 @@ class SiteAttributeMixin:
         self._candidate_sites_candidate_id_col = candidate_id_col
         self._candidate_sites_geometry_col = geometry_col
         self._candidate_sites_capacity_col = capacity_col
+        self._candidate_sites_cost_col = cost_col
         self._candidate_sites_required_sites_col = required_sites_col
         self.total_n_sites = len(self.candidate_sites)
 
@@ -421,6 +436,7 @@ class SiteAttributeMixin:
         self._candidate_sites_vertical_col = None
         self._candidate_sites_horizontal_col = None
         self._candidate_sites_capacity_col = None
+        self._candidate_sites_cost_col = None
         self.total_n_sites = len(self.candidate_sites)
 
     #############################

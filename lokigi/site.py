@@ -4,6 +4,7 @@ from lokigi.utils import (
     PLANNED_OBJECTIVES,
     _get_ranking_by_objective,
     _add_rank_column,
+    _apply_cost_weighting,
 )
 
 from lokigi.site_solutions import EvaluatedCombination, SiteSolutionSet
@@ -105,6 +106,7 @@ class SiteProblem(
         self._candidate_sites_vertical_col = None
         self._candidate_sites_horizontal_col = None
         self._candidate_sites_capacity_col = None
+        self._candidate_sites_cost_col = None
         self._candidate_sites_required_sites_col = None
         self.total_n_sites = None
 
@@ -436,7 +438,11 @@ class SiteProblem(
             element is used. Supported: "p_median", "p_center", "mclp", etc.
         weights: dict
             Only used with p_median.
-            A dictionary of weights
+            A dictionary of weights. Recognized keys are "demand", "equity",
+            "cost" (requires `add_sites(cost_col=...)` to have been called),
+            and any label registered via `add_additional_data()`. Not
+            supported for "p_center", which ranks solely by worst-case
+            travel time.
         capacitated : bool, default False
             Whether to enforce site capacity constraints.
             *Note: Currently not implemented.*
@@ -614,6 +620,10 @@ class SiteProblem(
 
             elif col_lower == "equity":
                 if self.equity_data is None:
+                    missing_cols.append(col)
+
+            elif col_lower == "cost":
+                if getattr(self, "_candidate_sites_cost_col", None) is None:
                     missing_cols.append(col)
 
             elif col not in (self._additional_data_labels or []):
@@ -845,20 +855,27 @@ class SiteProblem(
                 max_swap_count_local_search=grasp_max_swap_count_local_search,
             )
 
-        if objective != "mclp":
-            solution_df = _add_rank_column(
-                pd.DataFrame(outputs),
-                score_col=ranking,
-                tiebreaker_col="weighted_average",
-                ascending=[True, True],
+        higher_is_better = objective == "mclp"
+        outputs_df = pd.DataFrame(outputs)
+
+        if weights and weights.get("cost", 0) > 0:
+            outputs_df, score_col = _apply_cost_weighting(
+                outputs_df,
+                ranking_col=ranking,
+                weights=weights,
+                higher_is_better=higher_is_better,
             )
+            score_ascending = True
         else:
-            solution_df = _add_rank_column(
-                pd.DataFrame(outputs),
-                score_col=ranking,
-                tiebreaker_col="weighted_average",
-                ascending=[False, True],
-            )
+            score_col = ranking
+            score_ascending = not higher_is_better
+
+        solution_df = _add_rank_column(
+            outputs_df,
+            score_col=score_col,
+            tiebreaker_col="weighted_average",
+            ascending=[score_ascending, True],
+        )
 
         return SiteSolutionSet(
             solution_df=solution_df,
