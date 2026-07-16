@@ -260,7 +260,10 @@ class GraspMixin:
         @lru_cache(maxsize=10000)
         def _get_cached_metrics(indices_tuple: tuple):
             return self.evaluate_single_solution_single_objective(
-                site_indices=list(indices_tuple), objective=objectives, weights=weights
+                site_indices=list(indices_tuple),
+                objective=objectives,
+                threshold_for_coverage=threshold_for_coverage,
+                weights=weights,
             ).return_solution_metrics()
 
         pbar = None

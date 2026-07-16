@@ -804,6 +804,7 @@ class SiteProblem(
                 show_progress=show_progress,
                 random_seed=random_seed,
                 min_sites_different=grasp_min_sites_different,
+                is_minimization=objective != "mclp",
                 local_search_chance=grasp_local_search_chance,  # Chance that local searching will happen to improve found solution
                 max_swap_count_local_search=grasp_max_swap_count_local_search,
             )
