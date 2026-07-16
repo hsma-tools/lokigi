@@ -50,19 +50,10 @@ def test_non_dict_weights_raises_type_error(loaded_problem):
 
 
 def test_unknown_weight_label_raises_a_clear_error(loaded_problem):
-    """
-    BUG: solve()'s weight-key validation (site.py:588-607) only flags an
-    unrecognized label when `self._additional_data_labels is not None`. With
-    no additional data ever added, a label that happens to already exist as
-    a raw column in the joined evaluation dataframe (e.g. "min_cost") slips
-    through validation entirely. Inside EvaluatedCombination's custom-weight
-    loop (site_solutions.py:196-224), `direction` is only assigned for
-    "demand"/"equity"/matched-additional-data labels -- so when this
-    unmatched label is processed *before* "demand" in the dict (dict
-    iteration order == insertion order), `direction` is referenced before
-    ever being assigned, raising an opaque UnboundLocalError instead of a
-    clear, catchable error.
-    """
+    """An unrecognized weight label should raise a clear, catchable error --
+    whether caught early by solve()'s weight-key validation (site.py) or, if
+    it slips past that (e.g. a direct EvaluatedCombination construction),
+    by the direction-resolution check in site_solutions.py."""
     with pytest.raises((ValueError, KeyError)):
         loaded_problem.solve(
             p=2,

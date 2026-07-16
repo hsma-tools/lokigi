@@ -604,9 +604,8 @@ class SiteProblem(
                 if self.equity_data is None:
                     missing_cols.append(col)
 
-            elif self._additional_data_labels is not None:
-                if col not in self._additional_data_labels:
-                    missing_cols.append(col)
+            elif col not in (self._additional_data_labels or []):
+                missing_cols.append(col)
 
         if missing_cols:
             raise KeyError(
