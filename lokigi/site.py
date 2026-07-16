@@ -469,7 +469,11 @@ class SiteProblem(
             brute-force search.
         max_value_cutoff : float, optional
             The maximum allowable travel cost. Only applicable for hybrid
-            objective models.
+            objective models. All search strategies honour it: brute-force
+            discards every combination whose worst-case travel exceeds it,
+            greedy applies it when choosing the final site (raising a
+            ValueError if no feasible completion exists), and GRASP rejects
+            candidate solutions that violate it.
         threshold_for_coverage : float, optional
             The distance or time threshold. Used as a hard filter for MCLP
             objectives or as a scoring metric for others.
@@ -692,15 +696,6 @@ class SiteProblem(
             "hybrid_simple_p_median",
         ]:
             raise ValueError(
-                f"A max value cutoff of {max_value_cutoff} has been provided for a model objective ({objective} that doesn't support it.)"
-                "Please rerun with hybrid_p_median or hybrid_simple_p_median."
-            )
-
-        if max_value_cutoff is not None and objective not in [
-            "hybrid_p_median",
-            "hybrid_simple_p_median",
-        ]:
-            raise ValueError(
                 f"A max value cutoff of {max_value_cutoff} has been provided for a model variant ({objective}) that doesn't support it."
                 "Please rerun with hybrid_p_median or hybrid_simple_p_median."
             )
@@ -881,6 +876,7 @@ class SiteProblem(
                 objectives=objective,
                 show_progress=show_progress,
                 threshold_for_coverage=threshold_for_coverage,
+                max_value_cutoff=max_value_cutoff,
             )
 
         if search_strategy == "grasp":
@@ -900,6 +896,25 @@ class SiteProblem(
                 is_minimization=objective != "mclp",
                 local_search_chance=grasp_local_search_chance,  # Chance that local searching will happen to improve found solution
                 max_swap_count_local_search=grasp_max_swap_count_local_search,
+                max_value_cutoff=max_value_cutoff,
+            )
+
+        # An empty result set would otherwise crash further down with a
+        # cryptic KeyError when ranking columns are missing from the empty
+        # DataFrame -- most commonly caused by a max_value_cutoff strict
+        # enough to rule out every combination.
+        if len(outputs) == 0:
+            cutoff_note = (
+                f" with max_value_cutoff={max_value_cutoff}"
+                if max_value_cutoff is not None
+                else ""
+            )
+            raise ValueError(
+                f"No feasible solutions were found for objective '{objective}' "
+                f"using search_strategy='{search_strategy}'{cutoff_note}. "
+                "Try relaxing max_value_cutoff, checking that p does not "
+                "exceed the number of candidate sites, or using a different "
+                "search strategy."
             )
 
         higher_is_better = objective == "mclp"

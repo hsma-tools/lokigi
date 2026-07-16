@@ -157,6 +157,7 @@ class GreedyMixin:
         weights,
         show_progress: bool = False,
         threshold_for_coverage=None,
+        max_value_cutoff=None,
     ):
         ranking = _get_ranking_by_objective(objective=objectives)
 
@@ -195,6 +196,26 @@ class GreedyMixin:
             # while every other objective's ranking column is lower-is-better
             outputs_df = pd.DataFrame(outputs)
             higher_is_better = objectives == "mclp"
+
+            # The max-value cutoff (hybrid objectives) is a constraint on
+            # the FINAL solution only: with fewer than p sites the
+            # worst-case travel is usually still shrinking, so filtering
+            # intermediate steps would wrongly rule everything out. At the
+            # final step, keep only combinations meeting the cutoff so the
+            # guarantee the hybrid objectives promise actually holds for
+            # whatever is returned.
+            if max_value_cutoff is not None and i == p:
+                outputs_df = outputs_df[outputs_df["max"] <= max_value_cutoff]
+                if len(outputs_df) == 0:
+                    raise ValueError(
+                        f"Greedy search found no combination of {p} sites "
+                        f"meeting max_value_cutoff={max_value_cutoff}, given "
+                        "the sites fixed at earlier steps "
+                        f"({sorted(int(s) for s in best_indices)}). Greedy "
+                        "never revisits earlier choices, so a feasible "
+                        "solution may still exist -- try search_strategy="
+                        "'brute-force' or 'grasp', or relax the cutoff."
+                    )
 
             if weights and weights.get("cost", 0) > 0:
                 outputs_df, score_col = _apply_cost_weighting(
@@ -261,6 +282,7 @@ class GraspMixin:
         is_minimization: bool = True,  # Flag for sort order & thresholding
         local_search_chance=0.8,  # Chance that local searching will happen to improve found solution
         max_swap_count_local_search=10,
+        max_value_cutoff=None,
     ):
         """
         GRASP (Greedy Randomised Adaptive Search Procedure) for finding multiple
@@ -544,6 +566,20 @@ class GraspMixin:
                                     current_solution_set = set(current_solution)
                                     improved = True
                                     break
+
+            # ---------------------------------------------------------------
+            # FEASIBILITY CHECK (hybrid objectives' max-value cutoff)
+            # ---------------------------------------------------------------
+            # Judged on the finished (post-local-search) solution: with
+            # fewer than p sites mid-construction, the worst-case travel is
+            # usually still shrinking, so only the final form is checked.
+            # A rejected solution costs an attempt, like a diversity reject.
+            if max_value_cutoff is not None:
+                candidate_metrics = _get_cached_metrics(
+                    tuple(sorted(current_solution))
+                )
+                if candidate_metrics["max"] > max_value_cutoff:
+                    continue
 
             # ---------------------------------------------------------------
             # DIVERSITY CHECK
