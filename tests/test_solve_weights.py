@@ -148,6 +148,7 @@ def test_max_value_cutoff_filters_combinations_exceeding_it(loaded_problem):
         objectives="hybrid_p_median",
         search_strategy="brute-force",
         show_progress=False,
+        max_value_cutoff=1000,  # non-binding: higher than any combination's max
     )
     assert 25.0 in list(unfiltered.solution_df["max"])
 
@@ -171,4 +172,28 @@ def test_max_value_cutoff_rejected_for_non_hybrid_objective(loaded_problem):
             search_strategy="brute-force",
             show_progress=False,
             max_value_cutoff=20,
+        )
+
+
+def test_hybrid_p_median_requires_a_max_value_cutoff(loaded_problem):
+    """hybrid_p_median's whole point is the max-cutoff 'safety net' -- without
+    one, it's indistinguishable from plain p_median, so solve() should
+    reject it and point the user at either providing a cutoff or switching
+    objectives."""
+    with pytest.raises(ValueError, match="max_value_cutoff"):
+        loaded_problem.solve(
+            p=2,
+            objectives="hybrid_p_median",
+            search_strategy="brute-force",
+            show_progress=False,
+        )
+
+
+def test_hybrid_simple_p_median_requires_a_max_value_cutoff(loaded_problem):
+    with pytest.raises(ValueError, match="max_value_cutoff"):
+        loaded_problem.solve(
+            p=2,
+            objectives="hybrid_simple_p_median",
+            search_strategy="brute-force",
+            show_progress=False,
         )

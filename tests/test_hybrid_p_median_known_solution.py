@@ -1,16 +1,23 @@
 import pytest
 
 
-def test_hybrid_p_median_without_cutoff_matches_plain_p_median(hybrid_p_median_problem):
-    """With no max_value_cutoff, hybrid_p_median's filter is a no-op, so it
-    should reduce to plain p_median and pick the combination with the lowest
-    weighted_average: {Site_1, Site_3} at 5.5 (mins [2, 2, 2, 16] over
-    LSOA_1-4), even though its worst-case travel time (16) is high."""
+def test_hybrid_p_median_with_a_non_binding_cutoff_matches_plain_p_median(
+    hybrid_p_median_problem,
+):
+    """With a max_value_cutoff higher than every combination's worst-case
+    travel time, the filter is a no-op, so hybrid_p_median should reduce to
+    plain p_median and pick the combination with the lowest weighted_average:
+    {Site_1, Site_3} at 5.5 (mins [2, 2, 2, 16] over LSOA_1-4), even though
+    its worst-case travel time (16) is high. (solve() now requires
+    max_value_cutoff to be provided at all for hybrid_p_median -- see
+    test_solve_weights.py::test_hybrid_p_median_requires_a_max_value_cutoff.)
+    """
     result = hybrid_p_median_problem.solve(
         p=2,
         objectives="hybrid_p_median",
         search_strategy="brute-force",
         show_progress=False,
+        max_value_cutoff=1000,
     )
 
     best = result.solution_df.iloc[0]

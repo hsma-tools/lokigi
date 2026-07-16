@@ -648,6 +648,24 @@ class SiteProblem(
                 "Please rerun with hybrid_p_median or hybrid_simple_p_median."
             )
 
+        if max_value_cutoff is None and objective == "hybrid_p_median":
+            raise ValueError(
+                "hybrid_p_median requires a max_value_cutoff (the maximum allowable "
+                "travel cost every demand point must be guaranteed) -- without one, "
+                "it has no 'safety net' constraint to apply. Please either provide "
+                "max_value_cutoff, or use objective='p_median' if you don't need "
+                "that guarantee."
+            )
+
+        if max_value_cutoff is None and objective == "hybrid_simple_p_median":
+            raise ValueError(
+                "hybrid_simple_p_median requires a max_value_cutoff (the maximum "
+                "allowable travel cost every demand point must be guaranteed) -- "
+                "without one, it has no 'safety net' constraint to apply. Please "
+                "either provide max_value_cutoff, or use objective='simple_p_median' "
+                "if you don't need that guarantee."
+            )
+
         if objective in [
             "p_median",
             "p_center",
