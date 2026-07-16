@@ -176,6 +176,7 @@ class SiteAttributeMixin:
         crs=None,
         capacity_col=None,
         cost_col=None,
+        allow_missing_cost=False,
         skip_cols=None,
     ):
         """
@@ -216,7 +217,18 @@ class SiteAttributeMixin:
             Defaults to None. The total cost of the sites selected in a
             solution is reported in `solutions_df`, but cost only
             influences which solution is chosen if it is explicitly passed
-            as a weight via `solve(weights={"cost": ...})`.
+            as a weight via `solve(weights={"cost": ...})`. By default, any
+            site missing a value in this column raises a `ValueError` --
+            see `allow_missing_cost`.
+        allow_missing_cost : bool, default False
+            Whether to allow rows with a missing (NaN) `cost_col` value.
+            By default, missing costs raise a `ValueError` naming the
+            affected sites, since a missing cost would otherwise silently
+            behave like a $0 cost. Pass `True` to allow it: sites with a
+            missing cost then propagate as `NaN` in any solution's
+            `total_cost` (rather than being treated as free), for cases
+            where cost data is genuinely incomplete. Ignored if `cost_col`
+            is not provided.
         skip_cols : list of str, optional
             A list of column names to ignore during the data loading process.
 
@@ -228,7 +240,8 @@ class SiteAttributeMixin:
         ------
         ValueError
             If required columns (ID, capacity, or geometry) are missing from the
-            input data.
+            input data, or if `cost_col` has a missing value for one or more
+            sites and `allow_missing_cost=False` (the default).
 
         Notes
         -----
@@ -278,6 +291,21 @@ class SiteAttributeMixin:
                     "passing in to the .add_candidates() method and try running this method again."
                 ),
             )
+
+        if cost_col is not None and not allow_missing_cost:
+            missing_cost_mask = loaded_df[cost_col].isna()
+            if missing_cost_mask.any():
+                missing_site_names = loaded_df.loc[
+                    missing_cost_mask, candidate_id_col
+                ].tolist()
+                raise ValueError(
+                    f"The following sites are missing a value in cost_col='{cost_col}': "
+                    f"{missing_site_names}. A missing cost would otherwise be silently "
+                    "treated as $0. Either fill in the missing cost values, or pass "
+                    "add_sites(..., allow_missing_cost=True) to proceed anyway -- "
+                    "solutions containing these sites will then report total_cost as NaN "
+                    "rather than a possibly-misleading number."
+                )
 
         if df_type != "geopandas":
             # If CRS is not provided, make a good guess

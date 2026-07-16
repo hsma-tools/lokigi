@@ -69,6 +69,73 @@ def test_add_sites_with_non_numeric_cost_col_raises_type_error(basic_problem):
         )
 
 
+# --- missing (NaN) cost values: strict by default, overridable ---
+
+
+def _candidate_df_with_missing_cost():
+    return pd.DataFrame(
+        {
+            "site_id": ["Site_A", "Site_B", "Site_C"],
+            "lat": [51.5, 51.6, 51.7],
+            "long": [-0.1, -0.2, -0.3],
+            "build_cost": [10.0, None, 50.0],
+        }
+    )
+
+
+def test_add_sites_with_missing_cost_value_raises_value_error_by_default(
+    basic_problem,
+):
+    """A NaN in cost_col must fail loudly by default, since it would
+    otherwise be silently treated as a $0 cost downstream."""
+    with pytest.raises(ValueError, match="Site_B"):
+        basic_problem.add_sites(
+            _candidate_df_with_missing_cost(),
+            candidate_id_col="site_id",
+            cost_col="build_cost",
+        )
+
+
+def test_add_sites_with_missing_cost_value_and_allow_missing_cost_succeeds(
+    basic_problem,
+):
+    """allow_missing_cost=True opts back into the earlier NaN-propagation
+    behaviour: add_sites() succeeds, and the missing cost surfaces as NaN
+    in total_cost rather than raising or being treated as free."""
+    basic_problem.add_sites(
+        _candidate_df_with_missing_cost(),
+        candidate_id_col="site_id",
+        cost_col="build_cost",
+        allow_missing_cost=True,
+    )
+    assert basic_problem._candidate_sites_cost_col == "build_cost"
+
+
+def test_total_cost_is_nan_for_combinations_including_a_missing_cost_site(
+    basic_problem, demand_df, travel_df
+):
+    basic_problem.add_demand(
+        demand_df, demand_col="demand", location_id_col="location_id"
+    )
+    basic_problem.add_sites(
+        _candidate_df_with_missing_cost(),
+        candidate_id_col="site_id",
+        cost_col="build_cost",
+        allow_missing_cost=True,
+    )
+    basic_problem.add_travel_matrix(travel_df, source_col="source_id")
+
+    result = basic_problem.solve(
+        p=2, objectives="p_median", search_strategy="brute-force", show_progress=False
+    )
+
+    for _, row in result.solution_df.iterrows():
+        if "Site_B" in row["site_names"]:
+            assert pd.isna(row["total_cost"])
+        else:
+            assert not pd.isna(row["total_cost"])
+
+
 # --- total_cost correctness ---
 
 
