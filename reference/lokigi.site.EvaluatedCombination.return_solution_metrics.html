@@ -348,6 +348,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>INTERPRETATION GUIDE FOR SUMMARY TABLES &amp; SORTING:</p>
 <p>1a. ‘weighted_average’ - LOWER is better. Represents travel time adjusted for specified weighting factors.</p>
 <p>1b. Travel Costs (‘unweighted_average’, ‘90th_percentile’, ‘max’): - LOWER is better. Represents travel time or distance.</p>
+<p>1c. ‘total_cost’ - LOWER is better. Total fixed cost of the selected sites (sum of the <code>cost_col</code> configured via <code>add_sites()</code>). <code>NaN</code> if no <code>cost_col</code> was configured. Only influences which solution is selected if explicitly passed as a weight (weights={“cost”: …}).</p>
 <ol start="2" type="1">
 <li>Absolute Equity Gap (‘gap_absolute_weighted’):
 <ul>

@@ -304,7 +304,8 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#v0.3.0" id="toc-v0.3.0" class="nav-link active" data-scroll-target="#v0.3.0">v0.3.0</a></li>
+  <li><a href="#v0.4.0" id="toc-v0.4.0" class="nav-link active" data-scroll-target="#v0.4.0">v0.4.0</a></li>
+  <li><a href="#v0.3.0" id="toc-v0.3.0" class="nav-link" data-scroll-target="#v0.3.0">v0.3.0</a></li>
   <li><a href="#v0.2.1" id="toc-v0.2.1" class="nav-link" data-scroll-target="#v0.2.1">v0.2.1</a></li>
   <li><a href="#v0.2.0" id="toc-v0.2.0" class="nav-link" data-scroll-target="#v0.2.0">v0.2.0</a></li>
   <li><a href="#v0.1.1" id="toc-v0.1.1" class="nav-link" data-scroll-target="#v0.1.1">v0.1.1</a></li>
@@ -319,6 +320,24 @@ ul.task-list li input[type="checkbox"] {
 
 
 
+<section id="v0.4.0" class="level2">
+<h2 class="anchored" data-anchor-id="v0.4.0">v0.4.0</h2>
+<ul>
+<li>Add support for setting site costs
+<ul>
+<li><code>add_sites()</code> accepts a new <code>cost_col</code> parameter for each site’s fixed (e.g.&nbsp;build or operating) cost</li>
+<li>The total cost of the selected sites is now always reported in <code>solution_df</code> via <code>total_cost</code>, regardless of whether cost is used to rank solutions</li>
+<li><code>solve(weights={"cost": ...})</code> allows cost to influence which solution is chosen</li>
+<li>Sites with a missing cost value now raise an error by default; pass <code>add_sites(..., allow_missing_cost=True)</code> to opt out and have <code>total_cost</code> propagate as <code>NaN</code> instead</li>
+<li>Added an example notebook and sample dataset (Devon CDCs) demonstrating site costs</li>
+</ul></li>
+<li>Bugfixes for weights
+<ul>
+<li>Fix the <code>"cost"</code> weight key being silently ignored when passed with non-lowercase casing (e.g.&nbsp;<code>"Cost"</code>)</li>
+<li>Fix <code>total_cost</code> silently treating a missing per-site cost as $0 instead of propagating it as unknown</li>
+</ul></li>
+</ul>
+</section>
 <section id="v0.3.0" class="level2">
 <h2 class="anchored" data-anchor-id="v0.3.0">v0.3.0</h2>
 <ul>

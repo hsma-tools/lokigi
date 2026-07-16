@@ -550,9 +550,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-attributes anchored" data-anchor-id="attributes">Attributes</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 30%">
-<col style="width: 14%">
-<col style="width: 55%">
+<col style="width: 11%">
+<col style="width: 5%">
+<col style="width: 82%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -613,6 +613,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Maximum minimum cost across all demand points.</td>
 </tr>
 <tr class="odd">
+<td>total_cost</td>
+<td>float</td>
+<td>Total fixed cost of the selected sites (sum of the <code>cost_col</code> values configured via <code>add_sites()</code>). <code>NaN</code> if no <code>cost_col</code> was configured. Always calculated; only influences which solution is selected if explicitly passed as a weight (<code>weights={"cost": ...}</code>).</td>
+</tr>
+<tr class="even">
 <td>proportion_within_coverage_threshold</td>
 <td>float</td>
 <td>Proportion of demand points that fall within the coverage threshold.</td>

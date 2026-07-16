@@ -371,10 +371,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 11%">
-<col style="width: 10%">
-<col style="width: 72%">
-<col style="width: 5%">
+<col style="width: 9%">
+<col style="width: 8%">
+<col style="width: 77%">
+<col style="width: 4%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -400,7 +400,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td>weights</td>
 <td>dict</td>
-<td>Only used with p_median. A dictionary of weights</td>
+<td>Only used with p_median. A dictionary of weights. Recognized keys are “demand”, “equity”, “cost” (requires <code>add_sites(cost_col=...)</code> to have been called), and any label registered via <code>add_additional_data()</code>. Not supported for “p_center”, which ranks solely by worst-case travel time.</td>
 <td><code>None</code></td>
 </tr>
 <tr class="even">
