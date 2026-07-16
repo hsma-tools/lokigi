@@ -203,6 +203,22 @@ class EvaluatedCombination:
                     # Extract raw data
                     column_data = self.evaluated_combination_df[col_name].astype(float)
 
+                    # A NaN here would silently poison the whole compound
+                    # weight vector (NaN * weight propagates through
+                    # np.average into every score), so fail loudly instead.
+                    # NaNs usually mean the weighted dataset (equity or
+                    # additional data) doesn't cover every demand location.
+                    if column_data.isna().any():
+                        raise ValueError(
+                            f"Cannot weight by '{label}': "
+                            f"{int(column_data.isna().sum())} demand row(s) "
+                            f"have missing values in '{col_name}'. This "
+                            "usually means the dataset does not cover every "
+                            "demand location. Please fill or filter the "
+                            f"missing values, or remove '{label}' from the "
+                            "weights dict."
+                        )
+
                     # if demand, assume higher_better
                     # if equity, get direction from equity data
                     direction = None

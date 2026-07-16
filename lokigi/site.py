@@ -372,11 +372,19 @@ class SiteProblem(
                 # print(f"active_facilities: {active_facilities.head(1)}")
                 # print(f"self.equity_data: {self.equity_data.head(1)}")
 
+                # how="left": demand points missing from the equity data
+                # must keep their travel/cost rows (with NaN equity values)
+                # rather than being dropped from the evaluation. An inner
+                # join here silently shrank every metric -- max, weighted
+                # averages, coverage -- whenever the equity data didn't
+                # cover all demand locations, even when equity wasn't
+                # being weighted.
                 active_facilities = pd.merge(
                     active_facilities,
                     self.equity_data,
                     left_on=afi,
                     right_on=self._equity_data_common_col,
+                    how="left",
                     suffixes=("", "_y"),
                 )
 
@@ -641,6 +649,37 @@ class SiteProblem(
             raise KeyError(
                 f"The following weight keys are missing from the problem data: {missing_cols}"
             )
+
+        # Equity coverage check. The per-solution equity merge is a left
+        # join, so demand locations missing from the equity data keep their
+        # travel metrics but carry NaN equity values. That is fatal for
+        # equity weighting (the row weights would be NaN) and silently
+        # excludes those locations from equity-band breakdowns, so surface
+        # it here, once, before any solving starts.
+        if self.equity_data is not None:
+            demand_ids = self.travel_and_demand_df.index
+            equity_ids = self.equity_data[self._equity_data_common_col]
+            missing_equity_ids = demand_ids.difference(equity_ids)
+
+            if len(missing_equity_ids) > 0:
+                id_summary = (
+                    f"{len(missing_equity_ids)} of {len(demand_ids)} demand "
+                    f"location(s) have no matching row in the equity data "
+                    f"(e.g. {list(missing_equity_ids[:5])})"
+                )
+                if any(key.lower() == "equity" for key in weights):
+                    raise ValueError(
+                        f"Cannot weight by equity: {id_summary}. Equity row "
+                        "weights cannot be computed for these locations. "
+                        "Please provide equity data covering every demand "
+                        "location, or remove 'equity' from the weights dict."
+                    )
+                warn(
+                    f"{id_summary}. These locations are still included in "
+                    "all travel/cost metrics, but will be excluded from "
+                    "equity-band breakdowns (e.g. coverage or averages per "
+                    "equity group)."
+                )
 
         if isinstance(objectives, list) and len(objectives) > 1:
             warn(
