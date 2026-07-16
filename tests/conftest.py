@@ -244,6 +244,48 @@ def tied_score_problem():
 
 
 @pytest.fixture
+def hybrid_p_median_problem():
+    """
+    A 3-site/4-demand-point problem (p=2, 3 possible combinations) built so
+    that the unconstrained p_median optimum has a bad worst-case travel time:
+    {Site_1, Site_3} has the lowest weighted_average (5.5) but its worst
+    demand point (LSOA_4) is 16 minutes away. {Site_1, Site_2} has a worse
+    average (7.0) but caps every demand point at 10 minutes.
+
+    This lets max_value_cutoff (hybrid_p_median's "safety net" constraint)
+    exclude the unconstrained-best combination and force a different,
+    independently verifiable winner.
+    """
+    demand_df = pd.DataFrame(
+        {
+            "location_id": ["LSOA_1", "LSOA_2", "LSOA_3", "LSOA_4"],
+            "demand": [100, 100, 100, 100],
+        }
+    )
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": ["Site_1", "Site_2", "Site_3"],
+            "lat": [51.1, 51.2, 51.3],
+            "long": [-0.1, -0.2, -0.3],
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["LSOA_1", "LSOA_2", "LSOA_3", "LSOA_4"],
+            "Site_1": [2, 16, 10, 16],
+            "Site_2": [20, 8, 20, 8],
+            "Site_3": [16, 2, 2, 16],
+        }
+    )
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+    return problem
+
+
+@pytest.fixture
 def equity_df():
     """Three distinct equity bins (1, 5, 10) -- one per demand location --
     so tertile-ratio calculations (which need >= 3 unique bins) are exercised."""
