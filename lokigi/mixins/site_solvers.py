@@ -72,6 +72,10 @@ class BruteForceMixin:
 
         outputs = []
 
+        # mclp's ranking column (coverage proportion) is higher-is-better,
+        # while every other objective's ranking column is lower-is-better.
+        higher_is_better = objectives == "mclp"
+
         if show_progress:
             possible_combinations = tqdm(possible_combinations)
 
@@ -99,10 +103,18 @@ class BruteForceMixin:
                 metrics = self.evaluate_single_solution_single_objective(
                     site_indices=possible_solution,
                     objective=objectives,
+                    threshold_for_coverage=threshold_for_coverage,
                     weights=weights,
                 ).return_solution_metrics()
 
-                score = metrics[rank_best_n_on]
+                raw_score = metrics[rank_best_n_on]
+                # Normalise so lower always means better: the heaps below
+                # keep the N smallest scores as "best" and the N largest as
+                # "worst", which only holds for minimising objectives.
+                # Negating mclp's coverage proportion lets the same heap
+                # logic serve both directions -- without this, keep_best_n
+                # for mclp retained the WORST-coverage combinations.
+                score = -raw_score if higher_is_better else raw_score
                 max_value = metrics["max"]
 
                 if max_value_cutoff is None or (

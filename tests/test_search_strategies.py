@@ -229,3 +229,109 @@ def test_brute_force_keep_best_n_handles_exact_score_ties(tied_score_problem):
     )
 
     assert len(result.solution_df) == 2
+
+
+# --- Brute force keep_best_n / keep_worst_n: mclp direction and coverage ---
+
+
+def test_keep_best_n_for_mclp_retains_the_highest_coverage_combinations(
+    five_site_problem,
+):
+    """Two stacked bugs previously broke keep_best_n for mclp: the keep-n
+    branch of `_brute_force` never passed threshold_for_coverage to its
+    evaluations (so every candidate scored coverage 0.0 and the heap
+    ranked noise), and the heaps assumed lower-is-better (so even with
+    real scores, keep_best_n retained the LOWEST-coverage combinations).
+    The kept set must match the top of a full brute-force run."""
+    full = five_site_problem.solve(
+        p=2,
+        objectives="mclp",
+        search_strategy="brute-force",
+        show_progress=False,
+        threshold_for_coverage=15,
+    )
+    full_coverages = sorted(
+        full.solution_df["proportion_within_coverage_threshold"], reverse=True
+    )
+
+    kept = five_site_problem.solve(
+        p=2,
+        objectives="mclp",
+        search_strategy="brute-force",
+        show_progress=False,
+        threshold_for_coverage=15,
+        brute_force_keep_best_n=3,
+    )
+    kept_coverages = sorted(
+        kept.solution_df["proportion_within_coverage_threshold"], reverse=True
+    )
+
+    assert len(kept.solution_df) == 3
+    assert kept_coverages == pytest.approx(full_coverages[:3])
+    # The overall best solution must survive the pruning and rank first
+    assert kept.solution_df.iloc[0][
+        "proportion_within_coverage_threshold"
+    ] == pytest.approx(full_coverages[0])
+    # ... and the real threshold must have been used, not silently dropped
+    assert (kept.solution_df["coverage_threshold"] == 15).all()
+
+
+def test_keep_worst_n_for_mclp_retains_the_lowest_coverage_combinations(
+    five_site_problem,
+):
+    full = five_site_problem.solve(
+        p=2,
+        objectives="mclp",
+        search_strategy="brute-force",
+        show_progress=False,
+        threshold_for_coverage=15,
+    )
+    full_coverages = sorted(full.solution_df["proportion_within_coverage_threshold"])
+
+    kept = five_site_problem.solve(
+        p=2,
+        objectives="mclp",
+        search_strategy="brute-force",
+        show_progress=False,
+        threshold_for_coverage=15,
+        brute_force_keep_worst_n=3,
+    )
+    kept_coverages = sorted(kept.solution_df["proportion_within_coverage_threshold"])
+
+    assert len(kept.solution_df) == 3
+    assert kept_coverages == pytest.approx(full_coverages[:3])
+
+
+def test_keep_best_n_reports_coverage_metrics_for_minimising_objectives(
+    five_site_problem,
+):
+    """threshold_for_coverage is a reporting metric for non-mclp
+    objectives, but the keep-n branch previously dropped it, silently
+    zeroing the coverage columns of whatever was returned. The kept rows'
+    coverage must match the full run's values for the same site sets."""
+    full = five_site_problem.solve(
+        p=2,
+        objectives="p_median",
+        search_strategy="brute-force",
+        show_progress=False,
+        threshold_for_coverage=15,
+    )
+    full_coverage_by_sites = {
+        tuple(row["site_names"]): row["proportion_within_coverage_threshold"]
+        for _, row in full.solution_df.iterrows()
+    }
+
+    kept = five_site_problem.solve(
+        p=2,
+        objectives="p_median",
+        search_strategy="brute-force",
+        show_progress=False,
+        threshold_for_coverage=15,
+        brute_force_keep_best_n=2,
+    )
+
+    assert (kept.solution_df["coverage_threshold"] == 15).all()
+    for _, row in kept.solution_df.iterrows():
+        assert row["proportion_within_coverage_threshold"] == pytest.approx(
+            full_coverage_by_sites[tuple(row["site_names"])]
+        )
