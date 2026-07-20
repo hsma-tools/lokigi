@@ -352,16 +352,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    colour_mode<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    cols<span class="op">=</span><span class="dv">2</span>,</span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    figsize_multiplier<span class="op">=</span><span class="dv">5</span>,</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    show_site_names<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Plot equity summaries for the top N solutions in a grid of subplots.</p>
 <p>This method generates a series of bar plots showing the distribution of mean minimum cost (<code>min_cost</code>) across equity groups for the top-ranked solutions. It reuses <code>check_solution_equity</code> to ensure consistent computation and styling.</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 9%">
-<col style="width: 9%">
-<col style="width: 73%">
+<col style="width: 11%">
+<col style="width: 8%">
+<col style="width: 71%">
 <col style="width: 7%">
 </colgroup>
 <thead>
@@ -396,6 +397,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>int</td>
 <td>Number of subplot columns. The number of rows is determined automatically.</td>
 <td><code>2</code></td>
+</tr>
+<tr class="odd">
+<td>show_site_names</td>
+<td>bool</td>
+<td>If True, each subplot title lists the selected sites by name instead of by index.</td>
+<td><code>False</code></td>
 </tr>
 </tbody>
 </table>

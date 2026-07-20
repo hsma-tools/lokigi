@@ -354,16 +354,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    show_progress<span class="op">=</span><span class="va">True</span>,</span>
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    brute_force_keep_best_n<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    brute_force_keep_worst_n<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    max_value_cutoff<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    threshold_for_coverage<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    grasp_num_solutions<span class="op">=</span><span class="dv">5</span>,</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    grasp_alpha<span class="op">=</span><span class="fl">0.2</span>,</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    grasp_max_attempts<span class="op">=</span><span class="st">'default'</span>,</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    grasp_min_sites_different<span class="op">=</span><span class="dv">1</span>,</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    grasp_local_search_chance<span class="op">=</span><span class="fl">0.8</span>,</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    grasp_max_swap_count_local_search<span class="op">=</span><span class="dv">10</span>,</span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    random_seed<span class="op">=</span><span class="dv">42</span>,</span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    n_jobs<span class="op">=</span><span class="dv">1</span>,</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    max_value_cutoff<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    threshold_for_coverage<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    grasp_num_solutions<span class="op">=</span><span class="dv">5</span>,</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    grasp_alpha<span class="op">=</span><span class="fl">0.2</span>,</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    grasp_max_attempts<span class="op">=</span><span class="st">'default'</span>,</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    grasp_min_sites_different<span class="op">=</span><span class="dv">1</span>,</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    grasp_local_search_chance<span class="op">=</span><span class="fl">0.8</span>,</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    grasp_max_swap_count_local_search<span class="op">=</span><span class="dv">10</span>,</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    random_seed<span class="op">=</span><span class="dv">42</span>,</span>
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Solve the site location problem using the specified objective and strategy.</p>
 <p>This method validates the problem configuration, handles automatic setup of missing demand or site data, and dispatches the optimization task to the appropriate internal solver.</p>
@@ -371,10 +371,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 9%">
-<col style="width: 8%">
-<col style="width: 77%">
-<col style="width: 4%">
+<col style="width: 2%">
+<col style="width: 2%">
+<col style="width: 94%">
+<col style="width: 1%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -430,68 +430,68 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="even">
 <td>brute_force_keep_best_n</td>
 <td></td>
-<td>(Brute Force only) The number of top or bottom results to retain during a brute-force search.</td>
+<td>(Brute Force only) The number of top or bottom results to retain during a brute-force search. Normally this prunes combinations on the fly to bound memory use. If <code>weights</code> includes a positive “cost” weight, that streaming prune is skipped: every combination is evaluated and held in memory so cost can be blended in over the full batch before pruning to N, otherwise a combination that only looks good once cost is considered could be discarded before cost is ever factored in. A UserWarning is raised when this fallback is triggered.</td>
 <td><code>None</code></td>
 </tr>
 <tr class="odd">
-<td>max_value_cutoff</td>
-<td>float</td>
-<td>The maximum allowable travel cost. Only applicable for hybrid objective models.</td>
-<td><code>None</code></td>
+<td>n_jobs</td>
+<td>int</td>
+<td>(Brute Force only) Number of worker processes to evaluate combinations in parallel. 1 (the default) evaluates every combination in the current process and is always byte-for-byte identical to prior (pre-parallel) behaviour, including which combination brute_force_keep_best_n / brute_force_keep_worst_n keeps on an exact score tie. -1 uses all available CPU cores. With n_jobs != 1, results are always correctly ranked and bounded to the requested count, but if more combinations tie exactly on score than keep_best_n / keep_worst_n allows, which specific tied combination is kept can differ from a serial run (their scores are still identical either way). Exact ties are rare with real-valued travel costs. The first call with a given n_jobs value in a process (or any call after switching to a different n_jobs value) pays a one-time worker-pool startup cost – each worker process has to import pandas/numpy/etc. from scratch, which on Windows can take several seconds regardless of workload size. Subsequent calls with the same n_jobs reuse the already-running pool and are fast. For small combination counts that finish in a second or two serially, that startup cost can make a single one-off parallel call look slower than n_jobs=1 – this is a fixed process-spawn cost, not a sign that parallelism itself is ineffective (repeated calls, or larger workloads, amortize it away).</td>
+<td><code>1</code></td>
 </tr>
 <tr class="even">
+<td>max_value_cutoff</td>
+<td>float</td>
+<td>The maximum allowable travel cost. Only applicable for hybrid objective models. All search strategies honour it: brute-force discards every combination whose worst-case travel exceeds it, greedy applies it when choosing the final site (raising a ValueError if no feasible completion exists), and GRASP rejects candidate solutions that violate it.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
 <td>threshold_for_coverage</td>
 <td>float</td>
 <td>The distance or time threshold. Used as a hard filter for MCLP objectives or as a scoring metric for others.</td>
 <td><code>None</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>grasp_num_solutions</td>
 <td>int</td>
 <td>(GRASP only) The number of high-quality solutions to generate.</td>
 <td><code>5</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>grasp_alpha</td>
 <td>float</td>
 <td>(GRASP only) The selection restriction parameter (0 is fully greedy, 1 is fully random).</td>
 <td><code>0.2</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>grasp_max_attempts</td>
 <td>int or default</td>
 <td>(GRASP only) Maximum iterations to find a valid solution.</td>
 <td><code>"default"</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>grasp_min_sites_different</td>
 <td>int</td>
 <td>(GRASP only) Minimum number of sites that must differ between generated solutions. Useful for generating a more diverse solution pool, though you may need to increase the max_attempts at the same time.</td>
 <td><code>1</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>grasp_local_search_chance</td>
 <td>float</td>
 <td>(GRASP only) The probability (0.0 to 1.0) of performing a local search to improve a found solution.</td>
 <td><code>0.8</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>grasp_max_swap_count_local_search</td>
 <td>int</td>
 <td>(GRASP only) Maximum number of site swaps allowed during the local search phase.</td>
 <td><code>10</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>random_seed</td>
 <td>int</td>
 <td>(GRASP only) Seed for reproducibility in randomized strategies like GRASP.</td>
 <td><code>42</code></td>
-</tr>
-<tr class="even">
-<td>**kwargs</td>
-<td>dict</td>
-<td>Additional arguments passed to the internal solver.</td>
-<td><code>{}</code></td>
 </tr>
 </tbody>
 </table>

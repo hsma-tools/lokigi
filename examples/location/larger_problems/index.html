@@ -778,7 +778,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Now, we’ll solve this for 3 possible sites. We’ll also add some extra code to time how long this takes.</p>
 <div id="b62fc91c" class="cell" data-execution_count="11">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>start <span class="op">=</span> time.perf_counter()</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>solution_3 <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">3</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, show_brute_force_progress<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>solution_3 <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">3</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, show_progress<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>C:\lokigi\lokigi\site.py:1115: UserWarning: No candidate site dataframe was given.
 Sites names have been taken from the columns of your travel matrix: clinic_1, clinic_2, clinic_3, clinic_4, clinic_5, clinic_6, clinic_7, clinic_8, clinic_9, clinic_10, clinic_11, clinic_12, clinic_13, clinic_14, clinic_15, clinic_16, clinic_17, clinic_18, clinic_19, clinic_20, clinic_21, clinic_22, clinic_23, clinic_24, clinic_25, clinic_26, clinic_27, clinic_28.
@@ -1148,7 +1148,7 @@ You can use the .show_sites_format() to see the expected format beforehand.
 <p>Now let’s repeat it for a much larger number of combinations.</p>
 <div id="69b91d93" class="cell" data-execution_count="18">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>start <span class="op">=</span> time.perf_counter()</span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>solution_4 <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">4</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, show_brute_force_progress<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>solution_4 <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">4</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, show_progress<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
 {"model_id":"e7079f2d6b974b598ce409ca85f93b76","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
@@ -1186,7 +1186,7 @@ You can use the .show_sites_format() to see the expected format beforehand.
 <p>Let’s repeat this one more time for a very large number of combinations.</p>
 <div id="e725503a" class="cell" data-execution_count="23">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>start <span class="op">=</span> time.perf_counter()</span>
-<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>solution_6 <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">6</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, show_brute_force_progress<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>solution_6 <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">6</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, show_progress<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>C:\lokigi\lokigi\mixins\site_solvers.py:60: UserWarning: You are trying to evaluate 376,740 combinations via brute force. The recommended maximum is 75,000. This could take a while! You may wish to try a different solver.
   warn(</code></pre>
@@ -1218,7 +1218,7 @@ Elapsed time: 1035.5 seconds</code></pre>
 <div id="7f1b9470" class="cell" data-execution_count="26">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>solution_3_top_100 <span class="op">=</span> problem.solve(</span>
 <span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>    p<span class="op">=</span><span class="dv">3</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>,</span>
-<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>    show_brute_force_progress<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>    show_progress<span class="op">=</span><span class="va">True</span>,</span>
 <span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>    brute_force_keep_best_n<span class="op">=</span><span class="dv">100</span>,</span>
 <span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>    brute_force_keep_worst_n<span class="op">=</span><span class="va">None</span></span>
 <span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1393,7 +1393,7 @@ Elapsed time: 1035.5 seconds</code></pre>
 <div id="2868abb5" class="cell" data-execution_count="28">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>solution_3_top_1_bottom_1 <span class="op">=</span> problem.solve(</span>
 <span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>    p<span class="op">=</span><span class="dv">3</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>,</span>
-<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>    show_brute_force_progress<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>    show_progress<span class="op">=</span><span class="va">True</span>,</span>
 <span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>    brute_force_keep_best_n<span class="op">=</span><span class="dv">1</span>, brute_force_keep_worst_n<span class="op">=</span><span class="dv">1</span></span>
 <span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">

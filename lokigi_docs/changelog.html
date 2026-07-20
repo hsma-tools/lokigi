@@ -304,7 +304,9 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#v0.4.0" id="toc-v0.4.0" class="nav-link active" data-scroll-target="#v0.4.0">v0.4.0</a></li>
+  <li><a href="#v0.5.0" id="toc-v0.5.0" class="nav-link active" data-scroll-target="#v0.5.0">v0.5.0</a></li>
+  <li><a href="#v0.4.1" id="toc-v0.4.1" class="nav-link" data-scroll-target="#v0.4.1">v0.4.1</a></li>
+  <li><a href="#v0.4.0" id="toc-v0.4.0" class="nav-link" data-scroll-target="#v0.4.0">v0.4.0</a></li>
   <li><a href="#v0.3.0" id="toc-v0.3.0" class="nav-link" data-scroll-target="#v0.3.0">v0.3.0</a></li>
   <li><a href="#v0.2.1" id="toc-v0.2.1" class="nav-link" data-scroll-target="#v0.2.1">v0.2.1</a></li>
   <li><a href="#v0.2.0" id="toc-v0.2.0" class="nav-link" data-scroll-target="#v0.2.0">v0.2.0</a></li>
@@ -320,6 +322,47 @@ ul.task-list li input[type="checkbox"] {
 
 
 
+<section id="v0.5.0" class="level2">
+<h2 class="anchored" data-anchor-id="v0.5.0">v0.5.0</h2>
+<ul>
+<li>Add <code>n_jobs</code> parameter to <code>solve(search_strategy="brute-force", ...)</code> to evaluate combinations across multiple CPU cores (via <code>joblib</code>)
+<ul>
+<li><code>n_jobs=1</code> (the default) is unchanged: byte-for-byte identical output to previous versions</li>
+<li><code>n_jobs&gt;1</code>/<code>n_jobs=-1</code> always returns a correctly-ranked, correctly-bounded <code>keep_best_n</code>/<code>keep_worst_n</code> result; on an exact score tie spanning more combinations than the requested count, which specific tied combination is returned can differ from a serial run (their scores are identical either way)</li>
+<li>Note: the first <code>solve(..., n_jobs=...)</code> call in a process (or any call after switching to a different <code>n_jobs</code> value) pays a one-time worker-pool startup cost – on Windows this can be several seconds regardless of workload size, since each worker process re-imports pandas/numpy/etc. from scratch. Calls that reuse the same <code>n_jobs</code> value reuse the already-running pool and are fast; for a small combination count, a single one-off parallel call can look slower than <code>n_jobs=1</code> purely because of this startup cost</li>
+<li><code>joblib</code> is now a direct dependency (previously pulled in only transitively)</li>
+</ul></li>
+</ul>
+</section>
+<section id="v0.4.1" class="level2">
+<h2 class="anchored" data-anchor-id="v0.4.1">v0.4.1</h2>
+<ul>
+<li>Bugfixes for equity weighting
+<ul>
+<li>Fix <code>weights={"equity": ...}</code> giving the <em>most</em> weight to the least deprived regions instead of the most deprived, under both direction encodings</li>
+<li>Rename <code>add_equity_data()</code>’s ambiguous <code>direction</code> parameter to <code>disadvantaged_end</code> (<code>direction</code> is kept as a deprecated alias and now raises a <code>FutureWarning</code>); also fix its default to match the documented DLUHC decile convention</li>
+<li>Fix incomplete equity data silently dropping demand points from every metric (max, weighted/unweighted averages, coverage), not just equity-specific ones; <code>solve()</code> now raises a clear error when <code>"equity"</code> is weighted over incomplete data</li>
+</ul></li>
+<li>Bugfixes for search strategies (greedy / GRASP / brute-force)
+<ul>
+<li>Fix <code>max_value_cutoff</code> being silently ignored by greedy and GRASP (only brute-force enforced it)</li>
+<li>Fix <code>required_sites_col</code> being ignored by GRASP, and greedy crashing when two or more sites were required</li>
+<li>Fix <code>keep_best_n</code>/<code>keep_worst_n</code> being effectively random for <code>mclp</code>, and pruning before cost weighting was applied for brute-force</li>
+<li>Fix a cost-weighting no-op silently inverting <code>mclp</code>’s search in greedy, GRASP, and the shared final sort, so the worst combination could be returned as “best”</li>
+<li>Fix GRASP’s <code>min_sites_different</code> diversity threshold using the wrong formula, accepting solutions as more diverse than requested</li>
+<li>Add a clear error when more sites are required than <code>p</code> allows for brute-force (greedy/GRASP already had this)</li>
+</ul></li>
+<li>Bugfixes for <code>solve()</code> and single-solution evaluation
+<ul>
+<li><code>solve()</code> now rejects unknown keyword arguments instead of silently swallowing typos</li>
+<li>Fix mclp’s missing-demand warning exemption not applying when <code>objectives</code> is passed as a list</li>
+<li>Fix weight keys (<code>"demand"</code>/<code>"equity"</code>) not being truly case-insensitive, and a related unreachable error for genuinely unrecognised weight keys</li>
+<li>Fix <code>evaluate_single_solution_single_objective</code> silently accepting partially-invalid, duplicate, or empty <code>site_indices</code>/<code>site_names</code></li>
+</ul></li>
+<li>Fix equity plot titles rendering raw <code>np.int64(...)</code> reprs instead of plain site numbers; add <code>show_site_names=True</code> to list site names instead</li>
+<li>Add a backtest suite and document test conventions in <code>tests/README.md</code></li>
+</ul>
+</section>
 <section id="v0.4.0" class="level2">
 <h2 class="anchored" data-anchor-id="v0.4.0">v0.4.0</h2>
 <ul>
