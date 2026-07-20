@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 
@@ -885,6 +887,9 @@ class SiteSolutionSet(
             If True (and `expand_dict_columns=True`), the expansion is also
             written back to `self.solution_df`, so it persists for
             subsequent calls, plotting, `rank_on`, etc. Has no effect unless
+            `expand_dict_columns=True`, in which case a `UserWarning` is
+            raised instead, since passing `inplace=True` alone does nothing
+            and likely indicates the caller meant to also pass
             `expand_dict_columns=True`. Rounding is never made permanent --
             only the column expansion can be.
 
@@ -899,6 +904,13 @@ class SiteSolutionSet(
         Unless `inplace=True`, this method does not modify the underlying
         DataFrame; it returns a rounded (and optionally expanded) copy.
         """
+        if inplace and not expand_dict_columns:
+            warnings.warn(
+                "show_solutions(inplace=True) has no effect unless "
+                "expand_dict_columns=True is also passed.",
+                stacklevel=2,
+            )
+
         df = self.solution_df
         if expand_dict_columns:
             df = self._expand_dict_columns(df)

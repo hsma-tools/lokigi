@@ -13,6 +13,8 @@ location) via `loaded_problem_with_equity`, and
 case, both already exercised by `test_secondary_travel_matrices.py`.
 """
 
+import warnings
+
 import pytest
 
 
@@ -119,6 +121,19 @@ def test_inplace_without_expand_dict_columns_is_a_no_op(loaded_problem_with_equi
     result = loaded_problem_with_equity.solve(p=1)
     result.show_solutions(inplace=True)
     assert "weighted_by_equity_group" in result.solution_df.columns
+
+
+def test_inplace_without_expand_dict_columns_warns(loaded_problem_with_equity):
+    result = loaded_problem_with_equity.solve(p=1)
+    with pytest.warns(UserWarning, match="has no effect unless expand_dict_columns=True"):
+        result.show_solutions(inplace=True)
+
+
+def test_inplace_with_expand_dict_columns_does_not_warn(loaded_problem_with_equity):
+    result = loaded_problem_with_equity.solve(p=1)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        result.show_solutions(expand_dict_columns=True, inplace=True)
 
 
 def test_expand_dict_columns_respects_rounding_and_n_best(loaded_problem_with_equity):

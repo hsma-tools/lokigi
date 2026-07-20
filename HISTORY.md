@@ -12,7 +12,7 @@
     - `SolutionComparator` and the `problem.copy()`-per-mode workflow are unchanged and remain the right tool for two genuinely independent optimisations; secondary matrices are the alternative for trading modes off within one candidate ranking (see the new cross-reference in the `comparing_solutions` example)
 - Add `expand_dict_columns` and `inplace` parameters to `show_solutions()`
     - `show_solutions(expand_dict_columns=True)` flattens every dict-valued column (`weighted_by_equity_group`, `coverage_by_equity_group`, etc., including their `__<label>` secondary-matrix equivalents under `full_secondary_metrics=True`) into one column per dict key, named `<column>__<key>`. Off by default, so `solution_df`'s shape is unchanged for existing callers
-    - `show_solutions(expand_dict_columns=True, inplace=True)` also writes the expansion back to `solution_df` so it persists for later calls, plotting, and `rank_on`; `inplace` has no effect unless combined with `expand_dict_columns=True`. Rounding is never made permanent
+    - `show_solutions(expand_dict_columns=True, inplace=True)` also writes the expansion back to `solution_df` so it persists for later calls, plotting, and `rank_on`; `inplace` has no effect unless combined with `expand_dict_columns=True`, and warns if passed alone. Rounding is never made permanent
 
 ## v0.5.0
 
