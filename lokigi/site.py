@@ -335,10 +335,14 @@ class SiteProblem(
             ].copy()
 
         except IndexError:
+            # Copy-paste bug: this used to report `max_idx` twice (once as
+            # the valid upper bound, then again mislabelled as "You
+            # provided indices"), instead of the column positions that
+            # were actually attempted.
             max_idx = self.travel_and_demand_df.shape[1] - 1
             raise IndexError(
                 f"Index out of bounds. Your travel data has indices 0 to {max_idx}. "
-                f"You provided indices: {max_idx}"
+                f"You provided indices: {final_matrix_cols}"
             )
 
         if not capacitated:
