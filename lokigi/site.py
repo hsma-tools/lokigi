@@ -515,7 +515,18 @@ class SiteProblem(
             keep_worst_n allows, which specific tied combination is kept
             can differ from a serial run (their scores are still
             identical either way). Exact ties are rare with real-valued
-            travel costs.
+            travel costs. The first call with a given n_jobs value in a
+            process (or any call after switching to a different n_jobs
+            value) pays a one-time worker-pool startup cost -- each worker
+            process has to import pandas/numpy/etc. from scratch, which on
+            Windows can take several seconds regardless of workload size.
+            Subsequent calls with the same n_jobs reuse the already-running
+            pool and are fast. For small combination counts that finish in
+            a second or two serially, that startup cost can make a single
+            one-off parallel call look slower than n_jobs=1 -- this is a
+            fixed process-spawn cost, not a sign that parallelism itself is
+            ineffective (repeated calls, or larger workloads, amortize it
+            away).
         max_value_cutoff : float, optional
             The maximum allowable travel cost. Only applicable for hybrid
             objective models. All search strategies honour it: brute-force
@@ -869,6 +880,8 @@ class SiteProblem(
         n_jobs : int, default 1
             (Brute Force) Number of worker processes to evaluate combinations
             in parallel. 1 runs serially; -1 uses all available CPU cores.
+            See `solve`'s docstring for the one-time worker-pool startup
+            cost paid on the first call with a given n_jobs value.
         max_value_cutoff : float, optional
             The maximum allowable travel cost, used only for hybrid
             objective models.
