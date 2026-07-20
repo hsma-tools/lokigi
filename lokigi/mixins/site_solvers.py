@@ -333,7 +333,22 @@ class GraspMixin:
                 "Increase p to at least the number of required sites."
             )
 
-        min_jaccard_distance = float(min_sites_different) / float(p)
+        # min_sites_different (m) means "any two accepted solutions must
+        # differ in at least m of their p site positions", i.e. their
+        # intersection size k must satisfy p - k >= m, i.e. k <= p - m.
+        # For two same-size (p) sets with intersection k, Jaccard distance
+        # is 2(p-k) / (2p-k) -- NOT the plain fraction m/p this used to use.
+        # Solving for the distance at the exact boundary k = p - m (the
+        # most-similar pair that should still be ACCEPTED) gives
+        # 2m / (p + m), which is strictly larger than m/p whenever m > 1
+        # and p > m. The old, smaller m/p threshold rejected fewer
+        # candidates than intended: for m >= 3 (and p large enough
+        # relative to m, e.g. p >= 6 at m=3), pairs differing in only m-1
+        # sites -- one site too similar -- were wrongly accepted as
+        # "diverse enough".
+        min_jaccard_distance = (2.0 * float(min_sites_different)) / (
+            float(p) + float(min_sites_different)
+        )
 
         # Only the non-required slots are free to vary, so that's the true
         # size of the search space the attempt budget is drawn from.
