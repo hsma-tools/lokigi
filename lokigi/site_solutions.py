@@ -157,10 +157,28 @@ class EvaluatedCombination:
         # (a constant column would normalize to all-ones and have no
         # effect). It is excluded here and handled separately by the
         # solver's combination-comparison logic (see _apply_cost_weighting).
+        #
+        # "demand" and "equity" are canonicalised to lowercase here because
+        # this method can be reached directly (evaluate_single_solution_
+        # single_objective bypasses solve()'s own case-insensitive-but-
+        # unnormalised validation), and every comparison below -- the
+        # legacy-fallback check just below, and the col_name/direction
+        # resolution in the loop that follows -- is case-sensitive for
+        # these two built-in keywords. Without this, a differently-cased
+        # key like "Demand" silently matched no column, leaving the
+        # compound row weights all zero and crashing np.average with
+        # "Weights sum to zero". Additional-data labels are user-defined
+        # exact strings (not built-in keywords) and are deliberately left
+        # untouched -- they are matched case-sensitively against whatever
+        # was registered via add_additional_data(label=...).
         row_level_weights = (
             None
             if weights is None
-            else {k: v for k, v in weights.items() if k.lower() != "cost"}
+            else {
+                (k.lower() if k.lower() in ("demand", "equity") else k): v
+                for k, v in weights.items()
+                if k.lower() != "cost"
+            }
         )
 
         # If weights is purely the demand data, as was the default behaviour prior to 0.3.0,
@@ -191,44 +209,29 @@ class EvaluatedCombination:
             self.extra_metrics = {}
 
             for label, weight in row_level_weights.items():
-                # Map the user's label to the correct DataFrame column name
+                # Map the user's label to the correct DataFrame column name,
+                # and resolve its weighting direction, BEFORE checking that
+                # the column actually exists. This ordering matters: doing
+                # the existence check first (as a previous version of this
+                # code did) meant a genuinely unrecognised label -- one that
+                # doesn't match "demand", "equity", or any registered
+                # additional-data label -- had its column lookup silently
+                # fail and skipped the whole block instead of raising the
+                # "does not correspond to..." error below, leaving
+                # compound_weights all zero and crashing np.average with a
+                # confusing "Weights sum to zero" further down. Direct calls
+                # to evaluate_single_solution_single_objective (which skip
+                # solve()'s own case-insensitive key validation) are the
+                # main way this was reachable.
+                direction = None
+
                 if label == "demand":
                     col_name = self.site_problem._demand_data_demand_col
+                    direction = "higher_better"  # 'demand' defaults to higher_better
+
                 elif label == "equity":
                     col_name = self.site_problem._equity_data_equity_col
-                else:
-                    col_name = label
-
-                if col_name in self.evaluated_combination_df.columns:
-                    # Extract raw data
-                    column_data = self.evaluated_combination_df[col_name].astype(float)
-
-                    # A NaN here would silently poison the whole compound
-                    # weight vector (NaN * weight propagates through
-                    # np.average into every score), so fail loudly instead.
-                    # NaNs usually mean the weighted dataset (equity or
-                    # additional data) doesn't cover every demand location.
-                    if column_data.isna().any():
-                        raise ValueError(
-                            f"Cannot weight by '{label}': "
-                            f"{int(column_data.isna().sum())} demand row(s) "
-                            f"have missing values in '{col_name}'. This "
-                            "usually means the dataset does not cover every "
-                            "demand location. Please fill or filter the "
-                            f"missing values, or remove '{label}' from the "
-                            "weights dict."
-                        )
-
-                    # if demand, assume higher_better
-                    # if equity, get direction from equity data
-                    direction = None
-
-                    if label.lower() == "demand":
-                        direction = (
-                            "higher_better"  # 'demand' defaults to higher_better
-                        )
-
-                    elif label.lower() == "equity":
+                    if col_name is not None:
                         # Equity weighting exists to prioritise worse-off
                         # regions, so whichever end of the equity scale is
                         # disadvantaged is the end that gets the weight.
@@ -239,8 +242,10 @@ class EvaluatedCombination:
                             else "higher_better"
                         )
 
+                else:
+                    col_name = label
                     # Look up directionality from the problem configuration
-                    elif self.site_problem.additional_data is not None:
+                    if self.site_problem.additional_data is not None:
                         # Find the metadata dict matching this label
                         meta = next(
                             (
@@ -253,32 +258,55 @@ class EvaluatedCombination:
                         if meta:
                             direction = meta.get("direction", "higher_better")
 
-                    if direction is None:
-                        raise ValueError(
-                            f"Weight key '{label}' does not correspond to demand, "
-                            "equity, or any registered additional dataset. Register "
-                            "it via add_additional_data() first, or remove it from "
-                            "the weights dict."
-                        )
+                if (
+                    direction is None
+                    or col_name is None
+                    or col_name not in self.evaluated_combination_df.columns
+                ):
+                    raise ValueError(
+                        f"Weight key '{label}' does not correspond to demand, "
+                        "equity, or any registered additional dataset. Register "
+                        "it via add_additional_data() first, or remove it from "
+                        "the weights dict."
+                    )
 
-                    # Handle directionality by negating BEFORE normalising:
-                    # for lower_better this maps the smallest raw value to
-                    # 1.0 and the largest to 0.0 (identical to inverting
-                    # afterwards), but keeps the identical-values edge case
-                    # on the equal (full) baseline weight from constant_fill.
-                    # Inverting after normalising would turn that neutral
-                    # 1.0 into an all-zero weight vector and crash
-                    # np.average with "Weights sum to zero".
-                    if direction == "lower_better":
-                        column_data = -column_data
+                # Extract raw data
+                column_data = self.evaluated_combination_df[col_name].astype(float)
 
-                    # Min-Max Normalization to a 0.0 - 1.0 scale. Edge case:
-                    # if all values are identical, give them equal (full)
-                    # baseline weight rather than 0.
-                    norm_data = _min_max_normalize(column_data, constant_fill=1.0)
+                # A NaN here would silently poison the whole compound
+                # weight vector (NaN * weight propagates through
+                # np.average into every score), so fail loudly instead.
+                # NaNs usually mean the weighted dataset (equity or
+                # additional data) doesn't cover every demand location.
+                if column_data.isna().any():
+                    raise ValueError(
+                        f"Cannot weight by '{label}': "
+                        f"{int(column_data.isna().sum())} demand row(s) "
+                        f"have missing values in '{col_name}'. This "
+                        "usually means the dataset does not cover every "
+                        "demand location. Please fill or filter the "
+                        f"missing values, or remove '{label}' from the "
+                        "weights dict."
+                    )
 
-                    # Accumulate the normalized, directional weight
-                    compound_weights += norm_data * weight
+                # Handle directionality by negating BEFORE normalising: for
+                # lower_better this maps the smallest raw value to 1.0 and
+                # the largest to 0.0 (identical to inverting afterwards),
+                # but keeps the identical-values edge case on the equal
+                # (full) baseline weight from constant_fill. Inverting
+                # after normalising would turn that neutral 1.0 into an
+                # all-zero weight vector and crash np.average with
+                # "Weights sum to zero".
+                if direction == "lower_better":
+                    column_data = -column_data
+
+                # Min-Max Normalization to a 0.0 - 1.0 scale. Edge case: if
+                # all values are identical, give them equal (full) baseline
+                # weight rather than 0.
+                norm_data = _min_max_normalize(column_data, constant_fill=1.0)
+
+                # Accumulate the normalized, directional weight
+                compound_weights += norm_data * weight
 
             # Calculate the final composite weighted average across all objectives
             self.weighted_average = np.average(

@@ -581,14 +581,24 @@ class SiteProblem(
         # Normalise weights to ensure they sum to exactly 1.0
         # This safely handles {"demand": 80, "equity": 20} -> {"demand": 0.8, "equity": 0.2}
         #
-        # The "cost" key is canonicalised to lowercase here because every
-        # downstream consumer (site_solvers.py, utils._apply_cost_weighting)
-        # looks it up via an exact-case weights.get("cost", ...), even though
-        # the validation above accepts it case-insensitively -- without this,
-        # a differently-cased key like "Cost" would pass validation but
-        # silently never influence the solution.
+        # "demand", "equity", and "cost" are canonicalised to lowercase here
+        # because every downstream consumer (site_solutions.py,
+        # site_solvers.py, utils._apply_cost_weighting) looks them up via
+        # exact-case comparisons/lookups, even though the missing-key
+        # validation below accepts all three case-insensitively -- without
+        # this, a differently-cased key like "Demand" or "Equity" would pass
+        # validation but then silently fail to match any known column,
+        # leaving the compound row weights all zero and crashing
+        # np.average with "Weights sum to zero". Additional-data labels are
+        # user-defined exact strings (not built-in keywords) and are
+        # deliberately left untouched -- they are matched case-sensitively
+        # on both sides (here and in site_solutions.py).
+        _canonical_weight_keys = {"demand", "equity", "cost"}
         normalised_weights = {
-            ("cost" if col.lower() == "cost" else col): float(weight) / total_weight
+            (col.lower() if col.lower() in _canonical_weight_keys else col): float(
+                weight
+            )
+            / total_weight
             for col, weight in weights.items()
         }
 
