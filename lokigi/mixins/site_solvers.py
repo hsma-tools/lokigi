@@ -1,6 +1,7 @@
 from lokigi.utils import (
     _generate_all_combinations,
     _get_ranking_by_objective,
+    _get_required_site_indices,
     _too_similar_to_accepted,
     _apply_cost_weighting,
 )
@@ -39,10 +40,63 @@ class BruteForceMixin:
         threshold_for_coverage=None,
     ):
 
-        if brute_force_keep_best_n is not None:
+        # Greedy and GRASP already fail fast with a clear message when
+        # required sites can't fit in p; brute-force had no equivalent
+        # check and instead silently filtered every combination out in
+        # _generate_all_combinations below, falling through to the
+        # generic "No feasible solutions" guard in site.py -- whose
+        # wording ("checking that p does not exceed the number of
+        # candidate sites") is wrong for this case.
+        required_site_indices = _get_required_site_indices(self)
+        if len(required_site_indices) > p:
+            raise ValueError(
+                f"{len(required_site_indices)} sites are marked as required "
+                f"in '{self._candidate_sites_required_sites_col}', but p={p}. "
+                "Increase p to at least the number of required sites."
+            )
+
+        keep_n_active = (
+            brute_force_keep_best_n is not None or brute_force_keep_worst_n is not None
+        )
+
+        # _apply_cost_weighting does batch-relative min-max normalization: it
+        # needs to see every combination's ranking value and total_cost at
+        # once to normalise either meaningfully. That's incompatible with
+        # keep_best_n/keep_worst_n's streaming heap below, which prunes to N
+        # using the raw, pre-cost ranking value one combination at a time --
+        # a combination with a mediocre raw ranking but a low cost could be
+        # the true cost-weighted best, yet never survive the heap because
+        # cost is never considered until after _brute_force returns. So
+        # whenever cost weighting is actually requested, keep_best_n/
+        # keep_worst_n fall back to materialising every combination (the
+        # same way the "keep everything" path already does) and only prune
+        # AFTER cost has been blended in over the full batch. This trades
+        # away keep_best_n/keep_worst_n's memory-saving benefit for
+        # correctness whenever cost weighting is active; BRUTE_FORCE_WARN_
+        # THRESHOLD/BRUTE_FORCE_LIMIT above still guard against unbounded
+        # memory use either way.
+        use_cost_weighting = bool(weights) and weights.get("cost", 0) > 0
+        stream_top_n = keep_n_active and not use_cost_weighting
+
+        if keep_n_active and use_cost_weighting:
+            warn(
+                "brute_force_keep_best_n/brute_force_keep_worst_n was "
+                "requested together with a cost weight (weights['cost']). "
+                "Pruning to the top/bottom N using the raw ranking value, "
+                "before cost is blended in, could discard the true cost-"
+                "weighted best/worst combination. To stay correct, every "
+                "combination is being evaluated and held in memory so cost "
+                "weighting can be applied over the full set before pruning "
+                "-- this forgoes keep_best_n/keep_worst_n's usual memory-"
+                "saving benefit for this run.",
+                UserWarning,
+                stacklevel=2,
+            )
+
+        if stream_top_n and brute_force_keep_best_n is not None:
             top_n_heap = []  # To store the smallest scores (best)
             # print(f"Keeping top {brute_force_keep_best_n}")
-        if brute_force_keep_worst_n is not None:
+        if stream_top_n and brute_force_keep_worst_n is not None:
             bottom_n_heap = []  # To store the largest scores (worst)
             # print(f"Keeping worst {brute_force_keep_worst_n}")
 
@@ -72,12 +126,19 @@ class BruteForceMixin:
 
         outputs = []
 
+        # mclp's ranking column (coverage proportion) is higher-is-better,
+        # while every other objective's ranking column is lower-is-better.
+        higher_is_better = objectives == "mclp"
+
         if show_progress:
             possible_combinations = tqdm(possible_combinations)
 
         for possible_solution in possible_combinations:
-            if brute_force_keep_best_n is None and brute_force_keep_worst_n is None:
-                # Keep all results
+            if not stream_top_n:
+                # Keep all results -- either because no pruning was
+                # requested, or because cost weighting is active and every
+                # combination must be materialised before pruning (see
+                # `use_cost_weighting` above).
                 single_solution_metrics = (
                     self.evaluate_single_solution_single_objective(
                         site_indices=possible_solution,
@@ -99,10 +160,18 @@ class BruteForceMixin:
                 metrics = self.evaluate_single_solution_single_objective(
                     site_indices=possible_solution,
                     objective=objectives,
+                    threshold_for_coverage=threshold_for_coverage,
                     weights=weights,
                 ).return_solution_metrics()
 
-                score = metrics[rank_best_n_on]
+                raw_score = metrics[rank_best_n_on]
+                # Normalise so lower always means better: the heaps below
+                # keep the N smallest scores as "best" and the N largest as
+                # "worst", which only holds for minimising objectives.
+                # Negating mclp's coverage proportion lets the same heap
+                # logic serve both directions -- without this, keep_best_n
+                # for mclp retained the WORST-coverage combinations.
+                score = -raw_score if higher_is_better else raw_score
                 max_value = metrics["max"]
 
                 if max_value_cutoff is None or (
@@ -126,8 +195,50 @@ class BruteForceMixin:
                                 bottom_n_heap, (score, next(tie_breaker), metrics)
                             )
 
-        if brute_force_keep_best_n is None and brute_force_keep_worst_n is None:
+        if not keep_n_active:
             return outputs
+
+        if use_cost_weighting:
+            # `outputs` was fully materialised above (the `not stream_top_n`
+            # branch), so cost weighting can be applied once, correctly,
+            # over the whole batch, and only then pruned to N.
+            if not outputs:
+                return []
+
+            outputs_df = pd.DataFrame(outputs)
+            outputs_df, score_col = _apply_cost_weighting(
+                outputs_df,
+                ranking_col=rank_best_n_on,
+                weights=weights,
+                higher_is_better=higher_is_better,
+            )
+
+            # _apply_cost_weighting's blended "composite_score" is always on
+            # a lower-is-better scale regardless of the underlying
+            # objective's direction -- but only when it actually blends. It
+            # no-ops (score_col == rank_best_n_on unchanged) when it lacks
+            # usable cost data, in which case the raw ranking column keeps
+            # its own direction (higher-is-better for mclp).
+            best_is_smallest = not (score_col == rank_best_n_on and higher_is_better)
+
+            result_frames = []
+            if brute_force_keep_best_n is not None:
+                result_frames.append(
+                    outputs_df.nsmallest(brute_force_keep_best_n, score_col)
+                    if best_is_smallest
+                    else outputs_df.nlargest(brute_force_keep_best_n, score_col)
+                )
+            if brute_force_keep_worst_n is not None:
+                result_frames.append(
+                    outputs_df.nlargest(brute_force_keep_worst_n, score_col)
+                    if best_is_smallest
+                    else outputs_df.nsmallest(brute_force_keep_worst_n, score_col)
+                )
+
+            combined = (
+                pd.concat(result_frames) if len(result_frames) > 1 else result_frames[0]
+            )
+            return combined.to_dict("records")
         else:
             # Reconstruct the 'outputs' list
             # Extract dictionaries from heaps and sort them
@@ -157,13 +268,28 @@ class GreedyMixin:
         weights,
         show_progress: bool = False,
         threshold_for_coverage=None,
+        max_value_cutoff=None,
     ):
         ranking = _get_ranking_by_objective(objective=objectives)
 
-        # Loop through
-        best_indices = []
+        # Greedy grows the solution one site at a time, but every size-i
+        # combination is also filtered to contain ALL required sites -- so
+        # with two or more required sites, the early steps (i < n_required)
+        # had no valid combinations at all and crashed on the empty result.
+        # Seed the build with the required sites instead, and start the
+        # loop at that size (its first step then just evaluates the
+        # required set itself before free choices begin).
+        required_site_indices = _get_required_site_indices(self)
+        if len(required_site_indices) > p:
+            raise ValueError(
+                f"{len(required_site_indices)} sites are marked as required "
+                f"in '{self._candidate_sites_required_sites_col}', but p={p}. "
+                "Increase p to at least the number of required sites."
+            )
 
-        loop_iterations = range(1, p + 1)
+        best_indices = list(required_site_indices)
+
+        loop_iterations = range(max(1, len(required_site_indices)), p + 1)
         if show_progress:
             loop_iterations = tqdm(loop_iterations)
 
@@ -173,7 +299,7 @@ class GreedyMixin:
                 n_facilities=self.total_n_sites,
                 p=i,
                 site_problem=self,
-                force_include_indices=None if i == 1 else list(best_indices),
+                force_include_indices=list(best_indices) if best_indices else None,
             )
 
             # print(f"Possible combinations: {possible_combinations}")
@@ -196,6 +322,26 @@ class GreedyMixin:
             outputs_df = pd.DataFrame(outputs)
             higher_is_better = objectives == "mclp"
 
+            # The max-value cutoff (hybrid objectives) is a constraint on
+            # the FINAL solution only: with fewer than p sites the
+            # worst-case travel is usually still shrinking, so filtering
+            # intermediate steps would wrongly rule everything out. At the
+            # final step, keep only combinations meeting the cutoff so the
+            # guarantee the hybrid objectives promise actually holds for
+            # whatever is returned.
+            if max_value_cutoff is not None and i == p:
+                outputs_df = outputs_df[outputs_df["max"] <= max_value_cutoff]
+                if len(outputs_df) == 0:
+                    raise ValueError(
+                        f"Greedy search found no combination of {p} sites "
+                        f"meeting max_value_cutoff={max_value_cutoff}, given "
+                        "the sites fixed at earlier steps "
+                        f"({sorted(int(s) for s in best_indices)}). Greedy "
+                        "never revisits earlier choices, so a feasible "
+                        "solution may still exist -- try search_strategy="
+                        "'brute-force' or 'grasp', or relax the cutoff."
+                    )
+
             if weights and weights.get("cost", 0) > 0:
                 outputs_df, score_col = _apply_cost_weighting(
                     outputs_df,
@@ -203,10 +349,20 @@ class GreedyMixin:
                     weights=weights,
                     higher_is_better=higher_is_better,
                 )
-                sort_ascending = [True, True]
             else:
                 score_col = ranking
-                sort_ascending = [not higher_is_better, True]
+
+            # _apply_cost_weighting only blends onto its lower-is-better
+            # "composite_score" scale when it actually has usable cost data
+            # to blend (a positive cost weight is not enough on its own --
+            # it also no-ops, returning score_col == ranking unchanged, when
+            # e.g. every candidate's total_cost is NaN). Assuming "cost
+            # weight requested" implies "blended, therefore ascending" was
+            # wrong: for a higher-is-better objective (mclp) whose cost
+            # weighting silently no-ops, sorting ascending on the raw
+            # ranking column picks the WORST combination as "best".
+            blended = score_col != ranking
+            sort_ascending = [True, True] if blended else [not higher_is_better, True]
 
             evaluated_solutions = outputs_df.sort_values(
                 [score_col, "weighted_average"], ascending=sort_ascending
@@ -261,6 +417,7 @@ class GraspMixin:
         is_minimization: bool = True,  # Flag for sort order & thresholding
         local_search_chance=0.8,  # Chance that local searching will happen to improve found solution
         max_swap_count_local_search=10,
+        max_value_cutoff=None,
     ):
         """
         GRASP (Greedy Randomised Adaptive Search Procedure) for finding multiple
@@ -270,9 +427,43 @@ class GraspMixin:
         ranking = _get_ranking_by_objective(objective=objectives)
         all_site_indices = list(range(self.total_n_sites))
 
-        min_jaccard_distance = float(min_sites_different) / float(p)
+        # Brute force and greedy enforce required_sites_col through
+        # _generate_all_combinations, but GRASP builds solutions
+        # incrementally and never calls it -- so required sites must be
+        # pinned here: seeded into every construction, and protected from
+        # being swapped out during local search.
+        required_site_indices = _get_required_site_indices(self)
+        required_site_set = set(required_site_indices)
+        if len(required_site_indices) > p:
+            raise ValueError(
+                f"{len(required_site_indices)} sites are marked as required "
+                f"in '{self._candidate_sites_required_sites_col}', but p={p}. "
+                "Increase p to at least the number of required sites."
+            )
 
-        total_combinations = math.comb(self.total_n_sites, p)
+        # min_sites_different (m) means "any two accepted solutions must
+        # differ in at least m of their p site positions", i.e. their
+        # intersection size k must satisfy p - k >= m, i.e. k <= p - m.
+        # For two same-size (p) sets with intersection k, Jaccard distance
+        # is 2(p-k) / (2p-k) -- NOT the plain fraction m/p this used to use.
+        # Solving for the distance at the exact boundary k = p - m (the
+        # most-similar pair that should still be ACCEPTED) gives
+        # 2m / (p + m), which is strictly larger than m/p whenever m > 1
+        # and p > m. The old, smaller m/p threshold rejected fewer
+        # candidates than intended: for m >= 3 (and p large enough
+        # relative to m, e.g. p >= 6 at m=3), pairs differing in only m-1
+        # sites -- one site too similar -- were wrongly accepted as
+        # "diverse enough".
+        min_jaccard_distance = (2.0 * float(min_sites_different)) / (
+            float(p) + float(min_sites_different)
+        )
+
+        # Only the non-required slots are free to vary, so that's the true
+        # size of the search space the attempt budget is drawn from.
+        total_combinations = math.comb(
+            self.total_n_sites - len(required_site_indices),
+            p - len(required_site_indices),
+        )
         if max_attempts == "default":
             max_attempts = min(num_solutions * 20, total_combinations)
 
@@ -309,11 +500,11 @@ class GraspMixin:
             # ---------------------------------------------------------------
             # CONSTRUCTION PHASE
             # ---------------------------------------------------------------
-            current_solution: list[int] = []
-            current_solution_set: set[int] = set()
+            current_solution: list[int] = list(required_site_indices)
+            current_solution_set: set[int] = set(current_solution)
             construction_failed = False
 
-            for step in range(p):
+            for step in range(p - len(required_site_indices)):
                 remaining_sites = [
                     s for s in all_site_indices if s not in current_solution_set
                 ]
@@ -346,7 +537,19 @@ class GraspMixin:
                         weights=weights,
                         higher_is_better=not is_minimization,
                     )
-                    scores_minimized = True
+                    # _apply_cost_weighting only blends onto its
+                    # lower-is-better "composite_score" scale when it has
+                    # usable cost data to blend -- a positive cost weight
+                    # alone isn't enough, it also no-ops (score_col ==
+                    # ranking unchanged) when e.g. every candidate's
+                    # total_cost is NaN. Assuming "cost requested" implies
+                    # "blended, therefore minimised" was wrong: for a
+                    # maximising objective (mclp) whose cost weighting
+                    # silently no-ops, treating its raw score as
+                    # lower-is-better picks the WORST candidates for the RCL.
+                    scores_minimized = (
+                        True if score_col != ranking else is_minimization
+                    )
                     candidate_scores: list[tuple[float, float, int]] = list(
                         zip(
                             candidates_df[score_col],
@@ -424,6 +627,8 @@ class GraspMixin:
                         # Lazy pairwise first-improvement scan (unchanged from
                         # before cost weighting was introduced).
                         for old_site in current_solution:
+                            if old_site in required_site_set:
+                                continue
                             for new_site in outside_sites:
                                 candidate = [
                                     s for s in current_solution if s != old_site
@@ -473,6 +678,8 @@ class GraspMixin:
                         ]
                         swap_candidates = []
                         for old_site in current_solution:
+                            if old_site in required_site_set:
+                                continue
                             for new_site in outside_sites:
                                 candidate = [
                                     s for s in current_solution if s != old_site
@@ -496,28 +703,27 @@ class GraspMixin:
                             # _apply_cost_weighting: it inverts the raw
                             # ranking column into "badness" (0=best) before
                             # blending in cost, and the returned score_col
-                            # ("composite_score") is unconditionally on that
-                            # same lower-is-better, 0-is-best scale --
-                            # regardless of whether the underlying objective
-                            # is minimized (e.g. weighted_average) or
-                            # maximized (e.g. mclp's coverage proportion).
-                            #
-                            # That's why the comparison below is a plain "<"
-                            # with no is_minimization/higher_is_better branch,
-                            # unlike the raw-metric comparison in the
-                            # non-cost branch above. Do NOT wrap it in an
-                            # `if is_minimization: ... else: ...` to mirror
-                            # that branch -- the direction has already been
-                            # normalized once by _apply_cost_weighting, and
-                            # inverting it a second time here would make this
-                            # code pick the worst swap instead of the best
-                            # one for every maximizing objective (mclp).
+                            # ("composite_score") is on that same
+                            # lower-is-better, 0-is-best scale regardless of
+                            # whether the underlying objective is minimized
+                            # (e.g. weighted_average) or maximized (e.g.
+                            # mclp's coverage proportion) -- BUT ONLY when
+                            # it actually blends. _apply_cost_weighting also
+                            # no-ops (returns score_col == ranking_col
+                            # unchanged) when it lacks usable cost data to
+                            # blend (e.g. every candidate's total_cost is
+                            # NaN), in which case score_col is back on the
+                            # ORIGINAL objective's natural scale, and a
+                            # blind "<" would pick the worst swap instead of
+                            # the best one for a maximizing objective (mclp)
+                            # whose cost weighting silently no-op'd.
                             batch_df, score_col = _apply_cost_weighting(
                                 pd.DataFrame(rows),
                                 ranking_col=ranking,
                                 weights=weights,
                                 higher_is_better=not is_minimization,
                             )
+                            blended = score_col != ranking
                             current_score = batch_df.iloc[0][score_col]
                             current_secondary_score = batch_df.iloc[0][
                                 "weighted_average"
@@ -536,14 +742,35 @@ class GraspMixin:
                             for i, row in batch_df.iloc[1:].reset_index(
                                 drop=True
                             ).iterrows():
-                                if (row[score_col], row["weighted_average"]) < (
-                                    current_score,
-                                    current_secondary_score,
-                                ):
+                                candidate_score = (
+                                    row[score_col],
+                                    row["weighted_average"],
+                                )
+                                current = (current_score, current_secondary_score)
+                                is_better = (
+                                    candidate_score < current
+                                    if (blended or is_minimization)
+                                    else candidate_score > current
+                                )
+                                if is_better:
                                     current_solution = swap_candidates[i]
                                     current_solution_set = set(current_solution)
                                     improved = True
                                     break
+
+            # ---------------------------------------------------------------
+            # FEASIBILITY CHECK (hybrid objectives' max-value cutoff)
+            # ---------------------------------------------------------------
+            # Judged on the finished (post-local-search) solution: with
+            # fewer than p sites mid-construction, the worst-case travel is
+            # usually still shrinking, so only the final form is checked.
+            # A rejected solution costs an attempt, like a diversity reject.
+            if max_value_cutoff is not None:
+                candidate_metrics = _get_cached_metrics(
+                    tuple(sorted(current_solution))
+                )
+                if candidate_metrics["max"] > max_value_cutoff:
+                    continue
 
             # ---------------------------------------------------------------
             # DIVERSITY CHECK

@@ -201,7 +201,9 @@ class SiteProblemHotspotCalculationMixin:
                 df[df_merge_col].isin(ctx.demand_data[ctx._demand_data_id_col].unique())
             ]
 
-            if ctx._equity_data_direction == "higher_is_worse":
+            # Analysis columns are oriented so higher = more advantaged;
+            # negate when the disadvantaged end of the scale is the high end.
+            if ctx._equity_data_disadvantaged_end == "high":
                 analysis_col = f"_{df_col}_analysis"
                 df[analysis_col] = -df[df_col]
                 df_col = analysis_col
@@ -220,7 +222,7 @@ class SiteProblemHotspotCalculationMixin:
             ]
 
             equity_col = ctx._equity_data_equity_col
-            if ctx._equity_data_direction == "higher_is_worse":
+            if ctx._equity_data_disadvantaged_end == "high":
                 equity_df["_equity_directed"] = -equity_df[equity_col]
             else:
                 equity_df["_equity_directed"] = equity_df[equity_col]
@@ -407,7 +409,7 @@ class SiteSolutionHotspotCalculationMixin(SiteProblemHotspotCalculationMixin):
     - ``"travel_demand"`` : combined minimum travel time + demand.
     - ``"travel_equity"`` : combined minimum travel time + equity (IMD etc.).
 
-    In all travel-time cases, ``min_cost`` is treated as ``higher_is_worse``
+    In all travel-time cases, higher ``min_cost`` is treated as worse
     (lower travel time = better access), so the negation is applied
     automatically before any combination or Moran's I calculation.
 
@@ -593,7 +595,7 @@ class SiteSolutionHotspotCalculationMixin(SiteProblemHotspotCalculationMixin):
             equity_df = ctx.equity_data.copy()
             equity_col = ctx._equity_data_equity_col
 
-            if ctx._equity_data_direction == "higher_is_worse":
+            if ctx._equity_data_disadvantaged_end == "high":
                 equity_df["_equity_directed"] = -equity_df[equity_col]
             else:
                 equity_df["_equity_directed"] = equity_df[equity_col]

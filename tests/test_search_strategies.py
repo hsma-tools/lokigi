@@ -229,3 +229,467 @@ def test_brute_force_keep_best_n_handles_exact_score_ties(tied_score_problem):
     )
 
     assert len(result.solution_df) == 2
+
+
+# --- Brute force keep_best_n / keep_worst_n: mclp direction and coverage ---
+
+
+def test_keep_best_n_for_mclp_retains_the_highest_coverage_combinations(
+    five_site_problem,
+):
+    """Two stacked bugs previously broke keep_best_n for mclp: the keep-n
+    branch of `_brute_force` never passed threshold_for_coverage to its
+    evaluations (so every candidate scored coverage 0.0 and the heap
+    ranked noise), and the heaps assumed lower-is-better (so even with
+    real scores, keep_best_n retained the LOWEST-coverage combinations).
+    The kept set must match the top of a full brute-force run."""
+    full = five_site_problem.solve(
+        p=2,
+        objectives="mclp",
+        search_strategy="brute-force",
+        show_progress=False,
+        threshold_for_coverage=15,
+    )
+    full_coverages = sorted(
+        full.solution_df["proportion_within_coverage_threshold"], reverse=True
+    )
+
+    kept = five_site_problem.solve(
+        p=2,
+        objectives="mclp",
+        search_strategy="brute-force",
+        show_progress=False,
+        threshold_for_coverage=15,
+        brute_force_keep_best_n=3,
+    )
+    kept_coverages = sorted(
+        kept.solution_df["proportion_within_coverage_threshold"], reverse=True
+    )
+
+    assert len(kept.solution_df) == 3
+    assert kept_coverages == pytest.approx(full_coverages[:3])
+    # The overall best solution must survive the pruning and rank first
+    assert kept.solution_df.iloc[0][
+        "proportion_within_coverage_threshold"
+    ] == pytest.approx(full_coverages[0])
+    # ... and the real threshold must have been used, not silently dropped
+    assert (kept.solution_df["coverage_threshold"] == 15).all()
+
+
+def test_keep_worst_n_for_mclp_retains_the_lowest_coverage_combinations(
+    five_site_problem,
+):
+    full = five_site_problem.solve(
+        p=2,
+        objectives="mclp",
+        search_strategy="brute-force",
+        show_progress=False,
+        threshold_for_coverage=15,
+    )
+    full_coverages = sorted(full.solution_df["proportion_within_coverage_threshold"])
+
+    kept = five_site_problem.solve(
+        p=2,
+        objectives="mclp",
+        search_strategy="brute-force",
+        show_progress=False,
+        threshold_for_coverage=15,
+        brute_force_keep_worst_n=3,
+    )
+    kept_coverages = sorted(kept.solution_df["proportion_within_coverage_threshold"])
+
+    assert len(kept.solution_df) == 3
+    assert kept_coverages == pytest.approx(full_coverages[:3])
+
+
+def test_keep_best_n_reports_coverage_metrics_for_minimising_objectives(
+    five_site_problem,
+):
+    """threshold_for_coverage is a reporting metric for non-mclp
+    objectives, but the keep-n branch previously dropped it, silently
+    zeroing the coverage columns of whatever was returned. The kept rows'
+    coverage must match the full run's values for the same site sets."""
+    full = five_site_problem.solve(
+        p=2,
+        objectives="p_median",
+        search_strategy="brute-force",
+        show_progress=False,
+        threshold_for_coverage=15,
+    )
+    full_coverage_by_sites = {
+        tuple(row["site_names"]): row["proportion_within_coverage_threshold"]
+        for _, row in full.solution_df.iterrows()
+    }
+
+    kept = five_site_problem.solve(
+        p=2,
+        objectives="p_median",
+        search_strategy="brute-force",
+        show_progress=False,
+        threshold_for_coverage=15,
+        brute_force_keep_best_n=2,
+    )
+
+    assert (kept.solution_df["coverage_threshold"] == 15).all()
+    for _, row in kept.solution_df.iterrows():
+        assert row["proportion_within_coverage_threshold"] == pytest.approx(
+            full_coverage_by_sites[tuple(row["site_names"])]
+        )
+
+
+# --- Brute force keep_best_n / keep_worst_n with cost weighting active ---
+#
+# `_brute_force`'s keep_best_n/keep_worst_n heap prunes to N using the raw,
+# pre-cost ranking value one combination at a time. Cost weighting only
+# gets applied afterwards, over whatever tiny subset the heap let survive
+# -- so a combination that only looks good once cost is blended in, but has
+# a mediocre raw ranking, was silently discarded before cost was ever
+# considered. Whenever a positive "cost" weight is active, keep_best_n/
+# keep_worst_n must instead materialise every combination and blend cost in
+# over the full batch before pruning.
+
+
+def test_brute_force_keep_best_n_with_cost_weighting_retains_the_true_cost_weighted_best(
+    cost_weighted_pruning_problem,
+):
+    """Site_Cheap has the worst raw weighted_average (15.0, dead last of 4)
+    but becomes the true cost-weighted best once a heavy cost weight is
+    applied. keep_best_n=1 must still find it, not whatever the raw-ranking
+    heap would have kept."""
+    full = cost_weighted_pruning_problem.solve(
+        p=1,
+        objectives="p_median",
+        search_strategy="brute-force",
+        show_progress=False,
+        weights={"demand": 0.05, "cost": 0.95},
+    )
+    assert full.solution_df.iloc[0]["site_names"] == ["Site_Cheap"]
+
+    with pytest.warns(UserWarning, match="brute_force_keep_best_n"):
+        pruned = cost_weighted_pruning_problem.solve(
+            p=1,
+            objectives="p_median",
+            search_strategy="brute-force",
+            show_progress=False,
+            weights={"demand": 0.05, "cost": 0.95},
+            brute_force_keep_best_n=1,
+        )
+
+    assert pruned.solution_df.iloc[0]["site_names"] == ["Site_Cheap"]
+
+
+def test_brute_force_keep_worst_n_with_cost_weighting_retains_the_true_cost_weighted_worst(
+    cost_weighted_pruning_problem,
+):
+    """Site_Mid is the true cost-weighted worst: unlike Site_Fast1/Fast2, it
+    is bad on BOTH dimensions at once (a mediocre 12.0 raw travel time, on
+    top of the same 1000.0 build_cost) which, once blended
+    (composite_score = 0.05*primary_badness + 0.95*cost_badness), gives it
+    a worse composite_score (~0.984) than Fast1 (~0.949) or Fast2
+    (~0.954). keep_worst_n=1 must find Site_Mid, not whatever the
+    raw-ranking heap (which only sees Site_Mid's better-than-Cheap raw
+    travel time) would have kept."""
+    with pytest.warns(UserWarning, match="brute_force_keep_worst_n"):
+        pruned = cost_weighted_pruning_problem.solve(
+            p=1,
+            objectives="p_median",
+            search_strategy="brute-force",
+            show_progress=False,
+            weights={"demand": 0.05, "cost": 0.95},
+            brute_force_keep_worst_n=1,
+        )
+
+    assert pruned.solution_df.iloc[0]["site_names"] == ["Site_Mid"]
+
+
+def test_brute_force_keep_best_n_and_keep_worst_n_combined_with_cost_weighting(
+    cost_weighted_pruning_problem,
+):
+    """Both flags set at once should still return best + worst, correctly
+    cost-weighted, via the same code path (mixins/site_solvers.py's
+    `best_list + worst_list` / concatenated-DataFrame return contract):
+    Site_Cheap (best) and Site_Mid (worst, see the keep_worst_n test
+    above)."""
+    with pytest.warns(UserWarning):
+        result = cost_weighted_pruning_problem.solve(
+            p=1,
+            objectives="p_median",
+            search_strategy="brute-force",
+            show_progress=False,
+            weights={"demand": 0.05, "cost": 0.95},
+            brute_force_keep_best_n=1,
+            brute_force_keep_worst_n=1,
+        )
+
+    kept_site_names = {row["site_names"][0] for _, row in result.solution_df.iterrows()}
+    assert len(result.solution_df) == 2
+    assert kept_site_names == {"Site_Cheap", "Site_Mid"}
+
+
+def test_brute_force_cost_weighted_keep_best_n_matches_full_run_top_n(
+    cost_weighted_five_site_problem,
+):
+    """On a larger (10-combination) adversarial search space, a pruned
+    cost-weighted keep_best_n=N run must retain exactly the same top-N
+    combinations as a full, unpruned run -- identified by which sites were
+    picked, not by comparing composite_score values directly: solve()
+    redundantly re-applies cost weighting once more, over just the
+    returned subset, for final display ordering (see
+    `_solve_pmedian_pcenter_mclp_problem`), which renormalizes the score
+    scale without changing which combinations were selected."""
+    weights = {"demand": 0.3, "cost": 0.7}
+
+    full = cost_weighted_five_site_problem.solve(
+        p=2,
+        objectives="p_median",
+        search_strategy="brute-force",
+        show_progress=False,
+        weights=weights,
+    )
+    full_top_4_site_sets = {
+        frozenset(row["site_names"])
+        for _, row in full.solution_df.head(4).iterrows()
+    }
+
+    with pytest.warns(UserWarning, match="brute_force_keep_best_n"):
+        kept = cost_weighted_five_site_problem.solve(
+            p=2,
+            objectives="p_median",
+            search_strategy="brute-force",
+            show_progress=False,
+            weights=weights,
+            brute_force_keep_best_n=4,
+        )
+    kept_site_sets = {
+        frozenset(row["site_names"]) for _, row in kept.solution_df.iterrows()
+    }
+
+    assert len(kept.solution_df) == 4
+    assert kept_site_sets == full_top_4_site_sets
+
+
+def test_brute_force_cost_weighted_keep_best_n_respects_max_value_cutoff(
+    cost_weighted_five_site_problem,
+):
+    """max_value_cutoff filtering (infeasible combinations dropped during
+    collection) must still apply when cost weighting forces keep_best_n
+    into the full-materialization path."""
+    weights = {"demand": 0.3, "cost": 0.7}
+
+    full = cost_weighted_five_site_problem.solve(
+        p=2,
+        objectives="hybrid_p_median",
+        search_strategy="brute-force",
+        show_progress=False,
+        weights=weights,
+        max_value_cutoff=30,
+    )
+    assert (full.solution_df["max"] <= 30).all()
+
+    with pytest.warns(UserWarning, match="brute_force_keep_best_n"):
+        kept = cost_weighted_five_site_problem.solve(
+            p=2,
+            objectives="hybrid_p_median",
+            search_strategy="brute-force",
+            show_progress=False,
+            weights=weights,
+            max_value_cutoff=30,
+            brute_force_keep_best_n=2,
+        )
+
+    assert (kept.solution_df["max"] <= 30).all()
+    assert len(kept.solution_df) == 2
+
+
+def test_brute_force_cost_weighted_keep_best_n_handles_exact_score_ties(
+    tied_score_problem_with_cost,
+):
+    """Site_A and Site_B tie exactly on both weighted_average and
+    build_cost, so they also tie exactly on composite_score once cost is
+    blended in -- both scoring strictly worse than Site_C, so
+    keep_worst_n=2 must return exactly {Site_A, Site_B}. The pandas-based
+    (nsmallest/nlargest) cost-weighted path must handle this tie without
+    crashing, unlike the heap-based path's need for an explicit
+    tie-breaker."""
+    with pytest.warns(UserWarning, match="brute_force_keep_worst_n"):
+        result = tied_score_problem_with_cost.solve(
+            p=1,
+            objectives="p_median",
+            search_strategy="brute-force",
+            show_progress=False,
+            weights={"demand": 0.05, "cost": 0.95},
+            brute_force_keep_worst_n=2,
+        )
+
+    assert len(result.solution_df) == 2
+    assert set(row["site_names"][0] for _, row in result.solution_df.iterrows()) == {
+        "Site_A",
+        "Site_B",
+    }
+
+
+# --- Brute force keep_best_n / keep_worst_n: cost-fallback warning presence ---
+#
+# The warning is meant to fire exactly when BOTH keep_best_n/keep_worst_n
+# AND a positive cost weight are active together (the combination that
+# forces `_brute_force` to give up keep_n's memory-saving benefit). It
+# must stay silent for every other combination: keep_n alone, cost
+# weighting alone, or a "cost" key present but weighted at 0.
+
+
+def _cost_fallback_warnings(caught):
+    return [
+        w
+        for w in caught
+        if "was requested together with a cost weight" in str(w.message)
+    ]
+
+
+def test_warns_when_keep_best_n_and_cost_weighting_are_both_active(
+    cost_weighted_pruning_problem,
+):
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        cost_weighted_pruning_problem.solve(
+            p=1,
+            objectives="p_median",
+            search_strategy="brute-force",
+            show_progress=False,
+            weights={"demand": 0.05, "cost": 0.95},
+            brute_force_keep_best_n=1,
+        )
+
+    assert len(_cost_fallback_warnings(caught)) == 1
+
+
+def test_warns_when_keep_worst_n_and_cost_weighting_are_both_active(
+    cost_weighted_pruning_problem,
+):
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        cost_weighted_pruning_problem.solve(
+            p=1,
+            objectives="p_median",
+            search_strategy="brute-force",
+            show_progress=False,
+            weights={"demand": 0.05, "cost": 0.95},
+            brute_force_keep_worst_n=1,
+        )
+
+    assert len(_cost_fallback_warnings(caught)) == 1
+
+
+def test_warns_exactly_once_when_keep_best_n_and_keep_worst_n_are_both_active_with_cost_weighting(
+    cost_weighted_pruning_problem,
+):
+    """Both pruning flags set at once must still only warn once -- the
+    warning is about the fallback being triggered for this call, not one
+    per flag."""
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        cost_weighted_pruning_problem.solve(
+            p=1,
+            objectives="p_median",
+            search_strategy="brute-force",
+            show_progress=False,
+            weights={"demand": 0.05, "cost": 0.95},
+            brute_force_keep_best_n=1,
+            brute_force_keep_worst_n=1,
+        )
+
+    assert len(_cost_fallback_warnings(caught)) == 1
+
+
+def test_no_cost_fallback_warning_when_keep_best_n_is_used_without_cost_weighting(
+    five_site_problem,
+):
+    """keep_best_n alone (no weights at all) must keep using the
+    memory-efficient streaming heap, silently -- the fallback and its
+    warning are specific to cost weighting being active."""
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        five_site_problem.solve(
+            p=2,
+            objectives="p_median",
+            search_strategy="brute-force",
+            show_progress=False,
+            brute_force_keep_best_n=3,
+        )
+
+    assert _cost_fallback_warnings(caught) == []
+
+
+def test_no_cost_fallback_warning_when_keep_worst_n_is_used_without_cost_weighting(
+    five_site_problem,
+):
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        five_site_problem.solve(
+            p=2,
+            objectives="p_median",
+            search_strategy="brute-force",
+            show_progress=False,
+            brute_force_keep_worst_n=3,
+        )
+
+    assert _cost_fallback_warnings(caught) == []
+
+
+def test_no_cost_fallback_warning_when_keep_n_is_used_with_a_demand_only_weight(
+    cost_weighted_pruning_problem,
+):
+    """A weights dict that omits "cost" entirely (even though the problem
+    has a cost_col configured) must not trigger the fallback -- only an
+    actual positive "cost" weight should."""
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        cost_weighted_pruning_problem.solve(
+            p=1,
+            objectives="p_median",
+            search_strategy="brute-force",
+            show_progress=False,
+            weights={"demand": 1.0},
+            brute_force_keep_best_n=1,
+        )
+
+    assert _cost_fallback_warnings(caught) == []
+
+
+def test_no_cost_fallback_warning_when_cost_weight_is_zero(
+    cost_weighted_pruning_problem,
+):
+    """weights={"cost": 0} is present but not "positive" -- the same
+    `weights.get("cost", 0) > 0` check used everywhere else in this
+    codebase for "is cost weighting actually active" must treat it as
+    inactive, leaving keep_best_n on the cheap streaming path."""
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        cost_weighted_pruning_problem.solve(
+            p=1,
+            objectives="p_median",
+            search_strategy="brute-force",
+            show_progress=False,
+            weights={"demand": 1.0, "cost": 0},
+            brute_force_keep_best_n=1,
+        )
+
+    assert _cost_fallback_warnings(caught) == []
+
+
+def test_no_cost_fallback_warning_when_cost_weighting_is_used_without_keep_n(
+    cost_weighted_pruning_problem,
+):
+    """Cost weighting alone (no keep_best_n/keep_worst_n at all) already
+    materialises every combination -- there is nothing to fall back from,
+    so no warning should fire."""
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        cost_weighted_pruning_problem.solve(
+            p=1,
+            objectives="p_median",
+            search_strategy="brute-force",
+            show_progress=False,
+            weights={"demand": 0.05, "cost": 0.95},
+        )
+
+    assert _cost_fallback_warnings(caught) == []

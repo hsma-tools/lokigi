@@ -38,7 +38,7 @@ class _Problem:
         self._equity_data_equity_col = None
         self._equity_data_common_col = None
         self._equity_data_label = None
-        self._equity_data_direction = None
+        self._equity_data_disadvantaged_end = None
 
         self.geo_lookup = None
         self._geo_lookup_data_type = None
@@ -87,11 +87,12 @@ class _Problem:
         equity_col,
         common_col,
         label,
-        direction: Literal["higher_is_better", "higher_is_worse"] = "higher_is_worse",
+        disadvantaged_end: Literal["low", "high"] | None = None,
         continuous_measure: bool = False,
         n_bins: int = 10,
         reverse: bool = False,
         verbose: bool = True,
+        direction: Literal["higher_is_better", "higher_is_worse"] | None = None,
     ):
         """
         Add a dataframe containing equity data into your problem.
@@ -116,23 +117,25 @@ class _Problem:
             A human-readable label for the equity metric (e.g., 'IMD Decile',
             'Age Group'). This is used internally for auto-generating plot
             titles and table headers.
-        direction : {"higher_is_better", "higher_is_worse"}, default "higher_is_better"
-            Indicates whether higher values of `equity_col` represent a more or
-            less advantaged group. This is stored as metadata and applied at
-            analysis time — it does not modify the stored data.
+        disadvantaged_end : {"low", "high"}, default "low"
+            Which end of the `equity_col` scale represents the most
+            disadvantaged (e.g. most deprived) regions. This is stored as
+            metadata and applied at analysis time — it does not modify the
+            stored data. Equity-aware weighting and analysis prioritise
+            whichever end you name here.
 
-            - ``"higher_is_better"`` : higher values indicate a more favourable
-            equity position (e.g. IMD decile 10 = least deprived under the
-            standard DLUHC 1–10 scale).
-            - ``"higher_is_worse"`` : higher values indicate greater disadvantage
+            - ``"low"`` : the lowest values are the most disadvantaged
+            (e.g. IMD decile 1 = most deprived under the standard DLUHC
+            1–10 scale).
+            - ``"high"`` : the highest values are the most disadvantaged
             (e.g. raw IMD score, where a higher score means more deprived;
             or a custom scale where 1 = least deprived).
 
             .. note::
                 IMD *deciles* as published by DLUHC run 1 (most deprived) to 10
                 (least deprived), so for pre-binned IMD decile columns use
-                ``direction="higher_is_better"``. For raw IMD *scores* (higher =
-                more deprived) use ``direction="higher_is_worse"``.
+                ``disadvantaged_end="low"``. For raw IMD *scores* (higher =
+                more deprived) use ``disadvantaged_end="high"``.
         continuous_measure : bool, default False
             If True, treats `equity_col` as continuous numerical data and
             uses quantile-based discretization to convert it into deciles (1-10).
@@ -152,6 +155,14 @@ class _Problem:
             governs downstream analysis rather than how bins are labelled.
         verbose: bool, default True
             If True, output additional warnings and messages
+        direction : {"higher_is_better", "higher_is_worse"}, optional
+            .. deprecated::
+                Use ``disadvantaged_end`` instead. ``"higher_is_better"``
+                (higher values = more advantaged, e.g. DLUHC IMD deciles)
+                maps to ``disadvantaged_end="low"``; ``"higher_is_worse"``
+                (higher values = more disadvantaged, e.g. raw IMD scores)
+                maps to ``disadvantaged_end="high"``. Passing both arguments
+                raises a ``ValueError``.
 
         Raises
         ------
@@ -166,6 +177,38 @@ class _Problem:
         this may result in fewer than 10 bins. The method handles this dynamically
         to ensure the resulting categories always start at 1.
         """
+        if direction is not None:
+            if disadvantaged_end is not None:
+                raise ValueError(
+                    "Please provide only 'disadvantaged_end' -- 'direction' is "
+                    "its deprecated alias, and passing both is ambiguous."
+                )
+            if direction not in ("higher_is_better", "higher_is_worse"):
+                raise ValueError(
+                    "direction must be one of 'higher_is_better' or "
+                    f"'higher_is_worse'. You provided '{direction}'."
+                )
+            warn(
+                "The 'direction' argument to add_equity_data() is deprecated. "
+                "Use disadvantaged_end='low' instead of "
+                "direction='higher_is_better' (lowest values = most deprived, "
+                "e.g. DLUHC IMD deciles), and disadvantaged_end='high' instead "
+                "of direction='higher_is_worse' (highest values = most "
+                "deprived, e.g. raw IMD scores).",
+                FutureWarning,
+                stacklevel=2,
+            )
+            disadvantaged_end = "low" if direction == "higher_is_better" else "high"
+        elif disadvantaged_end is None:
+            # DLUHC IMD deciles (1 = most deprived) are the most common input.
+            disadvantaged_end = "low"
+
+        if disadvantaged_end not in ("low", "high"):
+            raise ValueError(
+                "disadvantaged_end must be one of 'low' or 'high'. "
+                f"You provided '{disadvantaged_end}'."
+            )
+
         loaded_df, df_type = _load_spatial_or_tabular_data(equity_data)
 
         if verbose:
@@ -217,7 +260,7 @@ class _Problem:
         self._equity_data_equity_col = equity_col
         self._equity_data_common_col = common_col
         self._equity_data_label = label
-        self._equity_data_direction = direction
+        self._equity_data_disadvantaged_end = disadvantaged_end
 
     def show_equity_data(self):
         return self.equity_data

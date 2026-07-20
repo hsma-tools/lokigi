@@ -1,8 +1,88 @@
+import json
+from pathlib import Path
+
 import pytest
 import lokigi
 import pandas as pd
 from shapely.geometry import Point
 import geopandas
+
+
+# --- Backtest snapshot machinery (see tests/test_backtests.py) ---
+#
+# Backtests pin solve()'s current output rather than independently deriving
+# it, so updating them by hand means re-running each case and re-typing
+# numbers into the test file. Instead, expected values live in
+# tests/backtest_snapshots.json, and `pytest --update-backtests` regenerates
+# that file from whatever solve() currently returns.
+
+BACKTEST_SNAPSHOT_PATH = Path(__file__).parent / "backtest_snapshots.json"
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--update-backtests",
+        action="store_true",
+        default=False,
+        help=(
+            "Regenerate tests/backtest_snapshots.json from solve()'s current "
+            "output instead of asserting against the stored snapshot. Use "
+            "after a deliberate change to solver behaviour; review the diff "
+            "before committing it."
+        ),
+    )
+
+
+@pytest.fixture(scope="session")
+def _backtest_snapshot_store(request):
+    if BACKTEST_SNAPSHOT_PATH.exists():
+        snapshots = json.loads(BACKTEST_SNAPSHOT_PATH.read_text())
+    else:
+        snapshots = {}
+    updates = {}
+    yield snapshots, updates, request.config.getoption("--update-backtests")
+    if updates:
+        snapshots.update(updates)
+        BACKTEST_SNAPSHOT_PATH.write_text(
+            json.dumps(snapshots, indent=2, sort_keys=True) + "\n"
+        )
+
+
+@pytest.fixture
+def assert_backtest(_backtest_snapshot_store, request):
+    """Compare a fingerprint (see test_backtests.py::_fingerprint) against its
+    stored snapshot, keyed by the calling test's node id. In
+    `--update-backtests` mode, records the current value to be written to
+    tests/backtest_snapshots.json once the session finishes instead."""
+    snapshots, updates, update_mode = _backtest_snapshot_store
+
+    def _normalize(value):
+        """Recursively convert tuples to lists so a freshly computed
+        fingerprint compares equal to one that's round-tripped through JSON
+        (which has no tuple type)."""
+        if isinstance(value, (tuple, list)):
+            return [_normalize(item) for item in value]
+        return value
+
+    def _assert(fingerprint):
+        key = request.node.name
+        normalized = _normalize(fingerprint)
+        if update_mode:
+            updates[key] = normalized
+            return
+        expected = snapshots.get(key)
+        assert expected is not None, (
+            f"No stored backtest snapshot for {key!r}. Run "
+            "`pytest tests/test_backtests.py --update-backtests` to create it, "
+            "then review tests/backtest_snapshots.json before committing."
+        )
+        assert normalized == expected, (
+            f"Backtest {key!r} drifted from its stored snapshot in "
+            "tests/backtest_snapshots.json. If this is an intentional solver "
+            "change, rerun with --update-backtests and review the diff."
+        )
+
+    return _assert
 
 
 @pytest.fixture
@@ -327,6 +407,138 @@ def tied_score_problem():
 
 
 @pytest.fixture
+def tied_score_problem_with_cost():
+    """
+    Same shape as `tied_score_problem` (Site_A and Site_B tie exactly on
+    weighted_average, both 15.0, with Site_C clearly better at 10.0), but
+    with a `build_cost` column added where Site_A and Site_B also share an
+    identical cost. That keeps them tied on `composite_score` even after
+    cost weighting is blended in, so the cost-weighted keep_best_n/
+    keep_worst_n path (pandas `nsmallest`/`nlargest`) can be checked for
+    the same exact-tie scenario that used to crash the heap-based path.
+    """
+    demand_df = pd.DataFrame(
+        {
+            "location_id": ["LSOA_1", "LSOA_2"],
+            "demand": [100, 100],
+        }
+    )
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": ["Site_A", "Site_B", "Site_C"],
+            "lat": [51.1, 51.2, 51.3],
+            "long": [-0.1, -0.2, -0.3],
+            "build_cost": [5.0, 5.0, 1.0],
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["LSOA_1", "LSOA_2"],
+            "Site_A": [10.0, 20.0],
+            "Site_B": [10.0, 20.0],
+            "Site_C": [5.0, 15.0],
+        }
+    )
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id", cost_col="build_cost")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+    return problem
+
+
+@pytest.fixture
+def cost_weighted_pruning_problem():
+    """
+    A 4-site/1-demand-point problem (p=1) built so that the combination
+    with the true cost-weighted-best score has the WORST raw (pre-cost)
+    weighted_average, dead last of 4:
+
+      Site_Fast1: travel=5,  build_cost=1000.0
+      Site_Fast2: travel=6,  build_cost=1000.0
+      Site_Mid:   travel=12, build_cost=1000.0
+      Site_Cheap: travel=15, build_cost=1.0    <- worst raw ranking, cheapest
+
+    With weights={"demand": 0.05, "cost": 0.95}, Site_Cheap is the true
+    winner once cost dominates -- but a brute_force_keep_best_n heap that
+    prunes on the raw ranking value (before cost is blended in) would
+    discard Site_Cheap immediately, since it ranks last of 4 on
+    weighted_average alone.
+    """
+    demand_df = pd.DataFrame(
+        {
+            "location_id": ["L1"],
+            "demand": [100],
+        }
+    )
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": ["Site_Fast1", "Site_Fast2", "Site_Mid", "Site_Cheap"],
+            "lat": [51.1, 51.2, 51.3, 51.4],
+            "long": [-0.1, -0.2, -0.3, -0.4],
+            "build_cost": [1000.0, 1000.0, 1000.0, 1.0],
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["L1"],
+            "Site_Fast1": [5.0],
+            "Site_Fast2": [6.0],
+            "Site_Mid": [12.0],
+            "Site_Cheap": [15.0],
+        }
+    )
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id", cost_col="build_cost")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+    return problem
+
+
+@pytest.fixture
+def cost_weighted_five_site_problem():
+    """
+    Like `five_site_problem` (5 sites, 4 demand points, p=2, 10 possible
+    combinations), but with a `build_cost` column added whose cheapest
+    sites are not the sites with the best raw travel times -- so
+    cost-weighted brute-force search is a genuinely different ranking than
+    the unweighted one, giving a non-trivial adversarial case for
+    comparing a pruned (brute_force_keep_best_n) run against a full run.
+    """
+    demand_df = pd.DataFrame(
+        {
+            "location_id": ["LSOA_1", "LSOA_2", "LSOA_3", "LSOA_4"],
+            "demand": [100, 100, 100, 100],
+        }
+    )
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": ["Site_1", "Site_2", "Site_3", "Site_4", "Site_5"],
+            "lat": [51.1, 51.2, 51.3, 51.4, 51.5],
+            "long": [-0.1, -0.2, -0.3, -0.4, -0.5],
+            "build_cost": [50.0, 10.0, 30.0, 5.0, 100.0],
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["LSOA_1", "LSOA_2", "LSOA_3", "LSOA_4"],
+            "Site_1": [38.0, 18.0, 10.0, 28.0],
+            "Site_2": [25.0, 40.0, 11.0, 31.0],
+            "Site_3": [24.0, 13.0, 29.0, 13.0],
+            "Site_4": [29.0, 16.0, 17.0, 16.0],
+            "Site_5": [17.0, 15.0, 17.0, 36.0],
+        }
+    )
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id", cost_col="build_cost")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+    return problem
+
+
+@pytest.fixture
 def hybrid_p_median_problem():
     """
     A 3-site/4-demand-point problem (p=2, 3 possible combinations) built so
@@ -457,13 +669,13 @@ def equity_df():
 @pytest.fixture
 def loaded_problem_with_equity(loaded_problem, equity_df):
     """`loaded_problem` with equity data wired in via add_equity_data().
-    IMD deciles: 10 = least deprived, so higher is better."""
+    IMD deciles: 1 = most deprived, so the disadvantaged end is low."""
     loaded_problem.add_equity_data(
         equity_df,
         equity_col="imd_decile",
         common_col="location_id",
         label="equity",
-        direction="higher_is_better",
+        disadvantaged_end="low",
     )
     return loaded_problem
 

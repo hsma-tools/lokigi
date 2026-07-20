@@ -15,13 +15,16 @@ from lokigi.site_solutions import EvaluatedCombination
 class _StubSiteProblem:
     """Minimal duck-typed stand-in -- EvaluatedCombination only reads
     _demand_data_demand_col (always) and _equity_data_equity_col/
-    _equity_data_direction (only if equity_data was actually configured)."""
+    _equity_data_disadvantaged_end (only if equity_data was actually
+    configured)."""
 
-    def __init__(self, demand_col="demand", equity_col=None, equity_direction=None):
+    def __init__(
+        self, demand_col="demand", equity_col=None, equity_disadvantaged_end=None
+    ):
         self._demand_data_demand_col = demand_col
         if equity_col is not None:
             self._equity_data_equity_col = equity_col
-            self._equity_data_direction = equity_direction
+            self._equity_data_disadvantaged_end = equity_disadvantaged_end
 
 
 @pytest.fixture
@@ -94,7 +97,7 @@ def test_coverage_by_equity_group_is_a_dict_not_a_tuple():
     result = _build(
         df,
         site_problem=_StubSiteProblem(
-            equity_col="equity_band", equity_direction="higher_is_better"
+            equity_col="equity_band", equity_disadvantaged_end="low"
         ),
     )
 

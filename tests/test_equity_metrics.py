@@ -64,7 +64,7 @@ def test_gap_relative_weighted_zero_baseline_guard():
         equity_col="imd_decile",
         common_col="location_id",
         label="equity",
-        direction="higher_is_better",
+        disadvantaged_end="low",
     )
 
     result = problem.evaluate_single_solution_single_objective(
@@ -118,7 +118,7 @@ def test_zero_weight_band_falls_back_to_unweighted_mean():
         equity_col="imd_decile",
         common_col="location_id",
         label="equity",
-        direction="higher_is_better",
+        disadvantaged_end="low",
     )
 
     result = problem.evaluate_single_solution_single_objective(
@@ -161,7 +161,7 @@ def test_fewer_than_three_equity_bins_skips_tertile_calculation():
         equity_col="imd_decile",
         common_col="location_id",
         label="equity",
-        direction="higher_is_better",
+        disadvantaged_end="low",
     )
 
     result = problem.evaluate_single_solution_single_objective(

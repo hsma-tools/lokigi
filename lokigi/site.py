@@ -195,13 +195,28 @@ class SiteProblem(
         if objective not in SUPPORTED_OBJECTIVES:
             raise ValueError(f"Unsupported objective ({objective}) passed.")
 
-        # Ensure exactly one argument is provided out of site_names and site_indices
+        # Ensure exactly one argument is provided out of site_names and
+        # site_indices. Checked via `is not None` rather than truthiness --
+        # `site_names and site_indices` treated an explicitly-passed empty
+        # list ([]) as "not provided", so e.g. site_names=[] alongside
+        # site_indices=[1] silently skipped the "not both" check.
         if (site_names is None and site_indices is None) or (
-            site_names and site_indices
+            site_names is not None and site_indices is not None
         ):
             raise ValueError(
                 "Please provide either 'site_names' or 'site_indices', but not both. "
                 "This helps prevent 'off-by-one' errors with numeric site IDs."
+            )
+
+        if (site_names is not None and len(site_names) == 0) or (
+            site_indices is not None and len(site_indices) == 0
+        ):
+            raise ValueError("'site_names'/'site_indices' must not be an empty list.")
+
+        if site_indices is not None and len(site_indices) != len(set(site_indices)):
+            raise ValueError(
+                f"site_indices contains duplicate entries: {site_indices}. "
+                "Each site may only be selected once per solution."
             )
 
         try:
@@ -214,16 +229,25 @@ class SiteProblem(
             # We need to make sure that we use IDs and names completely consistently throughout.
             # 1. Resolve site_indices to actual Site IDs (names)
             if site_indices is not None:
+                # .isin() silently drops any index that doesn't exist,
+                # which is why "is the result non-empty" alone (the old
+                # check here) wasn't enough: a partially-invalid list still
+                # produced a non-empty result, silently evaluating a
+                # smaller solution than the caller asked for. Check for
+                # exactly which requested indices don't exist.
+                valid_indices = set(self.candidate_sites["canonical_site_index"])
+                invalid_indices = sorted(set(site_indices) - valid_indices)
+                if invalid_indices:
+                    raise IndexError(
+                        f"Site indices {invalid_indices} not found in candidate "
+                        f"sites (valid range: 0 to {self.total_n_sites - 1})."
+                    )
+
                 # Use .iloc to get the actual ID/Name from the master site list
                 resolved_names = self.candidate_sites[
                     self.candidate_sites["canonical_site_index"].isin(site_indices)
                 ][self._candidate_sites_candidate_id_col].tolist()
                 # print(f"Site indices provided. Resolved names: {resolved_names}")
-
-                if not resolved_names:
-                    raise IndexError(
-                        f"Indices {site_indices} not found in candidate sites."
-                    )
             else:
                 # print(f"Name provided. Resolved names: {site_names}")
                 resolved_names = site_names
@@ -311,10 +335,14 @@ class SiteProblem(
             ].copy()
 
         except IndexError:
+            # Copy-paste bug: this used to report `max_idx` twice (once as
+            # the valid upper bound, then again mislabelled as "You
+            # provided indices"), instead of the column positions that
+            # were actually attempted.
             max_idx = self.travel_and_demand_df.shape[1] - 1
             raise IndexError(
                 f"Index out of bounds. Your travel data has indices 0 to {max_idx}. "
-                f"You provided indices: {max_idx}"
+                f"You provided indices: {final_matrix_cols}"
             )
 
         if not capacitated:
@@ -372,11 +400,19 @@ class SiteProblem(
                 # print(f"active_facilities: {active_facilities.head(1)}")
                 # print(f"self.equity_data: {self.equity_data.head(1)}")
 
+                # how="left": demand points missing from the equity data
+                # must keep their travel/cost rows (with NaN equity values)
+                # rather than being dropped from the evaluation. An inner
+                # join here silently shrank every metric -- max, weighted
+                # averages, coverage -- whenever the equity data didn't
+                # cover all demand locations, even when equity wasn't
+                # being weighted.
                 active_facilities = pd.merge(
                     active_facilities,
                     self.equity_data,
                     left_on=afi,
                     right_on=self._equity_data_common_col,
+                    how="left",
                     suffixes=("", "_y"),
                 )
 
@@ -419,7 +455,6 @@ class SiteProblem(
         grasp_local_search_chance=0.8,  # Chance that local searching will happen to improve found solution
         grasp_max_swap_count_local_search=10,
         random_seed=42,
-        **kwargs,
     ):
         """
         Solve the site location problem using the specified objective and strategy.
@@ -458,10 +493,21 @@ class SiteProblem(
             If True, displays a progress bar during the optimization process.
         brute_force_keep_best_n / brute_force_keep_worst_n : int, optional
             (Brute Force only) The number of top or bottom results to retain during a
-            brute-force search.
+            brute-force search. Normally this prunes combinations on the fly
+            to bound memory use. If `weights` includes a positive "cost"
+            weight, that streaming prune is skipped: every combination is
+            evaluated and held in memory so cost can be blended in over the
+            full batch before pruning to N, otherwise a combination that
+            only looks good once cost is considered could be discarded
+            before cost is ever factored in. A UserWarning is raised when
+            this fallback is triggered.
         max_value_cutoff : float, optional
             The maximum allowable travel cost. Only applicable for hybrid
-            objective models.
+            objective models. All search strategies honour it: brute-force
+            discards every combination whose worst-case travel exceeds it,
+            greedy applies it when choosing the final site (raising a
+            ValueError if no feasible completion exists), and GRASP rejects
+            candidate solutions that violate it.
         threshold_for_coverage : float, optional
             The distance or time threshold. Used as a hard filter for MCLP
             objectives or as a scoring metric for others.
@@ -485,8 +531,6 @@ class SiteProblem(
             local search phase.
         random_seed : int, default 42
             (GRASP only) Seed for reproducibility in randomized strategies like GRASP.
-        **kwargs : dict
-            Additional arguments passed to the internal solver.
 
         Returns
         -------
@@ -569,14 +613,24 @@ class SiteProblem(
         # Normalise weights to ensure they sum to exactly 1.0
         # This safely handles {"demand": 80, "equity": 20} -> {"demand": 0.8, "equity": 0.2}
         #
-        # The "cost" key is canonicalised to lowercase here because every
-        # downstream consumer (site_solvers.py, utils._apply_cost_weighting)
-        # looks it up via an exact-case weights.get("cost", ...), even though
-        # the validation above accepts it case-insensitively -- without this,
-        # a differently-cased key like "Cost" would pass validation but
-        # silently never influence the solution.
+        # "demand", "equity", and "cost" are canonicalised to lowercase here
+        # because every downstream consumer (site_solutions.py,
+        # site_solvers.py, utils._apply_cost_weighting) looks them up via
+        # exact-case comparisons/lookups, even though the missing-key
+        # validation below accepts all three case-insensitively -- without
+        # this, a differently-cased key like "Demand" or "Equity" would pass
+        # validation but then silently fail to match any known column,
+        # leaving the compound row weights all zero and crashing
+        # np.average with "Weights sum to zero". Additional-data labels are
+        # user-defined exact strings (not built-in keywords) and are
+        # deliberately left untouched -- they are matched case-sensitively
+        # on both sides (here and in site_solutions.py).
+        _canonical_weight_keys = {"demand", "equity", "cost"}
         normalised_weights = {
-            ("cost" if col.lower() == "cost" else col): float(weight) / total_weight
+            (col.lower() if col.lower() in _canonical_weight_keys else col): float(
+                weight
+            )
+            / total_weight
             for col, weight in weights.items()
         }
 
@@ -595,7 +649,12 @@ class SiteProblem(
         # If demand data not present,a ssume equal demand
         if self.demand_data is None:
             self._setup_equal_demand_df()
-            if objectives != "mclp":
+            # Compare against `objective` (the already-resolved single
+            # string), not the raw `objectives` parameter -- when the
+            # caller passes a list (e.g. objectives=["mclp"]), a list is
+            # never equal to the string "mclp", so this warning fired even
+            # for the exempted mclp objective.
+            if objective != "mclp":
                 warn(
                     "No demand data was provided. Demand from all regions has been assumed to be equal."
                     "If you wish to override this, run .add_demand() to add your site dataframe before running .solve() again."
@@ -642,19 +701,41 @@ class SiteProblem(
                 f"The following weight keys are missing from the problem data: {missing_cols}"
             )
 
+        # Equity coverage check. The per-solution equity merge is a left
+        # join, so demand locations missing from the equity data keep their
+        # travel metrics but carry NaN equity values. That is fatal for
+        # equity weighting (the row weights would be NaN) and silently
+        # excludes those locations from equity-band breakdowns, so surface
+        # it here, once, before any solving starts.
+        if self.equity_data is not None:
+            demand_ids = self.travel_and_demand_df.index
+            equity_ids = self.equity_data[self._equity_data_common_col]
+            missing_equity_ids = demand_ids.difference(equity_ids)
+
+            if len(missing_equity_ids) > 0:
+                id_summary = (
+                    f"{len(missing_equity_ids)} of {len(demand_ids)} demand "
+                    f"location(s) have no matching row in the equity data "
+                    f"(e.g. {list(missing_equity_ids[:5])})"
+                )
+                if any(key.lower() == "equity" for key in weights):
+                    raise ValueError(
+                        f"Cannot weight by equity: {id_summary}. Equity row "
+                        "weights cannot be computed for these locations. "
+                        "Please provide equity data covering every demand "
+                        "location, or remove 'equity' from the weights dict."
+                    )
+                warn(
+                    f"{id_summary}. These locations are still included in "
+                    "all travel/cost metrics, but will be excluded from "
+                    "equity-band breakdowns (e.g. coverage or averages per "
+                    "equity group)."
+                )
+
         if isinstance(objectives, list) and len(objectives) > 1:
             warn(
                 "Multi-objective optimization is coming in a future release."
                 f"For now, just your first objective {objectives[0]} has been taken."
-            )
-
-        if max_value_cutoff is not None and objective not in [
-            "hybrid_p_median",
-            "hybrid_simple_p_median",
-        ]:
-            raise ValueError(
-                f"A max value cutoff of {max_value_cutoff} has been provided for a model objective ({objective} that doesn't support it.)"
-                "Please rerun with hybrid_p_median or hybrid_simple_p_median."
             )
 
         if max_value_cutoff is not None and objective not in [
@@ -759,10 +840,15 @@ class SiteProblem(
             combinations for exhaustive searches.
         brute_force_keep_best_n : int, optional
             (Brute Force) The number of top-performing combinations to retain in
-            brute-force results.
+            brute-force results. If `weights` includes a positive "cost"
+            weight, pruning falls back to materialising every combination
+            first so cost can be blended in over the full batch before
+            pruning to N (see `_brute_force`); a UserWarning is raised when
+            this happens.
         brute_force_keep_worst_n : int, optional
             (Brute Force) The number of lowest-performing combinations to retain in
-            brute-force results.
+            brute-force results. Same cost-weighting fallback as
+            `brute_force_keep_best_n` applies.
         max_value_cutoff : float, optional
             The maximum allowable travel cost, used only for hybrid
             objective models.
@@ -842,6 +928,7 @@ class SiteProblem(
                 objectives=objective,
                 show_progress=show_progress,
                 threshold_for_coverage=threshold_for_coverage,
+                max_value_cutoff=max_value_cutoff,
             )
 
         if search_strategy == "grasp":
@@ -861,6 +948,25 @@ class SiteProblem(
                 is_minimization=objective != "mclp",
                 local_search_chance=grasp_local_search_chance,  # Chance that local searching will happen to improve found solution
                 max_swap_count_local_search=grasp_max_swap_count_local_search,
+                max_value_cutoff=max_value_cutoff,
+            )
+
+        # An empty result set would otherwise crash further down with a
+        # cryptic KeyError when ranking columns are missing from the empty
+        # DataFrame -- most commonly caused by a max_value_cutoff strict
+        # enough to rule out every combination.
+        if len(outputs) == 0:
+            cutoff_note = (
+                f" with max_value_cutoff={max_value_cutoff}"
+                if max_value_cutoff is not None
+                else ""
+            )
+            raise ValueError(
+                f"No feasible solutions were found for objective '{objective}' "
+                f"using search_strategy='{search_strategy}'{cutoff_note}. "
+                "Try relaxing max_value_cutoff, checking that p does not "
+                "exceed the number of candidate sites, or using a different "
+                "search strategy."
             )
 
         higher_is_better = objective == "mclp"
@@ -873,10 +979,21 @@ class SiteProblem(
                 weights=weights,
                 higher_is_better=higher_is_better,
             )
-            score_ascending = True
         else:
             score_col = ranking
-            score_ascending = not higher_is_better
+
+        # _apply_cost_weighting only blends onto its lower-is-better
+        # "composite_score" scale when it actually has usable cost data to
+        # blend; it no-ops (returns score_col == ranking unchanged) when
+        # e.g. every candidate's total_cost is NaN. Assuming "cost weight
+        # requested" implies "blended, therefore ascending" was wrong: for
+        # mclp (higher-is-better coverage proportion) whose cost weighting
+        # silently no-ops, sorting ascending on the raw ranking column
+        # ranks the WORST combination first. This is the final cross-
+        # strategy sort applied after brute-force/greedy/grasp all
+        # return, so it affects every search strategy alike.
+        blended = score_col != ranking
+        score_ascending = True if blended else not higher_is_better
 
         solution_df = _add_rank_column(
             outputs_df,
