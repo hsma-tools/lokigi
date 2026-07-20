@@ -1,3 +1,15 @@
+## v0.6.0
+
+- Add support for secondary travel matrices via `add_secondary_travel_matrix(travel_matrix_df, source_col, label, ...)`
+    - Registers an additional travel/cost matrix (e.g. public transport alongside a primary car matrix) that is never used as the optimisation cost matrix -- the matrix registered via `add_travel_matrix()` always drives site selection, search, and pruning
+    - Each registered secondary matrix contributes its own per-solution metric columns to `solution_df`, suffixed `__<label>` (e.g. `weighted_average__public_transport`, `min_cost__public_transport` on the per-region `problem_df`), so a single `solve()` produces one candidate ranking with metrics for every registered matrix side by side -- directly usable in `ParetoMetric(column=...)`, `rank_on=...`, and plots, without needing to `.copy()` the problem and solve twice
+    - Any number of secondary matrices may be registered, each with its own `unit`/`from_unit`/`to_unit` and optional per-matrix `threshold_for_coverage` (falls back to the value passed to `solve()` if not set)
+    - Secondary matrices must be complete (a row for every demand location, a column for every candidate site, no missing values) -- `solve()` raises a `KeyError` naming the label and the specific gap otherwise, rather than silently producing metrics over a different denominator than the primary matrix
+    - Plotting methods (`plot_best_combination`, `plot_n_best_combinations`, `plot_solution_comparison`, `plot_travel_time_distribution`, `check_solution_equity`, `plot_top_n_solution_equity`, `plot_combination_by_equity`) accept a new `matrix=` keyword to switch from the primary matrix to a registered secondary one
+    - `plot_simple_pareto_front_pairs`'s `x_axis`/`y_axis` parameters now accept any `solution_df` column (previously typed as a fixed `Literal` set that already undersold what was accepted)
+    - Ranking on a secondary matrix's columns (e.g. `rank_on="max__public_transport"`) only reorders candidates that were searched and pruned using the primary matrix -- see the new `add_secondary_travel_matrix()` docstring and the `multiple_travel_matrices` example for the `brute_force_keep_best_n`/`_worst_n` caveat this implies
+    - `SolutionComparator` and the `problem.copy()`-per-mode workflow are unchanged and remain the right tool for two genuinely independent optimisations; secondary matrices are the alternative for trading modes off within one candidate ranking (see the new cross-reference in the `comparing_solutions` example)
+
 ## v0.5.0
 
 - Add `n_jobs` parameter to `solve(search_strategy="brute-force", ...)` to evaluate combinations across multiple CPU cores (via `joblib`)

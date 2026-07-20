@@ -20,6 +20,36 @@ import warnings
 from requests.exceptions import RequestException
 
 
+_TIME_UNIT_CONVERSION = {
+    ("seconds", "minutes"): 1 / 60,
+    ("seconds", "hours"): 1 / 3600,
+    ("minutes", "seconds"): 60,
+    ("minutes", "hours"): 1 / 60,
+    ("hours", "seconds"): 3600,
+    ("hours", "minutes"): 60,
+}
+
+
+def _apply_unit_conversion(loaded_df, unit, from_unit, to_unit):
+    """Resolve a travel matrix's unit label and (if requested) convert its
+    numeric columns between time units. Mutates and returns `loaded_df`,
+    plus the resolved unit label, matching add_travel_matrix()'s existing
+    (in-place) behaviour."""
+    if from_unit is not None and to_unit is not None:
+        factor = _TIME_UNIT_CONVERSION[(from_unit, to_unit)]
+        num_cols = loaded_df.select_dtypes(include="number").columns
+        loaded_df.loc[:, num_cols] *= factor
+        resolved_unit = to_unit
+    elif from_unit is None and to_unit is not None:
+        resolved_unit = to_unit
+    elif from_unit is not None and to_unit is None:
+        resolved_unit = from_unit
+    else:
+        resolved_unit = unit
+
+    return loaded_df, resolved_unit
+
+
 class SiteAttributeMixin:
     @staticmethod
     def show_demand_format():
@@ -542,26 +572,9 @@ class SiteAttributeMixin:
             ),
         )
 
-        conversion = {
-            ("seconds", "minutes"): 1 / 60,
-            ("seconds", "hours"): 1 / 3600,
-            ("minutes", "seconds"): 60,
-            ("minutes", "hours"): 1 / 60,
-            ("hours", "seconds"): 3600,
-            ("hours", "minutes"): 60,
-        }
-
-        if from_unit is not None and to_unit is not None:
-            factor = conversion[(from_unit, to_unit)]
-            num_cols = loaded_df.select_dtypes(include="number").columns
-            loaded_df.loc[:, num_cols] *= factor
-            self._travel_matrix_unit = to_unit
-        elif from_unit is None and to_unit is not None:
-            self._travel_matrix_unit = to_unit
-        elif from_unit is not None and to_unit is None:
-            self._travel_matrix_unit = from_unit
-        else:
-            self._travel_matrix_unit = unit
+        loaded_df, self._travel_matrix_unit = _apply_unit_conversion(
+            loaded_df, unit, from_unit, to_unit
+        )
 
         self.travel_matrix = loaded_df
         self._travel_matrix_source_col = source_col
@@ -578,6 +591,241 @@ class SiteAttributeMixin:
 
         """
         return self.travel_matrix
+
+    #############################
+    # MARK: Secondary Travel Matrices
+    #############################
+    def add_secondary_travel_matrix(
+        self,
+        travel_matrix_df,
+        source_col,
+        label,
+        skip_cols=None,
+        unit=None,
+        from_unit=None,
+        to_unit=None,
+        threshold_for_coverage=None,
+    ):
+        """
+        Register an additional travel/cost matrix for a different mode or
+        scenario (e.g. public transport alongside a primary car matrix).
+
+        Unlike `add_travel_matrix()`, a secondary matrix is never used as the
+        optimisation cost matrix -- the primary matrix set via
+        `add_travel_matrix()` always drives site selection and search/pruning.
+        Instead, each registered secondary matrix contributes its own set of
+        per-solution metric columns (suffixed `__<label>`, e.g.
+        `min_cost__public_transport`, `weighted_average__public_transport`)
+        into every solution `solve()` produces, so it can be used directly in
+        plots, `ParetoMetric(column=...)`, and post-hoc ranking
+        (`rank_on="max__public_transport"`) -- without needing to `.copy()`
+        the problem and solve it twice.
+
+        Because ranking (`rank_on`) reorders whatever `solve()` already
+        returned, it only reorders candidates that survived the *primary*
+        matrix's search and pruning. If `brute_force_keep_best_n` (or
+        `_worst_n`) is set, candidates were discarded on primary-matrix
+        performance before secondary metrics were ever considered -- so a
+        secondary ranking over what survives is not the true best solution
+        for that mode. When secondary matrices are in play, prefer retaining
+        every combination (no `brute_force_keep_best_n`/`_worst_n`) and using
+        `compute_pareto_front()` to explore the trade-off properly.
+
+        You may call this method multiple times with different `label`s to
+        register as many secondary matrices as needed. Each one adds
+        approximately the per-candidate cost of evaluating the primary
+        matrix, so `solve()` time scales close to linearly with the number
+        of secondary matrices registered. Under `n_jobs > 1`, every
+        registered matrix's aligned frame is pickled to each worker process
+        alongside the problem, so peak memory also scales with matrix count.
+
+        Parameters
+        ----------
+        travel_matrix_df : pandas.DataFrame or geopandas.GeoDataFrame or str
+            The dataset containing travel costs for this matrix, or a local
+            or web path to its location.
+        source_col : str
+            The column name in `travel_matrix_df` that identifies the origin
+            points (should correspond to IDs in the demand data).
+        label : str
+            A unique label identifying this matrix, used to suffix every
+            metric column it produces (e.g. `label="public_transport"` ->
+            `min_cost__public_transport`). Must be non-empty, must not
+            contain `"__"`, and must not already be registered.
+        skip_cols : list of str, optional
+            A list of column names to ignore during data loading.
+        unit : str, optional
+            A label for the units used in the matrix. Used if no conversion
+            is performed.
+        from_unit : {"seconds", "minutes", "hours"}, optional
+            The current time unit of the numeric values in the dataframe.
+        to_unit : {"seconds", "minutes", "hours"}, optional
+            The target time unit for the numeric values in the dataframe.
+        threshold_for_coverage : float, optional
+            The coverage threshold to apply to this matrix specifically
+            (e.g. 60 minutes for public transport vs 20 for car). If not
+            provided, falls back to the `threshold_for_coverage` passed to
+            `solve()` / `evaluate_single_solution_single_objective()`.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        ValueError
+            If `label` is empty, contains `"__"`, or has already been
+            registered.
+        KeyError
+            If `source_col` is missing from the provided dataframe.
+
+        Notes
+        -----
+        Secondary matrices must be complete: every demand location and every
+        candidate site must have a non-missing value. This is validated when
+        `solve()` builds the aligned per-solution frames (not here, since
+        demand/sites may not yet be registered) -- see `solve()` for the
+        specific errors raised for missing rows, missing columns, or NaN
+        cells.
+        """
+        if not label or not isinstance(label, str):
+            raise ValueError(
+                "label must be a non-empty string identifying this secondary "
+                "travel matrix (e.g. 'public_transport')."
+            )
+        if "__" in label:
+            raise ValueError(
+                f"label '{label}' must not contain '__' -- this sequence is "
+                "reserved to separate a metric name from its matrix label "
+                "(e.g. 'min_cost__public_transport')."
+            )
+        if label in self.secondary_travel_matrices:
+            raise ValueError(
+                f"A secondary travel matrix labelled '{label}' has already "
+                "been registered. Registered labels: "
+                f"{sorted(self.secondary_travel_matrices)}. Choose a "
+                "different label."
+            )
+
+        loaded_df, df_type = _load_spatial_or_tabular_data(
+            travel_matrix_df, skip_cols=skip_cols
+        )
+
+        _validate_columns(
+            df=loaded_df,
+            col_names=[source_col],
+            msg_template=(
+                "It looks like your secondary travel matrix data is missing these "
+                "columns: {missing}. We found these instead: {available}. Please "
+                "double-check the column names you are passing to the "
+                ".add_secondary_travel_matrix() method."
+            ),
+        )
+
+        loaded_df, resolved_unit = _apply_unit_conversion(
+            loaded_df, unit, from_unit, to_unit
+        )
+
+        self.secondary_travel_matrices[label] = {
+            "data": loaded_df,
+            "source_col": source_col,
+            "unit": resolved_unit,
+            "threshold_for_coverage": threshold_for_coverage,
+        }
+
+    def show_secondary_travel_matrix(self, label):
+        """
+        Returns a registered secondary travel/cost matrix dataframe.
+
+        Parameters
+        ----------
+        label : str
+            The label the matrix was registered under via
+            `add_secondary_travel_matrix()`.
+
+        Returns
+        -------
+        pandas.DataFrame
+
+        Raises
+        ------
+        KeyError
+            If no secondary matrix has been registered under `label`.
+        """
+        if label not in self.secondary_travel_matrices:
+            raise KeyError(
+                f"No secondary travel matrix registered under label '{label}'. "
+                f"Registered labels: {sorted(self.secondary_travel_matrices)}."
+            )
+        return self.secondary_travel_matrices[label]["data"]
+
+    def _build_secondary_travel_frames(self):
+        """
+        Build, for each registered secondary matrix, a DataFrame aligned to
+        `self.travel_and_demand_df.index` with one column per candidate site
+        (by name). Stored in `self._secondary_travel_frames[label]`.
+
+        Reindexing (rather than merging) guarantees row alignment to the
+        primary demand/travel index and cannot duplicate rows. Every
+        secondary matrix must be complete -- every demand location present
+        as a row, every candidate site present as a column, and no missing
+        (NaN) values in the selected site columns -- since a partially
+        populated matrix would silently compute its averages over a
+        different denominator than the primary matrix, making the two
+        non-comparable.
+        """
+        self._secondary_travel_frames = {}
+
+        if not self.secondary_travel_matrices:
+            return
+
+        demand_index = self.travel_and_demand_df.index
+        site_names = self.candidate_sites[
+            self._candidate_sites_candidate_id_col
+        ].tolist()
+
+        for label, meta in self.secondary_travel_matrices.items():
+            matrix = meta["data"]
+            source_col = meta["source_col"]
+
+            missing_demand_ids = demand_index.difference(matrix[source_col])
+            if len(missing_demand_ids) > 0:
+                raise KeyError(
+                    f"Secondary travel matrix '{label}' is missing "
+                    f"{len(missing_demand_ids)} of {len(demand_index)} demand "
+                    f"location(s) present in the primary travel matrix (e.g. "
+                    f"{list(missing_demand_ids[:5])}). Every demand location "
+                    "must have a row in every secondary matrix, or metrics "
+                    "computed from it would silently cover a different set "
+                    "of demand locations than the primary matrix."
+                )
+
+            missing_sites = [s for s in site_names if s not in matrix.columns]
+            if missing_sites:
+                raise KeyError(
+                    f"Secondary travel matrix '{label}' is missing these "
+                    f"candidate sites as columns: {missing_sites}. Every "
+                    "candidate site must have a column in every secondary "
+                    "matrix."
+                )
+
+            frame = matrix.set_index(source_col).reindex(demand_index)[site_names]
+
+            nan_mask = frame.isna().any(axis=1)
+            if nan_mask.any():
+                nan_ids = frame.index[nan_mask].tolist()
+                raise KeyError(
+                    f"Secondary travel matrix '{label}' has {len(nan_ids)} "
+                    f"demand location(s) with a missing value for at least "
+                    f"one candidate site (e.g. {nan_ids[:5]}). This usually "
+                    "means a route is missing for that origin-destination "
+                    "pair (e.g. no public transport route). Fill unreachable "
+                    "pairs with a large sentinel travel time (so they "
+                    "correctly fall outside any coverage threshold), or "
+                    "restrict the demand set to locations this matrix covers."
+                )
+
+            self._secondary_travel_frames[label] = frame
 
     def _create_joined_demand_travel_df(self, index_col):
         """

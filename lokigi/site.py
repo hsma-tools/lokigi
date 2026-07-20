@@ -225,6 +225,7 @@ class SiteProblem(
             # Otherwise
             if self.travel_and_demand_df is None:
                 self._create_joined_demand_travel_df(index_col=self._demand_data_id_col)
+                self._build_secondary_travel_frames()
 
             # We need to make sure that we use IDs and names completely consistently throughout.
             # 1. Resolve site_indices to actual Site IDs (names)
@@ -358,6 +359,30 @@ class SiteProblem(
                 active_facilities["within_threshold"] = active_facilities[
                     "min_cost"
                 ].apply(lambda x: x < threshold_for_coverage)
+
+            # Secondary travel matrices: same min/selected/within-threshold
+            # columns as the primary matrix, suffixed `__<label>`. Selected
+            # by *name* (final_names), not the positional final_matrix_cols
+            # used for the primary matrix above -- those positions are
+            # specific to travel_and_demand_df's column layout and are
+            # meaningless for a secondary frame's own columns.
+            for label, frame in self._secondary_travel_frames.items():
+                sub = frame.loc[active_facilities.index, final_names]
+                active_facilities[f"min_cost__{label}"] = sub.min(axis=1)
+                active_facilities[f"selected_site__{label}"] = sub.idxmin(axis=1)
+
+                matrix_threshold = self.secondary_travel_matrices[label][
+                    "threshold_for_coverage"
+                ]
+                if matrix_threshold is None:
+                    matrix_threshold = threshold_for_coverage
+
+                if matrix_threshold is None:
+                    active_facilities[f"within_threshold__{label}"] = np.nan
+                else:
+                    active_facilities[f"within_threshold__{label}"] = (
+                        active_facilities[f"min_cost__{label}"] < matrix_threshold
+                    )
 
             afi = active_facilities.index
             active_facilities = active_facilities.reset_index()
@@ -698,6 +723,7 @@ class SiteProblem(
             )
 
         self._create_joined_demand_travel_df(index_col=self._demand_data_id_col)
+        self._build_secondary_travel_frames()
 
         # Data Existence Check
         # Ensure the user didn't typo a name in their weights dictionary
