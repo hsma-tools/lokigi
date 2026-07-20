@@ -1,8 +1,88 @@
+import json
+from pathlib import Path
+
 import pytest
 import lokigi
 import pandas as pd
 from shapely.geometry import Point
 import geopandas
+
+
+# --- Backtest snapshot machinery (see tests/test_backtests.py) ---
+#
+# Backtests pin solve()'s current output rather than independently deriving
+# it, so updating them by hand means re-running each case and re-typing
+# numbers into the test file. Instead, expected values live in
+# tests/backtest_snapshots.json, and `pytest --update-backtests` regenerates
+# that file from whatever solve() currently returns.
+
+BACKTEST_SNAPSHOT_PATH = Path(__file__).parent / "backtest_snapshots.json"
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--update-backtests",
+        action="store_true",
+        default=False,
+        help=(
+            "Regenerate tests/backtest_snapshots.json from solve()'s current "
+            "output instead of asserting against the stored snapshot. Use "
+            "after a deliberate change to solver behaviour; review the diff "
+            "before committing it."
+        ),
+    )
+
+
+@pytest.fixture(scope="session")
+def _backtest_snapshot_store(request):
+    if BACKTEST_SNAPSHOT_PATH.exists():
+        snapshots = json.loads(BACKTEST_SNAPSHOT_PATH.read_text())
+    else:
+        snapshots = {}
+    updates = {}
+    yield snapshots, updates, request.config.getoption("--update-backtests")
+    if updates:
+        snapshots.update(updates)
+        BACKTEST_SNAPSHOT_PATH.write_text(
+            json.dumps(snapshots, indent=2, sort_keys=True) + "\n"
+        )
+
+
+@pytest.fixture
+def assert_backtest(_backtest_snapshot_store, request):
+    """Compare a fingerprint (see test_backtests.py::_fingerprint) against its
+    stored snapshot, keyed by the calling test's node id. In
+    `--update-backtests` mode, records the current value to be written to
+    tests/backtest_snapshots.json once the session finishes instead."""
+    snapshots, updates, update_mode = _backtest_snapshot_store
+
+    def _normalize(value):
+        """Recursively convert tuples to lists so a freshly computed
+        fingerprint compares equal to one that's round-tripped through JSON
+        (which has no tuple type)."""
+        if isinstance(value, (tuple, list)):
+            return [_normalize(item) for item in value]
+        return value
+
+    def _assert(fingerprint):
+        key = request.node.name
+        normalized = _normalize(fingerprint)
+        if update_mode:
+            updates[key] = normalized
+            return
+        expected = snapshots.get(key)
+        assert expected is not None, (
+            f"No stored backtest snapshot for {key!r}. Run "
+            "`pytest tests/test_backtests.py --update-backtests` to create it, "
+            "then review tests/backtest_snapshots.json before committing."
+        )
+        assert normalized == expected, (
+            f"Backtest {key!r} drifted from its stored snapshot in "
+            "tests/backtest_snapshots.json. If this is an intentional solver "
+            "change, rerun with --update-backtests and review the diff."
+        )
+
+    return _assert
 
 
 @pytest.fixture

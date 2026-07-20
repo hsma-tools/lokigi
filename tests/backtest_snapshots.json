@@ -1,0 +1,722 @@
+{
+  "test_backtest_brighton_problem_mclp_brute_force": [
+    [
+      [
+        "Site 3",
+        "Site 4"
+      ],
+      1.0
+    ],
+    [
+      [
+        "Site 3",
+        "Site 6"
+      ],
+      1.0
+    ],
+    [
+      [
+        "Site 1",
+        "Site 3"
+      ],
+      1.0
+    ],
+    [
+      [
+        "Site 3",
+        "Site 5"
+      ],
+      1.0
+    ],
+    [
+      [
+        "Site 2",
+        "Site 3"
+      ],
+      1.0
+    ],
+    [
+      [
+        "Site 4",
+        "Site 5"
+      ],
+      0.993939
+    ],
+    [
+      [
+        "Site 5",
+        "Site 6"
+      ],
+      0.993939
+    ],
+    [
+      [
+        "Site 1",
+        "Site 5"
+      ],
+      0.993939
+    ],
+    [
+      [
+        "Site 2",
+        "Site 5"
+      ],
+      0.993939
+    ],
+    [
+      [
+        "Site 2",
+        "Site 4"
+      ],
+      0.987879
+    ],
+    [
+      [
+        "Site 4",
+        "Site 6"
+      ],
+      0.987879
+    ],
+    [
+      [
+        "Site 2",
+        "Site 6"
+      ],
+      0.987879
+    ],
+    [
+      [
+        "Site 1",
+        "Site 2"
+      ],
+      0.987879
+    ],
+    [
+      [
+        "Site 1",
+        "Site 6"
+      ],
+      0.987879
+    ],
+    [
+      [
+        "Site 1",
+        "Site 4"
+      ],
+      0.969697
+    ]
+  ],
+  "test_backtest_brighton_problem_p_center_brute_force": [
+    [
+      [
+        "Site 3",
+        "Site 4"
+      ],
+      16.688833
+    ],
+    [
+      [
+        "Site 3",
+        "Site 6"
+      ],
+      16.688833
+    ],
+    [
+      [
+        "Site 1",
+        "Site 3"
+      ],
+      16.688833
+    ],
+    [
+      [
+        "Site 3",
+        "Site 5"
+      ],
+      16.688833
+    ],
+    [
+      [
+        "Site 2",
+        "Site 3"
+      ],
+      16.688833
+    ],
+    [
+      [
+        "Site 4",
+        "Site 5"
+      ],
+      21.709667
+    ],
+    [
+      [
+        "Site 5",
+        "Site 6"
+      ],
+      21.709667
+    ],
+    [
+      [
+        "Site 1",
+        "Site 5"
+      ],
+      21.709667
+    ],
+    [
+      [
+        "Site 2",
+        "Site 5"
+      ],
+      21.709667
+    ],
+    [
+      [
+        "Site 4",
+        "Site 6"
+      ],
+      22.857667
+    ],
+    [
+      [
+        "Site 2",
+        "Site 6"
+      ],
+      22.857667
+    ],
+    [
+      [
+        "Site 1",
+        "Site 6"
+      ],
+      22.857667
+    ],
+    [
+      [
+        "Site 2",
+        "Site 4"
+      ],
+      23.921
+    ],
+    [
+      [
+        "Site 1",
+        "Site 2"
+      ],
+      23.921
+    ],
+    [
+      [
+        "Site 1",
+        "Site 4"
+      ],
+      26.329833
+    ]
+  ],
+  "test_backtest_brighton_problem_p_median_brute_force_top5": [
+    [
+      [
+        "Site 3",
+        "Site 4",
+        "Site 5"
+      ],
+      5.372208,
+      16.688833,
+      5.447841
+    ],
+    [
+      [
+        "Site 3",
+        "Site 4",
+        "Site 6"
+      ],
+      5.376954,
+      16.688833,
+      5.357941
+    ],
+    [
+      [
+        "Site 1",
+        "Site 3",
+        "Site 4"
+      ],
+      5.531092,
+      16.688833,
+      5.672539
+    ],
+    [
+      [
+        "Site 2",
+        "Site 3",
+        "Site 4"
+      ],
+      5.544051,
+      16.688833,
+      5.594884
+    ],
+    [
+      [
+        "Site 1",
+        "Site 3",
+        "Site 6"
+      ],
+      6.323543,
+      16.688833,
+      6.213082
+    ]
+  ],
+  "test_backtest_brighton_problem_p_median_grasp": [
+    [
+      [
+        "Site 3",
+        "Site 4",
+        "Site 5"
+      ],
+      5.372208,
+      16.688833,
+      5.447841
+    ],
+    [
+      [
+        "Site 3",
+        "Site 4",
+        "Site 6"
+      ],
+      5.376954,
+      16.688833,
+      5.357941
+    ]
+  ],
+  "test_backtest_brighton_problem_p_median_greedy": [
+    [
+      [
+        "Site 3",
+        "Site 4",
+        "Site 5"
+      ],
+      5.372208,
+      16.688833,
+      5.447841
+    ]
+  ],
+  "test_backtest_five_site_problem_mclp_brute_force": [
+    [
+      [
+        "Site_1",
+        "Site_3"
+      ],
+      0.75
+    ],
+    [
+      [
+        "Site_2",
+        "Site_3"
+      ],
+      0.75
+    ],
+    [
+      [
+        "Site_3",
+        "Site_5"
+      ],
+      0.5
+    ],
+    [
+      [
+        "Site_3",
+        "Site_4"
+      ],
+      0.5
+    ],
+    [
+      [
+        "Site_2",
+        "Site_4"
+      ],
+      0.25
+    ],
+    [
+      [
+        "Site_1",
+        "Site_5"
+      ],
+      0.25
+    ],
+    [
+      [
+        "Site_1",
+        "Site_4"
+      ],
+      0.25
+    ],
+    [
+      [
+        "Site_2",
+        "Site_5"
+      ],
+      0.25
+    ],
+    [
+      [
+        "Site_1",
+        "Site_2"
+      ],
+      0.25
+    ],
+    [
+      [
+        "Site_4",
+        "Site_5"
+      ],
+      0.0
+    ]
+  ],
+  "test_backtest_five_site_problem_p_center_brute_force": [
+    [
+      [
+        "Site_3",
+        "Site_5"
+      ],
+      17.0
+    ],
+    [
+      [
+        "Site_4",
+        "Site_5"
+      ],
+      17.0
+    ],
+    [
+      [
+        "Site_1",
+        "Site_3"
+      ],
+      24.0
+    ],
+    [
+      [
+        "Site_2",
+        "Site_3"
+      ],
+      24.0
+    ],
+    [
+      [
+        "Site_3",
+        "Site_4"
+      ],
+      24.0
+    ],
+    [
+      [
+        "Site_2",
+        "Site_4"
+      ],
+      25.0
+    ],
+    [
+      [
+        "Site_1",
+        "Site_5"
+      ],
+      28.0
+    ],
+    [
+      [
+        "Site_1",
+        "Site_2"
+      ],
+      28.0
+    ],
+    [
+      [
+        "Site_1",
+        "Site_4"
+      ],
+      29.0
+    ],
+    [
+      [
+        "Site_2",
+        "Site_5"
+      ],
+      31.0
+    ]
+  ],
+  "test_backtest_five_site_problem_p_median_brute_force": [
+    [
+      [
+        "Site_1",
+        "Site_3"
+      ],
+      15.0,
+      24.0,
+      15.0
+    ],
+    [
+      [
+        "Site_3",
+        "Site_5"
+      ],
+      15.0,
+      17.0,
+      15.0
+    ],
+    [
+      [
+        "Site_2",
+        "Site_3"
+      ],
+      15.25,
+      24.0,
+      15.25
+    ],
+    [
+      [
+        "Site_4",
+        "Site_5"
+      ],
+      16.25,
+      17.0,
+      16.25
+    ],
+    [
+      [
+        "Site_3",
+        "Site_4"
+      ],
+      16.75,
+      24.0,
+      16.75
+    ],
+    [
+      [
+        "Site_2",
+        "Site_4"
+      ],
+      17.0,
+      25.0,
+      17.0
+    ],
+    [
+      [
+        "Site_1",
+        "Site_5"
+      ],
+      17.5,
+      28.0,
+      17.5
+    ],
+    [
+      [
+        "Site_1",
+        "Site_4"
+      ],
+      17.75,
+      29.0,
+      17.75
+    ],
+    [
+      [
+        "Site_2",
+        "Site_5"
+      ],
+      18.5,
+      31.0,
+      18.5
+    ],
+    [
+      [
+        "Site_1",
+        "Site_2"
+      ],
+      20.25,
+      28.0,
+      20.25
+    ]
+  ],
+  "test_backtest_five_site_problem_p_median_grasp": [
+    [
+      [
+        "Site_3",
+        "Site_5"
+      ],
+      15.0,
+      17.0,
+      15.0
+    ],
+    [
+      [
+        "Site_1",
+        "Site_3"
+      ],
+      15.0,
+      24.0,
+      15.0
+    ],
+    [
+      [
+        "Site_4",
+        "Site_5"
+      ],
+      16.25,
+      17.0,
+      16.25
+    ]
+  ],
+  "test_backtest_five_site_problem_p_median_greedy": [
+    [
+      [
+        "Site_4",
+        "Site_5"
+      ],
+      16.25,
+      17.0,
+      16.25
+    ]
+  ],
+  "test_backtest_hybrid_p_median_problem_brute_force": [
+    [
+      [
+        "Site_1",
+        "Site_2"
+      ],
+      7.0,
+      10.0,
+      7.0
+    ]
+  ],
+  "test_backtest_loaded_problem_p_median_brute_force": [
+    [
+      [
+        "Site_A",
+        "Site_C"
+      ],
+      9.333333,
+      10.0,
+      9.333333
+    ],
+    [
+      [
+        "Site_A",
+        "Site_B"
+      ],
+      9.444444,
+      15.0,
+      10.0
+    ],
+    [
+      [
+        "Site_B",
+        "Site_C"
+      ],
+      10.444444,
+      25.0,
+      12.666667
+    ]
+  ],
+  "test_backtest_loaded_problem_p_median_grasp": [
+    [
+      [
+        "Site_A",
+        "Site_C"
+      ],
+      9.333333,
+      10.0,
+      9.333333
+    ],
+    [
+      [
+        "Site_A",
+        "Site_B"
+      ],
+      9.444444,
+      15.0,
+      10.0
+    ]
+  ],
+  "test_backtest_loaded_problem_p_median_greedy": [
+    [
+      [
+        "Site_A",
+        "Site_B"
+      ],
+      9.444444,
+      15.0,
+      10.0
+    ]
+  ],
+  "test_backtest_loaded_problem_with_cost_weighted_p_median": [
+    [
+      [
+        "Site_A",
+        "Site_C"
+      ],
+      9.333333,
+      60.0
+    ],
+    [
+      [
+        "Site_A",
+        "Site_B"
+      ],
+      9.444444,
+      510.0
+    ],
+    [
+      [
+        "Site_B",
+        "Site_C"
+      ],
+      10.444444,
+      550.0
+    ]
+  ],
+  "test_backtest_loaded_problem_with_equity_weighted_p_median": [
+    [
+      [
+        "Site_A",
+        "Site_B"
+      ],
+      8.272727,
+      15.0,
+      10.0
+    ],
+    [
+      [
+        "Site_A",
+        "Site_C"
+      ],
+      9.672727,
+      10.0,
+      9.333333
+    ],
+    [
+      [
+        "Site_B",
+        "Site_C"
+      ],
+      12.036364,
+      25.0,
+      12.666667
+    ]
+  ],
+  "test_backtest_tied_score_problem_p_median_brute_force_keep_best_n": [
+    [
+      [
+        "Site_C"
+      ],
+      10.0,
+      15.0,
+      10.0
+    ],
+    [
+      [
+        "Site_B"
+      ],
+      15.0,
+      20.0,
+      15.0
+    ]
+  ]
+}
