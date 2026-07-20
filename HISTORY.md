@@ -10,6 +10,9 @@
     - `plot_simple_pareto_front_pairs`'s `x_axis`/`y_axis` parameters now accept any `solution_df` column (previously typed as a fixed `Literal` set that already undersold what was accepted)
     - Ranking on a secondary matrix's columns (e.g. `rank_on="max__public_transport"`) only reorders candidates that were searched and pruned using the primary matrix -- see the new `add_secondary_travel_matrix()` docstring and the `multiple_travel_matrices` example for the `brute_force_keep_best_n`/`_worst_n` caveat this implies
     - `SolutionComparator` and the `problem.copy()`-per-mode workflow are unchanged and remain the right tool for two genuinely independent optimisations; secondary matrices are the alternative for trading modes off within one candidate ranking (see the new cross-reference in the `comparing_solutions` example)
+- Add `expand_dict_columns` and `inplace` parameters to `show_solutions()`
+    - `show_solutions(expand_dict_columns=True)` flattens every dict-valued column (`weighted_by_equity_group`, `coverage_by_equity_group`, etc., including their `__<label>` secondary-matrix equivalents under `full_secondary_metrics=True`) into one column per dict key, named `<column>__<key>`. Off by default, so `solution_df`'s shape is unchanged for existing callers
+    - `show_solutions(expand_dict_columns=True, inplace=True)` also writes the expansion back to `solution_df` so it persists for later calls, plotting, and `rank_on`; `inplace` has no effect unless combined with `expand_dict_columns=True`. Rounding is never made permanent
 
 ## v0.5.0
 

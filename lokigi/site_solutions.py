@@ -836,7 +836,35 @@ class SiteSolutionSet(
         else:
             return self.solution_df.columns
 
-    def show_solutions(self, rounding=2, n_best=None):
+    def _expand_dict_columns(self, df):
+        """
+        Return a copy of `df` with every dict-valued column (e.g. the
+        equity-group breakdowns `weighted_by_equity_group`,
+        `coverage_by_equity_group__<label>`, etc.) replaced by one column
+        per dict key, named `<column>__<key>`.
+
+        Columns are detected by content, not by name, so this picks up any
+        dict-valued column regardless of which matrix or metric produced it.
+        Columns whose values are not dicts (including ones that are simply
+        empty, e.g. when no equity data is registered) are left untouched.
+        """
+        dict_cols = [
+            col for col in df.columns if df[col].apply(lambda v: isinstance(v, dict)).any()
+        ]
+        if not dict_cols:
+            return df
+
+        df = df.copy()
+        for col in dict_cols:
+            expanded = pd.json_normalize(df[col]).add_prefix(f"{col}__")
+            expanded.index = df.index
+            col_pos = df.columns.get_loc(col)
+            df = pd.concat(
+                [df.iloc[:, :col_pos], expanded, df.iloc[:, col_pos + 1 :]], axis=1
+            )
+        return df
+
+    def show_solutions(self, rounding=2, n_best=None, expand_dict_columns=False, inplace=False):
         """
         Return the solution DataFrame with rounded values.
 
@@ -844,6 +872,21 @@ class SiteSolutionSet(
         ----------
         rounding : int, default=2
             Number of decimal places to round numeric columns to.
+        expand_dict_columns : bool, default False
+            If True, any column holding dict values -- the equity-group
+            breakdowns (`weighted_by_equity_group`, `coverage_by_equity_group`,
+            etc.) and their secondary-matrix equivalents when
+            `solve(..., full_secondary_metrics=True)` was used -- is expanded
+            into one column per dict key, named `<column>__<key>`. This is
+            usually more useful for display/export than a column of dicts,
+            but is off by default to keep `solution_df`'s shape unchanged for
+            existing callers.
+        inplace : bool, default False
+            If True (and `expand_dict_columns=True`), the expansion is also
+            written back to `self.solution_df`, so it persists for
+            subsequent calls, plotting, `rank_on`, etc. Has no effect unless
+            `expand_dict_columns=True`. Rounding is never made permanent --
+            only the column expansion can be.
 
         Returns
         -------
@@ -853,13 +896,19 @@ class SiteSolutionSet(
 
         Notes
         -----
-        This method does not modify the underlying DataFrame; it returns a
-        rounded copy.
+        Unless `inplace=True`, this method does not modify the underlying
+        DataFrame; it returns a rounded (and optionally expanded) copy.
         """
+        df = self.solution_df
+        if expand_dict_columns:
+            df = self._expand_dict_columns(df)
+            if inplace:
+                self.solution_df = df
+
         if rounding is None:
-            return self.solution_df.head(n_best)
+            return df.head(n_best)
         else:
-            return round(self.solution_df, rounding).head(n_best)
+            return round(df, rounding).head(n_best)
 
     def return_best_combination_details(self, rank_on=None, top_n=1):
         """
