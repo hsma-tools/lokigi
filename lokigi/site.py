@@ -967,10 +967,21 @@ class SiteProblem(
                 weights=weights,
                 higher_is_better=higher_is_better,
             )
-            score_ascending = True
         else:
             score_col = ranking
-            score_ascending = not higher_is_better
+
+        # _apply_cost_weighting only blends onto its lower-is-better
+        # "composite_score" scale when it actually has usable cost data to
+        # blend; it no-ops (returns score_col == ranking unchanged) when
+        # e.g. every candidate's total_cost is NaN. Assuming "cost weight
+        # requested" implies "blended, therefore ascending" was wrong: for
+        # mclp (higher-is-better coverage proportion) whose cost weighting
+        # silently no-ops, sorting ascending on the raw ranking column
+        # ranks the WORST combination first. This is the final cross-
+        # strategy sort applied after brute-force/greedy/grasp all
+        # return, so it affects every search strategy alike.
+        blended = score_col != ranking
+        score_ascending = True if blended else not higher_is_better
 
         solution_df = _add_rank_column(
             outputs_df,

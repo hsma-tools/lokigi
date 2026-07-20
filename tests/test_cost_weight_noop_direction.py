@@ -10,14 +10,24 @@ ranking column, on the objective's own natural scale, unchanged) when
 e.g. every candidate's total_cost is NaN (add_sites(..., cost_col=...,
 allow_missing_cost=True) with no cost values ever provided).
 
-Three call sites -- _greedy's final sort, and _grasp's RCL construction
-and cost-weighted local search (mixins/site_solvers.py) -- assumed that
+Four call sites -- _greedy's final sort, _grasp's RCL construction and
+cost-weighted local search (mixins/site_solvers.py), and site.py's
+shared final cross-strategy sort (_solve_pmedian_pcenter_mclp_problem,
+which runs after brute-force/greedy/grasp all return) -- assumed that
 "a positive cost weight was requested" implied "blending happened,
 therefore the score is lower-is-better", and hardcoded the
 ascending/minimising direction accordingly. That assumption breaks when
 _apply_cost_weighting no-ops: for mclp (higher-is-better coverage
 proportion), treating its raw score as lower-is-better inverted the
-search, so greedy/GRASP picked the WORST-coverage combinations as "best".
+search, so greedy/GRASP/the final sort picked the WORST-coverage
+combinations as "best".
+
+The site.py final-sort instance is only visible when there's more than
+one candidate solution to actually sort -- a single-solution result
+(greedy, or GRASP with num_solutions=1) makes "sort direction" moot, so
+it stayed hidden behind the earlier per-solver tests until specifically
+tested with brute-force's full (unpruned) output and GRASP with
+num_solutions > 1.
 
 Test design: rather than asserting the search reaches the GLOBAL optimum
 (brute-force's best), which greedy and a single GRASP construction
@@ -214,6 +224,60 @@ def test_grasp_with_local_search_p_median_noop_cost_matches_no_cost_weight(
             grasp_num_solutions=1,
             grasp_max_attempts=30,
             grasp_local_search_chance=1.0,
+            random_seed=1,
+        ),
+    )
+
+
+# --- site.py's shared final cross-strategy sort ---
+#
+# This is a SEPARATE bug site from the three above: it runs once, after
+# brute-force/greedy/grasp all return, and re-sorts/ranks WHATEVER list of
+# solutions that strategy produced. It only matters when there's more than
+# one solution to sort -- greedy and single-solution GRASP calls (used
+# throughout the tests above) never exercise it, since sorting a 1-row
+# result is a no-op regardless of direction. Brute-force with no
+# brute_force_keep_best_n/worst_n (returns every combination) and GRASP
+# with grasp_num_solutions > 1 both genuinely exercise it.
+
+
+def test_brute_force_full_results_mclp_noop_cost_matches_no_cost_weight(
+    problem_with_noop_cost,
+):
+    """Brute-force with no keep_best_n/worst_n returns all 10
+    combinations -- enough for the final sort's direction to actually
+    matter."""
+    _assert_noop_cost_matches_no_cost(
+        problem_with_noop_cost,
+        dict(
+            p=2,
+            objectives="mclp",
+            search_strategy="brute-force",
+            show_progress=False,
+            threshold_for_coverage=15,
+        ),
+    )
+
+
+def test_grasp_multiple_solutions_mclp_noop_cost_matches_no_cost_weight(
+    problem_with_noop_cost,
+):
+    """grasp_num_solutions=3 (with local search enabled, the default
+    grasp_local_search_chance=0.8) gives the final sort multiple distinct
+    solutions to rank -- GRASP's own construction/local-search direction
+    is already proven identical between the noop-cost and no-cost calls
+    by the tests above, so any remaining mismatch here is attributable to
+    the final sort specifically."""
+    _assert_noop_cost_matches_no_cost(
+        problem_with_noop_cost,
+        dict(
+            p=2,
+            objectives="mclp",
+            search_strategy="grasp",
+            show_progress=False,
+            threshold_for_coverage=15,
+            grasp_num_solutions=3,
+            grasp_max_attempts=30,
             random_seed=1,
         ),
     )
