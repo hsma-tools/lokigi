@@ -1644,6 +1644,7 @@ class EquityPlotsMixin:
         rank_on=None,
         ax=None,
         colour_mode: Optional[Literal["gradient", "above_below_avg"]] = None,
+        show_site_names=False,
     ):
         """
         Summarise and optionally plot equity metrics for a selected solution.
@@ -1673,6 +1674,9 @@ class EquityPlotsMixin:
         ax : matplotlib.axes.Axes or None, optional
             Existing Matplotlib axes to plot on when ``interactive=False``.
             If None, a new figure and axes are created.
+        show_site_names : bool, default=False
+            If True, the default plot title lists the selected sites by name
+            (``site_names``) instead of by index (``site_indices``).
 
         Returns
         -------
@@ -1706,7 +1710,14 @@ class EquityPlotsMixin:
             return summary_equity_df
         else:
             if title == "default":
-                title = f"Solution equity - by {self.site_problem._equity_data_label}\nSolution Rank {solution_rank} (Site Indices {plotting_row.site_indices}) "
+                if show_site_names:
+                    sites_str = ", ".join(str(name) for name in plotting_row.site_names)
+                    sites_label = f"Sites: {sites_str}"
+                else:
+                    sites_str = ", ".join(str(int(i)) for i in plotting_row.site_indices)
+                    sites_label = f"Site Indices: {sites_str}"
+
+                title = f"Solution equity - by {self.site_problem._equity_data_label}\nSolution Rank {solution_rank} ({sites_label})"
 
             if show_average:
                 avg_value = plotting_row[plot_solution_metric_as_line]
@@ -1814,6 +1825,7 @@ class EquityPlotsMixin:
         colour_mode: Optional[Literal["gradient", "above_below_avg"]] = None,
         cols=2,
         figsize_multiplier=5,
+        show_site_names=False,
     ):
         """
         Plot equity summaries for the top N solutions in a grid of subplots.
@@ -1835,6 +1847,9 @@ class EquityPlotsMixin:
             dotted line on each subplot.
         cols : int, default=2
             Number of subplot columns. The number of rows is determined automatically.
+        show_site_names : bool, default=False
+            If True, each subplot title lists the selected sites by name
+            instead of by index.
 
         Returns
         -------
@@ -1869,6 +1884,7 @@ class EquityPlotsMixin:
                 plot_solution_metric_as_line=plot_solution_metric_as_line,
                 colour_mode=colour_mode,
                 ax=axes[i],
+                show_site_names=show_site_names,
             )
 
         # Remove unused axes if n doesn't fill grid
