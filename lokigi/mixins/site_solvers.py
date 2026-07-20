@@ -40,10 +40,48 @@ class BruteForceMixin:
         threshold_for_coverage=None,
     ):
 
-        if brute_force_keep_best_n is not None:
+        keep_n_active = (
+            brute_force_keep_best_n is not None or brute_force_keep_worst_n is not None
+        )
+
+        # _apply_cost_weighting does batch-relative min-max normalization: it
+        # needs to see every combination's ranking value and total_cost at
+        # once to normalise either meaningfully. That's incompatible with
+        # keep_best_n/keep_worst_n's streaming heap below, which prunes to N
+        # using the raw, pre-cost ranking value one combination at a time --
+        # a combination with a mediocre raw ranking but a low cost could be
+        # the true cost-weighted best, yet never survive the heap because
+        # cost is never considered until after _brute_force returns. So
+        # whenever cost weighting is actually requested, keep_best_n/
+        # keep_worst_n fall back to materialising every combination (the
+        # same way the "keep everything" path already does) and only prune
+        # AFTER cost has been blended in over the full batch. This trades
+        # away keep_best_n/keep_worst_n's memory-saving benefit for
+        # correctness whenever cost weighting is active; BRUTE_FORCE_WARN_
+        # THRESHOLD/BRUTE_FORCE_LIMIT above still guard against unbounded
+        # memory use either way.
+        use_cost_weighting = bool(weights) and weights.get("cost", 0) > 0
+        stream_top_n = keep_n_active and not use_cost_weighting
+
+        if keep_n_active and use_cost_weighting:
+            warn(
+                "brute_force_keep_best_n/brute_force_keep_worst_n was "
+                "requested together with a cost weight (weights['cost']). "
+                "Pruning to the top/bottom N using the raw ranking value, "
+                "before cost is blended in, could discard the true cost-"
+                "weighted best/worst combination. To stay correct, every "
+                "combination is being evaluated and held in memory so cost "
+                "weighting can be applied over the full set before pruning "
+                "-- this forgoes keep_best_n/keep_worst_n's usual memory-"
+                "saving benefit for this run.",
+                UserWarning,
+                stacklevel=2,
+            )
+
+        if stream_top_n and brute_force_keep_best_n is not None:
             top_n_heap = []  # To store the smallest scores (best)
             # print(f"Keeping top {brute_force_keep_best_n}")
-        if brute_force_keep_worst_n is not None:
+        if stream_top_n and brute_force_keep_worst_n is not None:
             bottom_n_heap = []  # To store the largest scores (worst)
             # print(f"Keeping worst {brute_force_keep_worst_n}")
 
@@ -81,8 +119,11 @@ class BruteForceMixin:
             possible_combinations = tqdm(possible_combinations)
 
         for possible_solution in possible_combinations:
-            if brute_force_keep_best_n is None and brute_force_keep_worst_n is None:
-                # Keep all results
+            if not stream_top_n:
+                # Keep all results -- either because no pruning was
+                # requested, or because cost weighting is active and every
+                # combination must be materialised before pruning (see
+                # `use_cost_weighting` above).
                 single_solution_metrics = (
                     self.evaluate_single_solution_single_objective(
                         site_indices=possible_solution,
@@ -139,8 +180,50 @@ class BruteForceMixin:
                                 bottom_n_heap, (score, next(tie_breaker), metrics)
                             )
 
-        if brute_force_keep_best_n is None and brute_force_keep_worst_n is None:
+        if not keep_n_active:
             return outputs
+
+        if use_cost_weighting:
+            # `outputs` was fully materialised above (the `not stream_top_n`
+            # branch), so cost weighting can be applied once, correctly,
+            # over the whole batch, and only then pruned to N.
+            if not outputs:
+                return []
+
+            outputs_df = pd.DataFrame(outputs)
+            outputs_df, score_col = _apply_cost_weighting(
+                outputs_df,
+                ranking_col=rank_best_n_on,
+                weights=weights,
+                higher_is_better=higher_is_better,
+            )
+
+            # _apply_cost_weighting's blended "composite_score" is always on
+            # a lower-is-better scale regardless of the underlying
+            # objective's direction -- but only when it actually blends. It
+            # no-ops (score_col == rank_best_n_on unchanged) when it lacks
+            # usable cost data, in which case the raw ranking column keeps
+            # its own direction (higher-is-better for mclp).
+            best_is_smallest = not (score_col == rank_best_n_on and higher_is_better)
+
+            result_frames = []
+            if brute_force_keep_best_n is not None:
+                result_frames.append(
+                    outputs_df.nsmallest(brute_force_keep_best_n, score_col)
+                    if best_is_smallest
+                    else outputs_df.nlargest(brute_force_keep_best_n, score_col)
+                )
+            if brute_force_keep_worst_n is not None:
+                result_frames.append(
+                    outputs_df.nlargest(brute_force_keep_worst_n, score_col)
+                    if best_is_smallest
+                    else outputs_df.nsmallest(brute_force_keep_worst_n, score_col)
+                )
+
+            combined = (
+                pd.concat(result_frames) if len(result_frames) > 1 else result_frames[0]
+            )
+            return combined.to_dict("records")
         else:
             # Reconstruct the 'outputs' list
             # Extract dictionaries from heaps and sort them

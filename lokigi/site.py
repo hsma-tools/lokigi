@@ -493,7 +493,14 @@ class SiteProblem(
             If True, displays a progress bar during the optimization process.
         brute_force_keep_best_n / brute_force_keep_worst_n : int, optional
             (Brute Force only) The number of top or bottom results to retain during a
-            brute-force search.
+            brute-force search. Normally this prunes combinations on the fly
+            to bound memory use. If `weights` includes a positive "cost"
+            weight, that streaming prune is skipped: every combination is
+            evaluated and held in memory so cost can be blended in over the
+            full batch before pruning to N, otherwise a combination that
+            only looks good once cost is considered could be discarded
+            before cost is ever factored in. A UserWarning is raised when
+            this fallback is triggered.
         max_value_cutoff : float, optional
             The maximum allowable travel cost. Only applicable for hybrid
             objective models. All search strategies honour it: brute-force
@@ -833,10 +840,15 @@ class SiteProblem(
             combinations for exhaustive searches.
         brute_force_keep_best_n : int, optional
             (Brute Force) The number of top-performing combinations to retain in
-            brute-force results.
+            brute-force results. If `weights` includes a positive "cost"
+            weight, pruning falls back to materialising every combination
+            first so cost can be blended in over the full batch before
+            pruning to N (see `_brute_force`); a UserWarning is raised when
+            this happens.
         brute_force_keep_worst_n : int, optional
             (Brute Force) The number of lowest-performing combinations to retain in
-            brute-force results.
+            brute-force results. Same cost-weighting fallback as
+            `brute_force_keep_best_n` applies.
         max_value_cutoff : float, optional
             The maximum allowable travel cost, used only for hybrid
             objective models.
