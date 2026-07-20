@@ -527,8 +527,23 @@ class EvaluatedCombination:
     def show_result_df(self):
         return self.evaluated_combination_df
 
-    def return_solution_metrics(self):
+    def return_solution_metrics(self, full_secondary_metrics: bool = False):
         """
+        Parameters
+        ----------
+        full_secondary_metrics : bool, default False
+            If False (the default), each registered secondary travel matrix
+            contributes only its core five metrics plus the float-valued
+            equity aggregations (see point 6 below) -- matching the output
+            shape prior to this parameter's introduction. If True, every
+            registered secondary matrix also contributes its dict-valued
+            equity breakdowns (`weighted_by_equity_group__<label>`, etc.)
+            and description strings, exactly mirroring what the primary
+            matrix already always returns unsuffixed. This costs nothing
+            extra to compute -- `_compute_travel_metrics` already produces
+            these values for every matrix regardless -- it only changes
+            which of the already-computed keys get included here.
+
         INTERPRETATION GUIDE FOR SUMMARY TABLES & SORTING:
 
         1a. 'weighted_average'
@@ -571,14 +586,16 @@ class EvaluatedCombination:
            - Registered via `add_secondary_travel_matrix(label=...)`. Same metrics
              and sort direction as their unsuffixed counterparts above (1a/1b/5),
              computed against that matrix's own travel costs instead of the
-             primary matrix. Only the core five metrics plus the float-valued
-             equity aggregations (gap_absolute_weighted, gap_relative_weighted,
-             avg_*_third_bins, inter_tertile_ratio) are included per matrix --
-             the dict-valued equity breakdowns and description strings are not,
-             to keep this table from growing unboundedly with each registered
-             matrix. The underlying per-region `problem_df` still carries
+             primary matrix. By default, only the core five metrics plus the
+             float-valued equity aggregations (gap_absolute_weighted,
+             gap_relative_weighted, avg_*_third_bins, inter_tertile_ratio) are
+             included per matrix, to keep this table from growing unboundedly
+             with each registered matrix -- pass `full_secondary_metrics=True`
+             to also include the dict-valued equity breakdowns and description
+             strings, matching what the primary matrix already returns. The
+             underlying per-region `problem_df` always carries
              `min_cost__<label>` / `selected_site__<label>` /
-             `within_threshold__<label>` if those are needed directly.
+             `within_threshold__<label>` regardless of this setting.
         """
 
         # Return weighted average
@@ -613,8 +630,9 @@ class EvaluatedCombination:
         }
 
         # Secondary travel matrices: core five metrics + float-valued equity
-        # aggregations only (see the interpretation guide above for why the
-        # dict-valued breakdowns and description strings are excluded).
+        # aggregations by default (see the interpretation guide above); pass
+        # full_secondary_metrics=True to also include the dict-valued
+        # breakdowns and description strings, matching the primary matrix.
         for label, secondary in self.secondary_metrics.items():
             metrics[f"weighted_average__{label}"] = secondary["weighted_average"]
             metrics[f"unweighted_average__{label}"] = secondary["unweighted_average"]
@@ -639,6 +657,29 @@ class EvaluatedCombination:
                 "avg_upper_third_bins"
             ]
             metrics[f"inter_tertile_ratio__{label}"] = secondary["inter_tertile_ratio"]
+
+            if full_secondary_metrics:
+                metrics[f"weighted_by_equity_group__{label}"] = secondary[
+                    "weighted_by_equity_group"
+                ]
+                metrics[f"unweighted_by_equity_group__{label}"] = secondary[
+                    "unweighted_by_equity_group"
+                ]
+                metrics[f"coverage_by_equity_group__{label}"] = secondary[
+                    "coverage_by_equity_group"
+                ]
+                metrics[f"max_cost_by_equity_group__{label}"] = secondary[
+                    "max_cost_by_equity_group"
+                ]
+                metrics[f"gap_absolute_description__{label}"] = secondary[
+                    "gap_absolute_desc"
+                ]
+                metrics[f"gap_relative_description__{label}"] = secondary[
+                    "gap_relative_desc"
+                ]
+                metrics[f"inter_tertile_description__{label}"] = secondary[
+                    "inter_tertile_desc"
+                ]
 
         return metrics
 

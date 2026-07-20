@@ -273,6 +273,105 @@ def test_secondary_matrix_unit_conversion_independent_of_primary(
     )
 
 
+# --- full_secondary_metrics opt-in ---------------------------------------
+
+
+def test_full_secondary_metrics_default_omits_dict_valued_columns(
+    loaded_problem_with_equity_and_secondary_matrix,
+):
+    result = loaded_problem_with_equity_and_secondary_matrix.solve(p=1)
+    columns = result.solution_df.columns
+
+    # Core five + float equity aggregations are always present.
+    assert "weighted_average__public_transport" in columns
+    assert "gap_absolute_weighted__public_transport" in columns
+
+    # Dict-valued breakdowns and description strings are not, by default.
+    assert "weighted_by_equity_group__public_transport" not in columns
+    assert "unweighted_by_equity_group__public_transport" not in columns
+    assert "coverage_by_equity_group__public_transport" not in columns
+    assert "max_cost_by_equity_group__public_transport" not in columns
+    assert "gap_absolute_description__public_transport" not in columns
+    assert "gap_relative_description__public_transport" not in columns
+    assert "inter_tertile_description__public_transport" not in columns
+
+
+@pytest.mark.parametrize("search_strategy", ["brute-force", "greedy", "grasp"])
+def test_full_secondary_metrics_true_includes_dict_valued_columns(
+    loaded_problem_with_equity_and_secondary_matrix, search_strategy
+):
+    result = loaded_problem_with_equity_and_secondary_matrix.solve(
+        p=1,
+        search_strategy=search_strategy,
+        full_secondary_metrics=True,
+        grasp_num_solutions=1,
+    )
+    columns = result.solution_df.columns
+
+    assert "weighted_by_equity_group__public_transport" in columns
+    assert "unweighted_by_equity_group__public_transport" in columns
+    assert "coverage_by_equity_group__public_transport" in columns
+    assert "max_cost_by_equity_group__public_transport" in columns
+    assert "gap_absolute_description__public_transport" in columns
+    assert "gap_relative_description__public_transport" in columns
+    assert "inter_tertile_description__public_transport" in columns
+
+    row = result.solution_df.iloc[0]
+    # Every equity group (imd_decile 1/5/10) is present as a dict key, with
+    # the value the demand-weighted public_transport cost for that group.
+    assert set(row["weighted_by_equity_group__public_transport"].keys()) == {
+        1,
+        5,
+        10,
+    }
+    assert isinstance(row["gap_absolute_description__public_transport"], str)
+
+
+def test_full_secondary_metrics_values_match_uniform_site_cost(
+    loaded_problem_with_equity_and_secondary_matrix,
+):
+    """Site_B's public_transport cost is uniformly 50.0 for every demand
+    location, so every equity group's weighted/unweighted average for that
+    row is exactly 50.0 -- a hand-checkable value, not just "some dict"."""
+    result = loaded_problem_with_equity_and_secondary_matrix.solve(
+        p=1, full_secondary_metrics=True
+    )
+    site_b_row = _row_for_site(result.solution_df, "Site_B")
+    assert site_b_row["weighted_by_equity_group__public_transport"] == {
+        1: 50.0,
+        5: 50.0,
+        10: 50.0,
+    }
+    assert site_b_row["unweighted_by_equity_group__public_transport"] == {
+        1: 50.0,
+        5: 50.0,
+        10: 50.0,
+    }
+
+
+def test_return_solution_metrics_full_secondary_metrics_direct_call(
+    loaded_problem_with_equity_and_secondary_matrix,
+):
+    """The flag also works when calling return_solution_metrics() directly
+    on an EvaluatedCombination, not just via solve()."""
+    loaded_problem_with_equity_and_secondary_matrix.solve(p=1)  # builds travel_and_demand_df
+    combination = (
+        loaded_problem_with_equity_and_secondary_matrix.evaluate_single_solution_single_objective(
+            site_names=["Site_B"]
+        )
+    )
+    default_metrics = combination.return_solution_metrics()
+    full_metrics = combination.return_solution_metrics(full_secondary_metrics=True)
+
+    assert "weighted_by_equity_group__public_transport" not in default_metrics
+    assert "weighted_by_equity_group__public_transport" in full_metrics
+    assert full_metrics["weighted_by_equity_group__public_transport"] == {
+        1: 50.0,
+        5: 50.0,
+        10: 50.0,
+    }
+
+
 # --- Plotting ---------------------------------------------------------
 
 

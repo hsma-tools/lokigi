@@ -481,6 +481,7 @@ class SiteProblem(
         grasp_local_search_chance=0.8,  # Chance that local searching will happen to improve found solution
         grasp_max_swap_count_local_search=10,
         random_seed=42,
+        full_secondary_metrics=False,
     ):
         """
         Solve the site location problem using the specified objective and strategy.
@@ -582,6 +583,18 @@ class SiteProblem(
             local search phase.
         random_seed : int, default 42
             (GRASP only) Seed for reproducibility in randomized strategies like GRASP.
+        full_secondary_metrics : bool, default False
+            If False (the default), each registered secondary travel matrix
+            (see `add_secondary_travel_matrix()`) contributes only its core
+            five metrics plus the float-valued equity aggregations to
+            `solution_df`. If True, every registered secondary matrix also
+            contributes its dict-valued equity breakdowns (e.g.
+            `weighted_by_equity_group__<label>`) and description strings,
+            matching what the primary matrix already always returns
+            unsuffixed. This has no effect if no secondary matrices are
+            registered, and costs nothing extra to compute -- the values are
+            already computed either way, this only controls which of them
+            are included in the returned table.
 
         Returns
         -------
@@ -844,6 +857,7 @@ class SiteProblem(
                 random_seed=random_seed,
                 grasp_local_search_chance=grasp_local_search_chance,  # Chance that local searching will happen to improve found solution
                 grasp_max_swap_count_local_search=grasp_max_swap_count_local_search,
+                full_secondary_metrics=full_secondary_metrics,
             )
         else:
             raise ValueError(f"Unknown objective '{objective}'.")
@@ -869,6 +883,7 @@ class SiteProblem(
         grasp_local_search_chance=0.8,  # Chance that local searching will happen to improve found solution
         grasp_max_swap_count_local_search=10,
         random_seed=42,
+        full_secondary_metrics=False,
     ):
         """
         Internal dispatcher for solving location-allocation problems.
@@ -977,6 +992,7 @@ class SiteProblem(
                 max_value_cutoff=max_value_cutoff,
                 threshold_for_coverage=threshold_for_coverage,
                 n_jobs=n_jobs,
+                full_secondary_metrics=full_secondary_metrics,
             )
 
         if search_strategy == "greedy":
@@ -989,6 +1005,7 @@ class SiteProblem(
                 show_progress=show_progress,
                 threshold_for_coverage=threshold_for_coverage,
                 max_value_cutoff=max_value_cutoff,
+                full_secondary_metrics=full_secondary_metrics,
             )
 
         if search_strategy == "grasp":
@@ -1009,6 +1026,7 @@ class SiteProblem(
                 local_search_chance=grasp_local_search_chance,  # Chance that local searching will happen to improve found solution
                 max_swap_count_local_search=grasp_max_swap_count_local_search,
                 max_value_cutoff=max_value_cutoff,
+                full_secondary_metrics=full_secondary_metrics,
             )
 
         # An empty result set would otherwise crash further down with a
