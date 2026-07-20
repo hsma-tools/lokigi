@@ -26,7 +26,7 @@ import pytest
 import lokigi
 
 
-def _problem_with_terrible_required_site(mark_required=True):
+def _problem_with_terrible_required_site(mark_required=True, also_require=()):
     """
     Five sites, four equal-demand LSOAs. Site_Req is uniformly terrible
     (90 minutes from everywhere), so no search would ever pick it
@@ -40,6 +40,9 @@ def _problem_with_terrible_required_site(mark_required=True):
     Site_3 (20.75), Site_1 (23.5), Site_2 (26.75).
 
     Unconstrained, the p=2 optimum is {Site_1, Site_3} (15.0).
+
+    `also_require` marks additional site_ids as required, for exercising
+    the multiple-required-sites paths.
     """
     demand_df = pd.DataFrame(
         {
@@ -47,12 +50,18 @@ def _problem_with_terrible_required_site(mark_required=True):
             "demand": [100, 100, 100, 100],
         }
     )
+    site_ids = ["Site_1", "Site_2", "Site_3", "Site_4", "Site_Req"]
     candidate_df = pd.DataFrame(
         {
-            "site_id": ["Site_1", "Site_2", "Site_3", "Site_4", "Site_Req"],
+            "site_id": site_ids,
             "lat": [51.1, 51.2, 51.3, 51.4, 51.5],
             "long": [-0.1, -0.2, -0.3, -0.4, -0.5],
-            "must_build": ["no", "no", "no", "no", "yes" if mark_required else "no"],
+            "must_build": [
+                "yes"
+                if (site in also_require or (site == "Site_Req" and mark_required))
+                else "no"
+                for site in site_ids
+            ],
         }
     )
     travel_df = pd.DataFrame(
@@ -167,10 +176,9 @@ def test_grasp_raises_clearly_when_required_sites_exceed_p():
     """Two required sites cannot fit in a p=1 solution: GRASP must fail
     fast with a clear message rather than looping or silently dropping
     one of them."""
-    problem = _problem_with_terrible_required_site(mark_required=False)
-    problem.candidate_sites.loc[
-        problem.candidate_sites["site_id"].isin(["Site_1", "Site_2"]), "must_build"
-    ] = "yes"
+    problem = _problem_with_terrible_required_site(
+        mark_required=False, also_require=("Site_1", "Site_2")
+    )
 
     with pytest.raises(ValueError, match="required"):
         problem.solve(
@@ -205,3 +213,87 @@ def test_greedy_still_honours_a_single_required_site():
     best = result.solution_df.iloc[0]
     assert "Site_Req" in best["site_names"]
     assert sorted(best["site_names"]) == ["Site_4", "Site_Req"]
+
+
+# --- greedy with MULTIPLE required sites ---
+#
+# Greedy grows solutions one site at a time, but every size-i combination
+# is also filtered to contain ALL required sites -- so with two or more
+# required sites, the early steps (i < n_required) had no valid
+# combinations at all and greedy crashed with KeyError('weighted_average')
+# on the empty DataFrame. The fix seeds greedy's build with the required
+# sites and starts the loop at that size.
+
+
+def test_greedy_with_two_required_sites_returns_the_best_completion():
+    """With Site_Req and Site_2 required and p=3, the three possible
+    completions are hand-checkable (Site_Req's 90s never win a min, so
+    each scores the elementwise mins of Site_2 and the free site):
+
+      + Site_1: mins [25, 18, 10, 28] -> weighted_average 20.25
+      + Site_3: mins [24, 13, 11, 13] -> weighted_average 15.25
+      + Site_4: mins [25, 16, 11, 16] -> weighted_average 17.00
+
+    Greedy's single free choice sees all three completions at once, so it
+    must find the true constrained optimum here, matching brute-force."""
+    problem = _problem_with_terrible_required_site(also_require=("Site_2",))
+    greedy = problem.solve(
+        p=3, objectives="p_median", search_strategy="greedy", show_progress=False
+    )
+    brute_force = problem.solve(
+        p=3, objectives="p_median", search_strategy="brute-force", show_progress=False
+    )
+
+    best = greedy.solution_df.iloc[0]
+    assert sorted(best["site_names"]) == ["Site_2", "Site_3", "Site_Req"]
+    assert best["weighted_average"] == pytest.approx(15.25)
+    assert sorted(brute_force.solution_df.iloc[0]["site_names"]) == sorted(
+        best["site_names"]
+    )
+
+
+def test_greedy_when_p_equals_the_number_of_required_sites():
+    """With every slot taken by a required site there is nothing to
+    choose: greedy must return exactly the required set (elementwise mins
+    of Site_2 and Site_Req = Site_2's own times, weighted_average 26.75)
+    rather than crashing."""
+    problem = _problem_with_terrible_required_site(also_require=("Site_2",))
+    result = problem.solve(
+        p=2, objectives="p_median", search_strategy="greedy", show_progress=False
+    )
+
+    best = result.solution_df.iloc[0]
+    assert sorted(best["site_names"]) == ["Site_2", "Site_Req"]
+    assert best["weighted_average"] == pytest.approx(26.75)
+
+
+def test_greedy_raises_clearly_when_required_sites_exceed_p():
+    problem = _problem_with_terrible_required_site(also_require=("Site_2",))
+
+    with pytest.raises(ValueError, match="required"):
+        problem.solve(
+            p=1,
+            objectives="p_median",
+            search_strategy="greedy",
+            show_progress=False,
+        )
+
+
+def test_grasp_honours_two_required_sites():
+    """GRASP's construction seeding must handle any number of required
+    sites, not just one: every returned solution contains both."""
+    problem = _problem_with_terrible_required_site(also_require=("Site_2",))
+    result = problem.solve(
+        p=3,
+        objectives="p_median",
+        search_strategy="grasp",
+        show_progress=False,
+        grasp_num_solutions=3,
+        grasp_max_attempts=50,
+        random_seed=42,
+    )
+
+    assert len(result.solution_df) >= 1
+    for site_names in result.solution_df["site_names"]:
+        assert "Site_Req" in site_names
+        assert "Site_2" in site_names

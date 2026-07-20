@@ -174,10 +174,24 @@ class GreedyMixin:
     ):
         ranking = _get_ranking_by_objective(objective=objectives)
 
-        # Loop through
-        best_indices = []
+        # Greedy grows the solution one site at a time, but every size-i
+        # combination is also filtered to contain ALL required sites -- so
+        # with two or more required sites, the early steps (i < n_required)
+        # had no valid combinations at all and crashed on the empty result.
+        # Seed the build with the required sites instead, and start the
+        # loop at that size (its first step then just evaluates the
+        # required set itself before free choices begin).
+        required_site_indices = _get_required_site_indices(self)
+        if len(required_site_indices) > p:
+            raise ValueError(
+                f"{len(required_site_indices)} sites are marked as required "
+                f"in '{self._candidate_sites_required_sites_col}', but p={p}. "
+                "Increase p to at least the number of required sites."
+            )
 
-        loop_iterations = range(1, p + 1)
+        best_indices = list(required_site_indices)
+
+        loop_iterations = range(max(1, len(required_site_indices)), p + 1)
         if show_progress:
             loop_iterations = tqdm(loop_iterations)
 
@@ -187,7 +201,7 @@ class GreedyMixin:
                 n_facilities=self.total_n_sites,
                 p=i,
                 site_problem=self,
-                force_include_indices=None if i == 1 else list(best_indices),
+                force_include_indices=list(best_indices) if best_indices else None,
             )
 
             # print(f"Possible combinations: {possible_combinations}")
