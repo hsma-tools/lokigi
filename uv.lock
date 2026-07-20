@@ -1919,7 +1919,7 @@ wheels = [
 
 [[package]]
 name = "lokigi"
-version = "0.2.1"
+version = "0.4.1"
 source = { editable = "." }
 dependencies = [
     { name = "adjusttext" },
@@ -1927,6 +1927,7 @@ dependencies = [
     { name = "esda" },
     { name = "folium" },
     { name = "geopandas" },
+    { name = "joblib" },
     { name = "mapclassify" },
     { name = "numpy" },
     { name = "osmium" },
@@ -1972,6 +1973,7 @@ requires-dist = [
     { name = "esda", specifier = ">=2.9.0" },
     { name = "folium", specifier = ">=0.14.0,<1.0.0" },
     { name = "geopandas", specifier = ">=1.0.0,<2.0.0" },
+    { name = "joblib", specifier = ">=1.3.0" },
     { name = "mapclassify", specifier = ">=2.0.0,<4.0.0" },
     { name = "numpy", specifier = ">=1.26.2,<3.0.0" },
     { name = "osmium", specifier = ">=4.3.1" },

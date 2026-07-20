@@ -32,6 +32,7 @@ dependencies = [
     "mapclassify>=2.0.0,<4.0.0",
     "adjusttext>=1.3.0",
     "tqdm>=4.67.3",
+    "joblib>=1.3.0",
     "sweetpareto>=1.1.0",
     "seaborn>=0.13.0,<1.0.0",
     "plotly>=5.0.0,<7.0.0",

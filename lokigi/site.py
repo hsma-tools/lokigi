@@ -446,6 +446,7 @@ class SiteProblem(
         show_progress=True,
         brute_force_keep_best_n=None,
         brute_force_keep_worst_n=None,
+        n_jobs=1,
         max_value_cutoff=None,  # only used for hybrid
         threshold_for_coverage=None,  # used for filtering in mclp or lscp, used for scoring in others
         grasp_num_solutions=5,
@@ -501,6 +502,20 @@ class SiteProblem(
             only looks good once cost is considered could be discarded
             before cost is ever factored in. A UserWarning is raised when
             this fallback is triggered.
+        n_jobs : int, default 1
+            (Brute Force only) Number of worker processes to evaluate
+            combinations in parallel. 1 (the default) evaluates every
+            combination in the current process and is always
+            byte-for-byte identical to prior (pre-parallel) behaviour,
+            including which combination brute_force_keep_best_n /
+            brute_force_keep_worst_n keeps on an exact score tie. -1 uses
+            all available CPU cores. With n_jobs != 1, results are always
+            correctly ranked and bounded to the requested count, but if
+            more combinations tie exactly on score than keep_best_n /
+            keep_worst_n allows, which specific tied combination is kept
+            can differ from a serial run (their scores are still
+            identical either way). Exact ties are rare with real-valued
+            travel costs.
         max_value_cutoff : float, optional
             The maximum allowable travel cost. Only applicable for hybrid
             objective models. All search strategies honour it: brute-force
@@ -782,6 +797,7 @@ class SiteProblem(
                 show_progress=show_progress,
                 brute_force_keep_best_n=brute_force_keep_best_n,
                 brute_force_keep_worst_n=brute_force_keep_worst_n,
+                n_jobs=n_jobs,
                 max_value_cutoff=max_value_cutoff,
                 grasp_num_solutions=grasp_num_solutions,
                 grasp_alpha=grasp_alpha,
@@ -806,6 +822,7 @@ class SiteProblem(
         brute_force_ignore_limit=False,
         brute_force_keep_best_n=None,
         brute_force_keep_worst_n=None,
+        n_jobs=1,
         max_value_cutoff=None,
         threshold_for_coverage=None,  # only used for mclp
         grasp_num_solutions=5,
@@ -849,6 +866,9 @@ class SiteProblem(
             (Brute Force) The number of lowest-performing combinations to retain in
             brute-force results. Same cost-weighting fallback as
             `brute_force_keep_best_n` applies.
+        n_jobs : int, default 1
+            (Brute Force) Number of worker processes to evaluate combinations
+            in parallel. 1 runs serially; -1 uses all available CPU cores.
         max_value_cutoff : float, optional
             The maximum allowable travel cost, used only for hybrid
             objective models.
@@ -917,6 +937,7 @@ class SiteProblem(
                 rank_best_n_on=ranking,
                 max_value_cutoff=max_value_cutoff,
                 threshold_for_coverage=threshold_for_coverage,
+                n_jobs=n_jobs,
             )
 
         if search_strategy == "greedy":
