@@ -614,7 +614,12 @@ class SiteProblem(
         # If demand data not present,a ssume equal demand
         if self.demand_data is None:
             self._setup_equal_demand_df()
-            if objectives != "mclp":
+            # Compare against `objective` (the already-resolved single
+            # string), not the raw `objectives` parameter -- when the
+            # caller passes a list (e.g. objectives=["mclp"]), a list is
+            # never equal to the string "mclp", so this warning fired even
+            # for the exempted mclp objective.
+            if objective != "mclp":
                 warn(
                     "No demand data was provided. Demand from all regions has been assumed to be equal."
                     "If you wish to override this, run .add_demand() to add your site dataframe before running .solve() again."
