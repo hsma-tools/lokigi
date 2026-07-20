@@ -267,6 +267,23 @@ def test_greedy_when_p_equals_the_number_of_required_sites():
     assert best["weighted_average"] == pytest.approx(26.75)
 
 
+def test_brute_force_raises_clearly_when_required_sites_exceed_p():
+    """Two required sites cannot fit in a p=1 solution: brute-force must
+    fail fast with a clear message rather than falling through to the
+    generic, misleadingly-worded 'No feasible solutions' guard."""
+    problem = _problem_with_terrible_required_site(
+        mark_required=False, also_require=("Site_1", "Site_2")
+    )
+
+    with pytest.raises(ValueError, match="required"):
+        problem.solve(
+            p=1,
+            objectives="p_median",
+            search_strategy="brute-force",
+            show_progress=False,
+        )
+
+
 def test_greedy_raises_clearly_when_required_sites_exceed_p():
     problem = _problem_with_terrible_required_site(also_require=("Site_2",))
 

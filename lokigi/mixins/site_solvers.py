@@ -40,6 +40,21 @@ class BruteForceMixin:
         threshold_for_coverage=None,
     ):
 
+        # Greedy and GRASP already fail fast with a clear message when
+        # required sites can't fit in p; brute-force had no equivalent
+        # check and instead silently filtered every combination out in
+        # _generate_all_combinations below, falling through to the
+        # generic "No feasible solutions" guard in site.py -- whose
+        # wording ("checking that p does not exceed the number of
+        # candidate sites") is wrong for this case.
+        required_site_indices = _get_required_site_indices(self)
+        if len(required_site_indices) > p:
+            raise ValueError(
+                f"{len(required_site_indices)} sites are marked as required "
+                f"in '{self._candidate_sites_required_sites_col}', but p={p}. "
+                "Increase p to at least the number of required sites."
+            )
+
         keep_n_active = (
             brute_force_keep_best_n is not None or brute_force_keep_worst_n is not None
         )
