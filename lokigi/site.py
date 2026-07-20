@@ -195,13 +195,28 @@ class SiteProblem(
         if objective not in SUPPORTED_OBJECTIVES:
             raise ValueError(f"Unsupported objective ({objective}) passed.")
 
-        # Ensure exactly one argument is provided out of site_names and site_indices
+        # Ensure exactly one argument is provided out of site_names and
+        # site_indices. Checked via `is not None` rather than truthiness --
+        # `site_names and site_indices` treated an explicitly-passed empty
+        # list ([]) as "not provided", so e.g. site_names=[] alongside
+        # site_indices=[1] silently skipped the "not both" check.
         if (site_names is None and site_indices is None) or (
-            site_names and site_indices
+            site_names is not None and site_indices is not None
         ):
             raise ValueError(
                 "Please provide either 'site_names' or 'site_indices', but not both. "
                 "This helps prevent 'off-by-one' errors with numeric site IDs."
+            )
+
+        if (site_names is not None and len(site_names) == 0) or (
+            site_indices is not None and len(site_indices) == 0
+        ):
+            raise ValueError("'site_names'/'site_indices' must not be an empty list.")
+
+        if site_indices is not None and len(site_indices) != len(set(site_indices)):
+            raise ValueError(
+                f"site_indices contains duplicate entries: {site_indices}. "
+                "Each site may only be selected once per solution."
             )
 
         try:
@@ -214,16 +229,25 @@ class SiteProblem(
             # We need to make sure that we use IDs and names completely consistently throughout.
             # 1. Resolve site_indices to actual Site IDs (names)
             if site_indices is not None:
+                # .isin() silently drops any index that doesn't exist,
+                # which is why "is the result non-empty" alone (the old
+                # check here) wasn't enough: a partially-invalid list still
+                # produced a non-empty result, silently evaluating a
+                # smaller solution than the caller asked for. Check for
+                # exactly which requested indices don't exist.
+                valid_indices = set(self.candidate_sites["canonical_site_index"])
+                invalid_indices = sorted(set(site_indices) - valid_indices)
+                if invalid_indices:
+                    raise IndexError(
+                        f"Site indices {invalid_indices} not found in candidate "
+                        f"sites (valid range: 0 to {self.total_n_sites - 1})."
+                    )
+
                 # Use .iloc to get the actual ID/Name from the master site list
                 resolved_names = self.candidate_sites[
                     self.candidate_sites["canonical_site_index"].isin(site_indices)
                 ][self._candidate_sites_candidate_id_col].tolist()
                 # print(f"Site indices provided. Resolved names: {resolved_names}")
-
-                if not resolved_names:
-                    raise IndexError(
-                        f"Indices {site_indices} not found in candidate sites."
-                    )
             else:
                 # print(f"Name provided. Resolved names: {site_names}")
                 resolved_names = site_names
