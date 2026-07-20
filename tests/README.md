@@ -27,6 +27,46 @@ numbers. `brighton_problem` is the exception: it loads real data from
 `sample_data/brighton_*` (CSV demand, geojson candidate sites, CSV travel
 matrix), for coverage of the CSV/geojson loading path.
 
+## Fixture and assertion conventions
+
+Most fixtures in this suite follow three related conventions, worth keeping
+up when adding new ones:
+
+**Hand-checkable numbers, not arbitrary ones.** Fixture travel times, demand,
+and costs are chosen so the expected result can be derived by hand (or with
+a calculator) and asserted as an exact value, rather than just checking
+"solve() returns *something* plausible." E.g. equity-weighted fixtures in
+[test_equity_weighting_direction.py](test_equity_weighting_direction.py)
+assert exact fractions like `145/14`; the cost/travel tradeoff in
+[conftest.py](conftest.py)'s `cost_weighted_pruning_problem` is chosen so
+the true cost-weighted winner is obvious by inspection (one site cheap and
+slow, others fast and expensive). Prefer this over hardcoding whatever a
+first correct run happens to output -- an independently-derived number
+catches bugs that both the code and a copied-from-output assertion would
+agree on.
+
+**Sanity-check that adversarial fixtures actually discriminate.** When a
+fixture is built to separate two things that usually agree (e.g.
+`five_site_problem` in [conftest.py](conftest.py), where the best
+`weighted_average` combination is deliberately *not* the best `mclp`
+coverage combination), pair it with a small test that pins the
+un-confounded baseline -- e.g.
+`test_unconstrained_greedy_walks_into_the_trap` in
+[test_max_value_cutoff_strategies.py](test_max_value_cutoff_strategies.py)
+confirms unconstrained greedy actually walks into the trap before the
+cutoff-respecting tests rely on that trap existing. If the fixture stops
+discriminating (e.g. after an unrelated change), this fails loudly instead
+of every dependent test silently passing for the wrong reason.
+
+**"Trap" fixtures engineered to catch a specific plausible-but-wrong
+implementation.** Rather than a generic random problem, several fixtures
+(`greedy_trap_problem`, `cost_weighted_pruning_problem`,
+`tied_score_problem`) are shaped so that one specific incorrect behaviour
+-- a myopic greedy choice, cost-blind pruning, an unhandled exact tie --
+produces a *different, checkable* answer than the correct implementation.
+This makes the test a real pin against that exact failure mode, not just a
+smoke test that happens to also exercise the code path.
+
 ## Backtests (`test_backtests.py`)
 
 Most test files check *correctness* -- they hand-derive the expected answer
