@@ -251,10 +251,20 @@ class GreedyMixin:
                     weights=weights,
                     higher_is_better=higher_is_better,
                 )
-                sort_ascending = [True, True]
             else:
                 score_col = ranking
-                sort_ascending = [not higher_is_better, True]
+
+            # _apply_cost_weighting only blends onto its lower-is-better
+            # "composite_score" scale when it actually has usable cost data
+            # to blend (a positive cost weight is not enough on its own --
+            # it also no-ops, returning score_col == ranking unchanged, when
+            # e.g. every candidate's total_cost is NaN). Assuming "cost
+            # weight requested" implies "blended, therefore ascending" was
+            # wrong: for a higher-is-better objective (mclp) whose cost
+            # weighting silently no-ops, sorting ascending on the raw
+            # ranking column picks the WORST combination as "best".
+            blended = score_col != ranking
+            sort_ascending = [True, True] if blended else [not higher_is_better, True]
 
             evaluated_solutions = outputs_df.sort_values(
                 [score_col, "weighted_average"], ascending=sort_ascending
@@ -429,7 +439,19 @@ class GraspMixin:
                         weights=weights,
                         higher_is_better=not is_minimization,
                     )
-                    scores_minimized = True
+                    # _apply_cost_weighting only blends onto its
+                    # lower-is-better "composite_score" scale when it has
+                    # usable cost data to blend -- a positive cost weight
+                    # alone isn't enough, it also no-ops (score_col ==
+                    # ranking unchanged) when e.g. every candidate's
+                    # total_cost is NaN. Assuming "cost requested" implies
+                    # "blended, therefore minimised" was wrong: for a
+                    # maximising objective (mclp) whose cost weighting
+                    # silently no-ops, treating its raw score as
+                    # lower-is-better picks the WORST candidates for the RCL.
+                    scores_minimized = (
+                        True if score_col != ranking else is_minimization
+                    )
                     candidate_scores: list[tuple[float, float, int]] = list(
                         zip(
                             candidates_df[score_col],
@@ -583,28 +605,27 @@ class GraspMixin:
                             # _apply_cost_weighting: it inverts the raw
                             # ranking column into "badness" (0=best) before
                             # blending in cost, and the returned score_col
-                            # ("composite_score") is unconditionally on that
-                            # same lower-is-better, 0-is-best scale --
-                            # regardless of whether the underlying objective
-                            # is minimized (e.g. weighted_average) or
-                            # maximized (e.g. mclp's coverage proportion).
-                            #
-                            # That's why the comparison below is a plain "<"
-                            # with no is_minimization/higher_is_better branch,
-                            # unlike the raw-metric comparison in the
-                            # non-cost branch above. Do NOT wrap it in an
-                            # `if is_minimization: ... else: ...` to mirror
-                            # that branch -- the direction has already been
-                            # normalized once by _apply_cost_weighting, and
-                            # inverting it a second time here would make this
-                            # code pick the worst swap instead of the best
-                            # one for every maximizing objective (mclp).
+                            # ("composite_score") is on that same
+                            # lower-is-better, 0-is-best scale regardless of
+                            # whether the underlying objective is minimized
+                            # (e.g. weighted_average) or maximized (e.g.
+                            # mclp's coverage proportion) -- BUT ONLY when
+                            # it actually blends. _apply_cost_weighting also
+                            # no-ops (returns score_col == ranking_col
+                            # unchanged) when it lacks usable cost data to
+                            # blend (e.g. every candidate's total_cost is
+                            # NaN), in which case score_col is back on the
+                            # ORIGINAL objective's natural scale, and a
+                            # blind "<" would pick the worst swap instead of
+                            # the best one for a maximizing objective (mclp)
+                            # whose cost weighting silently no-op'd.
                             batch_df, score_col = _apply_cost_weighting(
                                 pd.DataFrame(rows),
                                 ranking_col=ranking,
                                 weights=weights,
                                 higher_is_better=not is_minimization,
                             )
+                            blended = score_col != ranking
                             current_score = batch_df.iloc[0][score_col]
                             current_secondary_score = batch_df.iloc[0][
                                 "weighted_average"
@@ -623,10 +644,17 @@ class GraspMixin:
                             for i, row in batch_df.iloc[1:].reset_index(
                                 drop=True
                             ).iterrows():
-                                if (row[score_col], row["weighted_average"]) < (
-                                    current_score,
-                                    current_secondary_score,
-                                ):
+                                candidate_score = (
+                                    row[score_col],
+                                    row["weighted_average"],
+                                )
+                                current = (current_score, current_secondary_score)
+                                is_better = (
+                                    candidate_score < current
+                                    if (blended or is_minimization)
+                                    else candidate_score > current
+                                )
+                                if is_better:
                                     current_solution = swap_candidates[i]
                                     current_solution_set = set(current_solution)
                                     improved = True
