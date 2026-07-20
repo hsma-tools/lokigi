@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import itertools
-from typing import Literal
 
 import math
 import numpy as np
@@ -32,20 +31,8 @@ class ParetoMixin:
 
     def plot_simple_pareto_front_pairs(
         self,
-        x_axis: Literal[
-            "weighted_average",
-            "unweighted_average",
-            "90th_percentile",
-            "max",
-            "proportion_within_coverage_threshold",
-        ] = "weighted_average",
-        y_axis: Literal[
-            "weighted_average",
-            "unweighted_average",
-            "90th_percentile",
-            "max",
-            "proportion_within_coverage_threshold",
-        ] = "max",
+        x_axis: str = "weighted_average",
+        y_axis: str = "max",
         height=4,
         show_points=True,
         theme="whitegrid",
@@ -63,14 +50,15 @@ class ParetoMixin:
 
         Parameters
         ----------
-        x_axis : {"weighted_average", "unweighted_average", "90th_percentile", \
-                "max", "proportion_within_coverage_threshold"}, \
-                default="weighted_average"
-            Column name representing the metric to plot on the x-axis.
-        y_axis : {"weighted_average", "unweighted_average", "90th_percentile", \
-                "max", "proportion_within_coverage_threshold"}, \
-                default="max"
-            Column name representing the metric to plot on the y-axis.
+        x_axis : str, default="weighted_average"
+            Column name representing the metric to plot on the x-axis. Any
+            column in `solution_df` is valid, including secondary-travel-
+            matrix columns suffixed `__<label>` (e.g.
+            "weighted_average__public_transport").
+        y_axis : str, default="max"
+            Column name representing the metric to plot on the y-axis. Any
+            column in `solution_df` is valid, including secondary-travel-
+            matrix columns suffixed `__<label>`.
         height : float, default=4
             Height of the plot in inches.
         show_points : bool, default=True

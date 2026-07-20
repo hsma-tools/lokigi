@@ -727,6 +727,49 @@ def loaded_problem_with_equity(loaded_problem, equity_df):
 
 
 @pytest.fixture
+def secondary_travel_df():
+    """Rows = demand locations, columns = candidate sites -- deliberately
+    reordered relative to `travel_df` (Site_C, Site_B, Site_A instead of
+    Site_A, Site_B, Site_C) and with unrelated cost values, so a secondary
+    travel matrix implementation that accidentally reuses the primary
+    matrix's positional column indices produces visibly wrong numbers
+    rather than plausible-looking ones. Cost is uniform per site across all
+    demand locations (Site_C=5 fastest, Site_B=50, Site_A=90 slowest) --
+    the reverse ranking of `travel_df`, where Site_B is the p=1
+    weighted-average winner on the primary matrix."""
+    return pd.DataFrame(
+        {
+            "source_id": ["LSOA_1", "LSOA_2", "LSOA_3"],
+            "Site_C": [5.0, 5.0, 5.0],
+            "Site_B": [50.0, 50.0, 50.0],
+            "Site_A": [90.0, 90.0, 90.0],
+        }
+    )
+
+
+@pytest.fixture
+def loaded_problem_with_secondary_matrix(loaded_problem, secondary_travel_df):
+    """`loaded_problem` plus a registered secondary travel matrix labelled
+    'public_transport' (see `secondary_travel_df`)."""
+    loaded_problem.add_secondary_travel_matrix(
+        secondary_travel_df, source_col="source_id", label="public_transport"
+    )
+    return loaded_problem
+
+
+@pytest.fixture
+def loaded_problem_with_equity_and_secondary_matrix(
+    loaded_problem_with_equity, secondary_travel_df
+):
+    """`loaded_problem_with_equity` plus the same registered secondary
+    travel matrix as `loaded_problem_with_secondary_matrix`."""
+    loaded_problem_with_equity.add_secondary_travel_matrix(
+        secondary_travel_df, source_col="source_id", label="public_transport"
+    )
+    return loaded_problem_with_equity
+
+
+@pytest.fixture
 def additional_data_df():
     return pd.DataFrame(
         {

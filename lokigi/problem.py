@@ -24,6 +24,11 @@ class _Problem:
         self._travel_matrix_source_col = None
         self._travel_matrix_unit = None
 
+        # label -> {"data", "source_col", "unit", "threshold_for_coverage"}
+        self.secondary_travel_matrices = {}
+        # label -> aligned DataFrame (built at solve()/evaluate time)
+        self._secondary_travel_frames = {}
+
         self.region_geometry_layer = None
         self._region_geometry_layer_type = None
         self._region_geometry_layer_common_col = None

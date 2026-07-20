@@ -196,6 +196,7 @@ class MapsMixin:
         colors=None,
         add_legend=True,
         legend_kwargs=None,
+        matrix=None,
     ):
         """
         Internal helper to plot a single solution map onto a given axes.
@@ -220,12 +221,18 @@ class MapsMixin:
             Keyword arguments for legend placement
         annotation_size: int, optional
             Font size of site name annotations on the map
+        matrix : str, optional
+            Label of a secondary travel matrix registered via
+            `add_secondary_travel_matrix()`. If None (default), the primary
+            travel matrix's columns and unit are used.
 
         Returns
         -------
         ax : matplotlib.axes.Axes
             The modified axes object
         """
+        cost_col, site_col, within_col, unit, _ = self._resolve_travel_columns(matrix)
+
         # Merge geometry with solution data
         solution_df = (
             solution["problem_df"].values[0]
@@ -249,9 +256,7 @@ class MapsMixin:
         if plot_site_allocation:
             if site_color_map is not None:
                 # Use consistent global color mapping
-                colors_mapped = nearest_site_travel_gdf["selected_site"].map(
-                    site_color_map
-                )
+                colors_mapped = nearest_site_travel_gdf[site_col].map(site_color_map)
                 ax = nearest_site_travel_gdf.plot(
                     color=colors_mapped,
                     legend=False,
@@ -263,7 +268,7 @@ class MapsMixin:
             else:
                 # Single plot with its own legend
                 ax = nearest_site_travel_gdf.plot(
-                    "selected_site",
+                    site_col,
                     legend=add_legend,
                     cmap=cmap,
                     alpha=0.7,
@@ -275,7 +280,7 @@ class MapsMixin:
 
         elif plot_regions_not_meeting_threshold:
             ax = nearest_site_travel_gdf.plot(
-                "within_threshold",
+                within_col,
                 legend=False,
                 cmap=discrete_cmap,
                 alpha=0.7,
@@ -288,18 +293,21 @@ class MapsMixin:
 
             # Add custom legend if requested and this is a single plot
             if add_legend and colors is not None:
+                threshold_val = self._resolve_coverage_threshold(
+                    matrix, solution["coverage_threshold"].values[0]
+                )
                 patches = [
                     mpatches.Patch(
                         color=colors[0],
                         label=_wrap_label(
-                            f"Further than {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}",
+                            f"Further than {threshold_val} {unit}",
                             width=label_wrap_width,
                         ),
                     ),
                     mpatches.Patch(
                         color=colors[1],
                         label=_wrap_label(
-                            f"Within {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}",
+                            f"Within {threshold_val} {unit}",
                             width=label_wrap_width,
                         ),
                     ),
@@ -312,9 +320,9 @@ class MapsMixin:
                 ax.legend(handles=patches, title="Coverage Status", loc=legend_loc)
 
         else:
-            # Plot min_cost
+            # Plot min_cost (or the secondary matrix's own min cost)
             ax = nearest_site_travel_gdf.plot(
-                "min_cost",
+                cost_col,
                 legend=add_legend,
                 cmap=cmap,
                 alpha=0.7,
@@ -489,6 +497,7 @@ class MapsMixin:
         height=12,
         width=6,
         site_legend_loc="best",
+        matrix=None,
     ):
         """
         Plot a map of the best-performing site combination.
@@ -561,6 +570,11 @@ class MapsMixin:
             to disable wrapping.
         annotation_size: int, optional
             Font size of site name annotations on the map
+        matrix : str, optional
+            Label of a secondary travel matrix registered via
+            `add_secondary_travel_matrix()`. If provided, the plot and its
+            title metrics use that matrix's columns and unit instead of the
+            primary travel matrix.
 
         Returns
         -------
@@ -665,6 +679,7 @@ class MapsMixin:
             colors=colors,
             add_legend=True,
             legend_kwargs=legend_kwargs,
+            matrix=matrix,
         )
 
         if has_required_sites:
@@ -712,30 +727,35 @@ class MapsMixin:
                     rank_suffix = _get_ordinal_suffix(solution_rank)
                     title_prefix = f"{solution_rank}{rank_suffix} best solution for {self.n_sites} sites"
 
+                _, _, _, matrix_unit, suffix = self._resolve_travel_columns(matrix)
+
                 # Build metrics section based on objective type
                 if self.objectives == "mclp":
+                    threshold_val = self._resolve_coverage_threshold(
+                        matrix, solution["coverage_threshold"].values[0]
+                    )
                     metrics = (
-                        f"Coverage within threshold of {solution['coverage_threshold'].values[0]} "
-                        f"{self.site_problem._travel_matrix_unit}: "
-                        f"{solution['proportion_within_coverage_threshold'].values[0]:.1%} \n"
-                        f"Unweighted Average: {solution['unweighted_average'].values[0]:.1f} "
-                        f"{self.site_problem._travel_matrix_unit} \n"
-                        f"Maximum: {solution['max'].values[0]:.1f} "
-                        f"{self.site_problem._travel_matrix_unit}"
+                        f"Coverage within threshold of {threshold_val} "
+                        f"{matrix_unit}: "
+                        f"{solution[f'proportion_within_coverage_threshold{suffix}'].values[0]:.1%} \n"
+                        f"Unweighted Average: {solution[f'unweighted_average{suffix}'].values[0]:.1f} "
+                        f"{matrix_unit} \n"
+                        f"Maximum: {solution[f'max{suffix}'].values[0]:.1f} "
+                        f"{matrix_unit}"
                     )
                 elif self.objectives in ["simple_p_median", "hybrid_simple_p_median"]:
                     metrics = (
-                        f"Unweighted Average: {solution['unweighted_average'].values[0]:.1f} "
-                        f"{self.site_problem._travel_matrix_unit} \n"
-                        f"Maximum: {solution['max'].values[0]:.1f} "
-                        f"{self.site_problem._travel_matrix_unit}"
+                        f"Unweighted Average: {solution[f'unweighted_average{suffix}'].values[0]:.1f} "
+                        f"{matrix_unit} \n"
+                        f"Maximum: {solution[f'max{suffix}'].values[0]:.1f} "
+                        f"{matrix_unit}"
                     )
                 else:
                     metrics = (
-                        f"Weighted Average: {solution['weighted_average'].values[0]:.1f} "
-                        f"{self.site_problem._travel_matrix_unit} \n"
-                        f"Maximum: {solution['max'].values[0]:.1f} "
-                        f"{self.site_problem._travel_matrix_unit}"
+                        f"Weighted Average: {solution[f'weighted_average{suffix}'].values[0]:.1f} "
+                        f"{matrix_unit} \n"
+                        f"Maximum: {solution[f'max{suffix}'].values[0]:.1f} "
+                        f"{matrix_unit}"
                     )
 
                 title = plt.title(
@@ -769,6 +789,7 @@ class MapsMixin:
         legend_wrap_width=40,
         site_legend_bbox_to_anchor=(0.9, 0.9),
         site_legend_loc="upper right",
+        matrix=None,
     ):
         """
         Plot maps for the top-performing site combinations.
@@ -884,6 +905,8 @@ class MapsMixin:
                 "Please run add_region_geometry_layer() first."
             )
 
+        cost_col, site_col, _, matrix_unit, suffix = self._resolve_travel_columns(matrix)
+
         if n_best > len(self.solution_df):
             n_best = len(self.solution_df)
             warn(
@@ -941,9 +964,10 @@ class MapsMixin:
         colors = None
 
         if not plot_site_allocation and not plot_regions_not_meeting_threshold:
-            # Calculate global color scale for min_cost
-            global_vmin = min(df["min_cost"].min() for df in sorted_df["problem_df"])
-            global_vmax = max(df["min_cost"].max() for df in sorted_df["problem_df"])
+            # Calculate global color scale for min_cost (or the secondary
+            # matrix's own min cost)
+            global_vmin = min(df[cost_col].min() for df in sorted_df["problem_df"])
+            global_vmax = max(df[cost_col].max() for df in sorted_df["problem_df"])
 
         elif plot_site_allocation:
             # Create consistent color mapping for sites
@@ -953,7 +977,7 @@ class MapsMixin:
 
             all_allocated_sites = set()
             for df in sorted_df["problem_df"]:
-                all_allocated_sites.update(df["selected_site"].unique())
+                all_allocated_sites.update(df[site_col].unique())
             all_allocated_sites = sorted(list(all_allocated_sites))
 
             sorted_allocated_sites = [
@@ -999,25 +1023,29 @@ class MapsMixin:
                 colors=colors,
                 add_legend=False,  # Legends added at figure level
                 legend_kwargs=None,
+                matrix=matrix,
             )
 
             # Add subplot titles
             if subplot_title is not None:
                 if subplot_title == "default":
                     if self.objectives == "mclp":
+                        threshold_val = self._resolve_coverage_threshold(
+                            matrix, solution["coverage_threshold"].values[0]
+                        )
                         ax.set_title(
-                            f"Coverage within threshold of {solution['coverage_threshold'].values[0]} {self.site_problem._travel_matrix_unit}: {solution['proportion_within_coverage_threshold'].values[0]:.1%} \nUnweighted Average: {solution['unweighted_average'].values[0]:.1f} {self.site_problem._travel_matrix_unit} \nMaximum: {solution['max'].values[0]:.1f} {self.site_problem._travel_matrix_unit}"
+                            f"Coverage within threshold of {threshold_val} {matrix_unit}: {solution[f'proportion_within_coverage_threshold{suffix}'].values[0]:.1%} \nUnweighted Average: {solution[f'unweighted_average{suffix}'].values[0]:.1f} {matrix_unit} \nMaximum: {solution[f'max{suffix}'].values[0]:.1f} {matrix_unit}"
                         )
                     elif self.objectives in [
                         "simple_p_median",
                         "hybrid_simple_p_median",
                     ]:
                         ax.set_title(
-                            f"Unweighted Average: {solution['unweighted_average'].values[0]:.1f} {self.site_problem._travel_matrix_unit} \nMaximum: {solution['max'].values[0]:.1f} {self.site_problem._travel_matrix_unit}"
+                            f"Unweighted Average: {solution[f'unweighted_average{suffix}'].values[0]:.1f} {matrix_unit} \nMaximum: {solution[f'max{suffix}'].values[0]:.1f} {matrix_unit}"
                         )
                     else:
                         ax.set_title(
-                            f"Weighted Average: {solution['weighted_average'].values[0]:.1f} {self.site_problem._travel_matrix_unit} \nMaximum: {solution['max'].values[0]:.1f} {self.site_problem._travel_matrix_unit}"
+                            f"Weighted Average: {solution[f'weighted_average{suffix}'].values[0]:.1f} {matrix_unit} \nMaximum: {solution[f'max{suffix}'].values[0]:.1f} {matrix_unit}"
                         )
                 else:
                     ax.set_title(_safe_evaluate(subplot_title, solution=solution))
@@ -1050,18 +1078,21 @@ class MapsMixin:
             )
 
         elif plot_regions_not_meeting_threshold:
+            threshold_val = self._resolve_coverage_threshold(
+                matrix, sorted_df.iloc[0]["coverage_threshold"]
+            )
             legend_patches = [
                 mpatches.Patch(
                     color=colors[0],
                     label=_wrap_label(
-                        f"Further than {sorted_df.iloc[0]['coverage_threshold']} {self.site_problem._travel_matrix_unit}\nfrom nearest site",
+                        f"Further than {threshold_val} {matrix_unit}\nfrom nearest site",
                         width=legend_wrap_width,
                     ),
                 ),
                 mpatches.Patch(
                     color=colors[1],
                     label=_wrap_label(
-                        f"Within {sorted_df.iloc[0]['coverage_threshold']} {self.site_problem._travel_matrix_unit}\nof nearest site",
+                        f"Within {threshold_val} {matrix_unit}\nof nearest site",
                         width=legend_wrap_width,
                     ),
                 ),
@@ -1214,6 +1245,7 @@ class MapsMixin:
             site_legend_loc = plot_kwargs.pop("site_legend_loc", "best")
             subplot_title = plot_kwargs.pop("title", "default")
             subplot_title_fontsize = plot_kwargs.pop("title_fontsize", 12)
+            matrix = plot_kwargs.pop("matrix", None)
 
             # Choose colormap if not provided
             if cmap is None:
@@ -1261,6 +1293,7 @@ class MapsMixin:
                 colors=colors,
                 add_legend=True,
                 legend_kwargs=legend_kwargs,
+                matrix=matrix,
             )
 
             # Add required sites legend if needed
@@ -1306,24 +1339,26 @@ class MapsMixin:
                         rank_suffix = self._get_ordinal_suffix(rank)
                         title_prefix = f"{rank}{rank_suffix} best solution for {self.n_sites} sites"
 
+                    _, _, _, _, config_suffix = self._resolve_travel_columns(matrix)
+
                     if self.objectives == "mclp":
                         metrics = (
-                            f"Coverage: {solution['proportion_within_coverage_threshold'].values[0]:.1%} | "
-                            f"Avg: {solution['unweighted_average'].values[0]:.1f} | "
-                            f"Max: {solution['max'].values[0]:.1f}"
+                            f"Coverage: {solution[f'proportion_within_coverage_threshold{config_suffix}'].values[0]:.1%} | "
+                            f"Avg: {solution[f'unweighted_average{config_suffix}'].values[0]:.1f} | "
+                            f"Max: {solution[f'max{config_suffix}'].values[0]:.1f}"
                         )
                     elif self.objectives in [
                         "simple_p_median",
                         "hybrid_simple_p_median",
                     ]:
                         metrics = (
-                            f"Unweighted Avg: {solution['unweighted_average'].values[0]:.1f} | "
-                            f"Max: {solution['max'].values[0]:.1f}"
+                            f"Unweighted Avg: {solution[f'unweighted_average{config_suffix}'].values[0]:.1f} | "
+                            f"Max: {solution[f'max{config_suffix}'].values[0]:.1f}"
                         )
                     else:
                         metrics = (
-                            f"Weighted Avg: {solution['weighted_average'].values[0]:.1f} | "
-                            f"Max: {solution['max'].values[0]:.1f}"
+                            f"Weighted Avg: {solution[f'weighted_average{config_suffix}'].values[0]:.1f} | "
+                            f"Max: {solution[f'max{config_suffix}'].values[0]:.1f}"
                         )
 
                     axes[i].set_title(
@@ -1358,6 +1393,7 @@ class DistributionPlotsMixin:
         height=None,
         height_per_plot=250,
         compare_to_best=False,
+        matrix=None,
         **kwargs,
     ):
         """
@@ -1395,6 +1431,11 @@ class DistributionPlotsMixin:
             If True, plots the difference in travel time relative to the best
             solution (i.e., ``min_cost_diff``). Adds a vertical reference line
             at zero. If False, plots absolute travel times (``min_cost``).
+        matrix : str, optional
+            Label of a secondary travel matrix registered via
+            `add_secondary_travel_matrix()`. If provided, distributions and
+            reference lines use that matrix's own travel costs and summary
+            metrics instead of the primary travel matrix.
         **kwargs
             Additional keyword arguments passed to ``plotly.express.histogram``.
 
@@ -1422,6 +1463,12 @@ class DistributionPlotsMixin:
         The method assumes that lower values of the ranking metric correspond
         to better solutions.
         """
+        cost_col, _, _, _, suffix = self._resolve_travel_columns(matrix)
+        weighted_average_col = f"weighted_average{suffix}"
+        unweighted_average_col = f"unweighted_average{suffix}"
+        percentile_90th_col = f"90th_percentile{suffix}"
+        max_col = f"max{suffix}"
+
         if rank_on is not None:
             solutions_sorted = self.solution_df.sort_values(
                 [rank_on, secondary_ranking]
@@ -1462,12 +1509,12 @@ class DistributionPlotsMixin:
             df = row["problem_df"].copy()
             df["site_indices"] = ", ".join([str(int(i)) for i in row["site_indices"]])
             df["site_names"] = ", ".join(row["site_names"])
-            df["weighted_average"] = row["weighted_average"]
-            df["unweighted_average"] = row["unweighted_average"]
-            df["max"] = row["max"]
-            df["90th_percentile"] = row["90th_percentile"]
+            df["weighted_average"] = row[weighted_average_col]
+            df["unweighted_average"] = row[unweighted_average_col]
+            df["max"] = row[max_col]
+            df["90th_percentile"] = row[percentile_90th_col]
             if compare_to_best:
-                df["min_cost_diff"] = df["min_cost"] - best_df["min_cost"].values
+                df["min_cost_diff"] = df[cost_col] - best_df[cost_col].values
             dfs.append(df)
 
         dfs = pd.concat(dfs)
@@ -1487,7 +1534,7 @@ class DistributionPlotsMixin:
 
         fig = px.histogram(
             dfs,
-            x="min_cost_diff" if compare_to_best else "min_cost",
+            x="min_cost_diff" if compare_to_best else cost_col,
             facet_row="label",
             nbins=30,
             histnorm="probability density",
@@ -1547,7 +1594,7 @@ class DistributionPlotsMixin:
 
                 # Weighted average — label sits at the top of the line
                 fig.add_vline(
-                    x=row["weighted_average"],
+                    x=row[weighted_average_col],
                     line_dash="dash",
                     line_color="darkolivegreen",
                     row=subplot_row,
@@ -1560,7 +1607,7 @@ class DistributionPlotsMixin:
 
                 # unweighted average — offset downward so it doesn't overlap WA
                 fig.add_vline(
-                    x=row["unweighted_average"],
+                    x=row[unweighted_average_col],
                     line_dash="dashdot",
                     line_color="darkcyan",
                     row=subplot_row,
@@ -1573,7 +1620,7 @@ class DistributionPlotsMixin:
 
                 # 90th percentile — offset downward so it doesn't overlap WA
                 fig.add_vline(
-                    x=row["90th_percentile"],
+                    x=row[percentile_90th_col],
                     line_dash="dot",
                     line_color="darkorange",
                     row=subplot_row,
@@ -1586,7 +1633,7 @@ class DistributionPlotsMixin:
 
                 # 90th percentile — offset downward so it doesn't overlap WA
                 fig.add_vline(
-                    x=row["max"],
+                    x=row[max_col],
                     line_dash="solid",
                     line_color="tomato",
                     row=subplot_row,
@@ -1645,6 +1692,7 @@ class EquityPlotsMixin:
         ax=None,
         colour_mode: Optional[Literal["gradient", "above_below_avg"]] = None,
         show_site_names=False,
+        matrix=None,
     ):
         """
         Summarise and optionally plot equity metrics for a selected solution.
@@ -1677,6 +1725,11 @@ class EquityPlotsMixin:
         show_site_names : bool, default=False
             If True, the default plot title lists the selected sites by name
             (``site_names``) instead of by index (``site_indices``).
+        matrix : str, optional
+            Label of a secondary travel matrix registered via
+            `add_secondary_travel_matrix()`. If provided, the summary is
+            computed from that matrix's own min-cost column instead of the
+            primary travel matrix.
 
         Returns
         -------
@@ -1693,6 +1746,8 @@ class EquityPlotsMixin:
         - When using Matplotlib with a provided ``ax``, the plot is drawn onto the
         supplied axes and the corresponding figure is returned.
         """
+        cost_col, _, _, _, _ = self._resolve_travel_columns(matrix)
+
         if rank_on is not None:
             plotting_row = self.solution_df.sort_values(rank_on).iloc[solution_rank - 1]
         else:
@@ -1700,10 +1755,11 @@ class EquityPlotsMixin:
 
         summary_equity_df = (
             plotting_row["problem_df"]
-            .groupby(self.site_problem._equity_data_equity_col)["min_cost"]
+            .groupby(self.site_problem._equity_data_equity_col)[cost_col]
             .agg("mean")
             .round(2)
             .reset_index()
+            .rename(columns={cost_col: "min_cost"})
         )
 
         if not return_plot:
@@ -1800,7 +1856,7 @@ class EquityPlotsMixin:
 
                 ax.set_title(title)
                 ax.set_xlabel(self.site_problem._equity_data_equity_col)
-                ax.set_ylabel("min_cost")
+                ax.set_ylabel(cost_col)
 
                 if show_average:
                     ax.axhline(
@@ -1826,6 +1882,7 @@ class EquityPlotsMixin:
         cols=2,
         figsize_multiplier=5,
         show_site_names=False,
+        matrix=None,
     ):
         """
         Plot equity summaries for the top N solutions in a grid of subplots.
@@ -1850,6 +1907,10 @@ class EquityPlotsMixin:
         show_site_names : bool, default=False
             If True, each subplot title lists the selected sites by name
             instead of by index.
+        matrix : str, optional
+            Label of a secondary travel matrix registered via
+            `add_secondary_travel_matrix()`, passed through to
+            `check_solution_equity()` for every subplot.
 
         Returns
         -------
@@ -1885,6 +1946,7 @@ class EquityPlotsMixin:
                 colour_mode=colour_mode,
                 ax=axes[i],
                 show_site_names=show_site_names,
+                matrix=matrix,
             )
 
         # Remove unused axes if n doesn't fill grid
@@ -1909,8 +1971,19 @@ class EquityPlotsMixin:
         figsize_multiplier=4,
         groups_to_include="all",
         groupings=None,
+        matrix=None,
         **kwargs,
     ):
+        """
+        Plot maps of travel cost for each equity group, for one solution.
+
+        matrix : str, optional
+            Label of a secondary travel matrix registered via
+            `add_secondary_travel_matrix()`. If provided, regions are
+            coloured by that matrix's own min-cost column instead of the
+            primary travel matrix.
+        """
+        cost_col, _, _, _, _ = self._resolve_travel_columns(matrix)
         equity_col = self.site_problem._equity_data_equity_col
 
         # ---- Base groups from data ----
@@ -1964,8 +2037,8 @@ class EquityPlotsMixin:
 
         # ---- Shared color scale ----
         if share_colorbar:
-            vmin = nearest_site_travel_gdf["min_cost"].min()
-            vmax = nearest_site_travel_gdf["min_cost"].max()
+            vmin = nearest_site_travel_gdf[cost_col].min()
+            vmax = nearest_site_travel_gdf[cost_col].max()
         else:
             vmin = vmax = None
 
@@ -1993,7 +2066,7 @@ class EquityPlotsMixin:
 
             # Main layer
             subset.plot(
-                column="min_cost",
+                column=cost_col,
                 cmap=cmap,
                 linewidth=0.5,
                 edgecolor="black",
@@ -2035,6 +2108,6 @@ class EquityPlotsMixin:
                 fraction=0.03,
                 pad=0.02,
             )
-            cbar.set_label("min_cost")
+            cbar.set_label(cost_col)
 
         return fig, axes

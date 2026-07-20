@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 
@@ -193,13 +195,6 @@ class EvaluatedCombination:
             active_weights = self.evaluated_combination_df[
                 self.site_problem._demand_data_demand_col
             ]
-
-            # print("Falling back to default: weighting p-median by demand only")
-            # print(f"Weights: {weights}")
-            self.weighted_average = np.average(
-                self.evaluated_combination_df["min_cost"],
-                weights=active_weights,
-            )
         else:
             # print("Weighting p-median by custom options")
             # print(f"Weights: {weights}")
@@ -308,22 +303,9 @@ class EvaluatedCombination:
                 # Accumulate the normalized, directional weight
                 compound_weights += norm_data * weight
 
-            # Calculate the final composite weighted average across all objectives
-            self.weighted_average = np.average(
-                self.evaluated_combination_df["min_cost"], weights=compound_weights
-            )
             active_weights = pd.Series(
                 compound_weights, index=self.evaluated_combination_df.index
             )
-
-        # Calculate the unweighted travel/cost statistics
-        self.unweighted_average = np.average(self.evaluated_combination_df["min_cost"])
-
-        self.percentile_90th = np.percentile(
-            self.evaluated_combination_df["min_cost"], q=90
-        )
-
-        self.max = np.max(self.evaluated_combination_df["min_cost"])
 
         # Total fixed cost of the selected sites (e.g. build/operating cost).
         # Always calculated when a cost column has been configured via
@@ -347,24 +329,89 @@ class EvaluatedCombination:
 
         self.coverage_threshold = coverage_threshold
 
-        self.proportion_within_coverage_threshold = np.sum(
-            self.evaluated_combination_df["within_threshold"]
-        ) / len(self.evaluated_combination_df)
+        # Primary travel-cost statistics + equity breakdown, computed from
+        # "min_cost"/"within_threshold". Any registered secondary travel
+        # matrices get the identical treatment below, applied to their own
+        # suffixed columns -- see _compute_travel_metrics.
+        primary_metrics = self._compute_travel_metrics(
+            "min_cost", "within_threshold", active_weights
+        )
+        self.weighted_average = primary_metrics["weighted_average"]
+        self.unweighted_average = primary_metrics["unweighted_average"]
+        self.percentile_90th = primary_metrics["percentile_90th"]
+        self.max = primary_metrics["max"]
+        self.proportion_within_coverage_threshold = primary_metrics[
+            "proportion_within_coverage_threshold"
+        ]
+        self.weighted_by_equity_group = primary_metrics["weighted_by_equity_group"]
+        self.unweighted_by_equity_group = primary_metrics["unweighted_by_equity_group"]
+        self.coverage_by_equity_group = primary_metrics["coverage_by_equity_group"]
+        self.max_cost_by_equity_group = primary_metrics["max_cost_by_equity_group"]
+        self.gap_absolute_weighted = primary_metrics["gap_absolute_weighted"]
+        self.gap_absolute_desc = primary_metrics["gap_absolute_desc"]
+        self.gap_relative_weighted = primary_metrics["gap_relative_weighted"]
+        self.gap_relative_desc = primary_metrics["gap_relative_desc"]
+        self.avg_lower_third_bins = primary_metrics["avg_lower_third_bins"]
+        self.avg_middle_third_bins = primary_metrics["avg_middle_third_bins"]
+        self.avg_upper_third_bins = primary_metrics["avg_upper_third_bins"]
+        self.inter_tertile_ratio = primary_metrics["inter_tertile_ratio"]
+        self.inter_tertile_desc = primary_metrics["inter_tertile_desc"]
 
-        # Calculate the weighted and unweighted cost per equity band
-        # if equity data present
-        self.weighted_by_equity_group = {}
-        self.unweighted_by_equity_group = {}
+        # Secondary travel matrices: same statistics, computed from their
+        # own suffixed `min_cost__<label>` / `within_threshold__<label>`
+        # columns (added in site.py's evaluate_single_solution_single_
+        # objective). Only the core five + float equity aggregations are
+        # kept in return_solution_metrics()'s schema -- see that method.
+        self.secondary_metrics = {}
+        for label in getattr(self.site_problem, "secondary_travel_matrices", {}):
+            cost_col = f"min_cost__{label}"
+            within_col = f"within_threshold__{label}"
+            if cost_col not in self.evaluated_combination_df.columns:
+                continue
+            self.secondary_metrics[label] = self._compute_travel_metrics(
+                cost_col, within_col, active_weights
+            )
+
+    def _compute_travel_metrics(self, cost_col, within_col, active_weights):
+        """
+        Compute weighted/unweighted travel-cost summary statistics and the
+        equity breakdown for one travel matrix's min-cost column.
+
+        Used once for the primary matrix (`cost_col="min_cost"`) and once
+        per registered secondary travel matrix (`cost_col="min_cost__
+        <label>"`), so a secondary matrix gets identical treatment to the
+        primary one rather than a parallel, potentially-diverging
+        implementation.
+        """
+        df = self.evaluated_combination_df
+
+        weighted_average = np.average(df[cost_col], weights=active_weights)
+        unweighted_average = np.average(df[cost_col])
+        percentile_90th = np.percentile(df[cost_col], q=90)
+        max_cost = np.max(df[cost_col])
+        proportion_within_coverage_threshold = np.sum(df[within_col]) / len(df)
+
+        weighted_by_equity_group = {}
+        unweighted_by_equity_group = {}
+        coverage_by_equity_group = {}
+        max_cost_by_equity_group = {}
+        gap_absolute_weighted = None
+        gap_absolute_desc = "N/A (No equity data)"
+        gap_relative_weighted = None
+        gap_relative_desc = "N/A (No equity data)"
+        avg_lower_third_bins = None
+        avg_middle_third_bins = None
+        avg_upper_third_bins = None
+        inter_tertile_ratio = None
+        inter_tertile_desc = "N/A (No equity data)"
 
         equity_col = getattr(self.site_problem, "_equity_data_equity_col", None)
 
-        if equity_col and equity_col in self.evaluated_combination_df.columns:
-            grouped_df = self.evaluated_combination_df.groupby(equity_col)
+        if equity_col and equity_col in df.columns:
+            grouped_df = df.groupby(equity_col)
 
             # 1. Unweighted average by equity group
-            self.unweighted_by_equity_group = (
-                grouped_df["min_cost"].mean().round(2).to_dict()
-            )
+            unweighted_by_equity_group = grouped_df[cost_col].mean().round(2).to_dict()
 
             # 2. Weighted average by equity group (matching global composite weights logic)
             for band, group in grouped_df:
@@ -373,100 +420,132 @@ class EvaluatedCombination:
 
                 # Avoid ZeroDivisionError if the combined weight for this band is 0
                 if group_weights.sum() > 0:
-                    self.weighted_by_equity_group[band] = np.average(
-                        group["min_cost"], weights=group_weights
+                    weighted_by_equity_group[band] = np.average(
+                        group[cost_col], weights=group_weights
                     ).round(2)
                 else:
-                    self.weighted_by_equity_group[band] = group["min_cost"].mean()
+                    weighted_by_equity_group[band] = group[cost_col].mean()
 
             # 3. Disparity Metrics & Verbal Descriptors
-            if self.weighted_by_equity_group:
-                weighted_vals = list(self.weighted_by_equity_group.values())
-                min_cost = min(weighted_vals)
-                max_cost = max(weighted_vals)
+            if weighted_by_equity_group:
+                weighted_vals = list(weighted_by_equity_group.values())
+                group_min_cost = min(weighted_vals)
+                group_max_cost = max(weighted_vals)
 
-                self.gap_absolute_weighted = max_cost - min_cost
-                self.gap_absolute_desc = f"Spread of {self.gap_absolute_weighted:.1f} units between best and worst groups"
+                gap_absolute_weighted = group_max_cost - group_min_cost
+                gap_absolute_desc = f"Spread of {gap_absolute_weighted:.1f} units between best and worst groups"
 
-                if min_cost > 0:
-                    self.gap_relative_weighted = max_cost / min_cost
+                if group_min_cost > 0:
+                    gap_relative_weighted = group_max_cost / group_min_cost
 
                     # Generate Relative Gap Descriptor
-                    if self.gap_relative_weighted <= 1.005:
-                        self.gap_relative_desc = "Perfect Parity"
-                    elif self.gap_relative_weighted <= 1.10:
-                        self.gap_relative_desc = (
+                    if gap_relative_weighted <= 1.005:
+                        gap_relative_desc = "Perfect Parity"
+                    elif gap_relative_weighted <= 1.10:
+                        gap_relative_desc = (
                             "Minimal Disparity (Worst group travels <10% longer)"
                         )
-                    elif self.gap_relative_weighted <= 1.30:
-                        self.gap_relative_desc = (
+                    elif gap_relative_weighted <= 1.30:
+                        gap_relative_desc = (
                             "Moderate Disparity (Worst group travels 10-30% longer)"
                         )
                     else:
-                        pct_longer = (self.gap_relative_weighted - 1.0) * 100
-                        self.gap_relative_desc = f"Significant Disparity (Worst group travels {pct_longer:.0f}% longer)"
+                        pct_longer = (gap_relative_weighted - 1.0) * 100
+                        gap_relative_desc = f"Significant Disparity (Worst group travels {pct_longer:.0f}% longer)"
                 else:
-                    self.gap_relative_weighted = np.nan
-                    self.gap_relative_desc = "N/A (Zero baseline cost)"
+                    gap_relative_weighted = np.nan
+                    gap_relative_desc = "N/A (Zero baseline cost)"
 
             # 4. Coverage Equity (Thresholds by Group)
-            if "within_threshold" in self.evaluated_combination_df.columns:
-                self.coverage_by_equity_group = (
-                    grouped_df["within_threshold"].mean().round(2).to_dict()
+            if within_col in df.columns:
+                coverage_by_equity_group = (
+                    grouped_df[within_col].mean().round(2).to_dict()
                 )
 
             # 5. Worst-Case Scenarios by Group
-            self.max_cost_by_equity_group = (
-                grouped_df["min_cost"].max().round(2).to_dict()
-            )
+            max_cost_by_equity_group = grouped_df[cost_col].max().round(2).to_dict()
 
             # 6. Tertile Groupings (Averaging the bin results into thirds)
             # Sorts the bins (e.g., 1-10) and splits them into 3 roughly equal chunks
-            unique_bins = sorted(list(self.weighted_by_equity_group.keys()))
+            unique_bins = sorted(list(weighted_by_equity_group.keys()))
             if len(unique_bins) >= 3:
                 chunks = np.array_split(unique_bins, 3)
-                self.avg_lower_third_bins = np.mean(
-                    [self.weighted_by_equity_group[b] for b in chunks[0]]
+                avg_lower_third_bins = np.mean(
+                    [weighted_by_equity_group[b] for b in chunks[0]]
                 )
-                self.avg_middle_third_bins = np.mean(
-                    [self.weighted_by_equity_group[b] for b in chunks[1]]
+                avg_middle_third_bins = np.mean(
+                    [weighted_by_equity_group[b] for b in chunks[1]]
                 )
-                self.avg_upper_third_bins = np.mean(
-                    [self.weighted_by_equity_group[b] for b in chunks[2]]
+                avg_upper_third_bins = np.mean(
+                    [weighted_by_equity_group[b] for b in chunks[2]]
                 )
 
-                if self.avg_upper_third_bins and self.avg_upper_third_bins > 0:
-                    self.inter_tertile_ratio = (
-                        self.avg_lower_third_bins / self.avg_upper_third_bins
-                    )
+                if avg_upper_third_bins and avg_upper_third_bins > 0:
+                    inter_tertile_ratio = avg_lower_third_bins / avg_upper_third_bins
 
                     # Generate Inter-Tertile Ratio Descriptor
                     # (Assuming lower bins = higher deprivation, e.g., IMD Deciles 1-3)
-                    if 0.95 <= self.inter_tertile_ratio <= 1.05:
-                        self.inter_tertile_desc = (
+                    if 0.95 <= inter_tertile_ratio <= 1.05:
+                        inter_tertile_desc = (
                             "Balanced (Macro travel times are broadly equal)"
                         )
-                    elif 1.05 < self.inter_tertile_ratio <= 1.25:
-                        pct = (self.inter_tertile_ratio - 1.0) * 100
-                        self.inter_tertile_desc = f"Slightly Inequitable (Most deprived travel {pct:.0f}% longer)"
-                    elif self.inter_tertile_ratio > 1.25:
-                        pct = (self.inter_tertile_ratio - 1.0) * 100
-                        self.inter_tertile_desc = f"Highly Inequitable (Most deprived travel {pct:.0f}% longer)"
-                    elif 0.75 <= self.inter_tertile_ratio < 0.95:
-                        pct = (1.0 - self.inter_tertile_ratio) * 100
-                        self.inter_tertile_desc = f"Slightly Progressive (Most deprived travel {pct:.0f}% shorter)"
+                    elif 1.05 < inter_tertile_ratio <= 1.25:
+                        pct = (inter_tertile_ratio - 1.0) * 100
+                        inter_tertile_desc = f"Slightly Inequitable (Most deprived travel {pct:.0f}% longer)"
+                    elif inter_tertile_ratio > 1.25:
+                        pct = (inter_tertile_ratio - 1.0) * 100
+                        inter_tertile_desc = f"Highly Inequitable (Most deprived travel {pct:.0f}% longer)"
+                    elif 0.75 <= inter_tertile_ratio < 0.95:
+                        pct = (1.0 - inter_tertile_ratio) * 100
+                        inter_tertile_desc = f"Slightly Progressive (Most deprived travel {pct:.0f}% shorter)"
                     else:
-                        pct = (1.0 - self.inter_tertile_ratio) * 100
-                        self.inter_tertile_desc = f"Highly Progressive (Most deprived travel {pct:.0f}% shorter)"
+                        pct = (1.0 - inter_tertile_ratio) * 100
+                        inter_tertile_desc = f"Highly Progressive (Most deprived travel {pct:.0f}% shorter)"
                 else:
-                    self.inter_tertile_ratio = np.nan
-                    self.inter_tertile_desc = "N/A (Zero upper-third travel time)"
+                    inter_tertile_ratio = np.nan
+                    inter_tertile_desc = "N/A (Zero upper-third travel time)"
+
+        return {
+            "weighted_average": weighted_average,
+            "unweighted_average": unweighted_average,
+            "percentile_90th": percentile_90th,
+            "max": max_cost,
+            "proportion_within_coverage_threshold": proportion_within_coverage_threshold,
+            "weighted_by_equity_group": weighted_by_equity_group,
+            "unweighted_by_equity_group": unweighted_by_equity_group,
+            "coverage_by_equity_group": coverage_by_equity_group,
+            "max_cost_by_equity_group": max_cost_by_equity_group,
+            "gap_absolute_weighted": gap_absolute_weighted,
+            "gap_absolute_desc": gap_absolute_desc,
+            "gap_relative_weighted": gap_relative_weighted,
+            "gap_relative_desc": gap_relative_desc,
+            "avg_lower_third_bins": avg_lower_third_bins,
+            "avg_middle_third_bins": avg_middle_third_bins,
+            "avg_upper_third_bins": avg_upper_third_bins,
+            "inter_tertile_ratio": inter_tertile_ratio,
+            "inter_tertile_desc": inter_tertile_desc,
+        }
 
     def show_result_df(self):
         return self.evaluated_combination_df
 
-    def return_solution_metrics(self):
+    def return_solution_metrics(self, full_secondary_metrics: bool = False):
         """
+        Parameters
+        ----------
+        full_secondary_metrics : bool, default False
+            If False (the default), each registered secondary travel matrix
+            contributes only its core five metrics plus the float-valued
+            equity aggregations (see point 6 below) -- matching the output
+            shape prior to this parameter's introduction. If True, every
+            registered secondary matrix also contributes its dict-valued
+            equity breakdowns (`weighted_by_equity_group__<label>`, etc.)
+            and description strings, exactly mirroring what the primary
+            matrix already always returns unsuffixed. This costs nothing
+            extra to compute -- `_compute_travel_metrics` already produces
+            these values for every matrix regardless -- it only changes
+            which of the already-computed keys get included here.
+
         INTERPRETATION GUIDE FOR SUMMARY TABLES & SORTING:
 
         1a. 'weighted_average'
@@ -503,10 +582,26 @@ class EvaluatedCombination:
            - HIGHER is better (Scale: 0.0 to 1.0). Represents accessibility. Look for
              solutions where coverage is both globally high and uniformly distributed
              across groups.
+
+        6. Secondary travel matrices (columns suffixed `__<label>`, e.g.
+           'weighted_average__public_transport'):
+           - Registered via `add_secondary_travel_matrix(label=...)`. Same metrics
+             and sort direction as their unsuffixed counterparts above (1a/1b/5),
+             computed against that matrix's own travel costs instead of the
+             primary matrix. By default, only the core five metrics plus the
+             float-valued equity aggregations (gap_absolute_weighted,
+             gap_relative_weighted, avg_*_third_bins, inter_tertile_ratio) are
+             included per matrix, to keep this table from growing unboundedly
+             with each registered matrix -- pass `full_secondary_metrics=True`
+             to also include the dict-valued equity breakdowns and description
+             strings, matching what the primary matrix already returns. The
+             underlying per-region `problem_df` always carries
+             `min_cost__<label>` / `selected_site__<label>` /
+             `within_threshold__<label>` regardless of this setting.
         """
 
         # Return weighted average
-        return {
+        metrics = {
             "site_names": self.site_names,
             "site_indices": self.site_indices,
             "coverage_threshold": self.coverage_threshold,
@@ -535,6 +630,60 @@ class EvaluatedCombination:
             # Underlying per-region df
             "problem_df": self.evaluated_combination_df,
         }
+
+        # Secondary travel matrices: core five metrics + float-valued equity
+        # aggregations by default (see the interpretation guide above); pass
+        # full_secondary_metrics=True to also include the dict-valued
+        # breakdowns and description strings, matching the primary matrix.
+        for label, secondary in self.secondary_metrics.items():
+            metrics[f"weighted_average__{label}"] = secondary["weighted_average"]
+            metrics[f"unweighted_average__{label}"] = secondary["unweighted_average"]
+            metrics[f"90th_percentile__{label}"] = secondary["percentile_90th"]
+            metrics[f"max__{label}"] = secondary["max"]
+            metrics[f"proportion_within_coverage_threshold__{label}"] = secondary[
+                "proportion_within_coverage_threshold"
+            ]
+            metrics[f"gap_absolute_weighted__{label}"] = secondary[
+                "gap_absolute_weighted"
+            ]
+            metrics[f"gap_relative_weighted__{label}"] = secondary[
+                "gap_relative_weighted"
+            ]
+            metrics[f"avg_lower_third_bins__{label}"] = secondary[
+                "avg_lower_third_bins"
+            ]
+            metrics[f"avg_middle_third_bins__{label}"] = secondary[
+                "avg_middle_third_bins"
+            ]
+            metrics[f"avg_upper_third_bins__{label}"] = secondary[
+                "avg_upper_third_bins"
+            ]
+            metrics[f"inter_tertile_ratio__{label}"] = secondary["inter_tertile_ratio"]
+
+            if full_secondary_metrics:
+                metrics[f"weighted_by_equity_group__{label}"] = secondary[
+                    "weighted_by_equity_group"
+                ]
+                metrics[f"unweighted_by_equity_group__{label}"] = secondary[
+                    "unweighted_by_equity_group"
+                ]
+                metrics[f"coverage_by_equity_group__{label}"] = secondary[
+                    "coverage_by_equity_group"
+                ]
+                metrics[f"max_cost_by_equity_group__{label}"] = secondary[
+                    "max_cost_by_equity_group"
+                ]
+                metrics[f"gap_absolute_description__{label}"] = secondary[
+                    "gap_absolute_desc"
+                ]
+                metrics[f"gap_relative_description__{label}"] = secondary[
+                    "gap_relative_desc"
+                ]
+                metrics[f"inter_tertile_description__{label}"] = secondary[
+                    "inter_tertile_desc"
+                ]
+
+        return metrics
 
 
 # MARK: CLASS SiteSolutionSet
@@ -629,13 +778,95 @@ class SiteSolutionSet(
     def copy(self):
         return copy.deepcopy(self)
 
+    def _resolve_travel_columns(self, matrix=None):
+        """
+        Return (cost_col, selected_site_col, within_threshold_col, unit,
+        suffix) for the given secondary travel matrix label, or for the
+        primary travel matrix if `matrix` is None.
+
+        Used by every travel-related plotting method so that a single
+        `matrix=` keyword switches between the primary matrix and any
+        registered secondary one, instead of each plot hardcoding
+        "min_cost" / "selected_site" / "within_threshold".
+        """
+        if matrix is None:
+            return (
+                "min_cost",
+                "selected_site",
+                "within_threshold",
+                self.site_problem._travel_matrix_unit,
+                "",
+            )
+
+        registered = self.site_problem.secondary_travel_matrices
+        if matrix not in registered:
+            raise ValueError(
+                f"Unknown secondary travel matrix '{matrix}'. Registered "
+                f"labels: {sorted(registered)}."
+            )
+
+        suffix = f"__{matrix}"
+        return (
+            f"min_cost{suffix}",
+            f"selected_site{suffix}",
+            f"within_threshold{suffix}",
+            registered[matrix]["unit"],
+            suffix,
+        )
+
+    def _resolve_coverage_threshold(self, matrix, coverage_threshold_value):
+        """
+        Return the coverage threshold that applies for `matrix` (None = the
+        primary matrix). Secondary matrices may have their own
+        `threshold_for_coverage` set via `add_secondary_travel_matrix()`;
+        if not, they fall back to `coverage_threshold_value` (the primary
+        threshold passed to `solve()`), matching the fallback used when the
+        per-solution `within_threshold__<label>` column was computed.
+        """
+        if matrix is None:
+            return coverage_threshold_value
+        matrix_threshold = self.site_problem.secondary_travel_matrices[matrix][
+            "threshold_for_coverage"
+        ]
+        return (
+            matrix_threshold if matrix_threshold is not None else coverage_threshold_value
+        )
+
     def show_solutions_colnames(self, return_list=False):
         if not return_list:
             print(self.solution_df.columns)
         else:
             return self.solution_df.columns
 
-    def show_solutions(self, rounding=2, n_best=None):
+    def _expand_dict_columns(self, df):
+        """
+        Return a copy of `df` with every dict-valued column (e.g. the
+        equity-group breakdowns `weighted_by_equity_group`,
+        `coverage_by_equity_group__<label>`, etc.) replaced by one column
+        per dict key, named `<column>__<key>`.
+
+        Columns are detected by content, not by name, so this picks up any
+        dict-valued column regardless of which matrix or metric produced it.
+        Columns whose values are not dicts (including ones that are simply
+        empty, e.g. when no equity data is registered) are left untouched.
+        """
+        dict_cols = [
+            col for col in df.columns if df[col].apply(lambda v: isinstance(v, dict)).any()
+        ]
+        if not dict_cols:
+            return df
+
+        df = df.copy()
+        for col in dict_cols:
+            expanded = pd.json_normalize(df[col]).add_prefix(f"{col}__")
+            expanded.index = df.index
+            col_pos = df.columns.get_loc(col)
+            df = pd.concat(
+                [df.iloc[:, :col_pos], expanded, df.iloc[:, col_pos + 1 :]], axis=1
+            )
+        return df
+
+    def show_solutions(self, rounding=2, n_best=None, expand_dict_columns=False, inplace=False):
         """
         Return the solution DataFrame with rounded values.
 
@@ -643,6 +874,24 @@ class SiteSolutionSet(
         ----------
         rounding : int, default=2
             Number of decimal places to round numeric columns to.
+        expand_dict_columns : bool, default False
+            If True, any column holding dict values -- the equity-group
+            breakdowns (`weighted_by_equity_group`, `coverage_by_equity_group`,
+            etc.) and their secondary-matrix equivalents when
+            `solve(..., full_secondary_metrics=True)` was used -- is expanded
+            into one column per dict key, named `<column>__<key>`. This is
+            usually more useful for display/export than a column of dicts,
+            but is off by default to keep `solution_df`'s shape unchanged for
+            existing callers.
+        inplace : bool, default False
+            If True (and `expand_dict_columns=True`), the expansion is also
+            written back to `self.solution_df`, so it persists for
+            subsequent calls, plotting, `rank_on`, etc. Has no effect unless
+            `expand_dict_columns=True`, in which case a `UserWarning` is
+            raised instead, since passing `inplace=True` alone does nothing
+            and likely indicates the caller meant to also pass
+            `expand_dict_columns=True`. Rounding is never made permanent --
+            only the column expansion can be.
 
         Returns
         -------
@@ -652,13 +901,26 @@ class SiteSolutionSet(
 
         Notes
         -----
-        This method does not modify the underlying DataFrame; it returns a
-        rounded copy.
+        Unless `inplace=True`, this method does not modify the underlying
+        DataFrame; it returns a rounded (and optionally expanded) copy.
         """
+        if inplace and not expand_dict_columns:
+            warnings.warn(
+                "show_solutions(inplace=True) has no effect unless "
+                "expand_dict_columns=True is also passed.",
+                stacklevel=2,
+            )
+
+        df = self.solution_df
+        if expand_dict_columns:
+            df = self._expand_dict_columns(df)
+            if inplace:
+                self.solution_df = df
+
         if rounding is None:
-            return self.solution_df.head(n_best)
+            return df.head(n_best)
         else:
-            return round(self.solution_df, rounding).head(n_best)
+            return round(df, rounding).head(n_best)
 
     def return_best_combination_details(self, rank_on=None, top_n=1):
         """

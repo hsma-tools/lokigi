@@ -59,6 +59,7 @@ def _evaluate_chunk(
     keep_best_n,
     keep_worst_n,
     stream_top_n,
+    full_secondary_metrics=False,
 ):
     """Evaluate one chunk of combinations. Returns either the list of
     metrics dicts (materialising path) or (local_best, local_worst) lists
@@ -73,7 +74,7 @@ def _evaluate_chunk(
                 objective=objectives,
                 threshold_for_coverage=threshold_for_coverage,
                 weights=weights,
-            ).return_solution_metrics()
+            ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
             if max_value_cutoff is None or metrics["max"] <= max_value_cutoff:
                 chunk_outputs.append(metrics)
@@ -87,7 +88,7 @@ def _evaluate_chunk(
             objective=objectives,
             threshold_for_coverage=threshold_for_coverage,
             weights=weights,
-        ).return_solution_metrics()
+        ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
         raw_score = metrics[rank_best_n_on]
         score = -raw_score if higher_is_better else raw_score
@@ -118,6 +119,7 @@ class BruteForceMixin:
         max_value_cutoff=None,
         threshold_for_coverage=None,
         n_jobs=1,
+        full_secondary_metrics=False,
     ):
 
         # Greedy and GRASP already fail fast with a clear message when
@@ -246,6 +248,7 @@ class BruteForceMixin:
                 brute_force_keep_best_n if stream_top_n else None,
                 brute_force_keep_worst_n if stream_top_n else None,
                 stream_top_n,
+                full_secondary_metrics,
             )
             for chunk in chunks
         )
@@ -358,6 +361,7 @@ class GreedyMixin:
         show_progress: bool = False,
         threshold_for_coverage=None,
         max_value_cutoff=None,
+        full_secondary_metrics=False,
     ):
         ranking = _get_ranking_by_objective(objective=objectives)
 
@@ -403,7 +407,9 @@ class GreedyMixin:
                         objective=objectives,
                         threshold_for_coverage=threshold_for_coverage,
                         weights=weights,
-                    ).return_solution_metrics()
+                    ).return_solution_metrics(
+                        full_secondary_metrics=full_secondary_metrics
+                    )
                 )
 
             # mclp's ranking column (coverage proportion) is higher-is-better,
@@ -485,7 +491,7 @@ class GreedyMixin:
             objective=objectives,
             threshold_for_coverage=threshold_for_coverage,
             weights=weights,
-        ).return_solution_metrics()
+        ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
         return [best_solution_metrics]
 
@@ -507,6 +513,7 @@ class GraspMixin:
         local_search_chance=0.8,  # Chance that local searching will happen to improve found solution
         max_swap_count_local_search=10,
         max_value_cutoff=None,
+        full_secondary_metrics=False,
     ):
         """
         GRASP (Greedy Randomised Adaptive Search Procedure) for finding multiple
@@ -571,7 +578,7 @@ class GraspMixin:
                 objective=objectives,
                 threshold_for_coverage=threshold_for_coverage,
                 weights=weights,
-            ).return_solution_metrics()
+            ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
         pbar = None
         if show_progress:
@@ -877,7 +884,7 @@ class GraspMixin:
                 objective=objectives,
                 threshold_for_coverage=threshold_for_coverage,  # Applied only at the end
                 weights=weights,
-            ).return_solution_metrics()
+            ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
             accepted_solution_sets.append(current_solution_set)
             final_solutions_metrics.append(final_metrics)

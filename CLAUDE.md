@@ -20,3 +20,10 @@
 # Reporting
 
 - State uncertainty plainly. Distinguish what's directly verified from what's inferred, e.g. "confirmed via code inspection, but couldn't trigger through the public API."
+
+# HISTORY.md
+
+- Every user-facing change (new parameter, new method, behavior change, bugfix) needs an entry — check whether one is needed as part of the task, don't wait to be asked.
+- If the top section is an unreleased version (not yet tagged/published), add new bullets to it rather than starting a new `## vX.Y.Z` heading. Only start a new version section, and bump the version in `pyproject.toml` to match, for the first change since the last release.
+- Match the existing structure: one top-level bullet per feature/fix as a one-line summary, with nested (4-space-indented) sub-bullets for specifics — defaults, edge cases, caveats, what stays unchanged.
+- A docs-only or example-only change to an already-documented feature usually doesn't need a new bullet — refine the existing one if the wording needs to change (e.g. mentioning a new warning), otherwise leave it.

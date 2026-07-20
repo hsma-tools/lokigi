@@ -225,6 +225,7 @@ class SiteProblem(
             # Otherwise
             if self.travel_and_demand_df is None:
                 self._create_joined_demand_travel_df(index_col=self._demand_data_id_col)
+                self._build_secondary_travel_frames()
 
             # We need to make sure that we use IDs and names completely consistently throughout.
             # 1. Resolve site_indices to actual Site IDs (names)
@@ -359,6 +360,30 @@ class SiteProblem(
                     "min_cost"
                 ].apply(lambda x: x < threshold_for_coverage)
 
+            # Secondary travel matrices: same min/selected/within-threshold
+            # columns as the primary matrix, suffixed `__<label>`. Selected
+            # by *name* (final_names), not the positional final_matrix_cols
+            # used for the primary matrix above -- those positions are
+            # specific to travel_and_demand_df's column layout and are
+            # meaningless for a secondary frame's own columns.
+            for label, frame in self._secondary_travel_frames.items():
+                sub = frame.loc[active_facilities.index, final_names]
+                active_facilities[f"min_cost__{label}"] = sub.min(axis=1)
+                active_facilities[f"selected_site__{label}"] = sub.idxmin(axis=1)
+
+                matrix_threshold = self.secondary_travel_matrices[label][
+                    "threshold_for_coverage"
+                ]
+                if matrix_threshold is None:
+                    matrix_threshold = threshold_for_coverage
+
+                if matrix_threshold is None:
+                    active_facilities[f"within_threshold__{label}"] = np.nan
+                else:
+                    active_facilities[f"within_threshold__{label}"] = (
+                        active_facilities[f"min_cost__{label}"] < matrix_threshold
+                    )
+
             afi = active_facilities.index
             active_facilities = active_facilities.reset_index()
 
@@ -456,6 +481,7 @@ class SiteProblem(
         grasp_local_search_chance=0.8,  # Chance that local searching will happen to improve found solution
         grasp_max_swap_count_local_search=10,
         random_seed=42,
+        full_secondary_metrics=False,
     ):
         """
         Solve the site location problem using the specified objective and strategy.
@@ -557,6 +583,18 @@ class SiteProblem(
             local search phase.
         random_seed : int, default 42
             (GRASP only) Seed for reproducibility in randomized strategies like GRASP.
+        full_secondary_metrics : bool, default False
+            If False (the default), each registered secondary travel matrix
+            (see `add_secondary_travel_matrix()`) contributes only its core
+            five metrics plus the float-valued equity aggregations to
+            `solution_df`. If True, every registered secondary matrix also
+            contributes its dict-valued equity breakdowns (e.g.
+            `weighted_by_equity_group__<label>`) and description strings,
+            matching what the primary matrix already always returns
+            unsuffixed. This has no effect if no secondary matrices are
+            registered, and costs nothing extra to compute -- the values are
+            already computed either way, this only controls which of them
+            are included in the returned table.
 
         Returns
         -------
@@ -698,6 +736,7 @@ class SiteProblem(
             )
 
         self._create_joined_demand_travel_df(index_col=self._demand_data_id_col)
+        self._build_secondary_travel_frames()
 
         # Data Existence Check
         # Ensure the user didn't typo a name in their weights dictionary
@@ -818,6 +857,7 @@ class SiteProblem(
                 random_seed=random_seed,
                 grasp_local_search_chance=grasp_local_search_chance,  # Chance that local searching will happen to improve found solution
                 grasp_max_swap_count_local_search=grasp_max_swap_count_local_search,
+                full_secondary_metrics=full_secondary_metrics,
             )
         else:
             raise ValueError(f"Unknown objective '{objective}'.")
@@ -843,6 +883,7 @@ class SiteProblem(
         grasp_local_search_chance=0.8,  # Chance that local searching will happen to improve found solution
         grasp_max_swap_count_local_search=10,
         random_seed=42,
+        full_secondary_metrics=False,
     ):
         """
         Internal dispatcher for solving location-allocation problems.
@@ -951,6 +992,7 @@ class SiteProblem(
                 max_value_cutoff=max_value_cutoff,
                 threshold_for_coverage=threshold_for_coverage,
                 n_jobs=n_jobs,
+                full_secondary_metrics=full_secondary_metrics,
             )
 
         if search_strategy == "greedy":
@@ -963,6 +1005,7 @@ class SiteProblem(
                 show_progress=show_progress,
                 threshold_for_coverage=threshold_for_coverage,
                 max_value_cutoff=max_value_cutoff,
+                full_secondary_metrics=full_secondary_metrics,
             )
 
         if search_strategy == "grasp":
@@ -983,6 +1026,7 @@ class SiteProblem(
                 local_search_chance=grasp_local_search_chance,  # Chance that local searching will happen to improve found solution
                 max_swap_count_local_search=grasp_max_swap_count_local_search,
                 max_value_cutoff=max_value_cutoff,
+                full_secondary_metrics=full_secondary_metrics,
             )
 
         # An empty result set would otherwise crash further down with a

@@ -46,6 +46,7 @@ listing:
   - id: sites-solution-multiobjective
     contents:
       - "location/comparing_solutions/index.ipynb"
+      - "location/multiple_travel_matrices/index.ipynb"
       - "location/multiobjective_optimisation_weights/index.ipynb"
       - "location/multiobjective_optimisation_pareto/index.ipynb"
       - "location/site_costs/index.ipynb"
