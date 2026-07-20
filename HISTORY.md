@@ -1,3 +1,24 @@
+## v0.4.1
+
+- Bugfixes for equity weighting
+    - Fix `weights={"equity": ...}` giving the *most* weight to the least deprived regions instead of the most deprived, under both direction encodings
+    - Rename `add_equity_data()`'s ambiguous `direction` parameter to `disadvantaged_end` (`direction` is kept as a deprecated alias and now raises a `FutureWarning`); also fix its default to match the documented DLUHC decile convention
+    - Fix incomplete equity data silently dropping demand points from every metric (max, weighted/unweighted averages, coverage), not just equity-specific ones; `solve()` now raises a clear error when `"equity"` is weighted over incomplete data
+- Bugfixes for search strategies (greedy / GRASP / brute-force)
+    - Fix `max_value_cutoff` being silently ignored by greedy and GRASP (only brute-force enforced it)
+    - Fix `required_sites_col` being ignored by GRASP, and greedy crashing when two or more sites were required
+    - Fix `keep_best_n`/`keep_worst_n` being effectively random for `mclp`, and pruning before cost weighting was applied for brute-force
+    - Fix a cost-weighting no-op silently inverting `mclp`'s search in greedy, GRASP, and the shared final sort, so the worst combination could be returned as "best"
+    - Fix GRASP's `min_sites_different` diversity threshold using the wrong formula, accepting solutions as more diverse than requested
+    - Add a clear error when more sites are required than `p` allows for brute-force (greedy/GRASP already had this)
+- Bugfixes for `solve()` and single-solution evaluation
+    - `solve()` now rejects unknown keyword arguments instead of silently swallowing typos
+    - Fix mclp's missing-demand warning exemption not applying when `objectives` is passed as a list
+    - Fix weight keys (`"demand"`/`"equity"`) not being truly case-insensitive, and a related unreachable error for genuinely unrecognised weight keys
+    - Fix `evaluate_single_solution_single_objective` silently accepting partially-invalid, duplicate, or empty `site_indices`/`site_names`
+- Fix equity plot titles rendering raw `np.int64(...)` reprs instead of plain site numbers; add `show_site_names=True` to list site names instead
+- Add a backtest suite and document test conventions in `tests/README.md`
+
 ## v0.4.0
 
 - Add support for setting site costs
