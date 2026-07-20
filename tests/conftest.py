@@ -407,6 +407,52 @@ def tied_score_problem():
 
 
 @pytest.fixture
+def many_tied_sites_problem():
+    """
+    30 candidate sites drawn from a handful of exact travel-time values
+    (3.0/5.0/8.0/12.0, each shared by several sites), so p=1 brute force
+    produces both exact ties AND real heap churn (evictions) as better
+    values are found. Used to stress-test parallel brute force (n_jobs>1)
+    keep_best_n: with 30 combinations split across several chunks, a merge
+    whose admission decision compares score alone (ignoring the tie-break
+    index) can keep a different combination on a boundary tie than a
+    single-process run would -- this fixture's specific pattern is a known
+    repro for that (see test_brute_force_n_jobs_keep_best_n_matches_serial_
+    under_exact_ties).
+    """
+    n_sites = 30
+    site_ids = [f"Site_{i}" for i in range(n_sites)]
+    pool = [3.0, 8.0, 3.0, 8.0, 5.0, 5.0, 8.0, 8.0, 8.0, 3.0,
+            3.0, 5.0, 8.0, 5.0, 12.0, 5.0, 8.0, 5.0, 5.0, 5.0,
+            3.0, 5.0, 12.0, 3.0, 5.0, 8.0, 3.0, 3.0, 12.0, 5.0]
+    demand_df = pd.DataFrame(
+        {
+            "location_id": ["LSOA_1"],
+            "demand": [100],
+        }
+    )
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": site_ids,
+            "lat": [51.0 + 0.01 * i for i in range(n_sites)],
+            "long": [-0.01 * (i + 1) for i in range(n_sites)],
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["LSOA_1"],
+            **{site_id: [value] for site_id, value in zip(site_ids, pool)},
+        }
+    )
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+    return problem
+
+
+@pytest.fixture
 def tied_score_problem_with_cost():
     """
     Same shape as `tied_score_problem` (Site_A and Site_B tie exactly on

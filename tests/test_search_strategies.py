@@ -693,3 +693,214 @@ def test_no_cost_fallback_warning_when_cost_weighting_is_used_without_keep_n(
         )
 
     assert _cost_fallback_warnings(caught) == []
+
+
+# --- Brute force n_jobs: parallel results must match serial exactly ---
+
+
+@pytest.mark.parametrize(
+    "extra_kwargs",
+    [
+        {},
+        {"brute_force_keep_best_n": 3},
+        {"brute_force_keep_worst_n": 3},
+        {"brute_force_keep_best_n": 2, "brute_force_keep_worst_n": 2},
+    ],
+    ids=["plain", "keep_best_n", "keep_worst_n", "keep_both"],
+)
+def test_brute_force_n_jobs_matches_serial(five_site_problem, extra_kwargs):
+    """n_jobs is purely a performance knob -- parallel brute force must
+    return exactly the same solutions as the serial (n_jobs=1) run, for
+    the plain, keep_best_n, keep_worst_n, and keep-both cases."""
+    serial = five_site_problem.solve(
+        p=2,
+        objectives="p_median",
+        search_strategy="brute-force",
+        show_progress=False,
+        n_jobs=1,
+        **extra_kwargs,
+    )
+    parallel = five_site_problem.solve(
+        p=2,
+        objectives="p_median",
+        search_strategy="brute-force",
+        show_progress=False,
+        n_jobs=2,
+        **extra_kwargs,
+    )
+
+    serial_indices = sorted(map(tuple, serial.solution_df["site_indices"]))
+    parallel_indices = sorted(map(tuple, parallel.solution_df["site_indices"]))
+    assert serial_indices == parallel_indices
+    assert sorted(serial.solution_df["weighted_average"]) == pytest.approx(
+        sorted(parallel.solution_df["weighted_average"])
+    )
+
+
+@pytest.mark.parametrize("n_jobs", [2, 3, 4, -1])
+def test_brute_force_n_jobs_keep_best_n_matches_serial_under_exact_ties(
+    many_tied_sites_problem, n_jobs
+):
+    """30 combinations, drawn from a handful of exactly-repeated
+    weighted_average values (the best value, 3.0, is shared by 8 of them
+    -- more than keep_best_n=5), get split across several chunks.
+
+    Note on what this actually guarantees: because 3.0 is the *global*
+    best value here, no strictly-better combination ever exists to evict
+    an already-kept 3.0, so which 5 of the 8 survive is decided purely by
+    encounter order -- and since chunks are contiguous slices processed in
+    ascending global-index order, that order matches a single-process run
+    exactly. This is the realistic case (e.g. several candidate sites at
+    the identical minimum distance) and this test pins it, across several
+    n_jobs/chunk-count combinations. It is NOT a general guarantee: a tied
+    cluster competing mid-stream against interleaved strictly-better
+    combinations (not present in this fixture) can in principle see a
+    different, equally-valid tied combination survive under n_jobs>1 than
+    a serial run would keep -- see _push_capped's docstring and
+    test_brute_force_n_jobs_may_pick_a_different_tied_combination_mid_stream
+    below for a fixture where that actually happens. n_jobs=1 has no such
+    caveat: it always evaluates as a single chunk/heap, byte-for-byte
+    reproducing prior (pre-parallelisation) behaviour, which is pinned
+    separately by
+    test_backtest_tied_score_problem_p_median_brute_force_keep_best_n.
+    """
+    serial = many_tied_sites_problem.solve(
+        p=1,
+        objectives="p_median",
+        search_strategy="brute-force",
+        show_progress=False,
+        n_jobs=1,
+        brute_force_keep_best_n=5,
+    )
+    parallel = many_tied_sites_problem.solve(
+        p=1,
+        objectives="p_median",
+        search_strategy="brute-force",
+        show_progress=False,
+        n_jobs=n_jobs,
+        brute_force_keep_best_n=5,
+    )
+
+    serial_indices = sorted(map(tuple, serial.solution_df["site_indices"]))
+    parallel_indices = sorted(map(tuple, parallel.solution_df["site_indices"]))
+    assert len(serial_indices) == 5
+    assert serial_indices == parallel_indices
+
+
+@pytest.mark.parametrize("n_jobs", [2, 3, 4, -1])
+def test_brute_force_n_jobs_keep_worst_n_matches_serial_under_exact_ties(
+    many_tied_sites_problem, n_jobs
+):
+    """Symmetric to the keep_best_n exact-ties test above, but for
+    keep_worst_n: the *worst* (highest travel time) value in this fixture,
+    12.0, is shared by 3 combinations -- more than keep_worst_n=2. The
+    bottom_n_heap branch in _brute_force's merge loop
+    (mixins/site_solvers.py) is separate code from the top_n_heap branch
+    and was untested under exact ties before this test; the same "global
+    extreme value" argument applies (nothing is worse than 12.0, so
+    nothing ever evicts an already-kept 12.0, so survivorship depends only
+    on encounter order, which matches a serial run since chunks are
+    processed in ascending global-index order)."""
+    serial = many_tied_sites_problem.solve(
+        p=1,
+        objectives="p_median",
+        search_strategy="brute-force",
+        show_progress=False,
+        n_jobs=1,
+        brute_force_keep_worst_n=2,
+    )
+    parallel = many_tied_sites_problem.solve(
+        p=1,
+        objectives="p_median",
+        search_strategy="brute-force",
+        show_progress=False,
+        n_jobs=n_jobs,
+        brute_force_keep_worst_n=2,
+    )
+
+    serial_indices = sorted(map(tuple, serial.solution_df["site_indices"]))
+    parallel_indices = sorted(map(tuple, parallel.solution_df["site_indices"]))
+    assert len(serial_indices) == 2
+    assert serial_indices == parallel_indices
+
+
+def test_brute_force_n_jobs_may_pick_a_different_tied_combination_mid_stream(
+    many_tied_sites_problem,
+):
+    """Documents (and pins, so it can't silently regress further) the
+    actual, narrower guarantee n_jobs>1 provides under exact ties, using a
+    fixture/parameter combination verified to genuinely diverge from a
+    serial run: brute_force_keep_best_n=3 with n_jobs=3 on
+    many_tied_sites_problem keeps site indices {0, 2, 9} serially but
+    {0, 2, 10} in parallel -- both index 9 and index 10 score exactly 3.0,
+    and 3.0 is NOT the sole occupant of the boundary here (there are 8
+    combinations tied at 3.0 competing for 3 slots), so which one survives
+    depends on how chunk boundaries happen to split that tied group.
+
+    This is expected and documented, not a bug: n_jobs>1 always returns
+    the correct COUNT and the correct SCORES (this test asserts both), it
+    just doesn't promise identical tie-break IDENTITY to a serial run in
+    this narrower case. Contrast with the keep_best_n=5 case above, where
+    3.0 is the sole value at the boundary and identity is preserved."""
+    serial = many_tied_sites_problem.solve(
+        p=1,
+        objectives="p_median",
+        search_strategy="brute-force",
+        show_progress=False,
+        n_jobs=1,
+        brute_force_keep_best_n=3,
+    )
+    parallel = many_tied_sites_problem.solve(
+        p=1,
+        objectives="p_median",
+        search_strategy="brute-force",
+        show_progress=False,
+        n_jobs=3,
+        brute_force_keep_best_n=3,
+    )
+
+    assert len(parallel.solution_df) == len(serial.solution_df) == 3
+    assert sorted(parallel.solution_df["weighted_average"]) == pytest.approx(
+        sorted(serial.solution_df["weighted_average"])
+    )
+    # The specific combination kept is NOT guaranteed to match -- see
+    # docstring. This fixture/parameter combination is a verified case
+    # where it genuinely doesn't.
+    serial_indices = sorted(map(tuple, serial.solution_df["site_indices"]))
+    parallel_indices = sorted(map(tuple, parallel.solution_df["site_indices"]))
+    assert serial_indices != parallel_indices
+
+
+def test_brute_force_n_jobs_one_evaluates_as_a_single_chunk(
+    many_tied_sites_problem, monkeypatch
+):
+    """Pins the specific invariant that makes n_jobs=1 byte-for-byte
+    identical to pre-parallelisation behaviour (mixins/site_solvers.py,
+    _brute_force): the whole combination list must be dispatched to
+    _evaluate_chunk as ONE chunk, so it goes through a single heap exactly
+    as the old inline loop did. Without this test, that guarantee is only
+    ever checked indirectly (via other tests happening to pass); a future
+    change to the chunk-sizing heuristic that accidentally applies to
+    n_jobs=1 too would only be caught by luck of fixture size."""
+    import lokigi.mixins.site_solvers as site_solvers
+
+    calls = []
+    original = site_solvers._evaluate_chunk
+
+    def spy(site_problem, indexed_chunk, *args, **kwargs):
+        calls.append(indexed_chunk)
+        return original(site_problem, indexed_chunk, *args, **kwargs)
+
+    monkeypatch.setattr(site_solvers, "_evaluate_chunk", spy)
+
+    many_tied_sites_problem.solve(
+        p=1,
+        objectives="p_median",
+        search_strategy="brute-force",
+        show_progress=False,
+        n_jobs=1,
+        brute_force_keep_best_n=5,
+    )
+
+    assert len(calls) == 1
+    assert len(calls[0]) == 30  # every combination, in the one chunk

@@ -12,17 +12,96 @@ from lokigi.site_solutions import SiteSolutionSet
 import pandas as pd
 import random
 import math
-import itertools
 
 # Other imports
 from warnings import warn
 import heapq
 from tqdm.auto import tqdm
 from functools import lru_cache
+from joblib import Parallel, delayed, effective_n_jobs
 
 # Warn if brute force will be slow
 BRUTE_FORCE_WARN_THRESHOLD = 75_000
 BRUTE_FORCE_LIMIT = 500_000
+
+
+def _push_capped(heap, key, tie, metrics, n):
+    """Fill-then-replace a size-capped heap, keeping the n largest keys.
+    `tie` only breaks comparisons between exactly-equal-key heap entries
+    during internal heap sifting (metrics dicts aren't orderable) -- it is
+    NOT part of the admission decision, matching the pre-parallelisation
+    behaviour exactly: an equal-key newcomer is never admitted once the
+    heap is full, regardless of tie. n_jobs=1 always evaluates the whole
+    combination list as a single chunk/heap (see _brute_force), so this
+    reproduces that prior behaviour bit-for-bit. n_jobs>1 evaluates
+    several of these heaps independently (one per chunk) and merges them
+    the same way; the merged result is always a valid, correctly-ranked
+    top n by score, but on an exact score tie that spans more combinations
+    than n allows, which specific combination survives can differ from a
+    single-process run -- an edge case only reachable with genuinely
+    tied floating-point scores in excess of keep_best_n/keep_worst_n.
+    """
+    if len(heap) < n:
+        heapq.heappush(heap, (key, tie, metrics))
+    elif key > heap[0][0]:
+        heapq.heapreplace(heap, (key, tie, metrics))
+
+
+def _evaluate_chunk(
+    site_problem,
+    indexed_chunk,
+    objectives,
+    weights,
+    threshold_for_coverage,
+    max_value_cutoff,
+    rank_best_n_on,
+    higher_is_better,
+    keep_best_n,
+    keep_worst_n,
+    stream_top_n,
+):
+    """Evaluate one chunk of combinations. Returns either the list of
+    metrics dicts (materialising path) or (local_best, local_worst) lists
+    of (key, global_index, metrics) tuples (streaming path). Runs in a
+    worker process under joblib, so it must not depend on any state that
+    changes across chunks (it doesn't -- the heaps below are local)."""
+    if not stream_top_n:
+        chunk_outputs = []
+        for _global_index, possible_solution in indexed_chunk:
+            metrics = site_problem.evaluate_single_solution_single_objective(
+                site_indices=possible_solution,
+                objective=objectives,
+                threshold_for_coverage=threshold_for_coverage,
+                weights=weights,
+            ).return_solution_metrics()
+
+            if max_value_cutoff is None or metrics["max"] <= max_value_cutoff:
+                chunk_outputs.append(metrics)
+        return chunk_outputs
+
+    local_best = []
+    local_worst = []
+    for global_index, possible_solution in indexed_chunk:
+        metrics = site_problem.evaluate_single_solution_single_objective(
+            site_indices=possible_solution,
+            objective=objectives,
+            threshold_for_coverage=threshold_for_coverage,
+            weights=weights,
+        ).return_solution_metrics()
+
+        raw_score = metrics[rank_best_n_on]
+        score = -raw_score if higher_is_better else raw_score
+        max_value = metrics["max"]
+
+        if max_value_cutoff is not None and max_value > max_value_cutoff:
+            continue
+
+        if keep_best_n is not None:
+            _push_capped(local_best, -score, global_index, metrics, keep_best_n)
+        if keep_worst_n is not None:
+            _push_capped(local_worst, score, global_index, metrics, keep_worst_n)
+
+    return local_best, local_worst
 
 
 class BruteForceMixin:
@@ -38,6 +117,7 @@ class BruteForceMixin:
         rank_best_n_on="weighted_average",
         max_value_cutoff=None,
         threshold_for_coverage=None,
+        n_jobs=1,
     ):
 
         # Greedy and GRASP already fail fast with a clear message when
@@ -100,12 +180,6 @@ class BruteForceMixin:
             bottom_n_heap = []  # To store the largest scores (worst)
             # print(f"Keeping worst {brute_force_keep_worst_n}")
 
-        # A unique, monotonically increasing tie-breaker sits between the
-        # score and the metrics dict in every heap entry, so that exact
-        # score ties never fall through to comparing two dicts (which
-        # aren't orderable and would raise TypeError).
-        tie_breaker = itertools.count()
-
         possible_combinations = _generate_all_combinations(
             n_facilities=self.total_n_sites, p=p, site_problem=self
         )
@@ -130,70 +204,85 @@ class BruteForceMixin:
         # while every other objective's ranking column is lower-is-better.
         higher_is_better = objectives == "mclp"
 
-        if show_progress:
-            possible_combinations = tqdm(possible_combinations)
+        # Chunk the (already fully materialised) combination list and hand
+        # chunks to worker processes. Each combination's position in
+        # `possible_combinations` doubles as its global_index, used only
+        # to keep heap comparisons from falling through to comparing two
+        # (unorderable) metrics dicts on an exact score tie.
+        #
+        # n_jobs=1 always evaluates as a single chunk, so it goes through
+        # exactly the same single-heap computation the pre-parallelisation
+        # code did -- bit-for-bit identical output, including which
+        # combination wins an exact tie. n_jobs>1 splits into several
+        # chunks/heaps merged afterwards; see _push_capped for what that
+        # does and does not guarantee under exact ties.
+        n_combinations = len(possible_combinations)
+        if n_combinations == 0:
+            chunks = []
+        elif n_jobs == 1:
+            chunks = [list(enumerate(possible_combinations))]
+        else:
+            n_workers = max(1, effective_n_jobs(n_jobs))
+            n_chunks = min(n_combinations, max(1, n_workers * 4))
+            chunk_size = math.ceil(n_combinations / n_chunks)
+            indexed_combinations = list(enumerate(possible_combinations))
+            chunks = [
+                indexed_combinations[i : i + chunk_size]
+                for i in range(0, n_combinations, chunk_size)
+            ]
 
-        for possible_solution in possible_combinations:
+        progress = tqdm(total=n_combinations) if show_progress else None
+
+        parallel_results = Parallel(n_jobs=n_jobs, return_as="generator")(
+            delayed(_evaluate_chunk)(
+                self,
+                chunk,
+                objectives,
+                weights,
+                threshold_for_coverage,
+                max_value_cutoff,
+                rank_best_n_on,
+                higher_is_better,
+                brute_force_keep_best_n if stream_top_n else None,
+                brute_force_keep_worst_n if stream_top_n else None,
+                stream_top_n,
+            )
+            for chunk in chunks
+        )
+
+        for chunk, result in zip(chunks, parallel_results):
+            if progress is not None:
+                progress.update(len(chunk))
+
             if not stream_top_n:
                 # Keep all results -- either because no pruning was
                 # requested, or because cost weighting is active and every
                 # combination must be materialised before pruning (see
                 # `use_cost_weighting` above).
-                single_solution_metrics = (
-                    self.evaluate_single_solution_single_objective(
-                        site_indices=possible_solution,
-                        objective=objectives,
-                        threshold_for_coverage=threshold_for_coverage,
-                        weights=weights,
-                    ).return_solution_metrics()
-                )
-
-                if max_value_cutoff is None or (
-                    max_value_cutoff is not None
-                    and single_solution_metrics["max"] <= max_value_cutoff
-                ):
-                    outputs.append(single_solution_metrics)
-
-            # --- Logic for Top N (Smallest Scores) ---
-            # We store -score to simulate a Max-Heap using heapq
+                outputs.extend(result)
             else:
-                metrics = self.evaluate_single_solution_single_objective(
-                    site_indices=possible_solution,
-                    objective=objectives,
-                    threshold_for_coverage=threshold_for_coverage,
-                    weights=weights,
-                ).return_solution_metrics()
+                local_best, local_worst = result
+                if brute_force_keep_best_n is not None:
+                    for key, tie, metrics in local_best:
+                        _push_capped(
+                            top_n_heap,
+                            key,
+                            tie,
+                            metrics,
+                            brute_force_keep_best_n,
+                        )
+                if brute_force_keep_worst_n is not None:
+                    for key, tie, metrics in local_worst:
+                        _push_capped(
+                            bottom_n_heap,
+                            key,
+                            tie,
+                            metrics,
+                            brute_force_keep_worst_n,
+                        )
 
-                raw_score = metrics[rank_best_n_on]
-                # Normalise so lower always means better: the heaps below
-                # keep the N smallest scores as "best" and the N largest as
-                # "worst", which only holds for minimising objectives.
-                # Negating mclp's coverage proportion lets the same heap
-                # logic serve both directions -- without this, keep_best_n
-                # for mclp retained the WORST-coverage combinations.
-                score = -raw_score if higher_is_better else raw_score
-                max_value = metrics["max"]
-
-                if max_value_cutoff is None or (
-                    max_value_cutoff is not None and max_value <= max_value_cutoff
-                ):
-                    if brute_force_keep_best_n is not None:
-                        if len(top_n_heap) < brute_force_keep_best_n:
-                            heapq.heappush(top_n_heap, (-score, next(tie_breaker), metrics))
-                        elif -score > top_n_heap[0][0]:
-                            heapq.heapreplace(
-                                top_n_heap, (-score, next(tie_breaker), metrics)
-                            )
-
-                    # --- Logic for Bottom N (Largest Scores) ---
-                    # Standard Min-Heap to keep the largest values
-                    if brute_force_keep_worst_n is not None:
-                        if len(bottom_n_heap) < brute_force_keep_worst_n:
-                            heapq.heappush(bottom_n_heap, (score, next(tie_breaker), metrics))
-                        elif score > bottom_n_heap[0][0]:
-                            heapq.heapreplace(
-                                bottom_n_heap, (score, next(tie_breaker), metrics)
-                            )
+        if progress is not None:
+            progress.close()
 
         if not keep_n_active:
             return outputs
