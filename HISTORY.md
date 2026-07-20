@@ -1,3 +1,11 @@
+## v0.5.0
+
+- Add `n_jobs` parameter to `solve(search_strategy="brute-force", ...)` to evaluate combinations across multiple CPU cores (via `joblib`)
+    - `n_jobs=1` (the default) is unchanged: byte-for-byte identical output to previous versions
+    - `n_jobs>1`/`n_jobs=-1` always returns a correctly-ranked, correctly-bounded `keep_best_n`/`keep_worst_n` result; on an exact score tie spanning more combinations than the requested count, which specific tied combination is returned can differ from a serial run (their scores are identical either way)
+    - Note: the first `solve(..., n_jobs=...)` call in a process (or any call after switching to a different `n_jobs` value) pays a one-time worker-pool startup cost -- on Windows this can be several seconds regardless of workload size, since each worker process re-imports pandas/numpy/etc. from scratch. Calls that reuse the same `n_jobs` value reuse the already-running pool and are fast; for a small combination count, a single one-off parallel call can look slower than `n_jobs=1` purely because of this startup cost
+    - `joblib` is now a direct dependency (previously pulled in only transitively)
+
 ## v0.4.1
 
 - Bugfixes for equity weighting
