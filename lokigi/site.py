@@ -427,7 +427,6 @@ class SiteProblem(
         grasp_local_search_chance=0.8,  # Chance that local searching will happen to improve found solution
         grasp_max_swap_count_local_search=10,
         random_seed=42,
-        **kwargs,
     ):
         """
         Solve the site location problem using the specified objective and strategy.
@@ -497,8 +496,6 @@ class SiteProblem(
             local search phase.
         random_seed : int, default 42
             (GRASP only) Seed for reproducibility in randomized strategies like GRASP.
-        **kwargs : dict
-            Additional arguments passed to the internal solver.
 
         Returns
         -------
