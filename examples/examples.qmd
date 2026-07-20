@@ -28,6 +28,7 @@ listing:
     contents:
       - "location/larger_problems/index.ipynb"
       - "location/greedy_and_grasp/index.ipynb"
+      - "location/parallel_brute_force/index.ipynb"
     type: grid
     sort: false
     grid-columns: 3
