@@ -368,7 +368,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    height<span class="op">=</span><span class="dv">12</span>,</span>
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>    width<span class="op">=</span><span class="dv">6</span>,</span>
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    site_legend_loc<span class="op">=</span><span class="st">'best'</span>,</span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>    matrix<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Plot a map of the best-performing site combination.</p>
 <p>This method visualises the spatial performance of the best solution in the solution set, including travel costs, site allocations, or coverage relative to a threshold. Regions are coloured according to the selected metric, and candidate site locations can be overlaid.</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">
@@ -502,6 +503,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td></td>
 <td>Font size of site name annotations on the map</td>
 <td><code>6</code></td>
+</tr>
+<tr class="even">
+<td>matrix</td>
+<td>str</td>
+<td>Label of a secondary travel matrix registered via <code>add_secondary_travel_matrix()</code>. If provided, the plot and its title metrics use that matrix’s columns and unit instead of the primary travel matrix.</td>
+<td><code>None</code></td>
 </tr>
 </tbody>
 </table>

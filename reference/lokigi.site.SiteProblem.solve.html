@@ -364,7 +364,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    grasp_local_search_chance<span class="op">=</span><span class="fl">0.8</span>,</span>
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    grasp_max_swap_count_local_search<span class="op">=</span><span class="dv">10</span>,</span>
 <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    random_seed<span class="op">=</span><span class="dv">42</span>,</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    full_secondary_metrics<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Solve the site location problem using the specified objective and strategy.</p>
 <p>This method validates the problem configuration, handles automatic setup of missing demand or site data, and dispatches the optimization task to the appropriate internal solver.</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">
@@ -492,6 +493,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>int</td>
 <td>(GRASP only) Seed for reproducibility in randomized strategies like GRASP.</td>
 <td><code>42</code></td>
+</tr>
+<tr class="odd">
+<td>full_secondary_metrics</td>
+<td>bool</td>
+<td>If False (the default), each registered secondary travel matrix (see <code>add_secondary_travel_matrix()</code>) contributes only its core five metrics plus the float-valued equity aggregations to <code>solution_df</code>. If True, every registered secondary matrix also contributes its dict-valued equity breakdowns (e.g.&nbsp;<code>weighted_by_equity_group__&lt;label&gt;</code>) and description strings, matching what the primary matrix already always returns unsuffixed. This has no effect if no secondary matrices are registered, and costs nothing extra to compute – the values are already computed either way, this only controls which of them are included in the returned table.</td>
+<td><code>False</code></td>
 </tr>
 </tbody>
 </table>

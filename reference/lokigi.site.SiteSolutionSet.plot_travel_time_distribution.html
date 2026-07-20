@@ -353,8 +353,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    height<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    height_per_plot<span class="op">=</span><span class="dv">250</span>,</span>
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    compare_to_best<span class="op">=</span><span class="va">False</span>,</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    matrix<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Plot travel time distributions for selected solutions.</p>
 <p>This method generates faceted histograms of travel time (or cost) distributions for the top and/or bottom-performing solutions in the solution set. Each subplot corresponds to a single solution and includes summary statistics annotations.</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">
@@ -363,8 +364,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <colgroup>
 <col style="width: 7%">
 <col style="width: 3%">
-<col style="width: 83%">
-<col style="width: 5%">
+<col style="width: 84%">
+<col style="width: 4%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -424,6 +425,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>False</code></td>
 </tr>
 <tr class="odd">
+<td>matrix</td>
+<td>str</td>
+<td>Label of a secondary travel matrix registered via <code>add_secondary_travel_matrix()</code>. If provided, distributions and reference lines use that matrix’s own travel costs and summary metrics instead of the primary travel matrix.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
 <td>**kwargs</td>
 <td></td>
 <td>Additional keyword arguments passed to <code>plotly.express.histogram</code>.</td>

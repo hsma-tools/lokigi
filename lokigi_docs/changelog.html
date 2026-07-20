@@ -304,7 +304,8 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#v0.5.0" id="toc-v0.5.0" class="nav-link active" data-scroll-target="#v0.5.0">v0.5.0</a></li>
+  <li><a href="#v0.6.0" id="toc-v0.6.0" class="nav-link active" data-scroll-target="#v0.6.0">v0.6.0</a></li>
+  <li><a href="#v0.5.0" id="toc-v0.5.0" class="nav-link" data-scroll-target="#v0.5.0">v0.5.0</a></li>
   <li><a href="#v0.4.1" id="toc-v0.4.1" class="nav-link" data-scroll-target="#v0.4.1">v0.4.1</a></li>
   <li><a href="#v0.4.0" id="toc-v0.4.0" class="nav-link" data-scroll-target="#v0.4.0">v0.4.0</a></li>
   <li><a href="#v0.3.0" id="toc-v0.3.0" class="nav-link" data-scroll-target="#v0.3.0">v0.3.0</a></li>
@@ -322,6 +323,28 @@ ul.task-list li input[type="checkbox"] {
 
 
 
+<section id="v0.6.0" class="level2">
+<h2 class="anchored" data-anchor-id="v0.6.0">v0.6.0</h2>
+<ul>
+<li>Add support for secondary travel matrices via <code>add_secondary_travel_matrix(travel_matrix_df, source_col, label, ...)</code>
+<ul>
+<li>Registers an additional travel/cost matrix (e.g.&nbsp;public transport alongside a primary car matrix) that is never used as the optimisation cost matrix – the matrix registered via <code>add_travel_matrix()</code> always drives site selection, search, and pruning</li>
+<li>Each registered secondary matrix contributes its own per-solution metric columns to <code>solution_df</code>, suffixed <code>__&lt;label&gt;</code> (e.g.&nbsp;<code>weighted_average__public_transport</code>, <code>min_cost__public_transport</code> on the per-region <code>problem_df</code>), so a single <code>solve()</code> produces one candidate ranking with metrics for every registered matrix side by side – directly usable in <code>ParetoMetric(column=...)</code>, <code>rank_on=...</code>, and plots, without needing to <code>.copy()</code> the problem and solve twice</li>
+<li>Any number of secondary matrices may be registered, each with its own <code>unit</code>/<code>from_unit</code>/<code>to_unit</code> and optional per-matrix <code>threshold_for_coverage</code> (falls back to the value passed to <code>solve()</code> if not set)</li>
+<li>Secondary matrices must be complete (a row for every demand location, a column for every candidate site, no missing values) – <code>solve()</code> raises a <code>KeyError</code> naming the label and the specific gap otherwise, rather than silently producing metrics over a different denominator than the primary matrix</li>
+<li>By default, each secondary matrix only contributes its core five metrics plus float-valued equity aggregations to <code>solution_df</code> (not the dict-valued equity breakdowns or description strings, to keep the table from growing unboundedly with each registered matrix). Pass <code>solve(..., full_secondary_metrics=True)</code> to also include those, matching what the primary matrix already always returns</li>
+<li>Plotting methods (<code>plot_best_combination</code>, <code>plot_n_best_combinations</code>, <code>plot_solution_comparison</code>, <code>plot_travel_time_distribution</code>, <code>check_solution_equity</code>, <code>plot_top_n_solution_equity</code>, <code>plot_combination_by_equity</code>) accept a new <code>matrix=</code> keyword to switch from the primary matrix to a registered secondary one</li>
+<li><code>plot_simple_pareto_front_pairs</code>’s <code>x_axis</code>/<code>y_axis</code> parameters now accept any <code>solution_df</code> column (previously typed as a fixed <code>Literal</code> set that already undersold what was accepted)</li>
+<li>Ranking on a secondary matrix’s columns (e.g.&nbsp;<code>rank_on="max__public_transport"</code>) only reorders candidates that were searched and pruned using the primary matrix – see the new <code>add_secondary_travel_matrix()</code> docstring and the <code>multiple_travel_matrices</code> example for the <code>brute_force_keep_best_n</code>/<code>_worst_n</code> caveat this implies</li>
+<li><code>SolutionComparator</code> and the <code>problem.copy()</code>-per-mode workflow are unchanged and remain the right tool for two genuinely independent optimisations; secondary matrices are the alternative for trading modes off within one candidate ranking (see the new cross-reference in the <code>comparing_solutions</code> example)</li>
+</ul></li>
+<li>Add <code>expand_dict_columns</code> and <code>inplace</code> parameters to <code>show_solutions()</code>
+<ul>
+<li><code>show_solutions(expand_dict_columns=True)</code> flattens every dict-valued column (<code>weighted_by_equity_group</code>, <code>coverage_by_equity_group</code>, etc., including their <code>__&lt;label&gt;</code> secondary-matrix equivalents under <code>full_secondary_metrics=True</code>) into one column per dict key, named <code>&lt;column&gt;__&lt;key&gt;</code>. Off by default, so <code>solution_df</code>’s shape is unchanged for existing callers</li>
+<li><code>show_solutions(expand_dict_columns=True, inplace=True)</code> also writes the expansion back to <code>solution_df</code> so it persists for later calls, plotting, and <code>rank_on</code>; <code>inplace</code> has no effect unless combined with <code>expand_dict_columns=True</code>, and warns if passed alone. Rounding is never made permanent</li>
+</ul></li>
+</ul>
+</section>
 <section id="v0.5.0" class="level2">
 <h2 class="anchored" data-anchor-id="v0.5.0">v0.5.0</h2>
 <ul>

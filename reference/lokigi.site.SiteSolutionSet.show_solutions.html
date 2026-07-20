@@ -344,16 +344,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <section id="lokigi.site.SiteSolutionSet.show_solutions" class="level1">
 <h1>show_solutions</h1>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet.show_solutions(rounding<span class="op">=</span><span class="dv">2</span>, n_best<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>site.SiteSolutionSet.show_solutions(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    rounding<span class="op">=</span><span class="dv">2</span>,</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    n_best<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    expand_dict_columns<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    inplace<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Return the solution DataFrame with rounded values.</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 11%">
-<col style="width: 9%">
-<col style="width: 65%">
-<col style="width: 13%">
+<col style="width: 4%">
+<col style="width: 1%">
+<col style="width: 91%">
+<col style="width: 2%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -369,6 +374,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>int</td>
 <td>Number of decimal places to round numeric columns to.</td>
 <td><code>2</code></td>
+</tr>
+<tr class="even">
+<td>expand_dict_columns</td>
+<td>bool</td>
+<td>If True, any column holding dict values – the equity-group breakdowns (<code>weighted_by_equity_group</code>, <code>coverage_by_equity_group</code>, etc.) and their secondary-matrix equivalents when <code>solve(..., full_secondary_metrics=True)</code> was used – is expanded into one column per dict key, named <code>&lt;column&gt;__&lt;key&gt;</code>. This is usually more useful for display/export than a column of dicts, but is off by default to keep <code>solution_df</code>’s shape unchanged for existing callers.</td>
+<td><code>False</code></td>
+</tr>
+<tr class="odd">
+<td>inplace</td>
+<td>bool</td>
+<td>If True (and <code>expand_dict_columns=True</code>), the expansion is also written back to <code>self.solution_df</code>, so it persists for subsequent calls, plotting, <code>rank_on</code>, etc. Has no effect unless <code>expand_dict_columns=True</code>, in which case a <code>UserWarning</code> is raised instead, since passing <code>inplace=True</code> alone does nothing and likely indicates the caller meant to also pass <code>expand_dict_columns=True</code>. Rounding is never made permanent – only the column expansion can be.</td>
+<td><code>False</code></td>
 </tr>
 </tbody>
 </table>
@@ -399,7 +416,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="notes" class="level2 doc-section doc-section-notes">
 <h2 class="doc-section doc-section-notes anchored" data-anchor-id="notes">Notes</h2>
-<p>This method does not modify the underlying DataFrame; it returns a rounded copy.</p>
+<p>Unless <code>inplace=True</code>, this method does not modify the underlying DataFrame; it returns a rounded (and optionally expanded) copy.</p>
 
 
 </section>

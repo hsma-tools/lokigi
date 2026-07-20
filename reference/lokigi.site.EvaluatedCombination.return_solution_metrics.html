@@ -344,37 +344,42 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <section id="lokigi.site.EvaluatedCombination.return_solution_metrics" class="level1">
 <h1>return_solution_metrics</h1>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>site.EvaluatedCombination.return_solution_metrics()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>INTERPRETATION GUIDE FOR SUMMARY TABLES &amp; SORTING:</p>
-<p>1a. ‘weighted_average’ - LOWER is better. Represents travel time adjusted for specified weighting factors.</p>
-<p>1b. Travel Costs (‘unweighted_average’, ‘90th_percentile’, ‘max’): - LOWER is better. Represents travel time or distance.</p>
-<p>1c. ‘total_cost’ - LOWER is better. Total fixed cost of the selected sites (sum of the <code>cost_col</code> configured via <code>add_sites()</code>). <code>NaN</code> if no <code>cost_col</code> was configured. Only influences which solution is selected if explicitly passed as a weight (weights={“cost”: …}).</p>
-<ol start="2" type="1">
-<li>Absolute Equity Gap (‘gap_absolute_weighted’):
-<ul>
-<li>CLOSER TO 0 is better. Measures the flat minute/distance difference between the best-served and worst-served equity bands. High numbers mean severe geographical disparity.</li>
-</ul></li>
-<li>Relative Equity Gap (‘gap_relative_weighted’):
-<ul>
-<li>CLOSER TO 1.0 is better. If it’s 1.5, the worst-served group travels 1.5x longer than the best-served group.</li>
-</ul></li>
-<li>Inter-Tertile Ratio (‘inter_tertile_ratio’):
-<ul>
-<li>Measures macro-equity assuming lower bins = higher deprivation (e.g., IMD 1-3).</li>
-<li>SORTING CRITERIA:
-<ul>
-<li>ITR &gt; 1.0: Inequity. The most deprived third faces longer travel times than the least deprived third (e.g., 1.25 = 25% longer travel).</li>
-<li>ITR = 1.0: Perfect equality in macro travel times.</li>
-<li>ITR &lt; 1.0: Progressive equity. Travel times are shorter for the most deprived communities.</li>
-</ul></li>
-</ul></li>
-<li>Coverage Metrics (‘proportion_within_coverage_threshold’, ‘coverage_by_equity_group’):
-<ul>
-<li>HIGHER is better (Scale: 0.0 to 1.0). Represents accessibility. Look for solutions where coverage is both globally high and uniformly distributed across groups.</li>
-</ul></li>
-</ol>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>site.EvaluatedCombination.return_solution_metrics(full_secondary_metrics<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="parameters" class="level2 doc-section doc-section-parameters">
+<h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 3%">
+<col style="width: 1%">
+<col style="width: 93%">
+<col style="width: 1%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>full_secondary_metrics</td>
+<td>bool</td>
+<td>If False (the default), each registered secondary travel matrix contributes only its core five metrics plus the float-valued equity aggregations (see point 6 below) – matching the output shape prior to this parameter’s introduction. If True, every registered secondary matrix also contributes its dict-valued equity breakdowns (<code>weighted_by_equity_group__&lt;label&gt;</code>, etc.) and description strings, exactly mirroring what the primary matrix already always returns unsuffixed. This costs nothing extra to compute – <code>_compute_travel_metrics</code> already produces these values for every matrix regardless – it only changes which of the already-computed keys get included here.</td>
+<td><code>False</code></td>
+</tr>
+<tr class="even">
+<td>INTERPRETATION</td>
+<td></td>
+<td></td>
+<td><em>required</em></td>
+</tr>
+</tbody>
+</table>
 
 
+</section>
 </section>
 
 <a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->

@@ -360,10 +360,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
 <table class="caption-top table">
 <colgroup>
+<col style="width: 5%">
 <col style="width: 3%">
-<col style="width: 35%">
-<col style="width: 54%">
-<col style="width: 6%">
+<col style="width: 82%">
+<col style="width: 8%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -376,15 +376,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tbody>
 <tr class="odd">
 <td>x_axis</td>
-<td>('weighted_average', 'unweighted_average', '90th_percentile', 'max', 'proportion_within_coverage_threshold')</td>
-<td>Column name representing the metric to plot on the x-axis.</td>
+<td>str</td>
+<td>Column name representing the metric to plot on the x-axis. Any column in <code>solution_df</code> is valid, including secondary-travel- matrix columns suffixed <code>__&lt;label&gt;</code> (e.g.&nbsp;“weighted_average__public_transport”).</td>
 <td><code>"weighted_average"</code></td>
 </tr>
 <tr class="even">
 <td>y_axis</td>
-<td>('weighted_average', 'unweighted_average', '90th_percentile', 'max', 'proportion_within_coverage_threshold')</td>
-<td>Column name representing the metric to plot on the y-axis.</td>
-<td><code>"weighted_average"</code></td>
+<td>str</td>
+<td>Column name representing the metric to plot on the y-axis. Any column in <code>solution_df</code> is valid, including secondary-travel- matrix columns suffixed <code>__&lt;label&gt;</code>.</td>
+<td><code>"max"</code></td>
 </tr>
 <tr class="odd">
 <td>height</td>

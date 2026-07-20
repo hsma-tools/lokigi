@@ -355,17 +355,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    ax<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    colour_mode<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    show_site_names<span class="op">=</span><span class="va">False</span>,</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    matrix<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Summarise and optionally plot equity metrics for a selected solution.</p>
 <p>This method computes the mean minimum cost (<code>min_cost</code>) grouped by the configured equity category for a given solution. It can return either the aggregated data or a visualisation using Plotly (interactive) or Matplotlib (static).</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 9%">
-<col style="width: 16%">
-<col style="width: 67%">
-<col style="width: 7%">
+<col style="width: 6%">
+<col style="width: 11%">
+<col style="width: 76%">
+<col style="width: 5%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -423,6 +424,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>bool</td>
 <td>If True, the default plot title lists the selected sites by name (<code>site_names</code>) instead of by index (<code>site_indices</code>).</td>
 <td><code>False</code></td>
+</tr>
+<tr class="odd">
+<td>matrix</td>
+<td>str</td>
+<td>Label of a secondary travel matrix registered via <code>add_secondary_travel_matrix()</code>. If provided, the summary is computed from that matrix’s own min-cost column instead of the primary travel matrix.</td>
+<td><code>None</code></td>
 </tr>
 </tbody>
 </table>
