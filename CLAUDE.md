@@ -28,6 +28,16 @@
 
 - State uncertainty plainly. Distinguish what's directly verified from what's inferred, e.g. "confirmed via code inspection, but couldn't trigger through the public API."
 
+# Example notebooks
+
+- Each example lives at `examples/<category>/<name>/index.ipynb` (categories: `location`, `eda`, `travel_time_matrices`, `routing`, `other`). Front matter is a markdown cell: `title`, `toc: true`, `execute: {enabled: true}`, and optionally `image: image.png` if a card image exists.
+- A new example is invisible until it's wired into `examples/examples.qmd`: add its path to the `contents` list of the right `listing` block (or a new one), under the heading section that already matches its topic. Check both the `listing` metadata at the top of the file and the `:::{#id}:::` div in the body — both reference the same `id`.
+- Prefer extending an existing example's problem setup (same sample data, same site/travel-matrix registration) over inventing a new one, so the reader isn't re-learning unrelated setup. Link back to the example you borrowed from, and forward to yours from it, with relative markdown links (`../other_example/index.ipynb`).
+- Notebooks are committed **with real, executed outputs**, not authored output. After writing or editing code cells, run `python -m jupyter nbconvert --to notebook --execute --inplace <path>` from the notebook's own directory (its relative sample-data paths assume that cwd), and check the result for error outputs before committing.
+- Don't fabricate specific numbers in prose ("coverage of 62%", "grows from three solutions to six") — derive them by actually running the scenario first, then write the sentence to match. If a change to core code could have shifted a number an existing notebook already narrates, re-run that notebook and check, rather than assuming the prose still holds.
+- If re-executing a notebook produces a diff that's purely execution timestamps / widget IDs / cell-execution-count churn with no actual value change, revert it — that's noise, not signal. Only keep a re-execution diff when it reflects a real output change.
+- When hand-editing prose in an already-executed `.ipynb` (no code change, so no need to re-run), edit the cell's `source` as a JSON list of lines (each ending `\n` except the last), matching the file's existing style — not a single string — so the diff stays line-granular and reviewable.
+
 # HISTORY.md
 
 - Every user-facing change (new parameter, new method, behavior change, bugfix) needs an entry — check whether one is needed as part of the task, don't wait to be asked.
