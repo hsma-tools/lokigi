@@ -13,6 +13,13 @@
 - Fix coverage columns for secondary travel matrices being sorted backwards
     - `plot_simple_pareto_front_pairs`, `plot_all_metric_pareto_front_pairs`, and `SolutionComparator` inferred "higher is better" by exact match against `proportion_within_coverage_threshold`, so a suffixed column such as `proportion_within_coverage_threshold__public_transport` was treated as a metric to minimise. Direction is now inferred for any coverage-proportion column, suffixed or not
 - Both coverage proportions are `NaN` when no `threshold_for_coverage` was supplied, rather than `0.0`
+- Fix `rank_on=` returning the *worst* solution when ranking on a coverage metric
+    - Every `rank_on` call site sorted ascending unconditionally, which is right for the travel-cost metrics but backwards for coverage proportions, where higher is better. `return_best_combination_details()`, `return_best_combination_site_names()`, `return_best_combination_site_indices()` and the `rank_on`-accepting plotting methods (`plot_n_best_combinations_bar`, `plot_best_combination`, `plot_n_best_combinations`, `plot_travel_time_distribution`, `plot_combination_by_equity`) all returned or plotted the least-covering solution when asked for the best one
+    - Direction is now resolved per column, so `rank_on="proportion_within_coverage_threshold"` (or any `regions`/`__<label>` coverage column) ranks highest-first, while travel-cost metrics are unchanged and still rank lowest-first
+    - `plot_travel_time_distribution(secondary_ranking=...)` resolves the tie-breaker's direction independently of the primary metric, so a coverage metric can be tie-broken by a travel cost with each sorted the right way round
+    - Affects which solution these methods return for coverage rankings only; anything ranking on `weighted_average`, `unweighted_average`, `90th_percentile`, `max` or `total_cost` is byte-for-byte unchanged
+- Fix `plot_travel_time_distribution(bottom_n=...)` raising `TypeError: list.append() takes no keyword arguments`
+    - The bottom-ranked slice was appended with a stray keyword argument, so passing `bottom_n` at all crashed. Passing `top_n` alone was unaffected
 
 ## v0.6.0
 

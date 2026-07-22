@@ -3,7 +3,7 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from lokigi.utils import _min_max_normalize
+from lokigi.utils import _min_max_normalize, _sort_solutions_by_metric
 
 from lokigi.mixins.site_solution_plots import (
     MapsMixin,
@@ -1043,10 +1043,9 @@ class SiteSolutionSet(
         Parameters
         ----------
         rank_on : str, optional
-            Column name to sort the solutions by. If provided, solutions are
-            sorted in ascending order before selecting the top entries.
-            If None, the existing order of ``solution_df``, which is based on the
-            objective selected, is used.
+            Column name to rank the solutions by before selecting the top
+            entries. If None, the existing order of ``solution_df``, which is
+            based on the objective selected, is used.
         top_n : int, default=1
             Number of top solutions to return.
 
@@ -1058,11 +1057,16 @@ class SiteSolutionSet(
 
         Notes
         -----
-        Sorting is performed in ascending order, so lower values are assumed
-        to represent better solutions for the specified ranking metric.
+        Sort direction is resolved from the metric, so "top" always means
+        best: coverage proportions are ranked highest-first, and every other
+        reported metric is a travel cost and is ranked lowest-first.
         """
         if rank_on is not None:
-            return self.solution_df.sort_values(rank_on).head(top_n).reset_index()
+            return (
+                _sort_solutions_by_metric(self.solution_df, rank_on)
+                .head(top_n)
+                .reset_index()
+            )
         else:
             return self.solution_df.head(top_n).reset_index()
 
@@ -1073,8 +1077,9 @@ class SiteSolutionSet(
         Parameters
         ----------
         rank_on : str, optional
-            Column name to sort the solutions by. If provided, the solution
-            with the lowest value in this column is selected.
+            Column name to rank the solutions by. If provided, the solution
+            with the BEST value in this column is selected -- the highest for
+            coverage proportions, the lowest for travel-cost metrics.
             If None, the existing order of ``solution_df``, which is based on the
             objective selected, is used.
 
@@ -1086,7 +1091,9 @@ class SiteSolutionSet(
 
         """
         if rank_on is not None:
-            return self.solution_df.sort_values(rank_on)["site_indices"].iloc[0]
+            return _sort_solutions_by_metric(self.solution_df, rank_on)[
+                "site_indices"
+            ].iloc[0]
         else:
             return self.solution_df["site_indices"].iloc[0]
 
@@ -1097,20 +1104,23 @@ class SiteSolutionSet(
         Parameters
         ----------
         rank_on : str, optional
-            Column name to sort the solutions by. If provided, the solution
-            with the lowest value in this column is selected.
+            Column name to rank the solutions by. If provided, the solution
+            with the BEST value in this column is selected -- the highest for
+            coverage proportions, the lowest for travel-cost metrics.
             If None, the existing order of ``solution_df``, which is based on the
             objective selected, is used.
 
         Returns
         -------
         object
-            The value of the "site_indices" column for the best solution.
-            Typically a list or array of site indices.
+            The value of the "site_names" column for the best solution.
+            Typically a list or array of site names.
 
         """
         if rank_on is not None:
-            return self.solution_df.sort_values(rank_on)["site_names"].iloc[0]
+            return _sort_solutions_by_metric(self.solution_df, rank_on)[
+                "site_names"
+            ].iloc[0]
         else:
             return self.solution_df["site_names"].iloc[0]
 

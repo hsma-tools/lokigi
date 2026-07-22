@@ -12,7 +12,12 @@ import math
 import plotly.express as px
 from lokigi.utils import _safe_evaluate
 from typing import Literal, Optional
-from lokigi.utils import _wrap_label, _select_solution, _get_ordinal_suffix
+from lokigi.utils import (
+    _wrap_label,
+    _select_solution,
+    _get_ordinal_suffix,
+    _sort_solutions_by_metric,
+)
 import warnings
 from requests.exceptions import RequestException
 
@@ -56,8 +61,9 @@ class NonMapPlotsMixin:
             If True, generates an interactive Plotly bar chart. If False,
             generates a static Matplotlib bar chart.
         rank_on : str, optional
-            Column name used to rank solutions. If provided, solutions are
-            sorted in ascending order before selecting the top ``n_best``.
+            Column name used to rank solutions. If provided, the best
+            solutions by this metric are selected -- highest-first for
+            coverage proportions, lowest-first for travel costs.
             If None, the existing order of ``solution_df`` is used.
         title : str or None, default="default"
             Title for the plot. If "default", an automatic title is generated
@@ -85,7 +91,7 @@ class NonMapPlotsMixin:
         """
 
         if rank_on is not None:
-            df = self.solution_df.sort_values(rank_on)
+            df = _sort_solutions_by_metric(self.solution_df, rank_on)
         else:
             df = self.solution_df
         if n_best is not None:
@@ -510,8 +516,9 @@ class MapsMixin:
         Parameters
         ----------
         rank_on : str, optional
-            Column name used to rank solutions. If provided, solutions are sorted
-            by this column (ascending). Ignored if site_names or site_indices is provided.
+            Column name used to rank solutions. If provided, solutions are ranked
+            best-first by this column -- highest for coverage proportions, lowest
+            for travel costs. Ignored if site_names or site_indices is provided.
         solution_rank : int, default=1
             Which ranked solution to plot (1 = best, 2 = second best, etc.).
             Ignored if site_names or site_indices is provided.
@@ -617,7 +624,11 @@ class MapsMixin:
             )
 
         if rank_on is not None:
-            solution = self.solution_df.sort_values(rank_on).head(1).reset_index()
+            solution = (
+                _sort_solutions_by_metric(self.solution_df, rank_on)
+                .head(1)
+                .reset_index()
+            )
         else:
             solution = self.solution_df.head(1).reset_index()
 
@@ -806,8 +817,9 @@ class MapsMixin:
             Number of top solutions to plot. If greater than the number of
             available solutions, all solutions are plotted.
         rank_on : str, optional
-            Column name used to rank solutions. If provided, solutions are
-            sorted in ascending order and the top ``n_best`` are selected.
+            Column name used to rank solutions. If provided, the best
+            ``n_best`` solutions by this metric are selected -- highest-first
+            for coverage proportions, lowest-first for travel costs.
             If None, the existing order of ``solution_df`` is used.
         title : str or None, optional
             Title applied to each subplot. If provided, overrides
@@ -943,7 +955,11 @@ class MapsMixin:
 
         # Sort and select top solutions
         if rank_on is not None:
-            sorted_df = self.solution_df.sort_values(rank_on).reset_index().head(n_best)
+            sorted_df = (
+                _sort_solutions_by_metric(self.solution_df, rank_on)
+                .reset_index()
+                .head(n_best)
+            )
         else:
             sorted_df = self.solution_df.reset_index().head(n_best)
 
@@ -1414,8 +1430,9 @@ class DistributionPlotsMixin:
             Number of bottom-ranked solutions to include. If provided, these are
             appended to the selected top solutions.
         rank_on : str, optional
-            Column name used to rank solutions. Sorting is performed in ascending
-            order using this column, with ``secondary_ranking`` as a tie-breaker.
+            Column name used to rank solutions, best-first (highest for coverage
+            proportions, lowest for travel costs), with ``secondary_ranking`` as
+            a tie-breaker. Each column's direction is resolved independently.
             If None, no additional sorting is applied.
         secondary_ranking : str, default="max"
             Secondary column used for tie-breaking when sorting by ``rank_on``.
@@ -1470,8 +1487,8 @@ class DistributionPlotsMixin:
         max_col = f"max{suffix}"
 
         if rank_on is not None:
-            solutions_sorted = self.solution_df.sort_values(
-                [rank_on, secondary_ranking]
+            solutions_sorted = _sort_solutions_by_metric(
+                self.solution_df, [rank_on, secondary_ranking]
             ).reset_index(drop=True)
         else:
             solutions_sorted = self.solution_df.reset_index(drop=True)
@@ -1482,7 +1499,7 @@ class DistributionPlotsMixin:
             filtered_dfs.append(solutions_sorted.head(top_n))
 
         if bottom_n is not None:
-            filtered_dfs.append(temp_bottom=solutions_sorted.tail(bottom_n))
+            filtered_dfs.append(solutions_sorted.tail(bottom_n))
 
         solutions_filtered = pd.concat(filtered_dfs)
 
@@ -1749,7 +1766,9 @@ class EquityPlotsMixin:
         cost_col, _, _, _, _ = self._resolve_travel_columns(matrix)
 
         if rank_on is not None:
-            plotting_row = self.solution_df.sort_values(rank_on).iloc[solution_rank - 1]
+            plotting_row = _sort_solutions_by_metric(self.solution_df, rank_on).iloc[
+                solution_rank - 1
+            ]
         else:
             plotting_row = self.solution_df.iloc[solution_rank - 1]
 
@@ -2019,7 +2038,9 @@ class EquityPlotsMixin:
 
         # ---- Select solution row ----
         if rank_on is not None:
-            plotting_row = self.solution_df.sort_values(rank_on).iloc[solution_rank - 1]
+            plotting_row = _sort_solutions_by_metric(self.solution_df, rank_on).iloc[
+                solution_rank - 1
+            ]
         else:
             plotting_row = self.solution_df.iloc[solution_rank - 1]
 

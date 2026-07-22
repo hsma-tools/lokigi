@@ -524,6 +524,38 @@ def _is_maximise_metric(col):
     return isinstance(col, str) and "within_coverage_threshold" in col
 
 
+def _sort_solutions_by_metric(solution_df, rank_on):
+    """
+    Sort a solutions dataframe so the BEST solution for `rank_on` is first.
+
+    Every `rank_on` call site used to sort with a bare
+    `solution_df.sort_values(rank_on)`, i.e. always ascending. That is right
+    for the travel-cost metrics but backwards for the coverage proportions,
+    where higher is better -- so asking for the best solution by coverage
+    returned the worst-covering one. Direction is resolved per column by
+    `_is_maximise_metric`.
+
+    Parameters
+    ----------
+    solution_df : pandas.DataFrame
+        A solutions dataframe (or any frame containing `rank_on`).
+    rank_on : str or sequence of str
+        Name of the metric column to rank by, or several for a primary
+        metric plus tie-breakers. Direction is resolved per column, so a
+        coverage metric can be tie-broken by a travel cost and each is still
+        sorted the right way round.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Sorted copy, best first.
+    """
+    columns = [rank_on] if isinstance(rank_on, str) else list(rank_on)
+    return solution_df.sort_values(
+        columns, ascending=[not _is_maximise_metric(col) for col in columns]
+    )
+
+
 def _min_max_normalize(series, constant_fill=0.0):
     """
     Min-max normalize a numeric series to a 0.0-1.0 scale, where the lowest
@@ -763,7 +795,7 @@ def _select_solution(
 
     # Priority 3: rank-based selection
     if rank_on is not None:
-        sorted_df = solution_df.sort_values(rank_on)
+        sorted_df = _sort_solutions_by_metric(solution_df, rank_on)
     else:
         sorted_df = solution_df
 
