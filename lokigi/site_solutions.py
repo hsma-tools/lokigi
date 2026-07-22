@@ -1299,6 +1299,91 @@ class SiteSolutionSet(
 
         return result
 
+    def two_step_floating_catchment(
+        self,
+        supply_col,
+        catchment_size,
+        rank_on=None,
+        solution_rank=1,
+        site_names=None,
+        site_indices=None,
+        matrix=None,
+        per_capita=1,
+        return_site_ratios=False,
+    ):
+        """
+        Two-step floating catchment area (2SFCA) accessibility for one
+        chosen solution.
+
+        Resolves the solution's selected sites and delegates to
+        `SiteProblem.two_step_floating_catchment()`, which does the actual
+        step-1/step-2 calculation. Unlike `site_allocation_summary()`, this
+        cannot use `problem_df` (which only carries each region's nearest
+        site and cost, not the full per-site travel-cost row 2SFCA needs
+        for every site's catchment) so it goes back to the problem's
+        travel frame instead.
+
+        Parameters
+        ----------
+        supply_col : str
+            Column in `candidate_sites` holding each site's supply
+            quantity (e.g. number of GPs, beds, weekly appointment slots).
+        catchment_size : float
+            Hard catchment threshold d0, in the travel matrix's registered
+            units. A site is "in catchment" for a demand region if the
+            travel cost between them is `<= catchment_size`.
+        rank_on : str, optional
+        solution_rank : int, default 1
+        site_names : list, optional
+        site_indices : list, optional
+            Solution selection, as in `site_allocation_summary`. Priority
+            is site_indices > site_names > rank_on/solution_rank.
+        matrix : str, optional
+            Label of a secondary travel matrix registered via
+            `add_secondary_travel_matrix()`. Scores accessibility under
+            that matrix's travel costs instead of the primary matrix's.
+        per_capita : float, default 1
+            Multiplier applied to the `accessibility` column, e.g. 1_000
+            to express supply per 1,000 head instead of raw supply units
+            per head.
+        return_site_ratios : bool, default False
+            If True, also return the step-1 per-site table.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Per demand region, indexed by demand location ID: `accessibility`
+            (supply units per head, x `per_capita`), `n_sites_in_catchment`,
+            `demand`.
+        pandas.DataFrame
+            Only if `return_site_ratios=True`. Per site, indexed by site
+            name: `supply`, `catchment_demand`, `n_regions_in_catchment`,
+            `ratio`.
+
+        See Also
+        --------
+        SiteProblem.two_step_floating_catchment : The underlying
+            calculation, usable directly on the full candidate site set
+            without needing a solved solution.
+        """
+        solution = _select_solution(
+            self.solution_df,
+            rank_on=rank_on,
+            solution_rank=solution_rank,
+            site_names=site_names,
+            site_indices=site_indices,
+        )
+        selected_sites = list(solution["site_names"].iloc[0])
+
+        return self.site_problem.two_step_floating_catchment(
+            supply_col=supply_col,
+            catchment_size=catchment_size,
+            site_names=selected_sites,
+            matrix=matrix,
+            per_capita=per_capita,
+            return_site_ratios=return_site_ratios,
+        )
+
     def summary_table(self):
         pass
 

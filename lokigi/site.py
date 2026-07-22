@@ -18,6 +18,7 @@ import numpy as np
 from typing import Literal
 from .mixins.site_solvers import BruteForceMixin, GreedyMixin, GraspMixin
 from .mixins.site_attributes import SiteAttributeMixin
+from .mixins.site_accessibility import SFCAMixin
 from .mixins.site_eda import (
     SiteProblemEDAMixin,
     HotspotPlotMixin,
@@ -30,6 +31,7 @@ from lokigi.problem import _Problem
 class SiteProblem(
     _Problem,
     SiteAttributeMixin,
+    SFCAMixin,
     BruteForceMixin,
     GreedyMixin,
     GraspMixin,
