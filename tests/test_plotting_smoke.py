@@ -206,6 +206,7 @@ SOLUTION_PLOT_CALLS = {
     "plot_n_best_combinations_bar": lambda s: s.plot_n_best_combinations_bar(
         n_best=2
     ),
+    "plot_site_allocation_summary": lambda s: s.plot_site_allocation_summary(),
     "plot_best_combination": lambda s: s.plot_best_combination(),
     "plot_n_best_combinations": lambda s: s.plot_n_best_combinations(n_best=2),
     "plot_solution_comparison": lambda s: s.plot_solution_comparison(
@@ -350,6 +351,32 @@ def test_solution_comparison_handles_every_rank(solutions, solution_rank):
         solutions.plot_solution_comparison([{"solution_rank": solution_rank}])
         is not None
     )
+
+
+def test_plot_site_allocation_summary_keeps_zero_allocation_bar_visible(
+    five_site_problem,
+):
+    """A site closest to no region must still draw a bar (labelled 0%),
+    not vanish from the chart the way it would from a plain groupby -- see
+    the zero-allocation guard in `site_allocation_summary()`. Uses the
+    shared `five_site_problem` fixture, where a p=3 solution over
+    {Site_1, Site_2, Site_3} leaves Site_2 closest to nothing.
+    """
+    solved = five_site_problem.solve(p=3)
+    site_names = ["Site_1", "Site_2", "Site_3"]
+
+    static_fig = solved.plot_site_allocation_summary(
+        site_names=site_names, interactive=False
+    )
+    assert isinstance(static_fig, plt.Figure)
+    bars = static_fig.axes[0].containers[0]
+    assert len(bars) == 3
+
+    interactive_fig = solved.plot_site_allocation_summary(
+        site_names=site_names, interactive=True
+    )
+    assert type(interactive_fig).__module__.startswith("plotly")
+    assert len(interactive_fig.data[0].x) == 3
 
 
 def test_plot_solution_sets_comparison_handles_every_rank(solutions):

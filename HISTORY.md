@@ -12,6 +12,14 @@ lokigi is pre-1.0, so breaking changes can land in any minor release. Read these
 
 ### Notes
 
+- Add `site_allocation_summary()` to `SiteSolutionSet`, reporting the share of demand (or of regions) whose closest selected site is each site in a chosen solution
+    - Answers "is this extra site worth opening?" -- a site that is closest to only a small share of demand is a weak case for the capital cost, even where it lowers the average travel time
+    - `by="demand"` (the default) weights each region by the demand registered via `add_demand()`; `by="regions"` counts every region equally, following the same people-vs-places naming rule as the coverage metrics above. Raises a `ValueError` rather than falling back if `by="demand"` is requested on a problem with no demand data, so a region count is never silently reported under a demand label
+    - Selected sites that are closest to no region at all appear as explicit `0` rows rather than being dropped by the underlying grouping -- a near-zero share is usually the finding being looked for
+    - Takes the same solution-selection arguments as the plotting methods (`rank_on`/`solution_rank`/`site_names`/`site_indices`) and the same `matrix=` keyword to summarise a registered secondary travel matrix instead of the primary one
+    - Regions exactly equidistant from two selected sites are assigned to the lower-indexed one rather than split between them
+- Add `plot_site_allocation_summary()`, a horizontal bar chart of the above. Uses the same "Set2" site colours as `plot_best_combination(plot_site_allocation=True)`, so the chart reads as a quantitative version of the allocation map, and always labels each bar with its value so a site capturing 0% stays visible
+- Add `SolutionComparator.compare_site_allocation()`, putting two solutions' allocation shares side by side with their difference -- e.g. a 2-site solution against a 3-site one, showing how much of the new site's catchment is genuinely new rather than taken from an existing site. A site absent from a solution is `NaN` and a site that is opened but closest to nothing is `0.0`, so "not opened" and "opened but unused" stay distinguishable
 - **Behaviour change:** coverage metrics are now weighted by demand rather than counting every region equally
     - `proportion_within_coverage_threshold` now reports the proportion of total *demand* within `threshold_for_coverage`, weighted by the demand registered via `add_demand()`. Previously it was the proportion of *regions*, so a sparsely-populated LSOA counted as much as a dense one
     - `coverage_by_equity_group` changes in the same way, reporting demand-weighted coverage within each equity band

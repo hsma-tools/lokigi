@@ -88,7 +88,9 @@ quartodoc:
             - return_best_combination_details
             - return_best_combination_site_indices
             - return_best_combination_site_names
+            - site_allocation_summary
             - plot_n_best_combinations_bar
+            - plot_site_allocation_summary
             - plot_best_combination
             - plot_n_best_combinations
             - plot_travel_time_distribution

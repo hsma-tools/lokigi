@@ -3,7 +3,7 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from lokigi.utils import _min_max_normalize, _sort_solutions_by_metric
+from lokigi.utils import _min_max_normalize, _select_solution, _sort_solutions_by_metric
 
 from lokigi.mixins.site_solution_plots import (
     MapsMixin,
@@ -1123,6 +1123,141 @@ class SiteSolutionSet(
             ].iloc[0]
         else:
             return self.solution_df["site_names"].iloc[0]
+
+    def site_allocation_summary(
+        self,
+        by="demand",
+        rank_on=None,
+        solution_rank=1,
+        site_names=None,
+        site_indices=None,
+        matrix=None,
+    ):
+        """
+        Share of demand (or of regions) whose closest selected site is each site.
+
+        Answers "how much work does this site actually do?" for one chosen
+        solution -- most useful when weighing up whether an additional site
+        earns its cost. A site that is closest to only a small share of
+        demand is a weak case for opening, even where it visibly lowers the
+        average travel time.
+
+        Parameters
+        ----------
+        by : {"demand", "regions"}, default "demand"
+            Basis for the `proportion` column. "demand" weights each region
+            by the demand registered via `add_demand()`; "regions" counts
+            every region equally. Follows the same people-vs-places naming
+            rule as the coverage metrics (see `EvaluatedCombination
+            .return_solution_metrics`): unqualified means demand-weighted.
+            The two coincide when demand is uniform, including when
+            `add_demand()` was never called.
+        rank_on : str, optional
+        solution_rank : int, default 1
+        site_names : list, optional
+        site_indices : list, optional
+            Solution selection, as in `plot_best_combination`. Priority is
+            site_indices > site_names > rank_on/solution_rank.
+        matrix : str, optional
+            Label of a secondary travel matrix registered via
+            `add_secondary_travel_matrix()`. Summarises allocation under
+            that matrix's own `selected_site__<label>` column instead of the
+            primary matrix's.
+
+        Returns
+        -------
+        pandas.DataFrame
+            One row per site in the chosen solution, indexed by site name
+            ("site") in canonical site-index order. Columns: `n_regions`,
+            `total_demand` (omitted when no demand data is registered), and
+            `proportion`. `proportion` sums to 1.0 across the frame.
+
+        Raises
+        ------
+        ValueError
+            If `by` is not "demand" or "regions", or if `by="demand"` but no
+            demand column is registered on the problem (see Notes).
+
+        Notes
+        -----
+        Every selected site appears, including any that is closest to no
+        region at all -- it gets an explicit 0 row rather than being
+        dropped. That case is usually the finding being looked for, so
+        silently losing it would defeat the point of the method.
+
+        Regions exactly equidistant from two selected sites are assigned to
+        one of them, not split: the underlying allocation uses
+        `DataFrame.idxmin`, and its candidate columns are ordered by
+        canonical site index, so exact ties go to the lowest-indexed site.
+        Deterministic across runs, but arbitrary -- exact ties are rare on
+        real travel matrices and common on synthetic ones.
+        """
+        if by not in ("demand", "regions"):
+            raise ValueError(f"by must be 'demand' or 'regions', got {by!r}.")
+
+        _, selected_site_col, _, _, _ = self._resolve_travel_columns(matrix)
+
+        solution = _select_solution(
+            self.solution_df,
+            rank_on=rank_on,
+            solution_rank=solution_rank,
+            site_names=site_names,
+            site_indices=site_indices,
+        )
+        selected_sites = list(solution["site_names"].iloc[0])
+        per_region = solution["problem_df"].iloc[0]
+
+        demand_col = getattr(self.site_problem, "_demand_data_demand_col", None)
+        has_demand = demand_col is not None and demand_col in per_region.columns
+        if by == "demand" and not has_demand:
+            raise ValueError(
+                "by='demand' requires demand data. No demand column is "
+                "registered on this problem -- call add_demand(), or pass "
+                "by='regions' to count every region equally."
+            )
+
+        counts_raw = per_region.groupby(selected_site_col).size()
+        unexpected = set(counts_raw.index) - set(selected_sites)
+        if unexpected:
+            # Reindexing below would silently DROP these, renormalising the
+            # remaining proportions to look complete. Warn instead: an
+            # allocation to a site that isn't in the solution means
+            # problem_df and site_names have gone out of step.
+            warnings.warn(
+                f"site_allocation_summary: {selected_site_col} contains "
+                f"site(s) not in this solution's site_names: "
+                f"{sorted(unexpected)}. These are excluded from the summary.",
+                stacklevel=2,
+            )
+
+        # Reindex against the solution's own site list, not the observed
+        # groups. A selected site that is closest to NO region is absent
+        # from the groupby entirely, and that is exactly the case this
+        # method exists to surface: "we opened a third site and it picks up
+        # nothing". Left as a plain groupby it would vanish from the table
+        # and the reader would conclude the solution has two sites, not
+        # three.
+        n_regions = counts_raw.reindex(selected_sites, fill_value=0)
+
+        result = pd.DataFrame({"n_regions": n_regions})
+        result.index.name = "site"
+
+        if has_demand:
+            total_demand = per_region[demand_col].astype(float).sum()
+            demand_by_site = (
+                per_region.groupby(selected_site_col)[demand_col]
+                .sum()
+                .reindex(selected_sites, fill_value=0.0)
+            )
+            result["total_demand"] = demand_by_site
+
+        if by == "demand":
+            result["proportion"] = result["total_demand"] / total_demand
+        else:
+            total_regions = len(per_region)
+            result["proportion"] = result["n_regions"] / total_regions
+
+        return result
 
     def summary_table(self):
         pass
