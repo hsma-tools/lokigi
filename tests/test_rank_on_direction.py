@@ -192,6 +192,23 @@ def test_sort_helper_keeps_tied_solutions_in_their_existing_order():
         )
 
 
+# NOT TESTED HERE: that repeated calls on the same input return the same
+# order. It reads like the natural companion to the test above, and a version
+# of it was written and then dropped, because it cannot fail.
+#
+# Quicksort is unstable but it is not random: for identical input, on one
+# machine, with one pandas/numpy build, it reorders ties the same way every
+# time. So such a test passes whether or not `kind="mergesort"` is present,
+# and would sit in the suite implying coverage it does not provide.
+#
+# The genuine exposure is *across* pandas/numpy versions, platforms and
+# architectures, where the partitioning can differ -- which no test running
+# in a single environment can reproduce. The test above covers what is
+# actually checkable: that ties come out in input order, which is the
+# property that makes results comparable across environments in the first
+# place.
+
+
 # --- plot_travel_time_distribution ----------------------------------------
 #
 # The only rank_on call site that sorts on two columns (rank_on plus
