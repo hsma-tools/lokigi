@@ -4,6 +4,7 @@ from lokigi.utils import (
     GEOPANDAS_EXTS,
     _check_crs_match_pref,
     _convert_crs,
+    _resolve_basemap_argument,
 )
 from warnings import warn
 import hashlib
@@ -351,9 +352,10 @@ class _Problem:
         plot_region_of_interest_only=False,
         edgecolor="black",
         linewidth=0.5,
-        show_basemap: bool = True,
+        add_basemap: bool = None,
         tiles="CartoDB positron",
         show_axis: bool = False,
+        show_basemap: bool = None,
         **kwargs,
     ):
         """
@@ -376,6 +378,15 @@ class _Problem:
             Colour map to be used for plotting demand. Ignored if plot_demand=False.
         tiles: str, default "CartoDB positron"
             Tiles to be used for background in map. Ignored if interactive = False.
+        add_basemap : bool, default True
+            If True, adds a background web map (via `contextily` for static
+            plots, or the `tiles` basemap for interactive ones). Set False to
+            skip the tile download entirely.
+        show_basemap : bool, optional
+            .. deprecated::
+                Use ``add_basemap`` instead -- it behaves identically and is
+                the name used by every other plotting method. Passing both
+                raises a ``ValueError``.
 
         **kwargs : dict
             Additional keyword arguments passed to either
@@ -392,6 +403,9 @@ class _Problem:
             If `self.region_geometry_layer` has not been initialized.
         ValueError
             If `plot_demand` is True but `self.demand_data` is None.
+        ValueError
+            If both `add_basemap` and its deprecated alias `show_basemap`
+            are supplied.
 
         Notes
         -----
@@ -402,6 +416,10 @@ class _Problem:
         Interactive maps default to the "CartoDB positron" tile set and
         the "Blues" colormap for demand visualization.
         """
+        add_basemap = _resolve_basemap_argument(
+            add_basemap, show_basemap, "plot_region_geometry_layer"
+        )
+
         if self.region_geometry_layer is None:
             raise ValueError(
                 "No region geometry layer has been initialised."
@@ -432,7 +450,7 @@ class _Problem:
                     popup=True,  # show all values in popup (on click)
                     cmap=cmap,  # use "Blues" matplotlib colormap
                     style_kwds=dict(color="black"),
-                    tiles=tiles if show_basemap else None,
+                    tiles=tiles if add_basemap else None,
                     **kwargs,
                 )
 
@@ -447,7 +465,7 @@ class _Problem:
                     **kwargs,
                 )
 
-                if show_basemap:
+                if add_basemap:
                     try:
                         cx.add_basemap(ax, crs=plotting_df.crs.to_string(), timeout=30)
                     except RequestException as e:
@@ -505,7 +523,7 @@ class _Problem:
                     **kwargs,
                 )
 
-                if show_basemap:
+                if add_basemap:
                     try:
                         cx.add_basemap(ax, crs=plotting_df.crs.to_string(), timeout=30)
                     except RequestException as e:
@@ -543,7 +561,7 @@ class _Problem:
         else:
             ax = self.region_geometry_layer.plot(**kwargs)
 
-            if show_basemap:
+            if add_basemap:
                 try:
                     cx.add_basemap(ax, crs=plotting_df.crs.to_string(), timeout=30)
                 except RequestException as e:

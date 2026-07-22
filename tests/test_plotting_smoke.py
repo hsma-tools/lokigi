@@ -55,11 +55,14 @@ def stub_basemap_tiles(monkeypatch):
        `plot_n_best_combinations`, `plot_solution_comparison`,
        `plot_combination_by_equity`) call `cx.add_basemap` unconditionally
        -- there is no parameter to opt out of it.
-    2. The flag is spelled `add_basemap` on `plot_sites`/`plot_resources`
-       but `show_basemap` on `plot_region_geometry_layer`/`plot_hotspots`/
-       `plot_quadrant_map`, and the latter three accept `**kwargs`, so
-       passing the wrong name is silently swallowed rather than raising --
-       a test could look like it opted out while still downloading tiles.
+    2. Historically the flag was spelled `show_basemap` on
+       `plot_region_geometry_layer`/`plot_hotspots`/`plot_quadrant_map` and
+       `add_basemap` elsewhere. Those three also accept `**kwargs`, so the
+       wrong spelling reached the underlying plotting call rather than any
+       code that understood it -- crashing the static path with a
+       matplotlib error and being ignored outright on the interactive one.
+       `add_basemap` is now accepted everywhere, but the stub keeps this
+       module honest regardless of which spelling a test uses.
 
     Un-stubbed, this module made 21 real tile requests per run and took
     3-4x longer. Tests do NOT fail without the network (each call site
@@ -305,17 +308,24 @@ def test_solution_map_plots_attempt_a_basemap_with_no_way_to_opt_out(
     )
 
 
-def test_problem_plots_honour_their_no_basemap_flag(
-    plottable_problem, stub_basemap_tiles
+@pytest.mark.parametrize("method_name", sorted(PROBLEM_PLOT_CALLS))
+def test_problem_plots_honour_add_basemap_false(
+    plottable_problem, stub_basemap_tiles, method_name
 ):
-    """The flags the library does expose genuinely suppress the download, so
-    these tests exercise the real no-basemap branch rather than relying on
-    the stub to hide a request that was still made."""
-    plottable_problem.plot_region_geometry_layer(show_basemap=False)
-    plottable_problem.plot_sites(add_basemap=False)
+    """`add_basemap=False` genuinely suppresses the download on every
+    problem-level plot, so these tests exercise the real no-basemap branch
+    rather than relying on the stub to hide a request that was still made.
+
+    Before `add_basemap` was made the canonical name, three of these methods
+    spelled it `show_basemap` and accepted `**kwargs`, so `add_basemap=False`
+    was silently swallowed and tiles were fetched regardless -- this
+    assertion would have failed for them.
+    """
+    PROBLEM_PLOT_CALLS[method_name](plottable_problem)
 
     assert stub_basemap_tiles == [], (
-        f"expected no basemap requests, got {len(stub_basemap_tiles)}"
+        f"{method_name} requested {len(stub_basemap_tiles)} basemap(s) "
+        "despite add_basemap=False"
     )
 
 

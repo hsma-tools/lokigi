@@ -21,6 +21,8 @@ import matplotlib.colors as mcolors
 import warnings
 from requests.exceptions import RequestException
 
+from lokigi.utils import _resolve_basemap_argument
+
 
 NeighbourhoodMethod = Literal[
     "rook",
@@ -711,9 +713,10 @@ class HotspotPlotMixin:
         tiles: str = "CartoDB positron",
         edgecolor: str = "black",
         linewidth: float = 0.5,
-        show_basemap: bool = True,
+        add_basemap: bool = None,
         show_axis: bool = False,
         opacity: float = 0.7,
+        show_basemap: bool = None,
         what: SupportedInputs = "demand",
         combination_method: SupportedCombinationMethods = "multiply",
         neighbourhood_method: NeighbourhoodMethod = "rook",
@@ -762,6 +765,16 @@ class HotspotPlotMixin:
 
         tiles : str, default="CartoDB positron"
             Tile provider used for interactive maps.
+
+        add_basemap : bool, default=True
+            Whether to add a basemap (static) or tile layer (interactive).
+            Set False to skip the tile download entirely.
+
+        show_basemap : bool, optional
+            .. deprecated::
+                Use ``add_basemap`` instead -- it behaves identically and is
+                the name used by every other plotting method. Passing both
+                raises a ``ValueError``.
 
         edgecolor : str, default="black"
             Boundary colour used when plotting polygons.
@@ -833,6 +846,10 @@ class HotspotPlotMixin:
                 significance_threshold=significance_threshold,
                 force_weight_recalculation=force_weight_recalculation,
             )
+
+        add_basemap = _resolve_basemap_argument(
+            add_basemap, show_basemap, "plot_hotspots"
+        )
 
         is_combined = "attribute_typology" in hotspots_df.columns
 
@@ -934,7 +951,7 @@ class HotspotPlotMixin:
 
             m = folium.Map(
                 location=centre,
-                tiles=tiles if show_basemap else None,
+                tiles=tiles if add_basemap else None,
             )
 
             for cluster_name, group_name in cluster_groups.items():
@@ -996,7 +1013,7 @@ class HotspotPlotMixin:
                     fontsize=10,
                 )
 
-            if show_basemap:
+            if add_basemap:
                 try:
                     cx.add_basemap(ax, crs=hotspots_df.crs.to_string(), timeout=30)
                 except RequestException as e:
@@ -1036,9 +1053,10 @@ class HotspotPlotMixin:
         non_significant_edgecolor: str = "#bbbbbb",
         non_significant_linewidth: float = 0.4,
         tiles: str = "CartoDB positron",
-        show_basemap: bool = True,
+        add_basemap: bool = None,
         show_axis: bool = False,
         opacity: float = 0.7,
+        show_basemap: bool = None,
         # Legend placement
         legend_loc: str = "outside",  # "outside" | any matplotlib loc string e.g. "lower left"
         legend_bbox_to_anchor: tuple | None = None,  # overrides default when set
@@ -1105,8 +1123,13 @@ class HotspotPlotMixin:
             Border width for non-significant areas.
         tiles : str, default "CartoDB positron"
             Tile provider for interactive maps.
-        show_basemap : bool, default True
+        add_basemap : bool, default True
             Whether to add a basemap (static) or tile layer (interactive).
+        show_basemap : bool, optional
+            .. deprecated::
+                Use ``add_basemap`` instead -- it behaves identically and is
+                the name used by every other plotting method. Passing both
+                raises a ``ValueError``.
         show_axis : bool, default False
             Whether to show axis ticks and labels on static plots.
         opacity : float, default 0.7
@@ -1143,6 +1166,10 @@ class HotspotPlotMixin:
                 force_weight_recalculation=force_weight_recalculation,
                 n_bins=n_bins,
             )
+
+        add_basemap = _resolve_basemap_argument(
+            add_basemap, show_basemap, "plot_quadrant_map"
+        )
 
         if "attribute_typology" not in hotspots_df.columns:
             raise ValueError(
@@ -1301,7 +1328,7 @@ class HotspotPlotMixin:
 
             m = folium.Map(
                 location=centre,
-                tiles=tiles if show_basemap else None,
+                tiles=tiles if add_basemap else None,
             )
 
             # Dynamically tailor tooltips to keep clean when columns don't exist
@@ -1399,7 +1426,7 @@ class HotspotPlotMixin:
                     **kwargs,
                 )
 
-            if show_basemap:
+            if add_basemap:
                 try:
                     cx.add_basemap(ax, crs=hotspots_df.crs.to_string(), timeout=30)
                 except RequestException as e:

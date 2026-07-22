@@ -850,6 +850,68 @@ def _get_ordinal_suffix(n):
         return {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
 
 
+def _resolve_basemap_argument(add_basemap, show_basemap, method_name):
+    """
+    Resolve the canonical `add_basemap` flag from it and its deprecated
+    `show_basemap` alias.
+
+    Some plotting methods originally spelled this `show_basemap` while
+    others spelled it `add_basemap`. The inconsistency was more than
+    cosmetic, because those methods also accept `**kwargs` and forward
+    them to the underlying plotting call, so `add_basemap=False` did not
+    reach any code that understood it:
+
+    - on the static path it surfaced as
+      ``AttributeError: PatchCollection.set() got an unexpected keyword
+      argument 'add_basemap'`` -- an error that blames matplotlib
+      internals and never mentions that the argument simply has a
+      different name on this method;
+    - on the interactive path it was silently ignored, since
+      ``GeoDataFrame.explore()`` tolerates unknown keywords, so the tile
+      layer was still drawn and the caller got no signal at all.
+
+    `add_basemap` is now the name on every plotting method, and
+    `show_basemap` is accepted for one release.
+
+    Parameters
+    ----------
+    add_basemap : bool or None
+        The canonical argument as passed by the caller; None if omitted.
+    show_basemap : bool or None
+        The deprecated alias as passed by the caller; None if omitted.
+    method_name : str
+        Name of the calling method, used in the warning and error messages.
+
+    Returns
+    -------
+    bool
+        The resolved flag, defaulting to True when neither was given.
+
+    Raises
+    ------
+    ValueError
+        If both arguments are supplied, which is ambiguous.
+    """
+    if show_basemap is not None:
+        if add_basemap is not None:
+            raise ValueError(
+                f"Please provide only 'add_basemap' to {method_name}() -- "
+                "'show_basemap' is its deprecated alias, and passing both is "
+                "ambiguous."
+            )
+        warn(
+            f"The 'show_basemap' argument to {method_name}() is deprecated and "
+            "will be removed in a future release. Use 'add_basemap' instead, "
+            "which behaves identically and is the name used by every other "
+            "plotting method.",
+            FutureWarning,
+            stacklevel=3,
+        )
+        return show_basemap
+
+    return True if add_basemap is None else add_basemap
+
+
 def _colours_and_styles(n: int, palette: str):
     """
     Return n (colour, linestyle, marker) tuples for a given palette name.
