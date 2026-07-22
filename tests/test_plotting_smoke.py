@@ -22,8 +22,8 @@ surfaces here rather than in a user's notebook.
 BASEMAPS: every map-drawing method fetches web map tiles via
 `contextily.add_basemap`, so an un-stubbed run downloads tiles from a
 public tile server on each test. The autouse fixture below intercepts
-that. See its docstring for why the library's own `show_basemap=False` /
-`add_basemap=False` flags are not sufficient on their own.
+that. See its docstring for why the library's own `add_basemap=False`
+flag is not sufficient on its own.
 """
 
 import matplotlib
@@ -55,14 +55,12 @@ def stub_basemap_tiles(monkeypatch):
        `plot_n_best_combinations`, `plot_solution_comparison`,
        `plot_combination_by_equity`) call `cx.add_basemap` unconditionally
        -- there is no parameter to opt out of it.
-    2. Historically the flag was spelled `show_basemap` on
-       `plot_region_geometry_layer`/`plot_hotspots`/`plot_quadrant_map` and
-       `add_basemap` elsewhere. Those three also accept `**kwargs`, so the
-       wrong spelling reached the underlying plotting call rather than any
-       code that understood it -- crashing the static path with a
-       matplotlib error and being ignored outright on the interactive one.
-       `add_basemap` is now accepted everywhere, but the stub keeps this
-       module honest regardless of which spelling a test uses.
+    2. The methods that do expose `add_basemap` also accept `**kwargs` and
+       forward them to the underlying plotting call, so a misspelling does
+       not raise a normal TypeError naming the method -- it reaches
+       matplotlib as a cryptic `PatchCollection.set()` error on static
+       plots, or is ignored outright on interactive ones. The stub keeps
+       this module hermetic even if such a slip creeps into a test.
 
     Un-stubbed, this module made 21 real tile requests per run and took
     3-4x longer. Tests do NOT fail without the network (each call site
@@ -256,19 +254,19 @@ def test_solution_plot_renders(solutions, method_name):
 # --- problem-level plots --------------------------------------------------
 
 # These take the SiteProblem itself rather than a solved solution set, and
-# were wholly untested before. `add_basemap` / `show_basemap` is passed
-# where the method supports it -- note the two different spellings, and see
-# stub_basemap_tiles for why passing them is not sufficient on its own.
+# were wholly untested before. `add_basemap=False` is passed throughout --
+# it is the argument name on every plotting method as of v0.7.0 -- but see
+# stub_basemap_tiles for why passing it is not sufficient on its own.
 PROBLEM_PLOT_CALLS = {
     "plot_sites": lambda p: p.plot_sites(add_basemap=False),
     "plot_sites__interactive": lambda p: p.plot_sites(
         add_basemap=False, interactive=True
     ),
     "plot_region_geometry_layer": lambda p: p.plot_region_geometry_layer(
-        show_basemap=False
+        add_basemap=False
     ),
-    "plot_hotspots": lambda p: p.plot_hotspots(show_basemap=False),
-    "plot_quadrant_map": lambda p: p.plot_quadrant_map(show_basemap=False),
+    "plot_hotspots": lambda p: p.plot_hotspots(add_basemap=False),
+    "plot_quadrant_map": lambda p: p.plot_quadrant_map(add_basemap=False),
 }
 
 
@@ -296,9 +294,9 @@ def test_solution_map_plots_attempt_a_basemap_with_no_way_to_opt_out(
     solutions, stub_basemap_tiles
 ):
     """`plot_best_combination` calls contextily unconditionally. If this ever
-    stops being true -- someone adds a `show_basemap` parameter defaulting to
-    False, say -- the stub stops being necessary and this test should be
-    revisited. Until then it documents why the stub exists.
+    stops being true -- someone adds an `add_basemap` parameter to the
+    solution-level map plots, say -- the stub becomes less necessary and this
+    test should be revisited. Until then it documents why the stub exists.
     """
     solutions.plot_best_combination()
 
@@ -316,10 +314,10 @@ def test_problem_plots_honour_add_basemap_false(
     problem-level plot, so these tests exercise the real no-basemap branch
     rather than relying on the stub to hide a request that was still made.
 
-    Before `add_basemap` was made the canonical name, three of these methods
-    spelled it `show_basemap` and accepted `**kwargs`, so `add_basemap=False`
-    was silently swallowed and tiles were fetched regardless -- this
-    assertion would have failed for them.
+    Before `add_basemap` became the name on every plotting method, three of
+    these spelled it `show_basemap` and accepted `**kwargs`, so
+    `add_basemap=False` never reached code that understood it and tiles were
+    fetched regardless -- this assertion would have failed for them.
     """
     PROBLEM_PLOT_CALLS[method_name](plottable_problem)
 

@@ -4,7 +4,7 @@ from lokigi.utils import (
     GEOPANDAS_EXTS,
     _check_crs_match_pref,
     _convert_crs,
-    _resolve_basemap_argument,
+    _reject_removed_basemap_alias,
 )
 from warnings import warn
 import hashlib
@@ -352,10 +352,9 @@ class _Problem:
         plot_region_of_interest_only=False,
         edgecolor="black",
         linewidth=0.5,
-        add_basemap: bool = None,
+        add_basemap: bool = True,
         tiles="CartoDB positron",
         show_axis: bool = False,
-        show_basemap: bool = None,
         **kwargs,
     ):
         """
@@ -382,11 +381,9 @@ class _Problem:
             If True, adds a background web map (via `contextily` for static
             plots, or the `tiles` basemap for interactive ones). Set False to
             skip the tile download entirely.
-        show_basemap : bool, optional
-            .. deprecated::
-                Use ``add_basemap`` instead -- it behaves identically and is
-                the name used by every other plotting method. Passing both
-                raises a ``ValueError``.
+
+            .. versionchanged:: 0.7.0
+                Renamed from ``show_basemap``, which has been removed.
 
         **kwargs : dict
             Additional keyword arguments passed to either
@@ -403,9 +400,8 @@ class _Problem:
             If `self.region_geometry_layer` has not been initialized.
         ValueError
             If `plot_demand` is True but `self.demand_data` is None.
-        ValueError
-            If both `add_basemap` and its deprecated alias `show_basemap`
-            are supplied.
+        TypeError
+            If the removed `show_basemap` argument is supplied.
 
         Notes
         -----
@@ -416,9 +412,7 @@ class _Problem:
         Interactive maps default to the "CartoDB positron" tile set and
         the "Blues" colormap for demand visualization.
         """
-        add_basemap = _resolve_basemap_argument(
-            add_basemap, show_basemap, "plot_region_geometry_layer"
-        )
+        _reject_removed_basemap_alias(kwargs, "plot_region_geometry_layer")
 
         if self.region_geometry_layer is None:
             raise ValueError(

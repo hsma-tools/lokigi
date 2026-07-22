@@ -1,5 +1,17 @@
 ## v0.7.0
 
+### ⚠️ Breaking changes
+
+lokigi is pre-1.0, so breaking changes can land in any minor release. Read these before upgrading -- each is detailed in the notes below.
+
+- `proportion_within_coverage_threshold` and `coverage_by_equity_group` now report **demand-weighted** values rather than counts of regions. Existing numbers change on any problem with non-uniform demand. The previous behaviour is available as `proportion_regions_within_coverage_threshold` / `coverage_regions_by_equity_group`
+- The **`mclp` objective may now select a different combination of sites**, because it ranks on the metric above. It now maximises covered demand, matching the textbook Maximal Covering Location Problem
+- **`rank_on=` with a coverage metric now returns the best-covering solution, not the worst.** Anything ranking on a travel-cost metric is unchanged
+- Both coverage proportions are now **`NaN` rather than `0.0`** when no `threshold_for_coverage` was supplied
+- **`show_basemap` has been removed** from `plot_region_geometry_layer()`, `plot_hotspots()` and `plot_quadrant_map()`. Use `add_basemap`, which is now the argument name on every plotting method. Passing the old name raises a `TypeError` naming the replacement
+
+### Notes
+
 - **Behaviour change:** coverage metrics are now weighted by demand rather than counting every region equally
     - `proportion_within_coverage_threshold` now reports the proportion of total *demand* within `threshold_for_coverage`, weighted by the demand registered via `add_demand()`. Previously it was the proportion of *regions*, so a sparsely-populated LSOA counted as much as a dense one
     - `coverage_by_equity_group` changes in the same way, reporting demand-weighted coverage within each equity band
@@ -22,9 +34,10 @@
     - Every sort over solutions uses a stable sort (`kind="mergesort"`), so equally-good solutions are no longer reshuffled arbitrarily. pandas' default single-column sort is quicksort, which is not stable, so which of several tied solutions was reported as "best" could differ between runs, machines or library versions
     - Affects `rank_on=` ranking, `pareto_summary()`, and the solution the Pareto narrative methods anchor on. Ties are routine -- on the sample Brighton problem `max` takes only 5 distinct values across 15 candidate combinations
     - `solve()`'s own ranking already sorted on two columns, which pandas handles with a stable lexsort, so no existing solve output changes
-- `add_basemap` is now the argument name on every plotting method
+- **BREAKING:** `add_basemap` is now the argument name on every plotting method, and `show_basemap` has been removed
     - `plot_region_geometry_layer()`, `plot_hotspots()` and `plot_quadrant_map()` previously spelled it `show_basemap`, while `plot_sites()` and `plot_resources()` used `add_basemap`. Because the first three also accept `**kwargs`, passing `add_basemap` to them never reached code that understood it -- it crashed the static path with a confusing `AttributeError` from matplotlib (`PatchCollection.set() got an unexpected keyword argument`) and was silently ignored on the interactive path, drawing the tile layer anyway
-    - `show_basemap` still works and behaves identically, but emits a `FutureWarning` and will be removed in a future release. Passing both raises a `ValueError`, matching how the deprecated `direction` alias on `add_equity_data()` is handled
+    - Migration is a rename: `show_basemap=` becomes `add_basemap=`, with identical behaviour and the same `True` default
+    - Those three methods explicitly reject the removed name with a `TypeError` naming the replacement. Without that guard the same `**kwargs` forwarding would give the identical cryptic matplotlib error, or ignore it silently on the interactive path -- so a bare removal would have been harder to diagnose than the original inconsistency
 - Fix `plot_solution_comparison()` and `plot_solution_sets_comparison()` raising `AttributeError: 'SiteSolutionSet' object has no attribute '_get_ordinal_suffix'`
     - The ordinal-suffix helper is a module-level function in `lokigi.utils` but was called as though it were a method on the solution set, so plotting any solution other than the top-ranked one crashed. `solution_rank=1` took a different branch and worked, which is why this went unnoticed
 - Fix `plot_travel_time_distribution(bottom_n=...)` raising `TypeError: list.append() takes no keyword arguments`

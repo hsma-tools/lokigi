@@ -21,7 +21,7 @@ import matplotlib.colors as mcolors
 import warnings
 from requests.exceptions import RequestException
 
-from lokigi.utils import _resolve_basemap_argument
+from lokigi.utils import _reject_removed_basemap_alias
 
 
 NeighbourhoodMethod = Literal[
@@ -713,10 +713,9 @@ class HotspotPlotMixin:
         tiles: str = "CartoDB positron",
         edgecolor: str = "black",
         linewidth: float = 0.5,
-        add_basemap: bool = None,
+        add_basemap: bool = True,
         show_axis: bool = False,
         opacity: float = 0.7,
-        show_basemap: bool = None,
         what: SupportedInputs = "demand",
         combination_method: SupportedCombinationMethods = "multiply",
         neighbourhood_method: NeighbourhoodMethod = "rook",
@@ -770,11 +769,8 @@ class HotspotPlotMixin:
             Whether to add a basemap (static) or tile layer (interactive).
             Set False to skip the tile download entirely.
 
-        show_basemap : bool, optional
-            .. deprecated::
-                Use ``add_basemap`` instead -- it behaves identically and is
-                the name used by every other plotting method. Passing both
-                raises a ``ValueError``.
+            .. versionchanged:: 0.7.0
+                Renamed from ``show_basemap``, which has been removed.
 
         edgecolor : str, default="black"
             Boundary colour used when plotting polygons.
@@ -817,6 +813,11 @@ class HotspotPlotMixin:
             Static or interactive hotspot map depending on the value
             of ``interactive``.
 
+        Raises
+        ------
+        TypeError
+            If the removed ``show_basemap`` argument is supplied.
+
         Notes
         -----
         Hotspot classifications are derived from Local Moran's I and
@@ -831,6 +832,9 @@ class HotspotPlotMixin:
         The default colour scheme mirrors the conventions commonly
         used in GeoDa and PySAL visualisations.
         """
+        # Checked before any analysis runs, so a bad call fails immediately
+        # rather than after the spatial computation in get_hotspots().
+        _reject_removed_basemap_alias(kwargs, "plot_hotspots")
 
         # Get the unified context object, meaning we handle this appropriately
         # regardless of whether this is a Problem or SiteSolutionSet
@@ -846,10 +850,6 @@ class HotspotPlotMixin:
                 significance_threshold=significance_threshold,
                 force_weight_recalculation=force_weight_recalculation,
             )
-
-        add_basemap = _resolve_basemap_argument(
-            add_basemap, show_basemap, "plot_hotspots"
-        )
 
         is_combined = "attribute_typology" in hotspots_df.columns
 
@@ -1053,10 +1053,9 @@ class HotspotPlotMixin:
         non_significant_edgecolor: str = "#bbbbbb",
         non_significant_linewidth: float = 0.4,
         tiles: str = "CartoDB positron",
-        add_basemap: bool = None,
+        add_basemap: bool = True,
         show_axis: bool = False,
         opacity: float = 0.7,
-        show_basemap: bool = None,
         # Legend placement
         legend_loc: str = "outside",  # "outside" | any matplotlib loc string e.g. "lower left"
         legend_bbox_to_anchor: tuple | None = None,  # overrides default when set
@@ -1125,11 +1124,9 @@ class HotspotPlotMixin:
             Tile provider for interactive maps.
         add_basemap : bool, default True
             Whether to add a basemap (static) or tile layer (interactive).
-        show_basemap : bool, optional
-            .. deprecated::
-                Use ``add_basemap`` instead -- it behaves identically and is
-                the name used by every other plotting method. Passing both
-                raises a ``ValueError``.
+
+            .. versionchanged:: 0.7.0
+                Renamed from ``show_basemap``, which has been removed.
         show_axis : bool, default False
             Whether to show axis ticks and labels on static plots.
         opacity : float, default 0.7
@@ -1150,7 +1147,13 @@ class HotspotPlotMixin:
             If ``hotspots_df`` is provided but does not contain an
             ``attribute_typology`` column, suggesting it was not produced
             by a combined analysis.
+        TypeError
+            If the removed ``show_basemap`` argument is supplied.
         """
+        # Checked before any analysis runs, so a bad call fails immediately
+        # rather than after the spatial computation in get_hotspots().
+        _reject_removed_basemap_alias(kwargs, "plot_quadrant_map")
+
         # Get the unified context object, meaning we handle this appropriately
         # regardless of whether this is a Problem or SiteSolutionSet
         ctx = self._prob_ctx
@@ -1166,10 +1169,6 @@ class HotspotPlotMixin:
                 force_weight_recalculation=force_weight_recalculation,
                 n_bins=n_bins,
             )
-
-        add_basemap = _resolve_basemap_argument(
-            add_basemap, show_basemap, "plot_quadrant_map"
-        )
 
         if "attribute_typology" not in hotspots_df.columns:
             raise ValueError(
