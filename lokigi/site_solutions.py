@@ -23,6 +23,7 @@ from lokigi.mixins.site_eda import (
     HotspotPlotMixin,
     SiteProblemEDAMixin,
 )
+from lokigi.mixins.site_accessibility import AccessibilityPlotMixin
 
 
 # MARK: CLASS EvaluatedCombination
@@ -810,6 +811,7 @@ class SiteSolutionSet(
     SiteSolutionHotspotCalculationMixin,
     HotspotPlotMixin,
     SiteProblemEDAMixin,
+    AccessibilityPlotMixin,
 ):
     """
     Container for a set of evaluated site selection solutions.

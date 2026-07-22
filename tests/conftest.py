@@ -870,6 +870,28 @@ def sfca_problem():
 
 
 @pytest.fixture
+def sfca_problem_with_geometry(sfca_problem):
+    """`sfca_problem` plus a region geometry layer -- one small square per
+    demand region -- for `plot_accessibility()` tests. Geometry doesn't
+    need to be contiguous or realistic here, unlike the hotspot fixtures,
+    since plot_accessibility() doesn't build spatial-contiguity weights."""
+    regions = geopandas.GeoDataFrame(
+        {
+            "location_id": ["LSOA_1", "LSOA_2", "LSOA_3", "LSOA_Isolated"],
+            "geometry": [
+                Point(0, 0).buffer(0.4, cap_style=3),
+                Point(1, 0).buffer(0.4, cap_style=3),
+                Point(0, 1).buffer(0.4, cap_style=3),
+                Point(1, 1).buffer(0.4, cap_style=3),
+            ],
+        },
+        crs="EPSG:27700",
+    )
+    sfca_problem.add_region_geometry_layer(regions, common_col="location_id")
+    return sfca_problem
+
+
+@pytest.fixture
 def sfca_secondary_travel_df():
     """A secondary ('public_transport') matrix for `sfca_problem` where
     Site_1 is unreachable (cost 20 > catchment_size=15) for every region

@@ -146,6 +146,9 @@ def plottable_problem():
             "site_id": ["Site_A", "Site_B", "Site_C"],
             "lat": [51.52, 51.57, 51.62],
             "long": [-0.28, -0.22, -0.17],
+            # Only read by plot_accessibility()/two_step_floating_catchment();
+            # inert for every other test in this file.
+            "supply": [5, 3, 8],
         }
     )
     travel_df = pd.DataFrame(
@@ -210,6 +213,12 @@ SOLUTION_PLOT_CALLS = {
     "plot_site_allocation_summary__average_travel_cost": (
         lambda s: s.plot_site_allocation_summary(metric="average_travel_cost")
     ),
+    "plot_accessibility": lambda s: s.plot_accessibility(
+        supply_col="supply", catchment_size=15, add_basemap=False
+    ),
+    "plot_accessibility__interactive": lambda s: s.plot_accessibility(
+        supply_col="supply", catchment_size=15, add_basemap=False, interactive=True
+    ),
     "plot_best_combination": lambda s: s.plot_best_combination(),
     "plot_n_best_combinations": lambda s: s.plot_n_best_combinations(n_best=2),
     "plot_solution_comparison": lambda s: s.plot_solution_comparison(
@@ -271,6 +280,12 @@ PROBLEM_PLOT_CALLS = {
     ),
     "plot_hotspots": lambda p: p.plot_hotspots(add_basemap=False),
     "plot_quadrant_map": lambda p: p.plot_quadrant_map(add_basemap=False),
+    "plot_accessibility": lambda p: p.plot_accessibility(
+        supply_col="supply", catchment_size=15, add_basemap=False
+    ),
+    "plot_accessibility__interactive": lambda p: p.plot_accessibility(
+        supply_col="supply", catchment_size=15, add_basemap=False, interactive=True
+    ),
 }
 
 
