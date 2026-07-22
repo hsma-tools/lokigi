@@ -181,6 +181,7 @@ class NonMapPlotsMixin:
     def plot_site_allocation_summary(
         self,
         by="demand",
+        metric="proportion",
         rank_on=None,
         solution_rank=1,
         site_names=None,
@@ -199,23 +200,31 @@ class NonMapPlotsMixin:
         static_height=6,
     ):
         """
-        Bar chart of `site_allocation_summary()` -- the share of demand (or
-        of regions) whose closest selected site is each site, for one
-        chosen solution.
+        Bar chart of `site_allocation_summary()` for one chosen solution.
 
         Parameters
         ----------
         by, rank_on, solution_rank, site_names, site_indices, matrix
             Passed straight through to `site_allocation_summary()`.
+        metric : {"proportion", "average_travel_cost"}, default "proportion"
+            Which `site_allocation_summary()` column to plot. "proportion"
+            shows the share of demand (or of regions) closest to each site.
+            "average_travel_cost" shows the average travel cost incurred by
+            each site's group instead -- e.g. to see how much further
+            people would have to travel if a site were closed. This is the
+            comparison inspired by Gill Baker's work using average travel
+            distance per patient to show that centralising services would
+            roughly double typical travel distance (see
+            `site_allocation_summary` for the full story).
         interactive : bool, default=True
             If True, generates an interactive Plotly bar chart. If False,
             generates a static Matplotlib bar chart.
         sort : bool, default=True
-            If True, bars are ordered ascending by proportion, so the
-            smallest-catchment site -- usually the one being investigated
-            -- is at the top. If False, sites keep canonical site-index
-            order, useful when lining this chart up against another figure
-            built in that order.
+            If True, bars are ordered ascending by `metric`, so the
+            smallest-catchment (or shortest-travel) site -- usually the one
+            being investigated -- is at the top. If False, sites keep
+            canonical site-index order, useful when lining this chart up
+            against another figure built in that order.
         cmap : str, default="Set2"
             Colormap for sites closest to at least one region, matching
             `plot_best_combination(plot_site_allocation=True)`. Sites
@@ -235,11 +244,24 @@ class NonMapPlotsMixin:
 
         Notes
         -----
-        A zero-allocation site's bar has zero length and would otherwise be
-        invisible, so every bar is always labelled with its percentage
-        value -- that label is how a 0% site stays visible on the chart at
-        all.
+        With `metric="proportion"`, a zero-allocation site's bar has zero
+        length and would otherwise be invisible, so every bar is always
+        labelled with its percentage value -- that label is how a 0% site
+        stays visible on the chart at all.
+
+        With `metric="average_travel_cost"`, a zero-allocation site has no
+        travel cost to average (`NaN` in `site_allocation_summary()`), so
+        its bar is drawn at zero length but labelled "N/A" rather than a
+        number -- a "0" label there would misleadingly read as "instant to
+        reach" rather than "not applicable".
         """
+        if metric not in ("proportion", "average_travel_cost"):
+            raise ValueError(
+                f"metric must be 'proportion' or 'average_travel_cost', got {metric!r}."
+            )
+
+        _, _, _, unit, _ = self._resolve_travel_columns(matrix)
+
         summary = self.site_allocation_summary(
             by=by,
             rank_on=rank_on,
@@ -250,9 +272,7 @@ class NonMapPlotsMixin:
         ).reset_index()
 
         if sort:
-            summary = summary.sort_values("proportion", ascending=True).reset_index(
-                drop=True
-            )
+            summary = summary.sort_values(metric, ascending=True).reset_index(drop=True)
 
         if site_color_map is None:
             allocated_sites = summary.loc[summary["n_regions"] > 0, "site"]
@@ -267,29 +287,55 @@ class NonMapPlotsMixin:
         ]
 
         by_label = "demand" if by == "demand" else "regions"
-        if title == "default":
-            title = f"Share of {by_label} closest to each site"
-        x_label = f"Proportion of {by_label}" if x_axis_label == "default" else x_axis_label
+
+        if metric == "proportion":
+            # NaN never occurs for `proportion` -- fillna is a no-op here,
+            # kept only so `plot_values` has one shared name below.
+            plot_values = summary["proportion"].fillna(0)
+            bar_text = [f"{v:.1%}" for v in summary["proportion"]]
+            if title == "default":
+                title = f"Share of {by_label} closest to each site"
+            x_label = (
+                f"Proportion of {by_label}" if x_axis_label == "default" else x_axis_label
+            )
+        else:
+            # A zero-allocation site is NaN in average_travel_cost (there is
+            # nothing to average), which most plotting backends render as a
+            # gap rather than a visible zero-length bar. Fill with 0 for the
+            # bar's actual length, but keep the label text "N/A" -- see the
+            # Notes above for why 0 would be a misleading label to show.
+            plot_values = summary["average_travel_cost"].fillna(0)
+            bar_text = [
+                "N/A" if pd.isna(v) else f"{v:.1f} {unit}"
+                for v in summary["average_travel_cost"]
+            ]
+            if title == "default":
+                title = f"Average {by_label}-weighted travel cost by closest site"
+            x_label = (
+                f"Average travel cost ({unit})"
+                if x_axis_label == "default"
+                else x_axis_label
+            )
         y_label = "Site" if y_axis_label == "default" else y_axis_label
 
         if interactive:
             fig = px.bar(
-                summary,
-                x="proportion",
+                summary.assign(_plot_value=plot_values),
+                x="_plot_value",
                 y="site",
                 orientation="h",
                 title=title,
-                labels={"proportion": x_label, "site": y_label},
+                labels={"_plot_value": x_label, "site": y_label},
             )
             fig.update_traces(
                 marker_color=colors,
-                texttemplate="%{x:.1%}",
+                text=bar_text,
                 textposition="outside",
             )
             fig.update_layout(
                 width=interactive_width,
                 height=interactive_height,
-                xaxis_tickformat=".0%",
+                xaxis_tickformat=".0%" if metric == "proportion" else None,
             )
             # Plotly draws horizontal bars bottom-up by default, so without
             # this the first (smallest, when sort=True) row ends up at the
@@ -297,13 +343,14 @@ class NonMapPlotsMixin:
             fig.update_yaxes(autorange="reversed")
         else:
             fig, ax = plt.subplots(figsize=(static_width, static_height))
-            bars = ax.barh(summary["site"], summary["proportion"], color=colors)
-            ax.bar_label(bars, labels=[f"{v:.1%}" for v in summary["proportion"]])
+            bars = ax.barh(summary["site"], plot_values, color=colors)
+            ax.bar_label(bars, labels=bar_text)
             if title is not None:
                 ax.set_title(title)
             ax.set_xlabel(x_label)
             ax.set_ylabel(y_label)
-            ax.xaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
+            if metric == "proportion":
+                ax.xaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
             # matplotlib's barh also plots bottom-up by default -- invert so
             # the top row matches the top of the sorted (or canonically
             # ordered) DataFrame, same reasoning as the Plotly branch above.

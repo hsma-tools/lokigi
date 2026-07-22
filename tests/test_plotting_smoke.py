@@ -207,6 +207,9 @@ SOLUTION_PLOT_CALLS = {
         n_best=2
     ),
     "plot_site_allocation_summary": lambda s: s.plot_site_allocation_summary(),
+    "plot_site_allocation_summary__average_travel_cost": (
+        lambda s: s.plot_site_allocation_summary(metric="average_travel_cost")
+    ),
     "plot_best_combination": lambda s: s.plot_best_combination(),
     "plot_n_best_combinations": lambda s: s.plot_n_best_combinations(n_best=2),
     "plot_solution_comparison": lambda s: s.plot_solution_comparison(
@@ -377,6 +380,76 @@ def test_plot_site_allocation_summary_keeps_zero_allocation_bar_visible(
     )
     assert type(interactive_fig).__module__.startswith("plotly")
     assert len(interactive_fig.data[0].x) == 3
+
+
+def test_plot_site_allocation_summary_average_travel_cost_shows_na_not_zero(
+    five_site_problem,
+):
+    """With metric="average_travel_cost", a zero-allocation site (NaN in
+    site_allocation_summary()) must be labelled "N/A", not a numeric "0.0"
+    -- a real 0 would misleadingly read as "instant to reach" rather than
+    "not applicable". The bar itself is still drawn (at zero length), so
+    the site's row doesn't disappear from the chart."""
+    solved = five_site_problem.solve(p=3)
+    site_names = ["Site_1", "Site_2", "Site_3"]
+
+    static_fig = solved.plot_site_allocation_summary(
+        site_names=site_names, metric="average_travel_cost", interactive=False
+    )
+    ax = static_fig.axes[0]
+    assert len(ax.containers[0]) == 3
+    labels = [t.get_text() for t in ax.texts]
+    assert "N/A" in labels
+    assert sum(label == "N/A" for label in labels) == 1
+
+    interactive_fig = solved.plot_site_allocation_summary(
+        site_names=site_names, metric="average_travel_cost", interactive=True
+    )
+    assert len(interactive_fig.data[0].x) == 3
+    assert "N/A" in interactive_fig.data[0].text
+    # The NaN cost is filled to 0 for the bar's length (drawn, not hidden),
+    # while its text label stays "N/A" -- these are deliberately different.
+    na_index = list(interactive_fig.data[0].text).index("N/A")
+    assert interactive_fig.data[0].x[na_index] == 0
+
+
+def test_plot_site_allocation_summary_average_travel_cost_uses_registered_unit():
+    """The bar labels and axis title should reflect whatever unit the
+    travel matrix was registered with (e.g. "miles" for the average
+    travel distance per patient use case), not just a bare number."""
+    demand_df = pd.DataFrame(
+        {"location_id": ["LSOA_1", "LSOA_2"], "demand": [100, 100]}
+    )
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": ["Site_A", "Site_B"],
+            "lat": [51.1, 51.2],
+            "long": [-0.1, -0.2],
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["LSOA_1", "LSOA_2"],
+            "Site_A": [3.0, 12.0],
+            "Site_B": [9.0, 4.0],
+        }
+    )
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id", unit="miles")
+    solved = problem.solve(p=2)
+
+    fig = solved.plot_site_allocation_summary(
+        metric="average_travel_cost", interactive=True
+    )
+    assert "miles" in fig.layout.xaxis.title.text
+    assert all("miles" in text for text in fig.data[0].text)
+
+
+def test_plot_site_allocation_summary_invalid_metric_raises(solutions):
+    with pytest.raises(ValueError, match="metric must be"):
+        solutions.plot_site_allocation_summary(metric="cost")
 
 
 def test_plot_solution_sets_comparison_handles_every_rank(solutions):
