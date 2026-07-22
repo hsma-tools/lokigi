@@ -1134,24 +1134,31 @@ class SiteSolutionSet(
         matrix=None,
     ):
         """
-        Share of demand (or of regions) whose closest selected site is each site.
+        Per-site summary of a chosen solution: the share of demand (or of
+        regions) whose closest selected site is each site, and the average
+        travel cost incurred by that group.
 
-        Answers "how much work does this site actually do?" for one chosen
-        solution -- most useful when weighing up whether an additional site
-        earns its cost. A site that is closest to only a small share of
-        demand is a weak case for opening, even where it visibly lowers the
-        average travel time.
+        Answers "how much work does this site actually do, and how far do
+        the people it serves have to travel?" for one chosen solution --
+        useful both for weighing up whether an additional site earns its
+        cost (a site closest to only a small share of demand is a weak case
+        for opening, even where it visibly lowers the average travel time),
+        and for comparing how consolidating or closing sites changes
+        typical travel distance for the people affected.
 
         Parameters
         ----------
         by : {"demand", "regions"}, default "demand"
-            Basis for the `proportion` column. "demand" weights each region
-            by the demand registered via `add_demand()`; "regions" counts
-            every region equally. Follows the same people-vs-places naming
-            rule as the coverage metrics (see `EvaluatedCombination
-            .return_solution_metrics`): unqualified means demand-weighted.
-            The two coincide when demand is uniform, including when
-            `add_demand()` was never called.
+            Basis for the `proportion` and `average_travel_cost` columns.
+            "demand" weights each region by the demand registered via
+            `add_demand()`, so `average_travel_cost` is the demand-weighted
+            mean travel cost among a site's closest regions -- the same
+            weighting as the solution-level `weighted_average`. "regions"
+            counts every region equally, matching `unweighted_average`.
+            Follows the same people-vs-places naming rule as the coverage
+            metrics (see `EvaluatedCombination.return_solution_metrics`):
+            unqualified means demand-weighted. The two coincide when demand
+            is uniform, including when `add_demand()` was never called.
         rank_on : str, optional
         solution_rank : int, default 1
         site_names : list, optional
@@ -1160,17 +1167,21 @@ class SiteSolutionSet(
             site_indices > site_names > rank_on/solution_rank.
         matrix : str, optional
             Label of a secondary travel matrix registered via
-            `add_secondary_travel_matrix()`. Summarises allocation under
-            that matrix's own `selected_site__<label>` column instead of the
-            primary matrix's.
+            `add_secondary_travel_matrix()`. Summarises allocation, and
+            computes `average_travel_cost`, under that matrix's own
+            `selected_site__<label>` / `min_cost__<label>` columns instead
+            of the primary matrix's.
 
         Returns
         -------
         pandas.DataFrame
             One row per site in the chosen solution, indexed by site name
             ("site") in canonical site-index order. Columns: `n_regions`,
-            `total_demand` (omitted when no demand data is registered), and
-            `proportion`. `proportion` sums to 1.0 across the frame.
+            `total_demand` (omitted when no demand data is registered),
+            `proportion` (sums to 1.0 across the frame), and
+            `average_travel_cost` (in the travel matrix's registered unit
+            -- e.g. minutes, or miles if the matrix was built from
+            distances rather than times).
 
         Raises
         ------
@@ -1181,9 +1192,12 @@ class SiteSolutionSet(
         Notes
         -----
         Every selected site appears, including any that is closest to no
-        region at all -- it gets an explicit 0 row rather than being
-        dropped. That case is usually the finding being looked for, so
-        silently losing it would defeat the point of the method.
+        region at all -- it gets an explicit 0 row in `n_regions` and
+        `proportion` rather than being dropped. That case is usually the
+        finding being looked for, so silently losing it would defeat the
+        point of the method. `average_travel_cost` is `NaN` for such a site
+        rather than `0`: there is no travel cost to average over zero
+        regions, and `0` would misleadingly read as "instant to reach".
 
         Regions exactly equidistant from two selected sites are assigned to
         one of them, not split: the underlying allocation uses
@@ -1191,11 +1205,18 @@ class SiteSolutionSet(
         canonical site index, so exact ties go to the lowest-indexed site.
         Deterministic across runs, but arbitrary -- exact ties are rare on
         real travel matrices and common on synthetic ones.
+
+        `average_travel_cost` was inspired by work from Gill Baker, who
+        used average travel distance per patient -- split by which site
+        was closest -- to show that centralising services onto fewer sites
+        would roughly double typical travel distance for patients, while
+        adding a third site offered only limited benefit over the existing
+        two.
         """
         if by not in ("demand", "regions"):
             raise ValueError(f"by must be 'demand' or 'regions', got {by!r}.")
 
-        _, selected_site_col, _, _, _ = self._resolve_travel_columns(matrix)
+        cost_col, selected_site_col, _, _, _ = self._resolve_travel_columns(matrix)
 
         solution = _select_solution(
             self.solution_df,
@@ -1253,9 +1274,28 @@ class SiteSolutionSet(
 
         if by == "demand":
             result["proportion"] = result["total_demand"] / total_demand
+
+            # sum(cost * demand) / sum(demand) per site, mirroring how the
+            # solution-level `weighted_average` is computed. Grouping and
+            # dividing only over sites that actually appear in per_region
+            # (i.e. those with n_regions > 0) means the reindex below is
+            # the only place a zero-allocation site's average_travel_cost
+            # is produced, and it comes out NaN (no group to divide) rather
+            # than a 0/0 division warning.
+            weighted_cost = per_region[cost_col] * per_region[demand_col].astype(float)
+            weighted_cost_sum = weighted_cost.groupby(per_region[selected_site_col]).sum()
+            demand_sum = per_region.groupby(selected_site_col)[demand_col].sum()
+            result["average_travel_cost"] = (weighted_cost_sum / demand_sum).reindex(
+                selected_sites
+            )
         else:
             total_regions = len(per_region)
             result["proportion"] = result["n_regions"] / total_regions
+            result["average_travel_cost"] = (
+                per_region.groupby(selected_site_col)[cost_col]
+                .mean()
+                .reindex(selected_sites)
+            )
 
         return result
 

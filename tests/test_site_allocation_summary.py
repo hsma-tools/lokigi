@@ -6,7 +6,11 @@ but nothing in the package aggregated that by site until now.
 `site_allocation_summary()` reports the share of demand (or of regions)
 closest to each site in a chosen solution -- e.g. showing that a proposed
 third site only picks up 11% of demand, weakening the case for opening it
-even where it improves the average travel time.
+even where it improves the average travel time -- and the average travel
+cost incurred by each site's group, e.g. showing that closing a site would
+roughly double the average distance travelled by the patients who used to
+be closest to it (the `average_travel_cost` column, inspired by Gill
+Baker's work on average travel distance per patient).
 
 Fixture arithmetic used below (hand-derived from `conftest.py`):
 
@@ -162,3 +166,65 @@ def test_selection_arguments_take_priority_site_indices_over_site_names(loaded_p
     by_names = result.site_allocation_summary(site_names=["Site_A", "Site_B"])
 
     pd.testing.assert_frame_equal(by_indices, by_names)
+
+
+def test_average_travel_cost_is_demand_weighted_by_default(loaded_problem):
+    """`average_travel_cost` for a site with more than one region assigned
+    must be the demand-weighted mean, not the plain mean -- Site_B here
+    serves LSOA_2 (cost=5, demand=200) and LSOA_3 (cost=15, demand=150), so
+    a plain mean would give 10.0, same as the by="regions" case below. The
+    correct, demand-weighted answer is (5*200 + 15*150) / 350 = 9.2857,
+    which is a different number."""
+    result = loaded_problem.solve(p=2)
+
+    summary = result.site_allocation_summary(site_names=["Site_A", "Site_B"])
+
+    assert summary.loc["Site_A", "average_travel_cost"] == pytest.approx(10.0)
+    assert summary.loc["Site_B", "average_travel_cost"] == pytest.approx(
+        (5 * 200 + 15 * 150) / 350
+    )
+    assert summary.loc["Site_B", "average_travel_cost"] != pytest.approx(10.0)
+
+
+def test_average_travel_cost_by_regions_is_plain_mean(loaded_problem):
+    result = loaded_problem.solve(p=2)
+
+    summary = result.site_allocation_summary(by="regions", site_names=["Site_A", "Site_B"])
+
+    assert summary.loc["Site_A", "average_travel_cost"] == pytest.approx(10.0)
+    assert summary.loc["Site_B", "average_travel_cost"] == pytest.approx((5 + 15) / 2)
+
+
+def test_average_travel_cost_is_nan_not_zero_for_zero_allocation_site(five_site_problem):
+    """The same zero-allocation site that gets an explicit 0 in `proportion`
+    must be `NaN` in `average_travel_cost` -- there is no travel cost to
+    average over zero regions, and 0 would misleadingly read as "instant
+    to reach" rather than "not applicable"."""
+    result = five_site_problem.solve(p=3)
+
+    summary = result.site_allocation_summary(site_names=["Site_1", "Site_2", "Site_3"])
+
+    assert pd.isna(summary.loc["Site_2", "average_travel_cost"])
+    assert summary.loc["Site_1", "average_travel_cost"] == pytest.approx(10.0)
+    assert summary.loc["Site_3", "average_travel_cost"] == pytest.approx((24 + 13 + 13) / 3)
+
+
+def test_average_travel_cost_matrix_argument_switches_matrix(
+    loaded_problem_with_secondary_matrix,
+):
+    """Every region's closest site on the uniform-cost secondary matrix is
+    Site_C at cost 5, regardless of the primary matrix's own per-site
+    averages -- pins that `matrix=` reaches `min_cost__public_transport`."""
+    result = loaded_problem_with_secondary_matrix.solve(p=3)
+
+    primary = result.site_allocation_summary(site_names=["Site_A", "Site_B", "Site_C"])
+    assert primary.loc["Site_A", "average_travel_cost"] == pytest.approx(10.0)
+    assert primary.loc["Site_B", "average_travel_cost"] == pytest.approx(5.0)
+    assert primary.loc["Site_C", "average_travel_cost"] == pytest.approx(8.0)
+
+    secondary = result.site_allocation_summary(
+        site_names=["Site_A", "Site_B", "Site_C"], matrix="public_transport"
+    )
+    assert secondary.loc["Site_C", "average_travel_cost"] == pytest.approx(5.0)
+    assert pd.isna(secondary.loc["Site_A", "average_travel_cost"])
+    assert pd.isna(secondary.loc["Site_B", "average_travel_cost"])

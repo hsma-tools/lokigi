@@ -27,16 +27,28 @@ class SolutionComparatorMethodsMixin:
         summary["difference"] = summary[self.labels[0]] - summary[self.labels[1]]
         return summary
 
-    def compare_site_allocation(self, by="demand", config_a=None, config_b=None, matrix=None):
+    def compare_site_allocation(
+        self, by="demand", metric="proportion", config_a=None, config_b=None, matrix=None
+    ):
         """
         Compare `site_allocation_summary()` between `set_a` and `set_b`,
         e.g. a 2-site solution against a 3-site solution, to see whose
-        demand a new site actually took.
+        demand a new site actually took, or how much further people would
+        have to travel if a site were closed.
 
         Parameters
         ----------
         by : {"demand", "regions"}, default "demand"
             Passed to both sets' `site_allocation_summary()`.
+        metric : {"proportion", "average_travel_cost"}, default "proportion"
+            Which `site_allocation_summary()` column to compare.
+            "proportion" answers "whose demand moved?"; "average_travel_cost"
+            answers "how much further (or less far) do the people closest to
+            this site now have to travel?" -- the comparison inspired by
+            Gill Baker's work using average travel distance per patient to
+            show that centralising services would roughly double typical
+            travel distance, while a third site added little further
+            benefit (see `site_allocation_summary`).
         config_a, config_b : dict, optional
             Keyword arguments forwarded to `set_a.site_allocation_summary()`
             and `set_b.site_allocation_summary()` respectively (e.g.
@@ -55,14 +67,24 @@ class SolutionComparatorMethodsMixin:
 
         Notes
         -----
-        `NaN` and `0.0` mean different things here and are not
-        interchangeable: `NaN` means the site is not in that solution at
-        all (not opened), while `0.0` means the site is opened but is
-        closest to no region. Collapsing the two would erase the point of
-        the comparison -- e.g. comparing a 2-site solution against a
-        3-site one, the new site's row is `NaN` in the 2-site column, not
-        `0.0`.
+        With `metric="proportion"` (the default), `NaN` and `0.0` mean
+        different things and are not interchangeable: `NaN` means the site
+        is not in that solution at all (not opened), while `0.0` means the
+        site is opened but is closest to no region. Collapsing the two
+        would erase the point of the comparison -- e.g. comparing a 2-site
+        solution against a 3-site one, the new site's row is `NaN` in the
+        2-site column, not `0.0`.
+
+        With `metric="average_travel_cost"`, this distinction does not
+        apply: a site that is opened but closest to nothing has no travel
+        cost to average either, so both "not opened" and "opened but
+        empty" show up as `NaN`.
         """
+        if metric not in ("proportion", "average_travel_cost"):
+            raise ValueError(
+                f"metric must be 'proportion' or 'average_travel_cost', got {metric!r}."
+            )
+
         config_a = config_a or {"solution_rank": 1}
         config_b = config_b or {"solution_rank": 1}
 
@@ -78,8 +100,8 @@ class SolutionComparatorMethodsMixin:
         label_a, label_b = self.labels
         comparison = pd.DataFrame(
             {
-                label_a: summary_a["proportion"].reindex(index),
-                label_b: summary_b["proportion"].reindex(index),
+                label_a: summary_a[metric].reindex(index),
+                label_b: summary_b[metric].reindex(index),
             }
         )
         comparison["difference"] = comparison[label_a] - comparison[label_b]
