@@ -204,6 +204,11 @@ def test_secondary_matrix_own_threshold_overrides_solve_threshold(
     # min_cost__public_transport == 50, below the matrix's own threshold of
     # 60 even though it's above the primary solve() threshold of 15.
     assert site_b_row["proportion_within_coverage_threshold__public_transport"] == 1.0
+    # The regions variant honours the per-matrix threshold identically.
+    assert (
+        site_b_row["proportion_regions_within_coverage_threshold__public_transport"]
+        == 1.0
+    )
 
 
 # --- Pareto and ranking ---------------------------------------------------
@@ -282,14 +287,19 @@ def test_full_secondary_metrics_default_omits_dict_valued_columns(
     result = loaded_problem_with_equity_and_secondary_matrix.solve(p=1)
     columns = result.solution_df.columns
 
-    # Core five + float equity aggregations are always present.
+    # Core scalar metrics + float equity aggregations are always present.
     assert "weighted_average__public_transport" in columns
     assert "gap_absolute_weighted__public_transport" in columns
+    # Both coverage proportions, so a secondary matrix reports the same pair
+    # as the primary one.
+    assert "proportion_within_coverage_threshold__public_transport" in columns
+    assert "proportion_regions_within_coverage_threshold__public_transport" in columns
 
     # Dict-valued breakdowns and description strings are not, by default.
     assert "weighted_by_equity_group__public_transport" not in columns
     assert "unweighted_by_equity_group__public_transport" not in columns
     assert "coverage_by_equity_group__public_transport" not in columns
+    assert "coverage_regions_by_equity_group__public_transport" not in columns
     assert "max_cost_by_equity_group__public_transport" not in columns
     assert "gap_absolute_description__public_transport" not in columns
     assert "gap_relative_description__public_transport" not in columns
@@ -311,6 +321,7 @@ def test_full_secondary_metrics_true_includes_dict_valued_columns(
     assert "weighted_by_equity_group__public_transport" in columns
     assert "unweighted_by_equity_group__public_transport" in columns
     assert "coverage_by_equity_group__public_transport" in columns
+    assert "coverage_regions_by_equity_group__public_transport" in columns
     assert "max_cost_by_equity_group__public_transport" in columns
     assert "gap_absolute_description__public_transport" in columns
     assert "gap_relative_description__public_transport" in columns

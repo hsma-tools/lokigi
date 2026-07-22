@@ -1,5 +1,5 @@
 import pandas as pd
-from lokigi.utils import _add_rank_column
+from lokigi.utils import _add_rank_column, _is_maximise_metric
 
 
 class SolutionComparatorMethodsMixin:
@@ -90,14 +90,8 @@ class SolutionComparatorMethodsMixin:
             If return_details=False: tuple of (solution_from_a, solution_from_b)
         """
 
-        ascending_primary = (
-            False if objective == "proportion_within_coverage_threshold" else True
-        )
-        ascending_secondary = (
-            False
-            if secondary_objective == "proportion_within_coverage_threshold"
-            else True
-        )
+        ascending_primary = not _is_maximise_metric(objective)
+        ascending_secondary = not _is_maximise_metric(secondary_objective)
 
         sols_a_copy = self.set_a.solution_df.copy()
         sols_a_copy = _add_rank_column(

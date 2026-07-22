@@ -494,7 +494,83 @@ def _get_ranking_by_objective(objective):
     elif objective in ["p_center"]:
         return "max"
     elif objective in ["mclp"]:
+        # Demand-weighted since v0.7.0, matching the textbook Maximal Covering
+        # Location Problem. The column name is unchanged; its meaning is not.
         return "proportion_within_coverage_threshold"
+
+
+def _is_maximise_metric(col):
+    """
+    True for solution metrics where a HIGHER value is better.
+
+    Every other reported metric is a travel cost, where lower is better, so
+    the coverage proportions are the only maximisation objectives.
+
+    Matches on a substring rather than the exact column name so that it also
+    covers the `regions` variant and any `__<label>` secondary-travel-matrix
+    suffix -- the exact-equality checks this replaced silently treated
+    `proportion_within_coverage_threshold__<label>` as a minimisation
+    objective, sorting secondary-matrix coverage backwards.
+
+    Parameters
+    ----------
+    col : str
+        Name of a column in `solution_df`.
+
+    Returns
+    -------
+    bool
+    """
+    return isinstance(col, str) and "within_coverage_threshold" in col
+
+
+def _sort_solutions_by_metric(solution_df, rank_on):
+    """
+    Sort a solutions dataframe so the BEST solution for `rank_on` is first.
+
+    Every `rank_on` call site used to sort with a bare
+    `solution_df.sort_values(rank_on)`, i.e. always ascending. That is right
+    for the travel-cost metrics but backwards for the coverage proportions,
+    where higher is better -- so asking for the best solution by coverage
+    returned the worst-covering one. Direction is resolved per column by
+    `_is_maximise_metric`.
+
+    Parameters
+    ----------
+    solution_df : pandas.DataFrame
+        A solutions dataframe (or any frame containing `rank_on`).
+    rank_on : str or sequence of str
+        Name of the metric column to rank by, or several for a primary
+        metric plus tie-breakers. Direction is resolved per column, so a
+        coverage metric can be tie-broken by a travel cost and each is still
+        sorted the right way round.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Sorted copy, best first.
+
+    Notes
+    -----
+    `kind="mergesort"` is a stable sort, so solutions tied on `rank_on` keep
+    the relative order they already had rather than being reshuffled
+    arbitrarily. Ties are routine here -- on the sample Brighton problem
+    `max` takes only 5 distinct values across 15 candidate combinations --
+    and pandas' default ("quicksort") is not stable, so without this the
+    solution reported as "best" could differ between runs, machines or
+    library versions purely by which tied row landed first.
+
+    pandas only honours `kind` when sorting on a single column; multi-column
+    sorts go through `lexsort_indexer`, which is stable already. Passing it
+    unconditionally is therefore belt-and-braces for the multi-column case,
+    and load-bearing for the single-column one.
+    """
+    columns = [rank_on] if isinstance(rank_on, str) else list(rank_on)
+    return solution_df.sort_values(
+        columns,
+        ascending=[not _is_maximise_metric(col) for col in columns],
+        kind="mergesort",
+    )
 
 
 def _min_max_normalize(series, constant_fill=0.0):
@@ -681,7 +757,13 @@ def _add_rank_column(df, score_col, tiebreaker_col, ascending=True):
 
     # 1. Sort by primary score, then tiebreaker
     # sort_values returns a new DataFrame, so we don't strictly need .copy()
-    ranked_df = df.sort_values([score_col, tiebreaker_col], ascending=ascending)
+    # kind="mergesort" keeps rows tied on BOTH columns in their existing
+    # order. Multi-column sorts already go through a stable lexsort, so this
+    # is belt-and-braces today -- it matters if this is ever reduced to a
+    # single sort column. See _sort_solutions_by_metric for the full note.
+    ranked_df = df.sort_values(
+        [score_col, tiebreaker_col], ascending=ascending, kind="mergesort"
+    )
 
     # 2. Assign dense ranks that handle true ties
     # sort=False ensures groupby respects the order we just established.
@@ -736,7 +818,7 @@ def _select_solution(
 
     # Priority 3: rank-based selection
     if rank_on is not None:
-        sorted_df = solution_df.sort_values(rank_on)
+        sorted_df = _sort_solutions_by_metric(solution_df, rank_on)
     else:
         sorted_df = solution_df
 
@@ -766,6 +848,45 @@ def _get_ordinal_suffix(n):
         return "th"
     else:
         return {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+
+
+def _reject_removed_basemap_alias(kwargs, method_name):
+    """
+    Raise a clear error if the removed `show_basemap` argument is passed.
+
+    `plot_region_geometry_layer`, `plot_hotspots` and `plot_quadrant_map`
+    spelled this flag `show_basemap` until v0.7.0, when `add_basemap`
+    became the name on every plotting method. `show_basemap` was removed
+    rather than aliased.
+
+    This guard exists because those methods also accept `**kwargs` and
+    forward them to the underlying plotting call, so a removed argument
+    does not produce a normal "unexpected keyword argument" TypeError
+    naming the method. Instead it reaches matplotlib and surfaces as
+    ``AttributeError: PatchCollection.set() got an unexpected keyword
+    argument 'show_basemap'`` on static plots, or is ignored outright on
+    interactive ones, since ``GeoDataFrame.explore()`` tolerates unknown
+    keywords. Neither tells the caller what to do about it.
+
+    Parameters
+    ----------
+    kwargs : dict
+        The calling method's `**kwargs`, checked for the removed name.
+    method_name : str
+        Name of the calling method, used in the error message.
+
+    Raises
+    ------
+    TypeError
+        If `show_basemap` is present.
+    """
+    if "show_basemap" in kwargs:
+        raise TypeError(
+            f"{method_name}() no longer accepts 'show_basemap', which was "
+            "removed in v0.7.0. Use 'add_basemap' instead -- it behaves "
+            "identically and is now the argument name on every plotting "
+            "method."
+        )
 
 
 def _colours_and_styles(n: int, palette: str):

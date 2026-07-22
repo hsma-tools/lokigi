@@ -1,3 +1,48 @@
+## v0.7.0
+
+### ⚠️ Breaking changes
+
+lokigi is pre-1.0, so breaking changes can land in any minor release. Read these before upgrading -- each is detailed in the notes below.
+
+- `proportion_within_coverage_threshold` and `coverage_by_equity_group` now report **demand-weighted** values rather than counts of regions. Existing numbers change on any problem with non-uniform demand. The previous behaviour is available as `proportion_regions_within_coverage_threshold` / `coverage_regions_by_equity_group`
+- The **`mclp` objective may now select a different combination of sites**, because it ranks on the metric above. It now maximises covered demand, matching the textbook Maximal Covering Location Problem
+- **`rank_on=` with a coverage metric now returns the best-covering solution, not the worst.** Anything ranking on a travel-cost metric is unchanged
+- Both coverage proportions are now **`NaN` rather than `0.0`** when no `threshold_for_coverage` was supplied
+- **`show_basemap` has been removed** from `plot_region_geometry_layer()`, `plot_hotspots()` and `plot_quadrant_map()`. Use `add_basemap`, which is now the argument name on every plotting method. Passing the old name raises a `TypeError` naming the replacement
+
+### Notes
+
+- **Behaviour change:** coverage metrics are now weighted by demand rather than counting every region equally
+    - `proportion_within_coverage_threshold` now reports the proportion of total *demand* within `threshold_for_coverage`, weighted by the demand registered via `add_demand()`. Previously it was the proportion of *regions*, so a sparsely-populated LSOA counted as much as a dense one
+    - `coverage_by_equity_group` changes in the same way, reporting demand-weighted coverage within each equity band
+    - Because `mclp` ranks on `proportion_within_coverage_threshold`, **the `mclp` objective may now select a different combination of sites** on any problem with non-uniform demand. It now maximises covered demand, matching the textbook Maximal Covering Location Problem
+    - Nothing changes for problems with uniform demand, including those that never call `add_demand()` -- `solve()` assumes equal demand in that case, which makes the demand-weighted and region-based figures identical
+    - The weighting always uses the raw demand column, never the compound `weights=` vector used by `weighted_average`, so the metric means "proportion of demand covered" regardless of what is passed to `weights=`
+- Add `proportion_regions_within_coverage_threshold` and `coverage_regions_by_equity_group`, preserving the previous region-counting behaviour
+    - Naming rule: an unqualified coverage metric is demand-weighted ("what share of people"), and the `regions` variants count every region equally ("what share of places")
+    - Both are added for registered secondary travel matrices too: `proportion_regions_within_coverage_threshold__<label>` sits alongside its demand-weighted counterpart in the default per-matrix metric set, and `coverage_regions_by_equity_group__<label>` appears under `full_secondary_metrics=True`
+    - Both are picked up automatically by `show_solutions(expand_dict_columns=True)`, which detects dict columns by content rather than by name
+- Fix coverage columns for secondary travel matrices being sorted backwards
+    - `plot_simple_pareto_front_pairs`, `plot_all_metric_pareto_front_pairs`, and `SolutionComparator` inferred "higher is better" by exact match against `proportion_within_coverage_threshold`, so a suffixed column such as `proportion_within_coverage_threshold__public_transport` was treated as a metric to minimise. Direction is now inferred for any coverage-proportion column, suffixed or not
+- Both coverage proportions are `NaN` when no `threshold_for_coverage` was supplied, rather than `0.0`
+- Fix `rank_on=` returning the *worst* solution when ranking on a coverage metric
+    - Every `rank_on` call site sorted ascending unconditionally, which is right for the travel-cost metrics but backwards for coverage proportions, where higher is better. `return_best_combination_details()`, `return_best_combination_site_names()`, `return_best_combination_site_indices()` and the `rank_on`-accepting plotting methods (`plot_n_best_combinations_bar`, `plot_best_combination`, `plot_n_best_combinations`, `plot_travel_time_distribution`, `plot_combination_by_equity`) all returned or plotted the least-covering solution when asked for the best one
+    - Direction is now resolved per column, so `rank_on="proportion_within_coverage_threshold"` (or any `regions`/`__<label>` coverage column) ranks highest-first, while travel-cost metrics are unchanged and still rank lowest-first
+    - `plot_travel_time_distribution(secondary_ranking=...)` resolves the tie-breaker's direction independently of the primary metric, so a coverage metric can be tie-broken by a travel cost with each sorted the right way round
+    - Affects which solution these methods return for coverage rankings only; anything ranking on `weighted_average`, `unweighted_average`, `90th_percentile`, `max` or `total_cost` is byte-for-byte unchanged
+- Solutions tied on a ranking metric now keep a stable, reproducible order
+    - Every sort over solutions uses a stable sort (`kind="mergesort"`), so equally-good solutions are no longer reshuffled arbitrarily. pandas' default single-column sort is quicksort, which is not stable, so which of several tied solutions was reported as "best" could differ between runs, machines or library versions
+    - Affects `rank_on=` ranking, `pareto_summary()`, and the solution the Pareto narrative methods anchor on. Ties are routine -- on the sample Brighton problem `max` takes only 5 distinct values across 15 candidate combinations
+    - `solve()`'s own ranking already sorted on two columns, which pandas handles with a stable lexsort, so no existing solve output changes
+- **BREAKING:** `add_basemap` is now the argument name on every plotting method, and `show_basemap` has been removed
+    - `plot_region_geometry_layer()`, `plot_hotspots()` and `plot_quadrant_map()` previously spelled it `show_basemap`, while `plot_sites()` and `plot_resources()` used `add_basemap`. Because the first three also accept `**kwargs`, passing `add_basemap` to them never reached code that understood it -- it crashed the static path with a confusing `AttributeError` from matplotlib (`PatchCollection.set() got an unexpected keyword argument`) and was silently ignored on the interactive path, drawing the tile layer anyway
+    - Migration is a rename: `show_basemap=` becomes `add_basemap=`, with identical behaviour and the same `True` default
+    - Those three methods explicitly reject the removed name with a `TypeError` naming the replacement. Without that guard the same `**kwargs` forwarding would give the identical cryptic matplotlib error, or ignore it silently on the interactive path -- so a bare removal would have been harder to diagnose than the original inconsistency
+- Fix `plot_solution_comparison()` and `plot_solution_sets_comparison()` raising `AttributeError: 'SiteSolutionSet' object has no attribute '_get_ordinal_suffix'`
+    - The ordinal-suffix helper is a module-level function in `lokigi.utils` but was called as though it were a method on the solution set, so plotting any solution other than the top-ranked one crashed. `solution_rank=1` took a different branch and worked, which is why this went unnoticed
+- Fix `plot_travel_time_distribution(bottom_n=...)` raising `TypeError: list.append() takes no keyword arguments`
+    - The bottom-ranked slice was appended with a stray keyword argument, so passing `bottom_n` at all crashed. Passing `top_n` alone was unaffected
+
 ## v0.6.0
 
 - Add support for secondary travel matrices via `add_secondary_travel_matrix(travel_matrix_df, source_col, label, ...)`

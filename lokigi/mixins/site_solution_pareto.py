@@ -11,7 +11,7 @@ import seaborn as sns
 import sweetpareto.vis as spv
 import textwrap
 
-from lokigi.utils import _colours_and_styles
+from lokigi.utils import _colours_and_styles, _is_maximise_metric
 
 from lokigi.multiobjective import ParetoMetric
 
@@ -95,9 +95,9 @@ class ParetoMixin:
         or minimisation objective.
         """
         if maxx is None:
-            maxx = x_axis == "proportion_within_coverage_threshold"
+            maxx = _is_maximise_metric(x_axis)
         if maxy is None:
-            maxy = y_axis == "proportion_within_coverage_threshold"
+            maxy = _is_maximise_metric(y_axis)
 
         plot_obj = spv.pareto_plot(
             self.solution_df,
@@ -197,16 +197,8 @@ class ParetoMixin:
 
         for idx, (x_metric, y_metric) in enumerate(metric_pairs):
             ax = axes[idx]
-            current_maxx = (
-                (x_metric == "proportion_within_coverage_threshold")
-                if maxx is None
-                else maxx
-            )
-            current_maxy = (
-                (y_metric == "proportion_within_coverage_threshold")
-                if maxy is None
-                else maxy
-            )
+            current_maxx = _is_maximise_metric(x_metric) if maxx is None else maxx
+            current_maxy = _is_maximise_metric(y_metric) if maxy is None else maxy
             plot_obj = spv.pareto_plot(
                 self.solution_df,
                 x=x_metric,
@@ -293,7 +285,9 @@ class ParetoMixin:
             for m in self.pareto_metrics
             if m.column == sort_by
         )
-        front = front.sort_values(sort_by, ascending=ascending)
+        # Stable sort so Pareto-optimal solutions tied on `sort_by` keep a
+        # consistent order between runs -- see _sort_solutions_by_metric.
+        front = front.sort_values(sort_by, ascending=ascending, kind="mergesort")
         cols = [id_col] + [m.column for m in self.pareto_metrics]
         if return_full_df:
             return front.reset_index(drop=True)
@@ -321,8 +315,13 @@ class ParetoMixin:
 
         if anchor is None:
             first = self.pareto_metrics[0]
+            # Stable sort: the anchor is whichever solution lands first, so
+            # an unstable sort could silently narrate a different solution
+            # each run whenever the leaders tie.
             front_sorted = front.sort_values(
-                first.column, ascending=(first.direction != "higher_better")
+                first.column,
+                ascending=(first.direction != "higher_better"),
+                kind="mergesort",
             )
             anchor_row = front_sorted.iloc[0]
         else:
@@ -389,8 +388,13 @@ class ParetoMixin:
 
         if anchor is None:
             first = self.pareto_metrics[0]
+            # Stable sort: the anchor is whichever solution lands first, so
+            # an unstable sort could silently narrate a different solution
+            # each run whenever the leaders tie.
             front_sorted = front.sort_values(
-                first.column, ascending=(first.direction != "higher_better")
+                first.column,
+                ascending=(first.direction != "higher_better"),
+                kind="mergesort",
             )
             anchor_row = front_sorted.iloc[0]
         else:

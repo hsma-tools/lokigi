@@ -32,6 +32,8 @@ Written by Claude Opus 4.8
 
 import pandas as pd
 
+from lokigi.utils import _is_maximise_metric
+
 
 def _fingerprint(result, cols=("weighted_average", "max", "unweighted_average")):
     """Order-preserving, tuple-based snapshot of a SiteSolutionSet.solution_df:
@@ -104,8 +106,17 @@ def test_backtest_five_site_problem_mclp_brute_force(five_site_problem, assert_b
         show_progress=False,
         threshold_for_coverage=15,
     )
+    # Both coverage definitions are pinned: the demand-weighted one that mclp
+    # actually ranks on, and the region count, so a future change to either
+    # weighting shows up here rather than silently.
     assert_backtest(
-        _fingerprint(result, cols=("proportion_within_coverage_threshold",))
+        _fingerprint(
+            result,
+            cols=(
+                "proportion_within_coverage_threshold",
+                "proportion_regions_within_coverage_threshold",
+            ),
+        )
     )
 
 
@@ -242,6 +253,139 @@ def test_backtest_brighton_problem_mclp_brute_force(brighton_problem, assert_bac
         show_progress=False,
         threshold_for_coverage=20,
     )
+    # Both coverage definitions are pinned: the demand-weighted one that mclp
+    # actually ranks on, and the region count, so a future change to either
+    # weighting shows up here rather than silently.
     assert_backtest(
-        _fingerprint(result, cols=("proportion_within_coverage_threshold",))
+        _fingerprint(
+            result,
+            cols=(
+                "proportion_within_coverage_threshold",
+                "proportion_regions_within_coverage_threshold",
+            ),
+        )
     )
+
+
+# --- sort-direction contract ----------------------------------------------
+
+
+def _direction_fingerprint(result):
+    """Snapshot of which `solution_df` columns are treated as maximisation
+    objectives, as (column, is_maximised) pairs in column order.
+
+    Unlike the metric fingerprints above, this pins a *contract* rather than
+    numbers: every column the solver emits, and whether higher is better for
+    it. Adding a metric column, renaming one, or changing how direction is
+    inferred all surface here -- including the failure mode this guards
+    against, where a coverage column not spelled exactly
+    "proportion_within_coverage_threshold" silently falls through to being
+    minimised, so rankings and Pareto fronts come out backwards (see
+    tests/test_metric_direction.py for the call-site level tests).
+    """
+    return [
+        (column, bool(_is_maximise_metric(column)))
+        for column in result.solution_df.columns
+    ]
+
+
+def _rank_on_fingerprint(result, rank_on_cols):
+    """Snapshot of the order `rank_on` actually puts solutions in, driven
+    through the public accessor rather than the sort helper directly.
+
+    For each ranking column: the distinct metric values in ranked order,
+    each paired with the site combinations sitting at that value. A
+    direction regression reverses the value sequence, so it cannot survive
+    this snapshot.
+
+    Solutions are grouped by value, and names within a group are sorted,
+    because ties are common here (`max` takes only 5 distinct values across
+    the 15 Brighton combinations) and pandas' default
+    `sort_values(kind="quicksort")` is not stable -- a flat ordered list of
+    site names would be free to reshuffle within a tie between runs or
+    platforms and make this test flaky for reasons unrelated to direction.
+    """
+    entries = []
+    for col in rank_on_cols:
+        ordered = result.return_best_combination_details(
+            rank_on=col, top_n=len(result.solution_df)
+        )
+        levels = []
+        for value, group in ordered.groupby(col, sort=False, dropna=False):
+            rounded = round(float(value), 6) if pd.notna(value) else None
+            names = sorted(tuple(sorted(names)) for names in group["site_names"])
+            levels.append((rounded, names))
+        entries.append((col, levels))
+    return entries
+
+
+def test_backtest_rank_on_ordering_brighton_mclp(brighton_problem, assert_backtest):
+    """Pins `rank_on` ordering on real data for a coverage metric, its
+    regions counterpart, and two travel costs as controls -- the costs must
+    stay ascending while the coverage metrics run highest-first.
+
+    threshold=8 rather than the 20 used by the mclp metric backtest above:
+    at 20 the coverage columns collapse to 4 distinct values across 15
+    solutions, which pins ordering far more weakly.
+    """
+    result = brighton_problem.solve(
+        p=2,
+        objectives="mclp",
+        search_strategy="brute-force",
+        show_progress=False,
+        threshold_for_coverage=8,
+    )
+    assert_backtest(
+        _rank_on_fingerprint(
+            result,
+            rank_on_cols=(
+                "proportion_within_coverage_threshold",
+                "proportion_regions_within_coverage_threshold",
+                "max",
+                "weighted_average",
+            ),
+        )
+    )
+
+
+def test_backtest_rank_on_ordering_with_secondary_matrix(
+    loaded_problem_with_equity_and_secondary_matrix, assert_backtest
+):
+    """The same contract for `__<label>` secondary-matrix columns, which are
+    the ones the exact-match direction check used to miss entirely."""
+    result = loaded_problem_with_equity_and_secondary_matrix.solve(
+        p=2,
+        objectives="mclp",
+        search_strategy="brute-force",
+        show_progress=False,
+        threshold_for_coverage=15,
+    )
+    assert_backtest(
+        _rank_on_fingerprint(
+            result,
+            rank_on_cols=(
+                "proportion_within_coverage_threshold__public_transport",
+                "proportion_regions_within_coverage_threshold__public_transport",
+                "max__public_transport",
+            ),
+        )
+    )
+
+
+def test_backtest_direction_contract_with_secondary_matrix(
+    loaded_problem_with_equity_and_secondary_matrix, assert_backtest
+):
+    """Solved with equity data, a secondary travel matrix and
+    full_secondary_metrics=True, so the snapshot covers the widest schema the
+    library emits -- primary metrics, `__<label>` secondary metrics, and both
+    coverage spellings for each.
+    """
+    result = loaded_problem_with_equity_and_secondary_matrix.solve(
+        p=2,
+        objectives="mclp",
+        search_strategy="brute-force",
+        show_progress=False,
+        threshold_for_coverage=15,
+        full_secondary_metrics=True,
+    )
+    assert_backtest(_direction_fingerprint(result))

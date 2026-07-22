@@ -21,6 +21,8 @@ import matplotlib.colors as mcolors
 import warnings
 from requests.exceptions import RequestException
 
+from lokigi.utils import _reject_removed_basemap_alias
+
 
 NeighbourhoodMethod = Literal[
     "rook",
@@ -711,7 +713,7 @@ class HotspotPlotMixin:
         tiles: str = "CartoDB positron",
         edgecolor: str = "black",
         linewidth: float = 0.5,
-        show_basemap: bool = True,
+        add_basemap: bool = True,
         show_axis: bool = False,
         opacity: float = 0.7,
         what: SupportedInputs = "demand",
@@ -763,6 +765,13 @@ class HotspotPlotMixin:
         tiles : str, default="CartoDB positron"
             Tile provider used for interactive maps.
 
+        add_basemap : bool, default=True
+            Whether to add a basemap (static) or tile layer (interactive).
+            Set False to skip the tile download entirely.
+
+            .. versionchanged:: 0.7.0
+                Renamed from ``show_basemap``, which has been removed.
+
         edgecolor : str, default="black"
             Boundary colour used when plotting polygons.
 
@@ -804,6 +813,11 @@ class HotspotPlotMixin:
             Static or interactive hotspot map depending on the value
             of ``interactive``.
 
+        Raises
+        ------
+        TypeError
+            If the removed ``show_basemap`` argument is supplied.
+
         Notes
         -----
         Hotspot classifications are derived from Local Moran's I and
@@ -818,6 +832,9 @@ class HotspotPlotMixin:
         The default colour scheme mirrors the conventions commonly
         used in GeoDa and PySAL visualisations.
         """
+        # Checked before any analysis runs, so a bad call fails immediately
+        # rather than after the spatial computation in get_hotspots().
+        _reject_removed_basemap_alias(kwargs, "plot_hotspots")
 
         # Get the unified context object, meaning we handle this appropriately
         # regardless of whether this is a Problem or SiteSolutionSet
@@ -934,7 +951,7 @@ class HotspotPlotMixin:
 
             m = folium.Map(
                 location=centre,
-                tiles=tiles if show_basemap else None,
+                tiles=tiles if add_basemap else None,
             )
 
             for cluster_name, group_name in cluster_groups.items():
@@ -996,7 +1013,7 @@ class HotspotPlotMixin:
                     fontsize=10,
                 )
 
-            if show_basemap:
+            if add_basemap:
                 try:
                     cx.add_basemap(ax, crs=hotspots_df.crs.to_string(), timeout=30)
                 except RequestException as e:
@@ -1036,7 +1053,7 @@ class HotspotPlotMixin:
         non_significant_edgecolor: str = "#bbbbbb",
         non_significant_linewidth: float = 0.4,
         tiles: str = "CartoDB positron",
-        show_basemap: bool = True,
+        add_basemap: bool = True,
         show_axis: bool = False,
         opacity: float = 0.7,
         # Legend placement
@@ -1105,8 +1122,11 @@ class HotspotPlotMixin:
             Border width for non-significant areas.
         tiles : str, default "CartoDB positron"
             Tile provider for interactive maps.
-        show_basemap : bool, default True
+        add_basemap : bool, default True
             Whether to add a basemap (static) or tile layer (interactive).
+
+            .. versionchanged:: 0.7.0
+                Renamed from ``show_basemap``, which has been removed.
         show_axis : bool, default False
             Whether to show axis ticks and labels on static plots.
         opacity : float, default 0.7
@@ -1127,7 +1147,13 @@ class HotspotPlotMixin:
             If ``hotspots_df`` is provided but does not contain an
             ``attribute_typology`` column, suggesting it was not produced
             by a combined analysis.
+        TypeError
+            If the removed ``show_basemap`` argument is supplied.
         """
+        # Checked before any analysis runs, so a bad call fails immediately
+        # rather than after the spatial computation in get_hotspots().
+        _reject_removed_basemap_alias(kwargs, "plot_quadrant_map")
+
         # Get the unified context object, meaning we handle this appropriately
         # regardless of whether this is a Problem or SiteSolutionSet
         ctx = self._prob_ctx
@@ -1301,7 +1327,7 @@ class HotspotPlotMixin:
 
             m = folium.Map(
                 location=centre,
-                tiles=tiles if show_basemap else None,
+                tiles=tiles if add_basemap else None,
             )
 
             # Dynamically tailor tooltips to keep clean when columns don't exist
@@ -1399,7 +1425,7 @@ class HotspotPlotMixin:
                     **kwargs,
                 )
 
-            if show_basemap:
+            if add_basemap:
                 try:
                     cx.add_basemap(ax, crs=hotspots_df.crs.to_string(), timeout=30)
                 except RequestException as e:

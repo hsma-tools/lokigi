@@ -15,6 +15,7 @@ from lokigi.utils import (
     _add_rank_column,
     _generate_all_combinations,
     _get_ranking_by_objective,
+    _is_maximise_metric,
     _select_solution,
     _too_similar_to_accepted,
 )
@@ -189,3 +190,40 @@ def test_get_ranking_by_objective_maps_every_supported_objective(
     objective, expected_column
 ):
     assert _get_ranking_by_objective(objective) == expected_column
+
+
+# --- _is_maximise_metric ---
+
+
+@pytest.mark.parametrize(
+    "column",
+    [
+        "proportion_within_coverage_threshold",
+        "proportion_regions_within_coverage_threshold",
+        # Secondary-matrix columns: these were treated as minimisation
+        # objectives by the exact-equality checks this helper replaced, which
+        # sorted secondary coverage backwards in Pareto plots and
+        # SolutionComparator.
+        "proportion_within_coverage_threshold__public_transport",
+        "proportion_regions_within_coverage_threshold__public_transport",
+    ],
+)
+def test_is_maximise_metric_is_true_for_every_coverage_column(column):
+    assert _is_maximise_metric(column) is True
+
+
+@pytest.mark.parametrize(
+    "column",
+    [
+        "weighted_average",
+        "unweighted_average",
+        "max",
+        "90th_percentile",
+        "total_cost",
+        "max__public_transport",
+        "coverage_threshold",  # the configured threshold, not a coverage score
+        None,
+    ],
+)
+def test_is_maximise_metric_is_false_for_cost_columns(column):
+    assert _is_maximise_metric(column) is False

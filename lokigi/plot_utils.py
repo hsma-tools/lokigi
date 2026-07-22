@@ -1,4 +1,4 @@
-from lokigi.utils import _safe_evaluate, _select_solution
+from lokigi.utils import _safe_evaluate, _select_solution, _get_ordinal_suffix
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from matplotlib.lines import Line2D
@@ -213,12 +213,12 @@ def plot_solution_sets_comparison(
                     title_prefix = f"Best solution for {solution_set.n_sites} sites"
                 else:
                     rank = config.get("solution_rank", 1)
-                    rank_suffix = solution_set._get_ordinal_suffix(rank)
+                    rank_suffix = _get_ordinal_suffix(rank)
                     title_prefix = f"{rank}{rank_suffix} best solution for {solution_set.n_sites} sites"
 
                 if solution_set.objectives == "mclp":
                     metrics = (
-                        f"Coverage: {solution['proportion_within_coverage_threshold'].values[0]:.1%} | "
+                        f"Demand covered: {solution['proportion_within_coverage_threshold'].values[0]:.1%} | "
                         f"Avg: {solution['unweighted_average'].values[0]:.1f} | "
                         f"Max: {solution['max'].values[0]:.1f}"
                     )
