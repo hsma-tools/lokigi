@@ -358,6 +358,24 @@ def test_travel_time_distribution_with_bottom_n_does_not_raise(solutions):
     )
 
 
+def test_plot_best_combination_draws_site_markers_for_tabular_candidate_sites(
+    solutions,
+):
+    """Regression: site markers were gated on
+    `site_problem._candidate_sites_type == "geopandas"`, which records
+    `add_sites()`'s *input* format, not whether `candidate_sites` ended up
+    with real point geometry. `plottable_problem`'s `candidate_df` is
+    tabular lat/long input (`_candidate_sites_type == "pandas"`), but
+    `add_sites()` converts it to a real GeoDataFrame internally -- so the
+    old check silently skipped site markers for this, the most common
+    `add_sites()` usage pattern. Only the region choropleth was drawn
+    (one collection); with the fix, chosen and unchosen site markers add
+    two more.
+    """
+    ax = solutions.plot_best_combination()
+    assert len(ax.collections) >= 3
+
+
 @pytest.mark.parametrize("solution_rank", [1, 2, 3])
 def test_solution_comparison_handles_every_rank(solutions, solution_rank):
     """Regression: the ordinal-suffix helper was called as

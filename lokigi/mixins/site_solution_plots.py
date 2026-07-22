@@ -1,4 +1,5 @@
 import pandas as pd
+import geopandas
 import contextily as cx
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -541,8 +542,14 @@ class MapsMixin:
                 vmax=global_vmax,
             )
 
-        # Plot candidate sites if applicable
-        if self.site_problem._candidate_sites_type == "geopandas":
+        # Plot candidate sites if applicable. Deliberately not
+        # `_candidate_sites_type == "geopandas"`: that attribute records
+        # add_sites()'s *input* format, not whether candidate_sites ended up
+        # with real point geometry. Tabular lat/long input is converted to a
+        # GeoDataFrame internally but still leaves _candidate_sites_type ==
+        # "pandas", so that check silently skipped site markers for the most
+        # common add_sites() usage pattern.
+        if isinstance(self.site_problem.candidate_sites, geopandas.GeoDataFrame):
             selected_site_names = (
                 solution.site_names.iloc[0]
                 if hasattr(solution.site_names, "iloc")
@@ -809,8 +816,11 @@ class MapsMixin:
         - "selected_site": assigned site (categorical)
         - "within_threshold": whether the region meets the coverage threshold
 
-        When plotting site locations, only GeoPandas-based candidate sites
-        are currently supported.
+        Site markers require `candidate_sites` to carry real point geometry.
+        This holds both for sites registered via a GeoDataFrame/geojson and
+        for tabular lat/long input, which `add_sites()` converts internally
+        -- it does not hold if site names were inferred from the travel
+        matrix's columns without ever calling `add_sites()`.
 
         Titles are dynamically generated based on the objective type and may
         include metrics such as weighted/unweighted averages, maximum cost,
