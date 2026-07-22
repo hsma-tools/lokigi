@@ -18,6 +18,10 @@
     - Direction is now resolved per column, so `rank_on="proportion_within_coverage_threshold"` (or any `regions`/`__<label>` coverage column) ranks highest-first, while travel-cost metrics are unchanged and still rank lowest-first
     - `plot_travel_time_distribution(secondary_ranking=...)` resolves the tie-breaker's direction independently of the primary metric, so a coverage metric can be tie-broken by a travel cost with each sorted the right way round
     - Affects which solution these methods return for coverage rankings only; anything ranking on `weighted_average`, `unweighted_average`, `90th_percentile`, `max` or `total_cost` is byte-for-byte unchanged
+- Solutions tied on a ranking metric now keep a stable, reproducible order
+    - Every sort over solutions uses a stable sort (`kind="mergesort"`), so equally-good solutions are no longer reshuffled arbitrarily. pandas' default single-column sort is quicksort, which is not stable, so which of several tied solutions was reported as "best" could differ between runs, machines or library versions
+    - Affects `rank_on=` ranking, `pareto_summary()`, and the solution the Pareto narrative methods anchor on. Ties are routine -- on the sample Brighton problem `max` takes only 5 distinct values across 15 candidate combinations
+    - `solve()`'s own ranking already sorted on two columns, which pandas handles with a stable lexsort, so no existing solve output changes
 - Fix `plot_travel_time_distribution(bottom_n=...)` raising `TypeError: list.append() takes no keyword arguments`
     - The bottom-ranked slice was appended with a stray keyword argument, so passing `bottom_n` at all crashed. Passing `top_n` alone was unaffected
 

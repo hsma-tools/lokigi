@@ -157,6 +157,41 @@ def test_select_solution_explicit_site_names_ignores_rank_on(solutions):
     assert selected["site_names"].iloc[0] == ["WORST_COVER"]
 
 
+# --- tie stability --------------------------------------------------------
+
+
+def test_sort_helper_keeps_tied_solutions_in_their_existing_order():
+    """Solutions tied on the ranking metric must keep the order they already
+    had, rather than being reshuffled arbitrarily.
+
+    pandas' default single-column sort is quicksort, which is NOT stable, so
+    without `kind="mergesort"` the solution reported as "best" among a group
+    of equally-good ones could differ between runs, machines or pandas
+    versions. Ties are routine: on the sample Brighton problem `max` takes
+    only 5 distinct values across 15 candidate combinations.
+
+    Sized deliberately large with many tie groups -- a handful of all-equal
+    rows is a degenerate case that quicksort happens to leave untouched, so
+    a small fixture would pass with an unstable sort and prove nothing.
+    """
+    n = 600
+    df = pd.DataFrame(
+        {
+            "site_names": [[f"S{i}"] for i in range(n)],
+            # 6 distinct values, 100 solutions tied at each.
+            COVERAGE: [round((i % 6) / 10, 1) for i in range(n)],
+        }
+    )
+
+    ordered = _sort_solutions_by_metric(df, COVERAGE)
+
+    for value, group in ordered.groupby(COVERAGE, sort=False):
+        positions = [int(name[0].removeprefix("S")) for name in group["site_names"]]
+        assert positions == sorted(positions), (
+            f"solutions tied at {value} were reordered: {positions[:10]}..."
+        )
+
+
 # --- plot_travel_time_distribution ----------------------------------------
 #
 # The only rank_on call site that sorts on two columns (rank_on plus

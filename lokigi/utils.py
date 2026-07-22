@@ -549,10 +549,27 @@ def _sort_solutions_by_metric(solution_df, rank_on):
     -------
     pandas.DataFrame
         Sorted copy, best first.
+
+    Notes
+    -----
+    `kind="mergesort"` is a stable sort, so solutions tied on `rank_on` keep
+    the relative order they already had rather than being reshuffled
+    arbitrarily. Ties are routine here -- on the sample Brighton problem
+    `max` takes only 5 distinct values across 15 candidate combinations --
+    and pandas' default ("quicksort") is not stable, so without this the
+    solution reported as "best" could differ between runs, machines or
+    library versions purely by which tied row landed first.
+
+    pandas only honours `kind` when sorting on a single column; multi-column
+    sorts go through `lexsort_indexer`, which is stable already. Passing it
+    unconditionally is therefore belt-and-braces for the multi-column case,
+    and load-bearing for the single-column one.
     """
     columns = [rank_on] if isinstance(rank_on, str) else list(rank_on)
     return solution_df.sort_values(
-        columns, ascending=[not _is_maximise_metric(col) for col in columns]
+        columns,
+        ascending=[not _is_maximise_metric(col) for col in columns],
+        kind="mergesort",
     )
 
 
@@ -740,7 +757,13 @@ def _add_rank_column(df, score_col, tiebreaker_col, ascending=True):
 
     # 1. Sort by primary score, then tiebreaker
     # sort_values returns a new DataFrame, so we don't strictly need .copy()
-    ranked_df = df.sort_values([score_col, tiebreaker_col], ascending=ascending)
+    # kind="mergesort" keeps rows tied on BOTH columns in their existing
+    # order. Multi-column sorts already go through a stable lexsort, so this
+    # is belt-and-braces today -- it matters if this is ever reduced to a
+    # single sort column. See _sort_solutions_by_metric for the full note.
+    ranked_df = df.sort_values(
+        [score_col, tiebreaker_col], ascending=ascending, kind="mergesort"
+    )
 
     # 2. Assign dense ranks that handle true ties
     # sort=False ensures groupby respects the order we just established.

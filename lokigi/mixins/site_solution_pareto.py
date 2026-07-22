@@ -285,7 +285,9 @@ class ParetoMixin:
             for m in self.pareto_metrics
             if m.column == sort_by
         )
-        front = front.sort_values(sort_by, ascending=ascending)
+        # Stable sort so Pareto-optimal solutions tied on `sort_by` keep a
+        # consistent order between runs -- see _sort_solutions_by_metric.
+        front = front.sort_values(sort_by, ascending=ascending, kind="mergesort")
         cols = [id_col] + [m.column for m in self.pareto_metrics]
         if return_full_df:
             return front.reset_index(drop=True)
@@ -313,8 +315,13 @@ class ParetoMixin:
 
         if anchor is None:
             first = self.pareto_metrics[0]
+            # Stable sort: the anchor is whichever solution lands first, so
+            # an unstable sort could silently narrate a different solution
+            # each run whenever the leaders tie.
             front_sorted = front.sort_values(
-                first.column, ascending=(first.direction != "higher_better")
+                first.column,
+                ascending=(first.direction != "higher_better"),
+                kind="mergesort",
             )
             anchor_row = front_sorted.iloc[0]
         else:
@@ -381,8 +388,13 @@ class ParetoMixin:
 
         if anchor is None:
             first = self.pareto_metrics[0]
+            # Stable sort: the anchor is whichever solution lands first, so
+            # an unstable sort could silently narrate a different solution
+            # each run whenever the leaders tie.
             front_sorted = front.sort_values(
-                first.column, ascending=(first.direction != "higher_better")
+                first.column,
+                ascending=(first.direction != "higher_better"),
+                kind="mergesort",
             )
             anchor_row = front_sorted.iloc[0]
         else:

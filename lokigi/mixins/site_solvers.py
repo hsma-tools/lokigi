@@ -460,7 +460,9 @@ class GreedyMixin:
             sort_ascending = [True, True] if blended else [not higher_is_better, True]
 
             evaluated_solutions = outputs_df.sort_values(
-                [score_col, "weighted_average"], ascending=sort_ascending
+                [score_col, "weighted_average"],
+                ascending=sort_ascending,
+                kind="mergesort",
             )
 
             # print("==Evaluated solution dataframe==")
