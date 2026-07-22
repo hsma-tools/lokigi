@@ -735,7 +735,7 @@ class MapsMixin:
                         matrix, solution["coverage_threshold"].values[0]
                     )
                     metrics = (
-                        f"Coverage within threshold of {threshold_val} "
+                        f"Demand covered within threshold of {threshold_val} "
                         f"{matrix_unit}: "
                         f"{solution[f'proportion_within_coverage_threshold{suffix}'].values[0]:.1%} \n"
                         f"Unweighted Average: {solution[f'unweighted_average{suffix}'].values[0]:.1f} "
@@ -1034,7 +1034,7 @@ class MapsMixin:
                             matrix, solution["coverage_threshold"].values[0]
                         )
                         ax.set_title(
-                            f"Coverage within threshold of {threshold_val} {matrix_unit}: {solution[f'proportion_within_coverage_threshold{suffix}'].values[0]:.1%} \nUnweighted Average: {solution[f'unweighted_average{suffix}'].values[0]:.1f} {matrix_unit} \nMaximum: {solution[f'max{suffix}'].values[0]:.1f} {matrix_unit}"
+                            f"Demand covered within threshold of {threshold_val} {matrix_unit}: {solution[f'proportion_within_coverage_threshold{suffix}'].values[0]:.1%} \nUnweighted Average: {solution[f'unweighted_average{suffix}'].values[0]:.1f} {matrix_unit} \nMaximum: {solution[f'max{suffix}'].values[0]:.1f} {matrix_unit}"
                         )
                     elif self.objectives in [
                         "simple_p_median",
@@ -1343,7 +1343,7 @@ class MapsMixin:
 
                     if self.objectives == "mclp":
                         metrics = (
-                            f"Coverage: {solution[f'proportion_within_coverage_threshold{config_suffix}'].values[0]:.1%} | "
+                            f"Demand covered: {solution[f'proportion_within_coverage_threshold{config_suffix}'].values[0]:.1%} | "
                             f"Avg: {solution[f'unweighted_average{config_suffix}'].values[0]:.1f} | "
                             f"Max: {solution[f'max{config_suffix}'].values[0]:.1f}"
                         )

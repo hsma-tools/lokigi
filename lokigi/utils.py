@@ -494,7 +494,34 @@ def _get_ranking_by_objective(objective):
     elif objective in ["p_center"]:
         return "max"
     elif objective in ["mclp"]:
+        # Demand-weighted since v0.7.0, matching the textbook Maximal Covering
+        # Location Problem. The column name is unchanged; its meaning is not.
         return "proportion_within_coverage_threshold"
+
+
+def _is_maximise_metric(col):
+    """
+    True for solution metrics where a HIGHER value is better.
+
+    Every other reported metric is a travel cost, where lower is better, so
+    the coverage proportions are the only maximisation objectives.
+
+    Matches on a substring rather than the exact column name so that it also
+    covers the `regions` variant and any `__<label>` secondary-travel-matrix
+    suffix -- the exact-equality checks this replaced silently treated
+    `proportion_within_coverage_threshold__<label>` as a minimisation
+    objective, sorting secondary-matrix coverage backwards.
+
+    Parameters
+    ----------
+    col : str
+        Name of a column in `solution_df`.
+
+    Returns
+    -------
+    bool
+    """
+    return isinstance(col, str) and "within_coverage_threshold" in col
 
 
 def _min_max_normalize(series, constant_fill=0.0):

@@ -151,7 +151,11 @@ class SiteProblem(
             `False` is supported.
         threshold_for_coverage : float or int, optional
             A distance or time value. Demand points with a minimum travel cost
-            lower than this value are flagged as 'covered'.
+            lower than this value are flagged as 'covered'. The resulting
+            `proportion_within_coverage_threshold` metric is weighted by the
+            demand registered via `add_demand()`; the unweighted share of
+            regions is reported alongside it as
+            `proportion_regions_within_coverage_threshold`.
 
         Returns
         -------
@@ -563,6 +567,14 @@ class SiteProblem(
         threshold_for_coverage : float, optional
             The distance or time threshold. Used as a hard filter for MCLP
             objectives or as a scoring metric for others.
+
+            Coverage is measured as the proportion of *demand* within the
+            threshold, weighted by the demand registered via `add_demand()`
+            (all regions weigh equally if it was never called). The `mclp`
+            objective therefore maximises covered demand, matching the
+            textbook Maximal Covering Location Problem. The unweighted share
+            of regions is still reported, as
+            `proportion_regions_within_coverage_threshold`.
         grasp_num_solutions : int, default 5
             (GRASP only) The number of high-quality solutions to generate.
         grasp_alpha : float, default 0.2

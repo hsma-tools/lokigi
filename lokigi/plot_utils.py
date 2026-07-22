@@ -218,7 +218,7 @@ def plot_solution_sets_comparison(
 
                 if solution_set.objectives == "mclp":
                     metrics = (
-                        f"Coverage: {solution['proportion_within_coverage_threshold'].values[0]:.1%} | "
+                        f"Demand covered: {solution['proportion_within_coverage_threshold'].values[0]:.1%} | "
                         f"Avg: {solution['unweighted_average'].values[0]:.1f} | "
                         f"Max: {solution['max'].values[0]:.1f}"
                     )

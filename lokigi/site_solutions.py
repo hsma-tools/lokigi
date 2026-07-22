@@ -85,7 +85,14 @@ class EvaluatedCombination:
         configured. Always calculated; only influences which solution is
         selected if explicitly passed as a weight (`weights={"cost": ...}`).
     proportion_within_coverage_threshold : float
-        Proportion of demand points that fall within the coverage threshold.
+        Proportion of total demand that falls within the coverage threshold,
+        weighted by the demand registered via `add_demand()`. `NaN` if no
+        `threshold_for_coverage` was supplied.
+    proportion_regions_within_coverage_threshold : float
+        Proportion of demand *regions* that fall within the coverage
+        threshold, counting every region equally regardless of its demand.
+        Identical to `proportion_within_coverage_threshold` when demand is
+        uniform (including when `add_demand()` was never called).
 
 
 
@@ -122,6 +129,7 @@ class EvaluatedCombination:
         self.inter_tertile_desc = "N/A (No equity data)"
 
         self.coverage_by_equity_group = {}
+        self.coverage_regions_by_equity_group = {}
         self.max_cost_by_equity_group = {}
         self.avg_lower_third_bins = None
         self.avg_middle_third_bins = None
@@ -343,9 +351,15 @@ class EvaluatedCombination:
         self.proportion_within_coverage_threshold = primary_metrics[
             "proportion_within_coverage_threshold"
         ]
+        self.proportion_regions_within_coverage_threshold = primary_metrics[
+            "proportion_regions_within_coverage_threshold"
+        ]
         self.weighted_by_equity_group = primary_metrics["weighted_by_equity_group"]
         self.unweighted_by_equity_group = primary_metrics["unweighted_by_equity_group"]
         self.coverage_by_equity_group = primary_metrics["coverage_by_equity_group"]
+        self.coverage_regions_by_equity_group = primary_metrics[
+            "coverage_regions_by_equity_group"
+        ]
         self.max_cost_by_equity_group = primary_metrics["max_cost_by_equity_group"]
         self.gap_absolute_weighted = primary_metrics["gap_absolute_weighted"]
         self.gap_absolute_desc = primary_metrics["gap_absolute_desc"]
@@ -372,6 +386,62 @@ class EvaluatedCombination:
                 cost_col, within_col, active_weights
             )
 
+    def _coverage_demand_series(self):
+        """
+        Raw per-region demand, used to weight the coverage metrics.
+
+        Deliberately the raw demand column rather than the compound
+        `active_weights` vector that `weighted_average` uses: those weights
+        blend demand with equity and any additional datasets whenever a
+        multi-key `weights=` dict is passed, which would make "proportion of
+        demand covered" silently mean something different from one solve()
+        call to the next.
+
+        Returns None when there is no demand column to weight by. That is
+        only reachable via a direct call to
+        `evaluate_single_solution_single_objective()`, which bypasses
+        solve()'s equal-demand fallback; callers then fall back to the
+        unweighted per-region proportion, since with no demand data the two
+        metrics are the same quantity.
+        """
+        demand_col = getattr(self.site_problem, "_demand_data_demand_col", None)
+        if (
+            demand_col is None
+            or demand_col not in self.evaluated_combination_df.columns
+        ):
+            return None
+        return self.evaluated_combination_df[demand_col].astype(float)
+
+    @staticmethod
+    def _coverage_proportion(within_flags, demand):
+        """
+        Proportion covered -- demand-weighted when `demand` is supplied,
+        otherwise the plain share of regions.
+
+        The all-NaN check is load-bearing. `within_flags` is entirely NaN
+        whenever no `threshold_for_coverage` was given, and that must stay
+        NaN ("not measured"). It cannot be left to the arithmetic below,
+        because pandas' `.sum()` skips NaN: the weighted branch would
+        otherwise return a confident 0.0 -- "none of the demand is covered"
+        -- for a problem where coverage was never assessed at all.
+        """
+        if within_flags.isna().all():
+            return np.nan
+
+        covered = within_flags.astype(float)
+
+        if demand is None:
+            return float(covered.sum() / len(covered))
+
+        total_demand = demand.sum()
+        if total_demand <= 0:
+            # Defensive only, and not reachable through the public API: a
+            # zero-demand problem already raises "Weights sum to zero" from
+            # np.average when weighted_average is computed further up.
+            return np.nan
+
+        return float((covered * demand).sum() / total_demand)
+
     def _compute_travel_metrics(self, cost_col, within_col, active_weights):
         """
         Compute weighted/unweighted travel-cost summary statistics and the
@@ -389,11 +459,19 @@ class EvaluatedCombination:
         unweighted_average = np.average(df[cost_col])
         percentile_90th = np.percentile(df[cost_col], q=90)
         max_cost = np.max(df[cost_col])
-        proportion_within_coverage_threshold = np.sum(df[within_col]) / len(df)
+
+        demand_series = self._coverage_demand_series()
+        proportion_within_coverage_threshold = self._coverage_proportion(
+            df[within_col], demand_series
+        )
+        proportion_regions_within_coverage_threshold = self._coverage_proportion(
+            df[within_col], None
+        )
 
         weighted_by_equity_group = {}
         unweighted_by_equity_group = {}
         coverage_by_equity_group = {}
+        coverage_regions_by_equity_group = {}
         max_cost_by_equity_group = {}
         gap_absolute_weighted = None
         gap_absolute_desc = "N/A (No equity data)"
@@ -457,10 +535,26 @@ class EvaluatedCombination:
                     gap_relative_desc = "N/A (Zero baseline cost)"
 
             # 4. Coverage Equity (Thresholds by Group)
+            # Mirrors the global pair above, under the same naming rule: the
+            # unqualified dict is demand-weighted, the `regions` one is the
+            # plain share of regions in each band.
             if within_col in df.columns:
-                coverage_by_equity_group = (
-                    grouped_df[within_col].mean().round(2).to_dict()
-                )
+                coverage_regions_by_equity_group = {
+                    band: round(self._coverage_proportion(group[within_col], None), 2)
+                    for band, group in grouped_df
+                }
+                coverage_by_equity_group = {
+                    band: round(
+                        self._coverage_proportion(
+                            group[within_col],
+                            None
+                            if demand_series is None
+                            else demand_series.loc[group.index],
+                        ),
+                        2,
+                    )
+                    for band, group in grouped_df
+                }
 
             # 5. Worst-Case Scenarios by Group
             max_cost_by_equity_group = grouped_df[cost_col].max().round(2).to_dict()
@@ -511,9 +605,11 @@ class EvaluatedCombination:
             "percentile_90th": percentile_90th,
             "max": max_cost,
             "proportion_within_coverage_threshold": proportion_within_coverage_threshold,
+            "proportion_regions_within_coverage_threshold": proportion_regions_within_coverage_threshold,
             "weighted_by_equity_group": weighted_by_equity_group,
             "unweighted_by_equity_group": unweighted_by_equity_group,
             "coverage_by_equity_group": coverage_by_equity_group,
+            "coverage_regions_by_equity_group": coverage_regions_by_equity_group,
             "max_cost_by_equity_group": max_cost_by_equity_group,
             "gap_absolute_weighted": gap_absolute_weighted,
             "gap_absolute_desc": gap_absolute_desc,
@@ -581,14 +677,24 @@ class EvaluatedCombination:
         5. Coverage Metrics ('proportion_within_coverage_threshold', 'coverage_by_equity_group'):
            - HIGHER is better (Scale: 0.0 to 1.0). Represents accessibility. Look for
              solutions where coverage is both globally high and uniformly distributed
-             across groups.
+             across groups. Both are `NaN` if no `threshold_for_coverage` was given.
+           - NAMING RULE: an unqualified coverage metric is weighted by the demand
+             registered via `add_demand()`, so it answers "what share of *people*
+             are covered". The `regions` variants
+             ('proportion_regions_within_coverage_threshold',
+             'coverage_regions_by_equity_group') count every region equally and
+             answer "what share of *places* are covered". The two coincide when
+             demand is uniform, including when `add_demand()` was never called.
+           - The demand-weighted figure is the one 'mclp' optimises, matching the
+             textbook Maximal Covering Location Problem.
 
         6. Secondary travel matrices (columns suffixed `__<label>`, e.g.
            'weighted_average__public_transport'):
            - Registered via `add_secondary_travel_matrix(label=...)`. Same metrics
              and sort direction as their unsuffixed counterparts above (1a/1b/5),
              computed against that matrix's own travel costs instead of the
-             primary matrix. By default, only the core five metrics plus the
+             primary matrix. By default, only the core scalar metrics (both
+             coverage proportions included) plus the
              float-valued equity aggregations (gap_absolute_weighted,
              gap_relative_weighted, avg_*_third_bins, inter_tertile_ratio) are
              included per matrix, to keep this table from growing unboundedly
@@ -611,10 +717,12 @@ class EvaluatedCombination:
             "max": self.max,
             "total_cost": self.total_cost,
             "proportion_within_coverage_threshold": self.proportion_within_coverage_threshold,
+            "proportion_regions_within_coverage_threshold": self.proportion_regions_within_coverage_threshold,
             # Granular Equity Collections
             "weighted_by_equity_group": self.weighted_by_equity_group,
             "unweighted_by_equity_group": self.unweighted_by_equity_group,
             "coverage_by_equity_group": self.coverage_by_equity_group,
+            "coverage_regions_by_equity_group": self.coverage_regions_by_equity_group,
             "max_cost_by_equity_group": self.max_cost_by_equity_group,
             # Numeric Aggregations
             "gap_absolute_weighted": self.gap_absolute_weighted,
@@ -643,6 +751,9 @@ class EvaluatedCombination:
             metrics[f"proportion_within_coverage_threshold__{label}"] = secondary[
                 "proportion_within_coverage_threshold"
             ]
+            metrics[f"proportion_regions_within_coverage_threshold__{label}"] = (
+                secondary["proportion_regions_within_coverage_threshold"]
+            )
             metrics[f"gap_absolute_weighted__{label}"] = secondary[
                 "gap_absolute_weighted"
             ]
@@ -669,6 +780,9 @@ class EvaluatedCombination:
                 ]
                 metrics[f"coverage_by_equity_group__{label}"] = secondary[
                     "coverage_by_equity_group"
+                ]
+                metrics[f"coverage_regions_by_equity_group__{label}"] = secondary[
+                    "coverage_regions_by_equity_group"
                 ]
                 metrics[f"max_cost_by_equity_group__{label}"] = secondary[
                     "max_cost_by_equity_group"

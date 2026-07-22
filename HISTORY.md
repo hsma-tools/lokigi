@@ -1,3 +1,19 @@
+## v0.7.0
+
+- **Behaviour change:** coverage metrics are now weighted by demand rather than counting every region equally
+    - `proportion_within_coverage_threshold` now reports the proportion of total *demand* within `threshold_for_coverage`, weighted by the demand registered via `add_demand()`. Previously it was the proportion of *regions*, so a sparsely-populated LSOA counted as much as a dense one
+    - `coverage_by_equity_group` changes in the same way, reporting demand-weighted coverage within each equity band
+    - Because `mclp` ranks on `proportion_within_coverage_threshold`, **the `mclp` objective may now select a different combination of sites** on any problem with non-uniform demand. It now maximises covered demand, matching the textbook Maximal Covering Location Problem
+    - Nothing changes for problems with uniform demand, including those that never call `add_demand()` -- `solve()` assumes equal demand in that case, which makes the demand-weighted and region-based figures identical
+    - The weighting always uses the raw demand column, never the compound `weights=` vector used by `weighted_average`, so the metric means "proportion of demand covered" regardless of what is passed to `weights=`
+- Add `proportion_regions_within_coverage_threshold` and `coverage_regions_by_equity_group`, preserving the previous region-counting behaviour
+    - Naming rule: an unqualified coverage metric is demand-weighted ("what share of people"), and the `regions` variants count every region equally ("what share of places")
+    - Both are added for registered secondary travel matrices too: `proportion_regions_within_coverage_threshold__<label>` sits alongside its demand-weighted counterpart in the default per-matrix metric set, and `coverage_regions_by_equity_group__<label>` appears under `full_secondary_metrics=True`
+    - Both are picked up automatically by `show_solutions(expand_dict_columns=True)`, which detects dict columns by content rather than by name
+- Fix coverage columns for secondary travel matrices being sorted backwards
+    - `plot_simple_pareto_front_pairs`, `plot_all_metric_pareto_front_pairs`, and `SolutionComparator` inferred "higher is better" by exact match against `proportion_within_coverage_threshold`, so a suffixed column such as `proportion_within_coverage_threshold__public_transport` was treated as a metric to minimise. Direction is now inferred for any coverage-proportion column, suffixed or not
+- Both coverage proportions are `NaN` when no `threshold_for_coverage` was supplied, rather than `0.0`
+
 ## v0.6.0
 
 - Add support for secondary travel matrices via `add_secondary_travel_matrix(travel_matrix_df, source_col, label, ...)`

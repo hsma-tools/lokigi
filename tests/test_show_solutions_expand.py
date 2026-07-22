@@ -41,6 +41,9 @@ def test_expand_dict_columns_splits_into_one_column_per_key(loaded_problem_with_
     for base in (
         "unweighted_by_equity_group",
         "coverage_by_equity_group",
+        # Detected by content rather than by name, so the regions dict added
+        # in v0.7.0 is picked up without touching _expand_dict_columns.
+        "coverage_regions_by_equity_group",
         "max_cost_by_equity_group",
     ):
         assert f"{base}__1" in df.columns

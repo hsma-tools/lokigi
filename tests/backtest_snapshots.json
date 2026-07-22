@@ -5,6 +5,7 @@
         "Site 3",
         "Site 4"
       ],
+      1.0,
       1.0
     ],
     [
@@ -12,6 +13,7 @@
         "Site 3",
         "Site 6"
       ],
+      1.0,
       1.0
     ],
     [
@@ -19,6 +21,7 @@
         "Site 1",
         "Site 3"
       ],
+      1.0,
       1.0
     ],
     [
@@ -26,6 +29,7 @@
         "Site 3",
         "Site 5"
       ],
+      1.0,
       1.0
     ],
     [
@@ -33,6 +37,7 @@
         "Site 2",
         "Site 3"
       ],
+      1.0,
       1.0
     ],
     [
@@ -40,6 +45,7 @@
         "Site 4",
         "Site 5"
       ],
+      0.997181,
       0.993939
     ],
     [
@@ -47,6 +53,7 @@
         "Site 5",
         "Site 6"
       ],
+      0.997181,
       0.993939
     ],
     [
@@ -54,6 +61,7 @@
         "Site 1",
         "Site 5"
       ],
+      0.997181,
       0.993939
     ],
     [
@@ -61,6 +69,7 @@
         "Site 2",
         "Site 5"
       ],
+      0.997181,
       0.993939
     ],
     [
@@ -68,6 +77,7 @@
         "Site 2",
         "Site 4"
       ],
+      0.99404,
       0.987879
     ],
     [
@@ -75,6 +85,7 @@
         "Site 4",
         "Site 6"
       ],
+      0.99404,
       0.987879
     ],
     [
@@ -82,6 +93,7 @@
         "Site 2",
         "Site 6"
       ],
+      0.99404,
       0.987879
     ],
     [
@@ -89,6 +101,7 @@
         "Site 1",
         "Site 2"
       ],
+      0.99404,
       0.987879
     ],
     [
@@ -96,6 +109,7 @@
         "Site 1",
         "Site 6"
       ],
+      0.99404,
       0.987879
     ],
     [
@@ -103,6 +117,7 @@
         "Site 1",
         "Site 4"
       ],
+      0.973569,
       0.969697
     ]
   ],
@@ -299,12 +314,199 @@
       5.447841
     ]
   ],
+  "test_backtest_direction_contract_with_secondary_matrix": [
+    [
+      "solution_rank",
+      false
+    ],
+    [
+      "site_names",
+      false
+    ],
+    [
+      "site_indices",
+      false
+    ],
+    [
+      "coverage_threshold",
+      false
+    ],
+    [
+      "weighted_average",
+      false
+    ],
+    [
+      "unweighted_average",
+      false
+    ],
+    [
+      "90th_percentile",
+      false
+    ],
+    [
+      "max",
+      false
+    ],
+    [
+      "total_cost",
+      false
+    ],
+    [
+      "proportion_within_coverage_threshold",
+      true
+    ],
+    [
+      "proportion_regions_within_coverage_threshold",
+      true
+    ],
+    [
+      "weighted_by_equity_group",
+      false
+    ],
+    [
+      "unweighted_by_equity_group",
+      false
+    ],
+    [
+      "coverage_by_equity_group",
+      false
+    ],
+    [
+      "coverage_regions_by_equity_group",
+      false
+    ],
+    [
+      "max_cost_by_equity_group",
+      false
+    ],
+    [
+      "gap_absolute_weighted",
+      false
+    ],
+    [
+      "gap_relative_weighted",
+      false
+    ],
+    [
+      "avg_lower_third_bins",
+      false
+    ],
+    [
+      "avg_middle_third_bins",
+      false
+    ],
+    [
+      "avg_upper_third_bins",
+      false
+    ],
+    [
+      "inter_tertile_ratio",
+      false
+    ],
+    [
+      "gap_absolute_description",
+      false
+    ],
+    [
+      "gap_relative_description",
+      false
+    ],
+    [
+      "inter_tertile_description",
+      false
+    ],
+    [
+      "problem_df",
+      false
+    ],
+    [
+      "weighted_average__public_transport",
+      false
+    ],
+    [
+      "unweighted_average__public_transport",
+      false
+    ],
+    [
+      "90th_percentile__public_transport",
+      false
+    ],
+    [
+      "max__public_transport",
+      false
+    ],
+    [
+      "proportion_within_coverage_threshold__public_transport",
+      true
+    ],
+    [
+      "proportion_regions_within_coverage_threshold__public_transport",
+      true
+    ],
+    [
+      "gap_absolute_weighted__public_transport",
+      false
+    ],
+    [
+      "gap_relative_weighted__public_transport",
+      false
+    ],
+    [
+      "avg_lower_third_bins__public_transport",
+      false
+    ],
+    [
+      "avg_middle_third_bins__public_transport",
+      false
+    ],
+    [
+      "avg_upper_third_bins__public_transport",
+      false
+    ],
+    [
+      "inter_tertile_ratio__public_transport",
+      false
+    ],
+    [
+      "weighted_by_equity_group__public_transport",
+      false
+    ],
+    [
+      "unweighted_by_equity_group__public_transport",
+      false
+    ],
+    [
+      "coverage_by_equity_group__public_transport",
+      false
+    ],
+    [
+      "coverage_regions_by_equity_group__public_transport",
+      false
+    ],
+    [
+      "max_cost_by_equity_group__public_transport",
+      false
+    ],
+    [
+      "gap_absolute_description__public_transport",
+      false
+    ],
+    [
+      "gap_relative_description__public_transport",
+      false
+    ],
+    [
+      "inter_tertile_description__public_transport",
+      false
+    ]
+  ],
   "test_backtest_five_site_problem_mclp_brute_force": [
     [
       [
         "Site_1",
         "Site_3"
       ],
+      0.75,
       0.75
     ],
     [
@@ -312,6 +514,7 @@
         "Site_2",
         "Site_3"
       ],
+      0.75,
       0.75
     ],
     [
@@ -319,6 +522,7 @@
         "Site_3",
         "Site_5"
       ],
+      0.5,
       0.5
     ],
     [
@@ -326,6 +530,7 @@
         "Site_3",
         "Site_4"
       ],
+      0.5,
       0.5
     ],
     [
@@ -333,6 +538,7 @@
         "Site_2",
         "Site_4"
       ],
+      0.25,
       0.25
     ],
     [
@@ -340,6 +546,7 @@
         "Site_1",
         "Site_5"
       ],
+      0.25,
       0.25
     ],
     [
@@ -347,6 +554,7 @@
         "Site_1",
         "Site_4"
       ],
+      0.25,
       0.25
     ],
     [
@@ -354,6 +562,7 @@
         "Site_2",
         "Site_5"
       ],
+      0.25,
       0.25
     ],
     [
@@ -361,6 +570,7 @@
         "Site_1",
         "Site_2"
       ],
+      0.25,
       0.25
     ],
     [
@@ -368,6 +578,7 @@
         "Site_4",
         "Site_5"
       ],
+      0.0,
       0.0
     ]
   ],
