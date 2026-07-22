@@ -912,6 +912,596 @@
       12.666667
     ]
   ],
+  "test_backtest_rank_on_ordering_brighton_mclp": [
+    [
+      "proportion_within_coverage_threshold",
+      [
+        [
+          0.782171,
+          [
+            [
+              "Site 3",
+              "Site 4"
+            ]
+          ]
+        ],
+        [
+          0.736888,
+          [
+            [
+              "Site 3",
+              "Site 6"
+            ]
+          ]
+        ],
+        [
+          0.659746,
+          [
+            [
+              "Site 1",
+              "Site 3"
+            ]
+          ]
+        ],
+        [
+          0.616105,
+          [
+            [
+              "Site 4",
+              "Site 5"
+            ]
+          ]
+        ],
+        [
+          0.592809,
+          [
+            [
+              "Site 2",
+              "Site 4"
+            ]
+          ]
+        ],
+        [
+          0.545845,
+          [
+            [
+              "Site 3",
+              "Site 5"
+            ]
+          ]
+        ],
+        [
+          0.508853,
+          [
+            [
+              "Site 5",
+              "Site 6"
+            ]
+          ]
+        ],
+        [
+          0.500772,
+          [
+            [
+              "Site 4",
+              "Site 6"
+            ]
+          ]
+        ],
+        [
+          0.498408,
+          [
+            [
+              "Site 2",
+              "Site 6"
+            ]
+          ]
+        ],
+        [
+          0.472717,
+          [
+            [
+              "Site 1",
+              "Site 5"
+            ]
+          ]
+        ],
+        [
+          0.47008,
+          [
+            [
+              "Site 2",
+              "Site 3"
+            ]
+          ]
+        ],
+        [
+          0.465277,
+          [
+            [
+              "Site 1",
+              "Site 2"
+            ]
+          ]
+        ],
+        [
+          0.43538,
+          [
+            [
+              "Site 1",
+              "Site 4"
+            ]
+          ]
+        ],
+        [
+          0.382814,
+          [
+            [
+              "Site 1",
+              "Site 6"
+            ]
+          ]
+        ],
+        [
+          0.323825,
+          [
+            [
+              "Site 2",
+              "Site 5"
+            ]
+          ]
+        ]
+      ]
+    ],
+    [
+      "proportion_regions_within_coverage_threshold",
+      [
+        [
+          0.757576,
+          [
+            [
+              "Site 3",
+              "Site 6"
+            ]
+          ]
+        ],
+        [
+          0.745455,
+          [
+            [
+              "Site 3",
+              "Site 4"
+            ]
+          ]
+        ],
+        [
+          0.654545,
+          [
+            [
+              "Site 4",
+              "Site 5"
+            ]
+          ]
+        ],
+        [
+          0.642424,
+          [
+            [
+              "Site 1",
+              "Site 3"
+            ],
+            [
+              "Site 2",
+              "Site 4"
+            ]
+          ]
+        ],
+        [
+          0.575758,
+          [
+            [
+              "Site 2",
+              "Site 6"
+            ]
+          ]
+        ],
+        [
+          0.569697,
+          [
+            [
+              "Site 4",
+              "Site 6"
+            ]
+          ]
+        ],
+        [
+          0.563636,
+          [
+            [
+              "Site 5",
+              "Site 6"
+            ]
+          ]
+        ],
+        [
+          0.539394,
+          [
+            [
+              "Site 3",
+              "Site 5"
+            ]
+          ]
+        ],
+        [
+          0.527273,
+          [
+            [
+              "Site 1",
+              "Site 2"
+            ]
+          ]
+        ],
+        [
+          0.515152,
+          [
+            [
+              "Site 1",
+              "Site 5"
+            ]
+          ]
+        ],
+        [
+          0.466667,
+          [
+            [
+              "Site 1",
+              "Site 6"
+            ]
+          ]
+        ],
+        [
+          0.460606,
+          [
+            [
+              "Site 1",
+              "Site 4"
+            ]
+          ]
+        ],
+        [
+          0.454545,
+          [
+            [
+              "Site 2",
+              "Site 3"
+            ]
+          ]
+        ],
+        [
+          0.369697,
+          [
+            [
+              "Site 2",
+              "Site 5"
+            ]
+          ]
+        ]
+      ]
+    ],
+    [
+      "max",
+      [
+        [
+          16.688833,
+          [
+            [
+              "Site 1",
+              "Site 3"
+            ],
+            [
+              "Site 2",
+              "Site 3"
+            ],
+            [
+              "Site 3",
+              "Site 4"
+            ],
+            [
+              "Site 3",
+              "Site 5"
+            ],
+            [
+              "Site 3",
+              "Site 6"
+            ]
+          ]
+        ],
+        [
+          21.709667,
+          [
+            [
+              "Site 1",
+              "Site 5"
+            ],
+            [
+              "Site 2",
+              "Site 5"
+            ],
+            [
+              "Site 4",
+              "Site 5"
+            ],
+            [
+              "Site 5",
+              "Site 6"
+            ]
+          ]
+        ],
+        [
+          22.857667,
+          [
+            [
+              "Site 1",
+              "Site 6"
+            ],
+            [
+              "Site 2",
+              "Site 6"
+            ],
+            [
+              "Site 4",
+              "Site 6"
+            ]
+          ]
+        ],
+        [
+          23.921,
+          [
+            [
+              "Site 1",
+              "Site 2"
+            ],
+            [
+              "Site 2",
+              "Site 4"
+            ]
+          ]
+        ],
+        [
+          26.329833,
+          [
+            [
+              "Site 1",
+              "Site 4"
+            ]
+          ]
+        ]
+      ]
+    ],
+    [
+      "weighted_average",
+      [
+        [
+          5.943984,
+          [
+            [
+              "Site 3",
+              "Site 4"
+            ]
+          ]
+        ],
+        [
+          6.68662,
+          [
+            [
+              "Site 3",
+              "Site 6"
+            ]
+          ]
+        ],
+        [
+          6.810372,
+          [
+            [
+              "Site 1",
+              "Site 3"
+            ]
+          ]
+        ],
+        [
+          7.333245,
+          [
+            [
+              "Site 4",
+              "Site 5"
+            ]
+          ]
+        ],
+        [
+          7.455242,
+          [
+            [
+              "Site 2",
+              "Site 4"
+            ]
+          ]
+        ],
+        [
+          7.607473,
+          [
+            [
+              "Site 3",
+              "Site 5"
+            ]
+          ]
+        ],
+        [
+          8.231743,
+          [
+            [
+              "Site 4",
+              "Site 6"
+            ]
+          ]
+        ],
+        [
+          8.355642,
+          [
+            [
+              "Site 2",
+              "Site 6"
+            ]
+          ]
+        ],
+        [
+          8.450685,
+          [
+            [
+              "Site 1",
+              "Site 2"
+            ]
+          ]
+        ],
+        [
+          8.524254,
+          [
+            [
+              "Site 5",
+              "Site 6"
+            ]
+          ]
+        ],
+        [
+          8.5637,
+          [
+            [
+              "Site 1",
+              "Site 5"
+            ]
+          ]
+        ],
+        [
+          8.685266,
+          [
+            [
+              "Site 2",
+              "Site 3"
+            ]
+          ]
+        ],
+        [
+          9.185125,
+          [
+            [
+              "Site 1",
+              "Site 4"
+            ]
+          ]
+        ],
+        [
+          9.192464,
+          [
+            [
+              "Site 2",
+              "Site 5"
+            ]
+          ]
+        ],
+        [
+          9.387115,
+          [
+            [
+              "Site 1",
+              "Site 6"
+            ]
+          ]
+        ]
+      ]
+    ]
+  ],
+  "test_backtest_rank_on_ordering_with_secondary_matrix": [
+    [
+      "proportion_within_coverage_threshold__public_transport",
+      [
+        [
+          1.0,
+          [
+            [
+              "Site_A",
+              "Site_C"
+            ],
+            [
+              "Site_B",
+              "Site_C"
+            ]
+          ]
+        ],
+        [
+          0.0,
+          [
+            [
+              "Site_A",
+              "Site_B"
+            ]
+          ]
+        ]
+      ]
+    ],
+    [
+      "proportion_regions_within_coverage_threshold__public_transport",
+      [
+        [
+          1.0,
+          [
+            [
+              "Site_A",
+              "Site_C"
+            ],
+            [
+              "Site_B",
+              "Site_C"
+            ]
+          ]
+        ],
+        [
+          0.0,
+          [
+            [
+              "Site_A",
+              "Site_B"
+            ]
+          ]
+        ]
+      ]
+    ],
+    [
+      "max__public_transport",
+      [
+        [
+          5.0,
+          [
+            [
+              "Site_A",
+              "Site_C"
+            ],
+            [
+              "Site_B",
+              "Site_C"
+            ]
+          ]
+        ],
+        [
+          50.0,
+          [
+            [
+              "Site_A",
+              "Site_B"
+            ]
+          ]
+        ]
+      ]
+    ]
+  ],
   "test_backtest_tied_score_problem_p_median_brute_force_keep_best_n": [
     [
       [
