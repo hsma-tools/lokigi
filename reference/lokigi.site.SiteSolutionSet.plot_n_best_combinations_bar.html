@@ -365,10 +365,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 5%">
-<col style="width: 5%">
-<col style="width: 79%">
-<col style="width: 9%">
+<col style="width: 4%">
+<col style="width: 4%">
+<col style="width: 82%">
+<col style="width: 8%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -400,7 +400,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="even">
 <td>rank_on</td>
 <td>str</td>
-<td>Column name used to rank solutions. If provided, solutions are sorted in ascending order before selecting the top <code>n_best</code>. If None, the existing order of <code>solution_df</code> is used.</td>
+<td>Column name used to rank solutions. If provided, the best solutions by this metric are selected – highest-first for coverage proportions, lowest-first for travel costs. If None, the existing order of <code>solution_df</code> is used.</td>
 <td><code>None</code></td>
 </tr>
 <tr class="odd">

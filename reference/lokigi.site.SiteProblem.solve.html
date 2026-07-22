@@ -449,7 +449,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td>threshold_for_coverage</td>
 <td>float</td>
-<td>The distance or time threshold. Used as a hard filter for MCLP objectives or as a scoring metric for others.</td>
+<td>The distance or time threshold. Used as a hard filter for MCLP objectives or as a scoring metric for others. Coverage is measured as the proportion of <em>demand</em> within the threshold, weighted by the demand registered via <code>add_demand()</code> (all regions weigh equally if it was never called). The <code>mclp</code> objective therefore maximises covered demand, matching the textbook Maximal Covering Location Problem. The unweighted share of regions is still reported, as <code>proportion_regions_within_coverage_threshold</code>.</td>
 <td><code>None</code></td>
 </tr>
 <tr class="even">

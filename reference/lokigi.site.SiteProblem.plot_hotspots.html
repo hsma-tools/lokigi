@@ -361,7 +361,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    tiles<span class="op">=</span><span class="st">'CartoDB positron'</span>,</span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    edgecolor<span class="op">=</span><span class="st">'black'</span>,</span>
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    linewidth<span class="op">=</span><span class="fl">0.5</span>,</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    show_basemap<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    add_basemap<span class="op">=</span><span class="va">True</span>,</span>
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    show_axis<span class="op">=</span><span class="va">False</span>,</span>
 <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    opacity<span class="op">=</span><span class="fl">0.7</span>,</span>
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    what<span class="op">=</span><span class="st">'demand'</span>,</span>
@@ -380,10 +380,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 65%">
-<col style="width: 9%">
+<col style="width: 10%">
+<col style="width: 10%">
+<col style="width: 71%">
+<col style="width: 8%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -443,60 +443,66 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>"CartoDB positron"</code></td>
 </tr>
 <tr class="odd">
+<td>add_basemap</td>
+<td>bool</td>
+<td>Whether to add a basemap (static) or tile layer (interactive). Set False to skip the tile download entirely. .. versionchanged:: 0.7.0 Renamed from <code>show_basemap</code>, which has been removed.</td>
+<td><code>True</code></td>
+</tr>
+<tr class="even">
 <td>edgecolor</td>
 <td>str</td>
 <td>Boundary colour used when plotting polygons.</td>
 <td><code>"black"</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>linewidth</td>
 <td>float</td>
 <td>Width of polygon boundaries.</td>
 <td><code>0.5</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>what</td>
 <td>(demand, equity)</td>
 <td>Variable used for hotspot analysis when <code>hotspots_df</code> is not provided.</td>
 <td><code>"demand"</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>neighbourhood_method</td>
 <td>(rook, queen, k - nearest)</td>
 <td>Method used to define neighbouring regions.</td>
 <td><code>"rook"</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>k</td>
 <td>int</td>
 <td>Number of neighbours when <code>neighbourhood_method="k-nearest"</code>.</td>
 <td><code>None</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>verbose</td>
 <td>bool</td>
 <td>Whether to print progress information.</td>
 <td><code>True</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>significance_threshold</td>
 <td>float</td>
 <td>Significance threshold used to classify hotspot and coldspot regions.</td>
 <td><code>0.05</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>force_weight_recalculation</td>
 <td>bool</td>
 <td>If <code>True</code>, spatial weights are recalculated even if a cached version is available.</td>
 <td><code>False</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>figsize</td>
 <td>tuple | None</td>
 <td>Allow overriding size of static plot</td>
 <td><code>None</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>**kwargs</td>
 <td></td>
 <td>Additional keyword arguments passed to <code>GeoDataFrame.plot</code> or <code>GeoDataFrame.explore</code>.</td>
@@ -525,6 +531,30 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td></td>
 <td>matplotlib.axes.Axes or folium.Map</td>
 <td>Static or interactive hotspot map depending on the value of <code>interactive</code>.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="raises" class="level2 doc-section doc-section-raises">
+<h2 class="doc-section doc-section-raises anchored" data-anchor-id="raises">Raises</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 10%">
+<col style="width: 14%">
+<col style="width: 74%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td></td>
+<td>TypeError</td>
+<td>If the removed <code>show_basemap</code> argument is supplied.</td>
 </tr>
 </tbody>
 </table>

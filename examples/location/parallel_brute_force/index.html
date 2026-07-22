@@ -408,7 +408,7 @@ Note
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>solution <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">2</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, n_jobs<span class="op">=-</span><span class="dv">1</span>, show_progress<span class="op">=</span><span class="va">False</span>)</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>solution.show_solutions().head()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stderr">
-<pre><code>/__w/lokigi/lokigi/lokigi/site.py:731: UserWarning:
+<pre><code>/__w/lokigi/lokigi/lokigi/site.py:743: UserWarning:
 
 No candidate site dataframe was given.
 Sites names have been taken from the columns of your travel matrix: clinic_1, clinic_2, clinic_3, clinic_4, clinic_5, clinic_6, clinic_7, clinic_8, clinic_9, clinic_10, clinic_11, clinic_12, clinic_13, clinic_14, clinic_15, clinic_16, clinic_17, clinic_18, clinic_19, clinic_20, clinic_21, clinic_22, clinic_23, clinic_24, clinic_25, clinic_26, clinic_27, clinic_28.
@@ -459,7 +459,7 @@ You can use the .show_sites_format() to see the expected format beforehand.
 <td>36.26</td>
 <td>42.60</td>
 <td>NaN</td>
-<td>0.0</td>
+<td>NaN</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -483,7 +483,7 @@ You can use the .show_sites_format() to see the expected format beforehand.
 <td>31.75</td>
 <td>47.67</td>
 <td>NaN</td>
-<td>0.0</td>
+<td>NaN</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -507,7 +507,7 @@ You can use the .show_sites_format() to see the expected format beforehand.
 <td>41.41</td>
 <td>48.05</td>
 <td>NaN</td>
-<td>0.0</td>
+<td>NaN</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -531,7 +531,7 @@ You can use the .show_sites_format() to see the expected format beforehand.
 <td>36.46</td>
 <td>43.48</td>
 <td>NaN</td>
-<td>0.0</td>
+<td>NaN</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -555,7 +555,7 @@ You can use the .show_sites_format() to see the expected format beforehand.
 <td>32.96</td>
 <td>42.27</td>
 <td>NaN</td>
-<td>0.0</td>
+<td>NaN</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -571,7 +571,7 @@ You can use the .show_sites_format() to see the expected format beforehand.
 </tbody>
 </table>
 
-<p>5 rows × 24 columns</p>
+<p>5 rows × 26 columns</p>
 </div>
 </div>
 </div>

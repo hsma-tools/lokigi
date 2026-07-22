@@ -350,10 +350,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
 <table class="caption-top table">
 <colgroup>
+<col style="width: 2%">
+<col style="width: 2%">
+<col style="width: 91%">
 <col style="width: 3%">
-<col style="width: 3%">
-<col style="width: 88%">
-<col style="width: 4%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -367,7 +367,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td>rank_on</td>
 <td>str</td>
-<td>Column name to sort the solutions by. If provided, the solution with the lowest value in this column is selected. If None, the existing order of <code>solution_df</code>, which is based on the objective selected, is used.</td>
+<td>Column name to rank the solutions by. If provided, the solution with the BEST value in this column is selected – the highest for coverage proportions, the lowest for travel-cost metrics. If None, the existing order of <code>solution_df</code>, which is based on the objective selected, is used.</td>
 <td><code>None</code></td>
 </tr>
 </tbody>
@@ -392,7 +392,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td></td>
 <td>object</td>
-<td>The value of the “site_indices” column for the best solution. Typically a list or array of site indices.</td>
+<td>The value of the “site_names” column for the best solution. Typically a list or array of site names.</td>
 </tr>
 </tbody>
 </table>

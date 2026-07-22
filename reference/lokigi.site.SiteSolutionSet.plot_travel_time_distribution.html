@@ -362,9 +362,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 7%">
-<col style="width: 3%">
-<col style="width: 84%">
+<col style="width: 6%">
+<col style="width: 2%">
+<col style="width: 86%">
 <col style="width: 4%">
 </colgroup>
 <thead>
@@ -391,7 +391,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td>rank_on</td>
 <td>str</td>
-<td>Column name used to rank solutions. Sorting is performed in ascending order using this column, with <code>secondary_ranking</code> as a tie-breaker. If None, no additional sorting is applied.</td>
+<td>Column name used to rank solutions, best-first (highest for coverage proportions, lowest for travel costs), with <code>secondary_ranking</code> as a tie-breaker. Each column’s direction is resolved independently. If None, no additional sorting is applied.</td>
 <td><code>None</code></td>
 </tr>
 <tr class="even">

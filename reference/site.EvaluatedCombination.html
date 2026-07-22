@@ -550,9 +550,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-attributes anchored" data-anchor-id="attributes">Attributes</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 11%">
+<col style="width: 14%">
 <col style="width: 5%">
-<col style="width: 82%">
+<col style="width: 80%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -620,7 +620,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="even">
 <td>proportion_within_coverage_threshold</td>
 <td>float</td>
-<td>Proportion of demand points that fall within the coverage threshold.</td>
+<td>Proportion of total demand that falls within the coverage threshold, weighted by the demand registered via <code>add_demand()</code>. <code>NaN</code> if no <code>threshold_for_coverage</code> was supplied.</td>
+</tr>
+<tr class="odd">
+<td>proportion_regions_within_coverage_threshold</td>
+<td>float</td>
+<td>Proportion of demand <em>regions</em> that fall within the coverage threshold, counting every region equally regardless of its demand. Identical to <code>proportion_within_coverage_threshold</code> when demand is uniform (including when <code>add_demand()</code> was never called).</td>
 </tr>
 </tbody>
 </table>

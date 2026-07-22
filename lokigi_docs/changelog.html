@@ -304,7 +304,12 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#v0.6.0" id="toc-v0.6.0" class="nav-link active" data-scroll-target="#v0.6.0">v0.6.0</a></li>
+  <li><a href="#v0.7.0" id="toc-v0.7.0" class="nav-link active" data-scroll-target="#v0.7.0">v0.7.0</a>
+  <ul class="collapse">
+  <li><a href="#breaking-changes" id="toc-breaking-changes" class="nav-link" data-scroll-target="#breaking-changes">⚠️ Breaking changes</a></li>
+  <li><a href="#notes" id="toc-notes" class="nav-link" data-scroll-target="#notes">Notes</a></li>
+  </ul></li>
+  <li><a href="#v0.6.0" id="toc-v0.6.0" class="nav-link" data-scroll-target="#v0.6.0">v0.6.0</a></li>
   <li><a href="#v0.5.0" id="toc-v0.5.0" class="nav-link" data-scroll-target="#v0.5.0">v0.5.0</a></li>
   <li><a href="#v0.4.1" id="toc-v0.4.1" class="nav-link" data-scroll-target="#v0.4.1">v0.4.1</a></li>
   <li><a href="#v0.4.0" id="toc-v0.4.0" class="nav-link" data-scroll-target="#v0.4.0">v0.4.0</a></li>
@@ -323,6 +328,71 @@ ul.task-list li input[type="checkbox"] {
 
 
 
+<section id="v0.7.0" class="level2">
+<h2 class="anchored" data-anchor-id="v0.7.0">v0.7.0</h2>
+<section id="breaking-changes" class="level3">
+<h3 class="anchored" data-anchor-id="breaking-changes">⚠️ Breaking changes</h3>
+<p>lokigi is pre-1.0, so breaking changes can land in any minor release. Read these before upgrading – each is detailed in the notes below.</p>
+<ul>
+<li><code>proportion_within_coverage_threshold</code> and <code>coverage_by_equity_group</code> now report <strong>demand-weighted</strong> values rather than counts of regions. Existing numbers change on any problem with non-uniform demand. The previous behaviour is available as <code>proportion_regions_within_coverage_threshold</code> / <code>coverage_regions_by_equity_group</code></li>
+<li>The <strong><code>mclp</code> objective may now select a different combination of sites</strong>, because it ranks on the metric above. It now maximises covered demand, matching the textbook Maximal Covering Location Problem</li>
+<li><strong><code>rank_on=</code> with a coverage metric now returns the best-covering solution, not the worst.</strong> Anything ranking on a travel-cost metric is unchanged</li>
+<li>Both coverage proportions are now <strong><code>NaN</code> rather than <code>0.0</code></strong> when no <code>threshold_for_coverage</code> was supplied</li>
+<li><strong><code>show_basemap</code> has been removed</strong> from <code>plot_region_geometry_layer()</code>, <code>plot_hotspots()</code> and <code>plot_quadrant_map()</code>. Use <code>add_basemap</code>, which is now the argument name on every plotting method. Passing the old name raises a <code>TypeError</code> naming the replacement</li>
+</ul>
+</section>
+<section id="notes" class="level3">
+<h3 class="anchored" data-anchor-id="notes">Notes</h3>
+<ul>
+<li><strong>Behaviour change:</strong> coverage metrics are now weighted by demand rather than counting every region equally
+<ul>
+<li><code>proportion_within_coverage_threshold</code> now reports the proportion of total <em>demand</em> within <code>threshold_for_coverage</code>, weighted by the demand registered via <code>add_demand()</code>. Previously it was the proportion of <em>regions</em>, so a sparsely-populated LSOA counted as much as a dense one</li>
+<li><code>coverage_by_equity_group</code> changes in the same way, reporting demand-weighted coverage within each equity band</li>
+<li>Because <code>mclp</code> ranks on <code>proportion_within_coverage_threshold</code>, <strong>the <code>mclp</code> objective may now select a different combination of sites</strong> on any problem with non-uniform demand. It now maximises covered demand, matching the textbook Maximal Covering Location Problem</li>
+<li>Nothing changes for problems with uniform demand, including those that never call <code>add_demand()</code> – <code>solve()</code> assumes equal demand in that case, which makes the demand-weighted and region-based figures identical</li>
+<li>The weighting always uses the raw demand column, never the compound <code>weights=</code> vector used by <code>weighted_average</code>, so the metric means “proportion of demand covered” regardless of what is passed to <code>weights=</code></li>
+</ul></li>
+<li>Add <code>proportion_regions_within_coverage_threshold</code> and <code>coverage_regions_by_equity_group</code>, preserving the previous region-counting behaviour
+<ul>
+<li>Naming rule: an unqualified coverage metric is demand-weighted (“what share of people”), and the <code>regions</code> variants count every region equally (“what share of places”)</li>
+<li>Both are added for registered secondary travel matrices too: <code>proportion_regions_within_coverage_threshold__&lt;label&gt;</code> sits alongside its demand-weighted counterpart in the default per-matrix metric set, and <code>coverage_regions_by_equity_group__&lt;label&gt;</code> appears under <code>full_secondary_metrics=True</code></li>
+<li>Both are picked up automatically by <code>show_solutions(expand_dict_columns=True)</code>, which detects dict columns by content rather than by name</li>
+</ul></li>
+<li>Fix coverage columns for secondary travel matrices being sorted backwards
+<ul>
+<li><code>plot_simple_pareto_front_pairs</code>, <code>plot_all_metric_pareto_front_pairs</code>, and <code>SolutionComparator</code> inferred “higher is better” by exact match against <code>proportion_within_coverage_threshold</code>, so a suffixed column such as <code>proportion_within_coverage_threshold__public_transport</code> was treated as a metric to minimise. Direction is now inferred for any coverage-proportion column, suffixed or not</li>
+</ul></li>
+<li>Both coverage proportions are <code>NaN</code> when no <code>threshold_for_coverage</code> was supplied, rather than <code>0.0</code></li>
+<li>Fix <code>rank_on=</code> returning the <em>worst</em> solution when ranking on a coverage metric
+<ul>
+<li>Every <code>rank_on</code> call site sorted ascending unconditionally, which is right for the travel-cost metrics but backwards for coverage proportions, where higher is better. <code>return_best_combination_details()</code>, <code>return_best_combination_site_names()</code>, <code>return_best_combination_site_indices()</code> and the <code>rank_on</code>-accepting plotting methods (<code>plot_n_best_combinations_bar</code>, <code>plot_best_combination</code>, <code>plot_n_best_combinations</code>, <code>plot_travel_time_distribution</code>, <code>plot_combination_by_equity</code>) all returned or plotted the least-covering solution when asked for the best one</li>
+<li>Direction is now resolved per column, so <code>rank_on="proportion_within_coverage_threshold"</code> (or any <code>regions</code>/<code>__&lt;label&gt;</code> coverage column) ranks highest-first, while travel-cost metrics are unchanged and still rank lowest-first</li>
+<li><code>plot_travel_time_distribution(secondary_ranking=...)</code> resolves the tie-breaker’s direction independently of the primary metric, so a coverage metric can be tie-broken by a travel cost with each sorted the right way round</li>
+<li>Affects which solution these methods return for coverage rankings only; anything ranking on <code>weighted_average</code>, <code>unweighted_average</code>, <code>90th_percentile</code>, <code>max</code> or <code>total_cost</code> is byte-for-byte unchanged</li>
+</ul></li>
+<li>Solutions tied on a ranking metric now keep a stable, reproducible order
+<ul>
+<li>Every sort over solutions uses a stable sort (<code>kind="mergesort"</code>), so equally-good solutions are no longer reshuffled arbitrarily. pandas’ default single-column sort is quicksort, which is not stable, so which of several tied solutions was reported as “best” could differ between runs, machines or library versions</li>
+<li>Affects <code>rank_on=</code> ranking, <code>pareto_summary()</code>, and the solution the Pareto narrative methods anchor on. Ties are routine – on the sample Brighton problem <code>max</code> takes only 5 distinct values across 15 candidate combinations</li>
+<li><code>solve()</code>’s own ranking already sorted on two columns, which pandas handles with a stable lexsort, so no existing solve output changes</li>
+</ul></li>
+<li><strong>BREAKING:</strong> <code>add_basemap</code> is now the argument name on every plotting method, and <code>show_basemap</code> has been removed
+<ul>
+<li><code>plot_region_geometry_layer()</code>, <code>plot_hotspots()</code> and <code>plot_quadrant_map()</code> previously spelled it <code>show_basemap</code>, while <code>plot_sites()</code> and <code>plot_resources()</code> used <code>add_basemap</code>. Because the first three also accept <code>**kwargs</code>, passing <code>add_basemap</code> to them never reached code that understood it – it crashed the static path with a confusing <code>AttributeError</code> from matplotlib (<code>PatchCollection.set() got an unexpected keyword argument</code>) and was silently ignored on the interactive path, drawing the tile layer anyway</li>
+<li>Migration is a rename: <code>show_basemap=</code> becomes <code>add_basemap=</code>, with identical behaviour and the same <code>True</code> default</li>
+<li>Those three methods explicitly reject the removed name with a <code>TypeError</code> naming the replacement. Without that guard the same <code>**kwargs</code> forwarding would give the identical cryptic matplotlib error, or ignore it silently on the interactive path – so a bare removal would have been harder to diagnose than the original inconsistency</li>
+</ul></li>
+<li>Fix <code>plot_solution_comparison()</code> and <code>plot_solution_sets_comparison()</code> raising <code>AttributeError: 'SiteSolutionSet' object has no attribute '_get_ordinal_suffix'</code>
+<ul>
+<li>The ordinal-suffix helper is a module-level function in <code>lokigi.utils</code> but was called as though it were a method on the solution set, so plotting any solution other than the top-ranked one crashed. <code>solution_rank=1</code> took a different branch and worked, which is why this went unnoticed</li>
+</ul></li>
+<li>Fix <code>plot_travel_time_distribution(bottom_n=...)</code> raising <code>TypeError: list.append() takes no keyword arguments</code>
+<ul>
+<li>The bottom-ranked slice was appended with a stray keyword argument, so passing <code>bottom_n</code> at all crashed. Passing <code>top_n</code> alone was unaffected</li>
+</ul></li>
+</ul>
+</section>
+</section>
 <section id="v0.6.0" class="level2">
 <h2 class="anchored" data-anchor-id="v0.6.0">v0.6.0</h2>
 <ul>

@@ -365,7 +365,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    non_significant_edgecolor<span class="op">=</span><span class="st">'#bbbbbb'</span>,</span>
 <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    non_significant_linewidth<span class="op">=</span><span class="fl">0.4</span>,</span>
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    tiles<span class="op">=</span><span class="st">'CartoDB positron'</span>,</span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    show_basemap<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    add_basemap<span class="op">=</span><span class="va">True</span>,</span>
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>    show_axis<span class="op">=</span><span class="va">False</span>,</span>
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    opacity<span class="op">=</span><span class="fl">0.7</span>,</span>
 <span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>    legend_loc<span class="op">=</span><span class="st">'outside'</span>,</span>
@@ -509,9 +509,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>"CartoDB positron"</code></td>
 </tr>
 <tr class="even">
-<td>show_basemap</td>
+<td>add_basemap</td>
 <td>bool</td>
-<td>Whether to add a basemap (static) or tile layer (interactive).</td>
+<td>Whether to add a basemap (static) or tile layer (interactive). .. versionchanged:: 0.7.0 Renamed from <code>show_basemap</code>, which has been removed.</td>
 <td><code>True</code></td>
 </tr>
 <tr class="odd">
@@ -580,6 +580,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td></td>
 <td>ValueError</td>
 <td>If <code>hotspots_df</code> is provided but does not contain an <code>attribute_typology</code> column, suggesting it was not produced by a combined analysis.</td>
+</tr>
+<tr class="even">
+<td></td>
+<td>TypeError</td>
+<td>If the removed <code>show_basemap</code> argument is supplied.</td>
 </tr>
 </tbody>
 </table>

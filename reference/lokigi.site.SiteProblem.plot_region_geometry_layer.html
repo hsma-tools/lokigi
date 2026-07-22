@@ -352,7 +352,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    plot_region_of_interest_only<span class="op">=</span><span class="va">False</span>,</span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    edgecolor<span class="op">=</span><span class="st">'black'</span>,</span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    linewidth<span class="op">=</span><span class="fl">0.5</span>,</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    show_basemap<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    add_basemap<span class="op">=</span><span class="va">True</span>,</span>
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    tiles<span class="op">=</span><span class="st">'CartoDB positron'</span>,</span>
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    show_axis<span class="op">=</span><span class="va">False</span>,</span>
 <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
@@ -363,10 +363,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 8%">
-<col style="width: 5%">
-<col style="width: 72%">
-<col style="width: 13%">
+<col style="width: 4%">
+<col style="width: 2%">
+<col style="width: 85%">
+<col style="width: 7%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -402,6 +402,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>'CartoDB positron'</code></td>
 </tr>
 <tr class="odd">
+<td>add_basemap</td>
+<td>bool</td>
+<td>If True, adds a background web map (via <code>contextily</code> for static plots, or the <code>tiles</code> basemap for interactive ones). Set False to skip the tile download entirely. .. versionchanged:: 0.7.0 Renamed from <code>show_basemap</code>, which has been removed.</td>
+<td><code>True</code></td>
+</tr>
+<tr class="even">
 <td>**kwargs</td>
 <td>dict</td>
 <td>Additional keyword arguments passed to either <code>geopandas.GeoDataFrame.plot</code> or <code>geopandas.GeoDataFrame.explore</code>.</td>
@@ -459,6 +465,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td></td>
 <td>ValueError</td>
 <td>If <code>plot_demand</code> is True but <code>self.demand_data</code> is None.</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td>TypeError</td>
+<td>If the removed <code>show_basemap</code> argument is supplied.</td>
 </tr>
 </tbody>
 </table>

@@ -382,11 +382,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Hospital B is not dominated by hospital C, because hospital C was worse travel time despite better coverage.</p>
 <p>However, hospital D is worse in every respect than the other solutions; this is a <em>dominated</em> solution and so can be disregarded from our list.</p>
 <p>Let’s first remind ourselves of pareto fronts when just looking at two metrics at a time.</p>
-<div id="57f4afcf" class="cell" data-execution_count="1">
+<div id="57f4afcf" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:11.085981Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:11.085819Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:14.439901Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:14.438957Z&quot;}}" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.site <span class="im">import</span> SiteProblem</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.multiobjective <span class="im">import</span> ParetoMetric</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div id="f8e0e101" class="cell" data-execution_count="2">
+<div id="f8e0e101" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:14.442705Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:14.442357Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:14.548681Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:14.547985Z&quot;}}" data-execution_count="2">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>problem <span class="op">=</span> SiteProblem()</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>problem.add_sites(</span>
@@ -424,15 +424,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <pre><code>Guessed CRS: EPSG:4326 (Values fall within longitude/latitude bounds)</code></pre>
 </div>
 </div>
-<div id="90cc9afd" class="cell" data-execution_count="3">
+<div id="90cc9afd" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:14.551008Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:14.550786Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.030514Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.029610Z&quot;}}" data-execution_count="3">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>solution <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">6</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, threshold_for_coverage<span class="op">=</span><span class="dv">20</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"ce823a48558c4be5a095d633d2b4f208","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+{"model_id":"65ccc1f4262545aabe8a4392b98bcdf4","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
 </script>
 </div>
 </div>
-<div id="3c693f29" class="cell" data-execution_count="4">
+<div id="3c693f29" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.032328Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.032126Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.105340Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.104638Z&quot;}}" data-execution_count="4">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>solution.show_solutions()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="4">
 <div>
@@ -477,7 +477,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>38.69</td>
 <td>61.18</td>
 <td>NaN</td>
-<td>0.63</td>
+<td>0.62</td>
 <td>...</td>
 <td>14.51</td>
 <td>2.48</td>
@@ -573,7 +573,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>38.18</td>
 <td>61.18</td>
 <td>NaN</td>
-<td>0.60</td>
+<td>0.59</td>
 <td>...</td>
 <td>15.35</td>
 <td>2.76</td>
@@ -717,7 +717,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>39.84</td>
 <td>61.53</td>
 <td>NaN</td>
-<td>0.57</td>
+<td>0.56</td>
 <td>...</td>
 <td>14.92</td>
 <td>2.29</td>
@@ -733,29 +733,31 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 
-<p>91 rows × 24 columns</p>
+<p>91 rows × 26 columns</p>
 </div>
 </div>
 </div>
 <p>Let’s recap all of the column names we have.</p>
-<div id="380ed85e" class="cell" data-execution_count="5">
+<div id="380ed85e" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.107718Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.107520Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.110798Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.110213Z&quot;}}" data-execution_count="5">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>solution.show_solutions_colnames()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Index(['solution_rank', 'site_names', 'site_indices', 'coverage_threshold',
        'weighted_average', 'unweighted_average', '90th_percentile', 'max',
        'total_cost', 'proportion_within_coverage_threshold',
+       'proportion_regions_within_coverage_threshold',
        'weighted_by_equity_group', 'unweighted_by_equity_group',
-       'coverage_by_equity_group', 'max_cost_by_equity_group',
-       'gap_absolute_weighted', 'gap_relative_weighted',
-       'avg_lower_third_bins', 'avg_middle_third_bins', 'avg_upper_third_bins',
-       'inter_tertile_ratio', 'gap_absolute_description',
-       'gap_relative_description', 'inter_tertile_description', 'problem_df'],
+       'coverage_by_equity_group', 'coverage_regions_by_equity_group',
+       'max_cost_by_equity_group', 'gap_absolute_weighted',
+       'gap_relative_weighted', 'avg_lower_third_bins',
+       'avg_middle_third_bins', 'avg_upper_third_bins', 'inter_tertile_ratio',
+       'gap_absolute_description', 'gap_relative_description',
+       'inter_tertile_description', 'problem_df'],
       dtype='str')</code></pre>
 </div>
 </div>
 <p>Let’s look at a couple of trade-offs.</p>
 <p>In the plot below, the line indicates the <strong>pareto front</strong> - the non-dominated solutions.</p>
-<div id="865c302a" class="cell" data-execution_count="6">
+<div id="865c302a" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.112840Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.112637Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.248097Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.247202Z&quot;}}" data-execution_count="6">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>solution.plot_simple_pareto_front_pairs(x_axis<span class="op">=</span><span class="st">"weighted_average"</span>, y_axis<span class="op">=</span><span class="st">"max"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="6">
 <div>
@@ -772,8 +774,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li>Weighted average travel time of 19.1 (better again), max travel time of 61.2 minutes (worse again)</li>
 </ul>
 <p>We can repeat this for another metric, like weighted average travel time against coverage.</p>
-<p>Here, we can see that there is one single best solution in the top left corner - a coverage of 0.628, with a weighted average travel time of 19.12. Therefore, no pareto front is plotted.</p>
-<div id="053a4b3e" class="cell" data-execution_count="7">
+<p>Here, we can see that there is one single best solution in the top left corner - a coverage of 0.62, with a weighted average travel time of 19.07. Therefore, no pareto front is plotted.</p>
+<div id="053a4b3e" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.250213Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.250010Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.367097Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.365839Z&quot;}}" data-execution_count="7">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>solution.plot_simple_pareto_front_pairs(</span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    x_axis<span class="op">=</span><span class="st">"weighted_average"</span>,</span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    y_axis<span class="op">=</span><span class="st">"proportion_within_coverage_threshold"</span>,</span>
@@ -790,7 +792,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <p>But often we will want to consider more metrics than just two.</p>
 <p>When this is the case, we can use lokigi’s ParetoMetric to define a list of metrics we wish to consider.</p>
-<div id="b76afcdb" class="cell" data-execution_count="8">
+<div id="b76afcdb" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.368901Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.368712Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.372061Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.371404Z&quot;}}" data-execution_count="8">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>metrics <span class="op">=</span> [</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>        ParetoMetric(column<span class="op">=</span><span class="st">"weighted_average"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>                     label<span class="op">=</span><span class="st">"weighted average travel time"</span>, unit<span class="op">=</span><span class="st">"minutes"</span>),</span>
@@ -803,7 +805,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>        ]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>We then pass these metrics in and can see that some new columns have been added to our solutions dataframe, identifying which solutions are considered ‘pareto optimal’ in any given cases.</p>
-<div id="53e2bed5" class="cell" data-execution_count="9">
+<div id="53e2bed5" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.373966Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.373771Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.399841Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.398993Z&quot;}}" data-execution_count="9">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>solution.compute_pareto_front(</span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    metrics<span class="op">=</span>metrics</span>
 <span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>        )</span>
@@ -881,7 +883,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <th data-quarto-table-cell-role="th">89</th>
 <td>90</td>
 <td>False</td>
-<td>[17, 22, 24, 27, 28, 34, 36, 38, 58, 73, 75, 77]</td>
+<td>[17, 22, 24, 25, 27, 28, 34, 36, 38, 58, 73, 7...</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">90</th>
@@ -897,7 +899,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>The pareto_summary() method returns only solutions that are non-dominated.</p>
-<div id="c0aca816" class="cell" data-execution_count="10">
+<div id="c0aca816" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.401719Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.401529Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.410016Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.409057Z&quot;}}" data-execution_count="10">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>solution.pareto_summary()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="10">
 <div>
@@ -920,7 +922,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>1</td>
 <td>19.067738</td>
 <td>61.183334</td>
-<td>0.628258</td>
+<td>0.620176</td>
 <td>0.918114</td>
 </tr>
 <tr class="even">
@@ -928,7 +930,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>6</td>
 <td>19.281145</td>
 <td>56.350000</td>
-<td>0.600823</td>
+<td>0.595434</td>
 <td>0.922975</td>
 </tr>
 <tr class="odd">
@@ -936,7 +938,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>9</td>
 <td>19.307562</td>
 <td>61.183334</td>
-<td>0.620027</td>
+<td>0.616704</td>
 <td>0.938325</td>
 </tr>
 <tr class="even">
@@ -944,7 +946,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>14</td>
 <td>19.454259</td>
 <td>55.633335</td>
-<td>0.573388</td>
+<td>0.566852</td>
 <td>0.867636</td>
 </tr>
 <tr class="odd">
@@ -952,7 +954,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>16</td>
 <td>19.494915</td>
 <td>55.633335</td>
-<td>0.558299</td>
+<td>0.558261</td>
 <td>0.904269</td>
 </tr>
 <tr class="even">
@@ -960,7 +962,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>17</td>
 <td>19.515019</td>
 <td>59.766666</td>
-<td>0.609053</td>
+<td>0.601931</td>
 <td>0.998318</td>
 </tr>
 <tr class="odd">
@@ -968,7 +970,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>28</td>
 <td>19.626803</td>
 <td>61.183334</td>
-<td>0.614540</td>
+<td>0.602836</td>
 <td>0.950538</td>
 </tr>
 <tr class="even">
@@ -976,7 +978,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>58</td>
 <td>19.870268</td>
 <td>61.183334</td>
-<td>0.618656</td>
+<td>0.610648</td>
 <td>1.021753</td>
 </tr>
 <tr class="odd">
@@ -984,7 +986,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>73</td>
 <td>20.001618</td>
 <td>61.533333</td>
-<td>0.614540</td>
+<td>0.606685</td>
 <td>1.001758</td>
 </tr>
 </tbody>
@@ -994,7 +996,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>By default, it only returns the metrics of interest, but we can opt to return all.</p>
-<div id="db49db50" class="cell" data-execution_count="11">
+<div id="db49db50" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.412151Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.411932Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.471896Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.471335Z&quot;}}" data-execution_count="11">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>solution.pareto_summary(return_full_df<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="11">
 <div>
@@ -1039,7 +1041,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>38.690000</td>
 <td>61.183334</td>
 <td>NaN</td>
-<td>0.628258</td>
+<td>0.620176</td>
 <td>...</td>
 <td>15.1550</td>
 <td>21.776667</td>
@@ -1063,7 +1065,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>36.410000</td>
 <td>56.350000</td>
 <td>NaN</td>
-<td>0.600823</td>
+<td>0.595434</td>
 <td>...</td>
 <td>15.6875</td>
 <td>22.093333</td>
@@ -1087,7 +1089,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>40.630000</td>
 <td>61.183334</td>
 <td>NaN</td>
-<td>0.620027</td>
+<td>0.616704</td>
 <td>...</td>
 <td>15.6325</td>
 <td>22.020000</td>
@@ -1111,7 +1113,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>35.893332</td>
 <td>55.633335</td>
 <td>NaN</td>
-<td>0.573388</td>
+<td>0.566852</td>
 <td>...</td>
 <td>15.4150</td>
 <td>22.123333</td>
@@ -1135,7 +1137,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>34.653334</td>
 <td>55.633335</td>
 <td>NaN</td>
-<td>0.558299</td>
+<td>0.558261</td>
 <td>...</td>
 <td>16.3100</td>
 <td>21.250000</td>
@@ -1159,7 +1161,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>39.430001</td>
 <td>59.766666</td>
 <td>NaN</td>
-<td>0.609053</td>
+<td>0.601931</td>
 <td>...</td>
 <td>16.3225</td>
 <td>22.076667</td>
@@ -1183,7 +1185,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>41.746667</td>
 <td>61.183334</td>
 <td>NaN</td>
-<td>0.614540</td>
+<td>0.602836</td>
 <td>...</td>
 <td>15.9025</td>
 <td>22.173333</td>
@@ -1207,7 +1209,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>42.073333</td>
 <td>61.183334</td>
 <td>NaN</td>
-<td>0.618656</td>
+<td>0.610648</td>
 <td>...</td>
 <td>16.4400</td>
 <td>22.710000</td>
@@ -1231,7 +1233,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>41.273333</td>
 <td>61.533333</td>
 <td>NaN</td>
-<td>0.614540</td>
+<td>0.606685</td>
 <td>...</td>
 <td>16.6225</td>
 <td>22.703333</td>
@@ -1247,26 +1249,26 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 
-<p>9 rows × 26 columns</p>
+<p>9 rows × 28 columns</p>
 </div>
 </div>
 </div>
 <p>We can also look at the tradeoffs of each solution compared to the winner for weighted average.</p>
-<div id="24d84d57" class="cell" data-execution_count="12">
+<div id="24d84d57" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.474538Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.474324Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.480245Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.479415Z&quot;}}" data-execution_count="12">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>solution.describe_tradeoffs()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="12">
-<pre><code>['Solution 6 vs solution 1: costs weighted average travel time by 0.21; improves maximum travel time by 4.83; costs proportion within coverage threshold by 0.03; improves ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.00',
- 'Solution 9 vs solution 1: costs weighted average travel time by 0.24; costs proportion within coverage threshold by 0.01; improves ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.02',
+<pre><code>['Solution 6 vs solution 1: costs weighted average travel time by 0.21; improves maximum travel time by 4.83; costs proportion within coverage threshold by 0.02; improves ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.00',
+ 'Solution 9 vs solution 1: costs weighted average travel time by 0.24; costs proportion within coverage threshold by 0.00; improves ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.02',
  'Solution 14 vs solution 1: costs weighted average travel time by 0.39; improves maximum travel time by 5.55; costs proportion within coverage threshold by 0.05; costs ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.05',
- 'Solution 16 vs solution 1: costs weighted average travel time by 0.43; improves maximum travel time by 5.55; costs proportion within coverage threshold by 0.07; costs ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.01',
+ 'Solution 16 vs solution 1: costs weighted average travel time by 0.43; improves maximum travel time by 5.55; costs proportion within coverage threshold by 0.06; costs ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.01',
  'Solution 17 vs solution 1: costs weighted average travel time by 0.45; improves maximum travel time by 1.42; costs proportion within coverage threshold by 0.02; improves ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.08',
- 'Solution 28 vs solution 1: costs weighted average travel time by 0.56; costs proportion within coverage threshold by 0.01; improves ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.03',
+ 'Solution 28 vs solution 1: costs weighted average travel time by 0.56; costs proportion within coverage threshold by 0.02; improves ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.03',
  'Solution 58 vs solution 1: costs weighted average travel time by 0.80; costs proportion within coverage threshold by 0.01; improves ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.10',
  'Solution 73 vs solution 1: costs weighted average travel time by 0.93; costs maximum travel time by 0.35; costs proportion within coverage threshold by 0.01; improves ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.08']</code></pre>
 </div>
 </div>
 <p>We can opt for a more stakeholder-focussed output, which is returned as a list of markdown strings for easy inclusion in a Quarto report or Streamlit frontend.</p>
-<div id="b0c559a4" class="cell" data-execution_count="13">
+<div id="b0c559a4" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.482142Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.481953Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.487634Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.486984Z&quot;}}" data-execution_count="13">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>solution.describe_tradeoffs_for_stakeholders()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="13">
 <pre><code>['We found 9 genuinely different options -- each one is the best choice on at least one measure, so no single option wins on everything. The trade-offs are between weighted average travel time, maximum travel time, proportion within coverage threshold, ratio of weighted travel times in imd 1-3 to imd 7-10.',
@@ -1287,7 +1289,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>This plots every non-dominated solution as a coloured line. Grey lines indicate other solutions to give context for the range of values of each metric.</p>
 <p>Metrics are scaled in such a way that values further up the axis will always be better, even if that means flipping the direction.</p>
 <p>For example, we have the shortest travel time (a smaller number) at the top, but the best coverage (a higher number) both appearing as the points at the top of the graph. So to interpret, we can just read it as values further up the y axis being better, and values further down being worse. This is also true for values that are aiming for a target - for example, for the IMD travel ratio, in this case we want it to be close to 1 (i.e.&nbsp;minimal difference between travel times across the upper and lower three deciles), so the values at the top are those that are closest to 1, and the values further down are those that are higher or lower than 1, with the direction being shown in the labels.</p>
-<div id="e7c56114" class="cell" data-execution_count="14">
+<div id="e7c56114" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.489384Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.489148Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.952526Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.951395Z&quot;}}" data-execution_count="14">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>solution.plot_pareto_summary(width_multiplier<span class="op">=</span><span class="dv">3</span>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
@@ -1298,7 +1300,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>We can also use faceted plots to help investigate solutions in more detail. This can help us to understand the tradeoffs in more detail.</p>
-<div id="90a6134a" class="cell" data-execution_count="15">
+<div id="90a6134a" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.954874Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.954532Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:18.924131Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:18.923317Z&quot;}}" data-execution_count="15">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>solution.plot_pareto_facets()<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
@@ -1312,7 +1314,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="adjusting-metrics" class="level2">
 <h2 class="anchored" data-anchor-id="adjusting-metrics">Adjusting metrics</h2>
 <p>Let’s imagine that rather than wanting to make the inter_tertile ratio as equal as possible, we instead want to prioritise access in the most deprived areas. We simply change the direction to lower_better.</p>
-<div id="66fb8b27" class="cell" data-execution_count="16">
+<div id="66fb8b27" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:18.930732Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:18.930412Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:18.933779Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:18.933270Z&quot;}}" data-execution_count="16">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>metrics <span class="op">=</span> [</span>
 <span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>        ParetoMetric(column<span class="op">=</span><span class="st">"weighted_average"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
 <span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>                     label<span class="op">=</span><span class="st">"weighted average travel time"</span>, unit<span class="op">=</span><span class="st">"minutes"</span>),</span>
@@ -1327,13 +1329,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>        ]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Then we can just recompute our pareto front, which will overwrite the relevant flags in the solution dataframe.</p>
-<div id="03832a29" class="cell" data-execution_count="17">
+<div id="03832a29" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:18.935892Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:18.935617Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:18.955426Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:18.954602Z&quot;}}" data-execution_count="17">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>solution.compute_pareto_front(</span>
 <span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>    metrics<span class="op">=</span>metrics</span>
 <span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>        )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Then we can recreate any required plots.</p>
-<div id="f0adcf8d" class="cell" data-execution_count="18">
+<div id="f0adcf8d" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:18.958025Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:18.957730Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:21.370443Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:21.369455Z&quot;}}" data-execution_count="18">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>solution.plot_pareto_facets()<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
@@ -1343,7 +1345,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
-<div id="0758ef4b" class="cell" data-execution_count="19">
+<div id="0758ef4b" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:21.376431Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:21.376209Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:21.387494Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:21.386688Z&quot;}}" data-execution_count="19">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>solution.pareto_summary(return_full_df<span class="op">=</span><span class="va">True</span>)[[</span>
 <span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"solution_rank"</span>, <span class="st">"inter_tertile_ratio"</span>, <span class="st">"inter_tertile_ratio"</span>,</span>
 <span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"avg_lower_third_bins"</span>, <span class="st">"avg_upper_third_bins"</span></span>
@@ -1464,7 +1466,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
 <script type="application/vnd.jupyter.widget-state+json">
-{"state":{"04e90053990e4beb9bbaa4dbddf5fd33":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"09b297d8889743edac5eeea7a35de3dc":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"1df6e535881549f9a3e06a0fe5395aa9":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_933831eab939453aa72618b55617b832","placeholder":"​","style":"IPY_MODEL_09b297d8889743edac5eeea7a35de3dc","tabbable":null,"tooltip":null,"value":"100%"}},"5c5dcc804abc43e8b73429f0d57d56da":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"933831eab939453aa72618b55617b832":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"aaf04de51a3d42539444206d8010c27c":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_e5a4058731c7497887258a000d5c72ad","placeholder":"​","style":"IPY_MODEL_cd3102132f354bf88259defb4e1b7092","tabbable":null,"tooltip":null,"value":" 91/91 [00:00&lt;00:00, 96.00it/s]"}},"c0411d16b4484f50aac2b869046b1fdb":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_d112bfd5ce8f4f3e926ba70afe43fed6","max":91,"min":0,"orientation":"horizontal","style":"IPY_MODEL_04e90053990e4beb9bbaa4dbddf5fd33","tabbable":null,"tooltip":null,"value":91}},"cd3102132f354bf88259defb4e1b7092":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"ce823a48558c4be5a095d633d2b4f208":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_1df6e535881549f9a3e06a0fe5395aa9","IPY_MODEL_c0411d16b4484f50aac2b869046b1fdb","IPY_MODEL_aaf04de51a3d42539444206d8010c27c"],"layout":"IPY_MODEL_5c5dcc804abc43e8b73429f0d57d56da","tabbable":null,"tooltip":null}},"d112bfd5ce8f4f3e926ba70afe43fed6":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"e5a4058731c7497887258a000d5c72ad":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}}},"version_major":2,"version_minor":0}
+{"state":{"0fb0895b7ba74cdf9c38739cf79097db":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"2ca2be5e531c4f8ebacafa1245108c8a":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_30e69414134644cb898702b0f9d0cba0","placeholder":"​","style":"IPY_MODEL_0fb0895b7ba74cdf9c38739cf79097db","tabbable":null,"tooltip":null,"value":"100%"}},"30768d5771a147e0b23f8b7690f2b3a2":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_b23d1370f1374cbab0043e6b7710cd31","placeholder":"​","style":"IPY_MODEL_817aba7427084085b905ec8b7cb7b70e","tabbable":null,"tooltip":null,"value":" 91/91 [00:01&lt;00:00, 54.10it/s]"}},"30e69414134644cb898702b0f9d0cba0":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"60deca26e94744ee9f9e831700bebc50":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_63298bbf087c45a2befe8e8299e69f3f","max":91,"min":0,"orientation":"horizontal","style":"IPY_MODEL_b1bb6b11fafa46719bb8fed9dde5dfbe","tabbable":null,"tooltip":null,"value":91}},"63298bbf087c45a2befe8e8299e69f3f":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"65ccc1f4262545aabe8a4392b98bcdf4":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_2ca2be5e531c4f8ebacafa1245108c8a","IPY_MODEL_60deca26e94744ee9f9e831700bebc50","IPY_MODEL_30768d5771a147e0b23f8b7690f2b3a2"],"layout":"IPY_MODEL_ee457da16ed647e3b16ea624cdb2cec1","tabbable":null,"tooltip":null}},"817aba7427084085b905ec8b7cb7b70e":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"b1bb6b11fafa46719bb8fed9dde5dfbe":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"b23d1370f1374cbab0043e6b7710cd31":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"ee457da16ed647e3b16ea624cdb2cec1":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}}},"version_major":2,"version_minor":0}
 </script>
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {

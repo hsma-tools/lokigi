@@ -395,7 +395,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="even">
 <td>rank_on</td>
 <td>str</td>
-<td>Column name used to rank solutions. If provided, solutions are sorted in ascending order and the top <code>n_best</code> are selected. If None, the existing order of <code>solution_df</code> is used.</td>
+<td>Column name used to rank solutions. If provided, the best <code>n_best</code> solutions by this metric are selected – highest-first for coverage proportions, lowest-first for travel costs. If None, the existing order of <code>solution_df</code> is used.</td>
 <td><code>None</code></td>
 </tr>
 <tr class="odd">

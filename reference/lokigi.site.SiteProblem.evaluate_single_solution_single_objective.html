@@ -358,10 +358,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 14%">
-<col style="width: 8%">
-<col style="width: 69%">
-<col style="width: 8%">
+<col style="width: 6%">
+<col style="width: 3%">
+<col style="width: 86%">
+<col style="width: 3%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -399,7 +399,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td>threshold_for_coverage</td>
 <td>float or int</td>
-<td>A distance or time value. Demand points with a minimum travel cost lower than this value are flagged as ‘covered’.</td>
+<td>A distance or time value. Demand points with a minimum travel cost lower than this value are flagged as ‘covered’. The resulting <code>proportion_within_coverage_threshold</code> metric is weighted by the demand registered via <code>add_demand()</code>; the unweighted share of regions is reported alongside it as <code>proportion_regions_within_coverage_threshold</code>.</td>
 <td><code>None</code></td>
 </tr>
 </tbody>

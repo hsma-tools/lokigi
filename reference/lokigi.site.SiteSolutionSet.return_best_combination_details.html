@@ -350,10 +350,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 3%">
-<col style="width: 3%">
-<col style="width: 88%">
 <col style="width: 4%">
+<col style="width: 4%">
+<col style="width: 85%">
+<col style="width: 5%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -367,7 +367,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td>rank_on</td>
 <td>str</td>
-<td>Column name to sort the solutions by. If provided, solutions are sorted in ascending order before selecting the top entries. If None, the existing order of <code>solution_df</code>, which is based on the objective selected, is used.</td>
+<td>Column name to rank the solutions by before selecting the top entries. If None, the existing order of <code>solution_df</code>, which is based on the objective selected, is used.</td>
 <td><code>None</code></td>
 </tr>
 <tr class="even">
@@ -405,7 +405,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="notes" class="level2 doc-section doc-section-notes">
 <h2 class="doc-section doc-section-notes anchored" data-anchor-id="notes">Notes</h2>
-<p>Sorting is performed in ascending order, so lower values are assumed to represent better solutions for the specified ranking metric.</p>
+<p>Sort direction is resolved from the metric, so “top” always means best: coverage proportions are ranked highest-first, and every other reported metric is a travel cost and is ranked lowest-first.</p>
 
 
 </section>

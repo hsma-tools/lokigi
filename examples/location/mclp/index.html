@@ -367,38 +367,56 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>The maximal location covering problem tries to optimize for a different objective to p-median and p-center and their variants.</p>
 <p>In p-median, we are trying to minimize the weighted travel time - so we care about the average time people will travel to get to a site.</p>
 <p>In p-center, we are trying to minimize the maximum travel time - so we’ll potentially accept a slightly longer travel time on average if it means that</p>
-<p>In MCLP, we are trying to maximise the number of regions that are within a given distance or travel time.</p>
-<p>For example, let’s imagine we have 100 LSOAs in our problem, and we’ve calculated the travel time from each LSOA centroid to the possible sites.</p>
+<p>In MCLP, we are trying to maximise coverage within a given distance or travel time – by default, the proportion of <strong>demand</strong> (people) within that threshold.</p>
+<p>For example, let’s imagine we have 100 LSOAs in our problem, and we’ve calculated the travel time from each LSOA centroid to the possible sites, along with how many people live in each one.</p>
 <p>Like with other problems, we’ll work out the closest site to each LSOA for any given combination of sites.</p>
 <p>However, rather than just taking this travel time and using it for calculating an average or a maximum, we’ll instead check it against a defined number - say 10 minutes.</p>
-<p>If the travel time from that LSOA to its nearest site in this configuration is less than 10 minutes, we’ll record a 1.</p>
+<p>If the travel time from that LSOA to its nearest site in this configuration is less than 10 minutes, we’ll record a 1, weighted by that LSOA’s demand.</p>
 <p>If the travel time is instead greater than or equal to 10 minutes, we’ll record a 0.</p>
-<p>We then do this for every LSOA. At the end, we count up the number of 1’s.</p>
-<p>Let’s say 64 of our LSOAs were within 10 minutes of a site. We know that we have 100 LSOAs in total, so our output value is 0.64, or 64%.</p>
-<p>We might have a different solution where 68 of the LSOAs are within 10 minutes of a site. This could well have a worse average or maximum travel time - but if we’re solving the MCLP, we’d rank the solution with the higher number of LSOAs within our travel time or distance threshold as a better solution regardless of the other metrics.</p>
+<p>We then do this for every LSOA, and add up the demand-weighted total. If the LSOAs within 10 minutes account for 64% of the total demand across all LSOAs, our output value is 0.64, or 64%.</p>
+<p>We might have a different solution where 68% of demand is within 10 minutes of a site. This could well have a worse average or maximum travel time - but if we’re solving the MCLP, we’d rank the solution with the higher demand-weighted coverage as a better solution regardless of the other metrics.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>lokigi also always reports a second column, <code>proportion_regions_within_coverage_threshold</code>, which counts every LSOA equally rather than weighting by demand – the “68 of 100 LSOAs” version of the same idea. The two coincide only when demand is uniform across regions, including whenever <code>.add_demand()</code> is never called at all. See the <a href="../../../examples/location/coverage_metrics/index.html">regional vs.&nbsp;demand-weighted coverage example</a> for a case where they diverge and even favour different site combinations.</p>
+</div>
+</div>
 <p>Let’s now try solving one of these problems.</p>
 <p>For the maximal location covering problem, we can set up our problem just like before.</p>
-<div id="def6a515" class="cell" data-execution_count="1">
+<div id="def6a515" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T10:11:45.516764Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T10:11:45.516531Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T10:11:50.183147Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T10:11:50.182246Z&quot;}}" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.site <span class="im">import</span> SiteProblem</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>problem <span class="op">=</span> SiteProblem()</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>problem.add_sites(</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"../../../sample_data/brighton_sites_named.geojson"</span>,</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    candidate_id_col<span class="op">=</span><span class="st">"site"</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>problem.add_travel_matrix(</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    travel_matrix_df<span class="op">=</span><span class="st">"../../../sample_data/brighton_travel_matrix_driving_named.csv"</span>,</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    source_col<span class="op">=</span><span class="st">"LSOA"</span>,</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    from_unit<span class="op">=</span><span class="st">"seconds"</span>,</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    to_unit<span class="op">=</span><span class="st">"minutes"</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>problem.add_region_geometry_layer(</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="st">"https://github.com/hsma-programme/h6_3d_facility_location_problems/raw/refs/heads/main/h6_3d_facility_location_problems/example_code/LSOA_2011_Boundaries_Super_Generalised_Clipped_BSC_EW_V4.geojson"</span>,</span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    common_col<span class="op">=</span><span class="st">"LSOA11NM"</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>problem.add_demand(</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"../../../sample_data/brighton_demand.csv"</span>,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    demand_col<span class="op">=</span><span class="st">"demand"</span>,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    location_id_col<span class="op">=</span><span class="st">"LSOA"</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>problem.add_sites(</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">"../../../sample_data/brighton_sites_named.geojson"</span>,</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    candidate_id_col<span class="op">=</span><span class="st">"site"</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>problem.add_travel_matrix(</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    travel_matrix_df<span class="op">=</span><span class="st">"../../../sample_data/brighton_travel_matrix_driving_named.csv"</span>,</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    source_col<span class="op">=</span><span class="st">"LSOA"</span>,</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    from_unit<span class="op">=</span><span class="st">"seconds"</span>,</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    to_unit<span class="op">=</span><span class="st">"minutes"</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>problem.add_region_geometry_layer(</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    <span class="st">"https://github.com/hsma-programme/h6_3d_facility_location_problems/raw/refs/heads/main/h6_3d_facility_location_problems/example_code/LSOA_2011_Boundaries_Super_Generalised_Clipped_BSC_EW_V4.geojson"</span>,</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>    common_col<span class="op">=</span><span class="st">"LSOA11NM"</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>When we go to solve, we change our objective to “mclp”.</p>
 <p>We also need to pass in a new parameter - a ‘threshold_for_coverage’.</p>
@@ -413,11 +431,11 @@ Note
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>In this case, our travel matrix is in minutes, so we’d interpret this as us being interested in maximising the number of regions where people are within 10 <strong>minutes</strong> of a site.</p>
+<p>In this case, our travel matrix is in minutes, so we’d interpret this as us being interested in maximising the coverage of people within 10 <strong>minutes</strong> of a site.</p>
 <p>If our travel matrix was instead looking at the number of miles, the value we pass in to this argument wouldn’t change - just our interpretation of it.</p>
 </div>
 </div>
-<div id="97959f4f" class="cell" data-execution_count="2">
+<div id="97959f4f" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T10:11:50.185071Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T10:11:50.184855Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T10:11:50.271338Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T10:11:50.270626Z&quot;}}" data-execution_count="2">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>solutions <span class="op">=</span> problem.solve(</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    objectives<span class="op">=</span><span class="st">"mclp"</span>,</span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    p<span class="op">=</span><span class="dv">3</span>,</span>
@@ -425,11 +443,11 @@ Note
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"86d475b21b034b9aaa5ecf912a902706","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+{"model_id":"932a1816ad5d47cf831ae5bb7b517967","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
 </script>
 </div>
 </div>
-<p>We can now see our solutions, paying particular attention to the column ‘proportion_within_coverage_threshold’.</p>
+<p>We can now see our solutions, paying particular attention to the column ‘proportion_within_coverage_threshold’ – the demand-weighted coverage. There’s also a ‘proportion_regions_within_coverage_threshold’ column, which counts every LSOA equally instead; the two are identical throughout this example since we never called <code>.add_demand()</code>.</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -440,10 +458,10 @@ Note
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>If two solution shave the same ‘proportion_within_coverage_threshold’ value, like in this example, ties will be broken by ordering by the weighted average travel time. Note that if you haven’t provided demand, the demand will be assumed to be equal across all regions, so weighted_average=unweighted_average in that context.</p>
+<p>If two solutions tie on ‘proportion_within_coverage_threshold’, ties are broken by ordering on the weighted average travel time. Note that if you haven’t provided demand, the demand will be assumed to be equal across all regions, so weighted_average=unweighted_average in that context.</p>
 </div>
 </div>
-<div id="b5927522" class="cell" data-execution_count="3">
+<div id="b5927522" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T10:11:50.273109Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T10:11:50.272852Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T10:11:50.350047Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T10:11:50.349399Z&quot;}}" data-execution_count="3">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>solutions.show_solutions()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="3">
 <div>
@@ -480,15 +498,15 @@ Note
 <tr class="odd">
 <th data-quarto-table-cell-role="th">0</th>
 <td>1</td>
-<td>[Tulip (Site 3), Daisy (Site 4), Snowdrop (Sit...</td>
-<td>[2, 3, 5]</td>
+<td>[Tulip (Site 3), Daisy (Site 4), Daffodil (Sit...</td>
+<td>[2, 3, 4]</td>
 <td>10</td>
-<td>5.36</td>
-<td>5.36</td>
-<td>8.06</td>
+<td>5.37</td>
+<td>5.45</td>
+<td>8.50</td>
 <td>16.69</td>
 <td>NaN</td>
-<td>0.95</td>
+<td>0.96</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -504,12 +522,12 @@ Note
 <tr class="even">
 <th data-quarto-table-cell-role="th">1</th>
 <td>2</td>
-<td>[Tulip (Site 3), Daisy (Site 4), Daffodil (Sit...</td>
-<td>[2, 3, 4]</td>
+<td>[Tulip (Site 3), Daisy (Site 4), Snowdrop (Sit...</td>
+<td>[2, 3, 5]</td>
 <td>10</td>
-<td>5.45</td>
-<td>5.45</td>
-<td>8.50</td>
+<td>5.38</td>
+<td>5.36</td>
+<td>8.06</td>
 <td>16.69</td>
 <td>NaN</td>
 <td>0.95</td>
@@ -531,7 +549,7 @@ Note
 <td>[Begonia (Site 2), Tulip (Site 3), Daisy (Site...</td>
 <td>[1, 2, 3]</td>
 <td>10</td>
-<td>5.59</td>
+<td>5.54</td>
 <td>5.59</td>
 <td>9.00</td>
 <td>16.69</td>
@@ -555,7 +573,7 @@ Note
 <td>[Dahlia (Site 1), Tulip (Site 3), Snowdrop (Si...</td>
 <td>[0, 2, 5]</td>
 <td>10</td>
-<td>6.21</td>
+<td>6.32</td>
 <td>6.21</td>
 <td>9.33</td>
 <td>16.69</td>
@@ -576,34 +594,10 @@ Note
 <tr class="odd">
 <th data-quarto-table-cell-role="th">4</th>
 <td>5</td>
-<td>[Dahlia (Site 1), Tulip (Site 3), Daisy (Site 4)]</td>
-<td>[0, 2, 3]</td>
-<td>10</td>
-<td>5.67</td>
-<td>5.67</td>
-<td>9.36</td>
-<td>16.69</td>
-<td>NaN</td>
-<td>0.93</td>
-<td>...</td>
-<td>None</td>
-<td>None</td>
-<td>None</td>
-<td>None</td>
-<td>None</td>
-<td>None</td>
-<td>N/A (No equity data)</td>
-<td>N/A (No equity data)</td>
-<td>N/A (No equity data)</td>
-<td>LSOA&nbsp;&nbsp;Dahlia (Site 1)&nbsp;&nbsp;...</td>
-</tr>
-<tr class="even">
-<th data-quarto-table-cell-role="th">5</th>
-<td>6</td>
 <td>[Tulip (Site 3), Daffodil (Site 5), Snowdrop (...</td>
 <td>[2, 4, 5]</td>
 <td>10</td>
-<td>6.29</td>
+<td>6.42</td>
 <td>6.29</td>
 <td>9.26</td>
 <td>16.69</td>
@@ -621,13 +615,37 @@ Note
 <td>N/A (No equity data)</td>
 <td>LSOA&nbsp;&nbsp;Tulip (Site 3)&nbsp;&nbsp;D...</td>
 </tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">5</th>
+<td>6</td>
+<td>[Dahlia (Site 1), Tulip (Site 3), Daisy (Site 4)]</td>
+<td>[0, 2, 3]</td>
+<td>10</td>
+<td>5.53</td>
+<td>5.67</td>
+<td>9.36</td>
+<td>16.69</td>
+<td>NaN</td>
+<td>0.93</td>
+<td>...</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>None</td>
+<td>N/A (No equity data)</td>
+<td>N/A (No equity data)</td>
+<td>N/A (No equity data)</td>
+<td>LSOA&nbsp;&nbsp;Dahlia (Site 1)&nbsp;&nbsp;...</td>
+</tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">6</th>
 <td>7</td>
 <td>[Begonia (Site 2), Tulip (Site 3), Snowdrop (S...</td>
 <td>[1, 2, 5]</td>
 <td>10</td>
-<td>6.31</td>
+<td>6.51</td>
 <td>6.31</td>
 <td>9.45</td>
 <td>16.69</td>
@@ -651,12 +669,12 @@ Note
 <td>[Dahlia (Site 1), Tulip (Site 3), Daffodil (Si...</td>
 <td>[0, 2, 4]</td>
 <td>10</td>
-<td>6.32</td>
+<td>6.35</td>
 <td>6.32</td>
 <td>9.70</td>
 <td>16.69</td>
 <td>NaN</td>
-<td>0.91</td>
+<td>0.90</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -675,12 +693,12 @@ Note
 <td>[Dahlia (Site 1), Begonia (Site 2), Tulip (Sit...</td>
 <td>[0, 1, 2]</td>
 <td>10</td>
-<td>6.39</td>
+<td>6.47</td>
 <td>6.39</td>
 <td>9.77</td>
 <td>16.69</td>
 <td>NaN</td>
-<td>0.91</td>
+<td>0.89</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -699,12 +717,12 @@ Note
 <td>[Begonia (Site 2), Daisy (Site 4), Daffodil (S...</td>
 <td>[1, 3, 4]</td>
 <td>10</td>
-<td>6.76</td>
+<td>6.92</td>
 <td>6.76</td>
 <td>11.32</td>
 <td>21.71</td>
 <td>NaN</td>
-<td>0.83</td>
+<td>0.82</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -720,15 +738,15 @@ Note
 <tr class="odd">
 <th data-quarto-table-cell-role="th">10</th>
 <td>11</td>
-<td>[Begonia (Site 2), Daisy (Site 4), Snowdrop (S...</td>
-<td>[1, 3, 5]</td>
+<td>[Begonia (Site 2), Daffodil (Site 5), Snowdrop...</td>
+<td>[1, 4, 5]</td>
 <td>10</td>
-<td>6.64</td>
-<td>6.64</td>
-<td>11.58</td>
-<td>22.86</td>
+<td>8.03</td>
+<td>7.65</td>
+<td>11.67</td>
+<td>21.71</td>
 <td>NaN</td>
-<td>0.81</td>
+<td>0.78</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -744,15 +762,15 @@ Note
 <tr class="even">
 <th data-quarto-table-cell-role="th">11</th>
 <td>12</td>
-<td>[Begonia (Site 2), Daffodil (Site 5), Snowdrop...</td>
-<td>[1, 4, 5]</td>
+<td>[Begonia (Site 2), Daisy (Site 4), Snowdrop (S...</td>
+<td>[1, 3, 5]</td>
 <td>10</td>
-<td>7.65</td>
-<td>7.65</td>
-<td>11.67</td>
-<td>21.71</td>
+<td>6.98</td>
+<td>6.64</td>
+<td>11.58</td>
+<td>22.86</td>
 <td>NaN</td>
-<td>0.81</td>
+<td>0.78</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -768,15 +786,15 @@ Note
 <tr class="odd">
 <th data-quarto-table-cell-role="th">12</th>
 <td>13</td>
-<td>[Daisy (Site 4), Daffodil (Site 5), Snowdrop (...</td>
-<td>[3, 4, 5]</td>
+<td>[Dahlia (Site 1), Begonia (Site 2), Daisy (Sit...</td>
+<td>[0, 1, 3]</td>
 <td>10</td>
-<td>6.73</td>
-<td>6.73</td>
-<td>12.26</td>
-<td>21.71</td>
+<td>7.13</td>
+<td>6.92</td>
+<td>11.93</td>
+<td>23.92</td>
 <td>NaN</td>
-<td>0.80</td>
+<td>0.77</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -787,7 +805,7 @@ Note
 <td>N/A (No equity data)</td>
 <td>N/A (No equity data)</td>
 <td>N/A (No equity data)</td>
-<td>LSOA&nbsp;&nbsp;Daisy (Site 4)&nbsp;&nbsp;D...</td>
+<td>LSOA&nbsp;&nbsp;Dahlia (Site 1)&nbsp;&nbsp;...</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">13</th>
@@ -795,12 +813,12 @@ Note
 <td>[Dahlia (Site 1), Daisy (Site 4), Daffodil (Si...</td>
 <td>[0, 3, 4]</td>
 <td>10</td>
-<td>6.81</td>
+<td>7.04</td>
 <td>6.81</td>
 <td>12.26</td>
 <td>21.71</td>
 <td>NaN</td>
-<td>0.80</td>
+<td>0.76</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -816,15 +834,15 @@ Note
 <tr class="odd">
 <th data-quarto-table-cell-role="th">14</th>
 <td>15</td>
-<td>[Dahlia (Site 1), Begonia (Site 2), Daisy (Sit...</td>
-<td>[0, 1, 3]</td>
+<td>[Daisy (Site 4), Daffodil (Site 5), Snowdrop (...</td>
+<td>[3, 4, 5]</td>
 <td>10</td>
-<td>6.92</td>
-<td>6.92</td>
-<td>11.93</td>
-<td>23.92</td>
+<td>7.06</td>
+<td>6.73</td>
+<td>12.26</td>
+<td>21.71</td>
 <td>NaN</td>
-<td>0.80</td>
+<td>0.76</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -835,7 +853,7 @@ Note
 <td>N/A (No equity data)</td>
 <td>N/A (No equity data)</td>
 <td>N/A (No equity data)</td>
-<td>LSOA&nbsp;&nbsp;Dahlia (Site 1)&nbsp;&nbsp;...</td>
+<td>LSOA&nbsp;&nbsp;Daisy (Site 4)&nbsp;&nbsp;D...</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">15</th>
@@ -843,12 +861,12 @@ Note
 <td>[Dahlia (Site 1), Begonia (Site 2), Snowdrop (...</td>
 <td>[0, 1, 5]</td>
 <td>10</td>
-<td>7.54</td>
+<td>7.99</td>
 <td>7.54</td>
 <td>11.90</td>
 <td>22.86</td>
 <td>NaN</td>
-<td>0.79</td>
+<td>0.76</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -867,12 +885,12 @@ Note
 <td>[Dahlia (Site 1), Begonia (Site 2), Daffodil (...</td>
 <td>[0, 1, 4]</td>
 <td>10</td>
-<td>7.66</td>
+<td>7.95</td>
 <td>7.66</td>
 <td>11.67</td>
 <td>21.71</td>
 <td>NaN</td>
-<td>0.79</td>
+<td>0.75</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -891,12 +909,12 @@ Note
 <td>[Dahlia (Site 1), Daffodil (Site 5), Snowdrop ...</td>
 <td>[0, 4, 5]</td>
 <td>10</td>
-<td>7.70</td>
+<td>8.16</td>
 <td>7.70</td>
 <td>12.65</td>
 <td>21.71</td>
 <td>NaN</td>
-<td>0.78</td>
+<td>0.74</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -915,12 +933,12 @@ Note
 <td>[Begonia (Site 2), Tulip (Site 3), Daffodil (S...</td>
 <td>[1, 2, 4]</td>
 <td>10</td>
-<td>7.46</td>
+<td>7.48</td>
 <td>7.46</td>
 <td>11.57</td>
 <td>16.69</td>
 <td>NaN</td>
-<td>0.72</td>
+<td>0.71</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -939,12 +957,12 @@ Note
 <td>[Dahlia (Site 1), Daisy (Site 4), Snowdrop (Si...</td>
 <td>[0, 3, 5]</td>
 <td>10</td>
-<td>7.69</td>
+<td>8.08</td>
 <td>7.69</td>
 <td>13.72</td>
 <td>22.86</td>
 <td>NaN</td>
-<td>0.67</td>
+<td>0.61</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -960,12 +978,12 @@ Note
 </tbody>
 </table>
 
-<p>20 rows × 24 columns</p>
+<p>20 rows × 26 columns</p>
 </div>
 </div>
 </div>
 <p>Let’s have a quick look at what the underlying data looks like for the best solution. We can see that there is a ‘within_threshold’ column with values of True (1) and False (0).</p>
-<div id="d9748433" class="cell" data-execution_count="4">
+<div id="d9748433" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T10:11:50.351949Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T10:11:50.351694Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T10:11:50.359162Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T10:11:50.358671Z&quot;}}" data-execution_count="4">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>solutions.show_solutions()[<span class="st">"problem_df"</span>][<span class="dv">0</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="4">
 <div>
@@ -978,7 +996,7 @@ Note
 <th data-quarto-table-cell-role="th">LSOA</th>
 <th data-quarto-table-cell-role="th">Tulip (Site 3)</th>
 <th data-quarto-table-cell-role="th">Daisy (Site 4)</th>
-<th data-quarto-table-cell-role="th">Snowdrop (Site 6)</th>
+<th data-quarto-table-cell-role="th">Daffodil (Site 5)</th>
 <th data-quarto-table-cell-role="th">min_cost</th>
 <th data-quarto-table-cell-role="th">selected_site</th>
 <th data-quarto-table-cell-role="th">within_threshold</th>
@@ -991,55 +1009,55 @@ Note
 <td>Brighton and Hove 027E</td>
 <td>7.404833</td>
 <td>8.197500</td>
-<td>9.248500</td>
+<td>10.125667</td>
 <td>7.404833</td>
 <td>Tulip (Site 3)</td>
 <td>True</td>
-<td>1</td>
+<td>3627</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1</th>
 <td>Brighton and Hove 027F</td>
 <td>8.626167</td>
 <td>9.351167</td>
-<td>8.972833</td>
+<td>9.649500</td>
 <td>8.626167</td>
 <td>Tulip (Site 3)</td>
 <td>True</td>
-<td>1</td>
+<td>2323</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">2</th>
 <td>Brighton and Hove 027A</td>
 <td>8.633000</td>
 <td>6.840000</td>
-<td>9.289167</td>
+<td>11.353833</td>
 <td>6.840000</td>
 <td>Daisy (Site 4)</td>
 <td>True</td>
-<td>1</td>
+<td>2596</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">3</th>
 <td>Brighton and Hove 029E</td>
 <td>11.006000</td>
 <td>6.328667</td>
-<td>9.293000</td>
+<td>12.193000</td>
 <td>6.328667</td>
 <td>Daisy (Site 4)</td>
 <td>True</td>
-<td>1</td>
+<td>3132</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">4</th>
 <td>Brighton and Hove 029D</td>
 <td>10.970000</td>
 <td>5.216667</td>
-<td>9.508500</td>
+<td>12.408333</td>
 <td>5.216667</td>
 <td>Daisy (Site 4)</td>
 <td>True</td>
-<td>1</td>
+<td>2883</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">...</th>
@@ -1057,55 +1075,55 @@ Note
 <td>Brighton and Hove 012A</td>
 <td>18.468500</td>
 <td>8.652667</td>
-<td>7.463000</td>
-<td>7.463000</td>
-<td>Snowdrop (Site 6)</td>
+<td>10.433667</td>
+<td>8.652667</td>
+<td>Daisy (Site 4)</td>
 <td>True</td>
-<td>1</td>
+<td>2497</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">161</th>
 <td>Brighton and Hove 005C</td>
 <td>16.804000</td>
 <td>9.490000</td>
-<td>5.798500</td>
-<td>5.798500</td>
-<td>Snowdrop (Site 6)</td>
+<td>8.769167</td>
+<td>8.769167</td>
+<td>Daffodil (Site 5)</td>
 <td>True</td>
-<td>1</td>
+<td>2570</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">162</th>
 <td>Brighton and Hove 012B</td>
 <td>18.876667</td>
 <td>8.952500</td>
-<td>7.871000</td>
-<td>7.871000</td>
-<td>Snowdrop (Site 6)</td>
+<td>10.841833</td>
+<td>8.952500</td>
+<td>Daisy (Site 4)</td>
 <td>True</td>
-<td>1</td>
+<td>2051</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">163</th>
 <td>Brighton and Hove 005A</td>
 <td>18.432167</td>
 <td>11.068500</td>
-<td>7.426667</td>
-<td>7.426667</td>
-<td>Snowdrop (Site 6)</td>
-<td>True</td>
-<td>1</td>
+<td>10.397333</td>
+<td>10.397333</td>
+<td>Daffodil (Site 5)</td>
+<td>False</td>
+<td>1164</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">164</th>
 <td>Brighton and Hove 005B</td>
 <td>17.232333</td>
 <td>9.918333</td>
-<td>6.226833</td>
-<td>6.226833</td>
-<td>Snowdrop (Site 6)</td>
+<td>9.197500</td>
+<td>9.197500</td>
+<td>Daffodil (Site 5)</td>
 <td>True</td>
-<td>1</td>
+<td>1097</td>
 </tr>
 </tbody>
 </table>
@@ -1129,7 +1147,7 @@ Tip
 <p>If we are working in a Jupyter notebook, we can prevent any additional output displaying from the mapping functions by ending our code with a semicolon.</p>
 </div>
 </div>
-<div id="7221b075" class="cell" data-execution_count="5">
+<div id="7221b075" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T10:11:50.360721Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T10:11:50.360519Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T10:12:05.338331Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T10:12:05.337183Z&quot;}}" data-execution_count="5">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>solutions.plot_best_combination()<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
@@ -1140,7 +1158,7 @@ Tip
 </div>
 </div>
 <p>Let’s take a quick look at which regions have been allocated to each site in our best solution.</p>
-<div id="12f9bf3a" class="cell" data-execution_count="6">
+<div id="12f9bf3a" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T10:12:05.340500Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T10:12:05.340233Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T10:12:05.973710Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T10:12:05.972969Z&quot;}}" data-execution_count="6">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>solutions.plot_best_combination(plot_site_allocation<span class="op">=</span><span class="va">True</span>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
@@ -1151,7 +1169,7 @@ Tip
 </div>
 </div>
 <p>As we’ve set a threshold, we can now do a new type of plot, where we can colour each region by whether or not it meets the threshold we’ve defined.</p>
-<div id="768d310b" class="cell" data-execution_count="7">
+<div id="768d310b" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T10:12:05.976708Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T10:12:05.976339Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T10:12:06.441189Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T10:12:06.440451Z&quot;}}" data-execution_count="7">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>solutions.plot_best_combination(</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    plot_regions_not_meeting_threshold<span class="op">=</span><span class="va">True</span>,</span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    show_all_locations<span class="op">=</span><span class="va">True</span>, unchosen_site_colour<span class="op">=</span><span class="st">"white"</span></span>
@@ -1165,29 +1183,29 @@ Tip
 </div>
 </div>
 <p>Let’s now plot the weighted travel time for the best 10 combinations.</p>
-<div id="1b9ee774" class="cell" data-execution_count="8">
+<div id="1b9ee774" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T10:12:06.442956Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T10:12:06.442779Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T10:12:18.070142Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T10:12:18.069384Z&quot;}}" data-execution_count="8">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>solutions.plot_n_best_combinations(unchosen_site_colour<span class="op">=</span><span class="st">"yellow"</span>, unchosen_site_opacity<span class="op">=</span><span class="fl">0.8</span>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/cell-9-output-1.png" width="2324" height="906" class="figure-img"></p>
+<p><img src="index_files/figure-html/cell-9-output-1.png" width="2354" height="906" class="figure-img"></p>
 </figure>
 </div>
 </div>
 </div>
 <p>We can also use the <code>plot_regions_not_meeting_threshold</code> parameter in the <code>.plot_n_best_combinations</code> method.</p>
-<div id="5adc6c2e" class="cell" data-execution_count="9">
+<div id="5adc6c2e" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T10:12:18.074114Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T10:12:18.073640Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T10:12:27.180777Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T10:12:27.179847Z&quot;}}" data-execution_count="9">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>solutions.plot_n_best_combinations(plot_regions_not_meeting_threshold<span class="op">=</span><span class="va">True</span>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/cell-10-output-1.png" width="2680" height="800" class="figure-img"></p>
+<p><img src="index_files/figure-html/cell-10-output-1.png" width="2711" height="800" class="figure-img"></p>
 </figure>
 </div>
 </div>
 </div>
 <p>We may also want to plot the pareto fronts to compare trade-offs with coverage.</p>
-<div id="d4621bd9" class="cell" data-execution_count="10">
+<div id="d4621bd9" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T10:12:27.184339Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T10:12:27.184128Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T10:12:27.283808Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T10:12:27.283330Z&quot;}}" data-execution_count="10">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>solutions.plot_simple_pareto_front_pairs(<span class="st">"weighted_average"</span>, <span class="st">"proportion_within_coverage_threshold"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="10">
 <div>
@@ -1198,13 +1216,13 @@ Tip
 </div>
 </div>
 <p>In this case, the best solution for coverage is also the best solution for weighted average travel time, so there is no line indicating a pareto front plotted as there is no trade-off to be made in this instance. We want to maximise the proportion within coverage threshold and minimize the weighted average travel time, so the point in the top left hand corner of this plot is the best at both.</p>
-<p>However, we can see that there is significant variation in weighted travel time across the 9 solutions that exceed 90% coverage within 10 minutes - so it’s definitely worth being mindful of that when suggesting solutions to our stakeholders!</p>
+<p>However, we can see that there is significant variation in weighted travel time across the 8 solutions that exceed 90% coverage within 10 minutes - so it’s definitely worth being mindful of that when suggesting solutions to our stakeholders!</p>
 
 
 
 <a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
 <script type="application/vnd.jupyter.widget-state+json">
-{"state":{"0f99e1d9f60f4c848eaa53ed76830a17":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"1b69c3fe2196402ca6e32ab94653b81a":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_d6625be87a824ccba1d511ed1c4b216e","placeholder":"​","style":"IPY_MODEL_9ac6e484534b41d6b2e6dd5aa5b329ee","tabbable":null,"tooltip":null,"value":" 20/20 [00:00&lt;00:00, 230.15it/s]"}},"361d762087e44c88be4e630123572510":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"508698e3b0964090a19b0c180d99fdad":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"5105abfec3d9474b8c0dab8bdf611b38":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"5b2076805353415fafca989e05c57726":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_508698e3b0964090a19b0c180d99fdad","max":20,"min":0,"orientation":"horizontal","style":"IPY_MODEL_361d762087e44c88be4e630123572510","tabbable":null,"tooltip":null,"value":20}},"86d475b21b034b9aaa5ecf912a902706":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_c240738adba54c7c83c89192405d4ffd","IPY_MODEL_5b2076805353415fafca989e05c57726","IPY_MODEL_1b69c3fe2196402ca6e32ab94653b81a"],"layout":"IPY_MODEL_cc01694ccadd45de8b3b79c5d72abbed","tabbable":null,"tooltip":null}},"9ac6e484534b41d6b2e6dd5aa5b329ee":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"c240738adba54c7c83c89192405d4ffd":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_0f99e1d9f60f4c848eaa53ed76830a17","placeholder":"​","style":"IPY_MODEL_5105abfec3d9474b8c0dab8bdf611b38","tabbable":null,"tooltip":null,"value":"100%"}},"cc01694ccadd45de8b3b79c5d72abbed":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"d6625be87a824ccba1d511ed1c4b216e":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}}},"version_major":2,"version_minor":0}
+{"state":{"02baa7efad82428f99e63c4232c8d6fd":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_498b9eb5b28d4f6da98a502ef960928f","placeholder":"​","style":"IPY_MODEL_7c11c38973914da7a31f2eb62b08d2af","tabbable":null,"tooltip":null,"value":" 20/20 [00:00&lt;00:00, 191.70it/s]"}},"2940ba4d9f0e4d26873fa93f54f8dd76":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_5c605f9ff031488ab39a2ce5ca1088f5","max":20,"min":0,"orientation":"horizontal","style":"IPY_MODEL_2ab25b52e0024bcf98470f83c33f3e69","tabbable":null,"tooltip":null,"value":20}},"2ab25b52e0024bcf98470f83c33f3e69":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"338cfaa4eee64d8b8ed883e811a202c4":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"498b9eb5b28d4f6da98a502ef960928f":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"5c605f9ff031488ab39a2ce5ca1088f5":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"7c11c38973914da7a31f2eb62b08d2af":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"932a1816ad5d47cf831ae5bb7b517967":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_a41540a07a8741c7930dcd2dd96015fd","IPY_MODEL_2940ba4d9f0e4d26873fa93f54f8dd76","IPY_MODEL_02baa7efad82428f99e63c4232c8d6fd"],"layout":"IPY_MODEL_338cfaa4eee64d8b8ed883e811a202c4","tabbable":null,"tooltip":null}},"a41540a07a8741c7930dcd2dd96015fd":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_bfccefc6072d4716a5651f986a755cd9","placeholder":"​","style":"IPY_MODEL_c200de150a794469a07897065456353f","tabbable":null,"tooltip":null,"value":"100%"}},"bfccefc6072d4716a5651f986a755cd9":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"c200de150a794469a07897065456353f":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}}},"version_major":2,"version_minor":0}
 </script>
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {

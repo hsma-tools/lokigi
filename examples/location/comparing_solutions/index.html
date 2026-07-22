@@ -424,25 +424,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>solution_car <span class="op">=</span> problem_car.solve(p<span class="op">=</span><span class="dv">11</span>, threshold_for_coverage<span class="op">=</span><span class="dv">20</span>)</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>solution_public_transport <span class="op">=</span> problem_public_transport.solve(p<span class="op">=</span><span class="dv">11</span>, threshold_for_coverage<span class="op">=</span><span class="dv">60</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stderr">
-<pre><code>/__w/lokigi/lokigi/lokigi/site.py:722: UserWarning:
+<pre><code>/__w/lokigi/lokigi/lokigi/site.py:734: UserWarning:
 
 No demand data was provided. Demand from all regions has been assumed to be equal.If you wish to override this, run .add_demand() to add your site dataframe before running .solve() again.You can use the .show_demand_format() to see the expected format beforehand.
 </code></pre>
 </div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"4a96485e10f84dff9b1a1756f8f9756b","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+{"model_id":"8ab3beeceb5342b1ab3dee749b54965e","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
 </script>
 </div>
 <div class="cell-output cell-output-stderr">
-<pre><code>/__w/lokigi/lokigi/lokigi/site.py:722: UserWarning:
+<pre><code>/__w/lokigi/lokigi/lokigi/site.py:734: UserWarning:
 
 No demand data was provided. Demand from all regions has been assumed to be equal.If you wish to override this, run .add_demand() to add your site dataframe before running .solve() again.You can use the .show_demand_format() to see the expected format beforehand.
 </code></pre>
 </div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"fbb82611b3f6454c8c51f6116b7f3e72","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+{"model_id":"3f38ec81680b40f89bcfca84619bf99e","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
 </script>
 </div>
 </div>
@@ -532,7 +532,7 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 </tbody>
 </table>
 
-<p>2 rows × 24 columns</p>
+<p>2 rows × 26 columns</p>
 </div>
 </div>
 </div>
@@ -622,7 +622,7 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 </tbody>
 </table>
 
-<p>2 rows × 24 columns</p>
+<p>2 rows × 26 columns</p>
 </div>
 </div>
 </div>
@@ -698,7 +698,7 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 </tbody>
 </table>
 
-<p>1 rows × 24 columns</p>
+<p>1 rows × 26 columns</p>
 </div>
 </div>
 </div>
@@ -771,7 +771,7 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 </tbody>
 </table>
 
-<p>1 rows × 24 columns</p>
+<p>1 rows × 26 columns</p>
 </div>
 </div>
 </div>
@@ -877,7 +877,7 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 </tbody>
 </table>
 
-<p>2 rows × 25 columns</p>
+<p>2 rows × 27 columns</p>
 </div>
 </div>
 </div>
@@ -961,60 +961,64 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>solution_car, solution_public_transport <span class="op">=</span> comparison.find_balanced_solution()</span>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>solution_car</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="14">
-<pre><code>solution_rank                                                                           6
-site_names                              [North Devon District Hospital, Honiton Hospit...
-site_indices                                         [0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 12]
-coverage_threshold                                                                     20
-weighted_average                                                                15.471004
-unweighted_average                                                              15.471004
-90th_percentile                                                                      26.0
-max                                                                                  54.0
-total_cost                                                                            NaN
-proportion_within_coverage_threshold                                             0.718529
-weighted_by_equity_group                                                               {}
-unweighted_by_equity_group                                                             {}
-coverage_by_equity_group                                                               {}
-max_cost_by_equity_group                                                               {}
-gap_absolute_weighted                                                                None
-gap_relative_weighted                                                                None
-avg_lower_third_bins                                                                 None
-avg_middle_third_bins                                                                None
-avg_upper_third_bins                                                                 None
-inter_tertile_ratio                                                                  None
-gap_absolute_description                                             N/A (No equity data)
-gap_relative_description                                             N/A (No equity data)
-inter_tertile_description                                            N/A (No equity data)
-problem_df                                           from_id  North Devon District Hos...
+<pre><code>solution_rank                                                                                   6
+site_names                                      [North Devon District Hospital, Honiton Hospit...
+site_indices                                                 [0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 12]
+coverage_threshold                                                                             20
+weighted_average                                                                        15.471004
+unweighted_average                                                                      15.471004
+90th_percentile                                                                              26.0
+max                                                                                          54.0
+total_cost                                                                                    NaN
+proportion_within_coverage_threshold                                                     0.718529
+proportion_regions_within_coverage_threshold                                             0.718529
+weighted_by_equity_group                                                                       {}
+unweighted_by_equity_group                                                                     {}
+coverage_by_equity_group                                                                       {}
+coverage_regions_by_equity_group                                                               {}
+max_cost_by_equity_group                                                                       {}
+gap_absolute_weighted                                                                        None
+gap_relative_weighted                                                                        None
+avg_lower_third_bins                                                                         None
+avg_middle_third_bins                                                                        None
+avg_upper_third_bins                                                                         None
+inter_tertile_ratio                                                                          None
+gap_absolute_description                                                     N/A (No equity data)
+gap_relative_description                                                     N/A (No equity data)
+inter_tertile_description                                                    N/A (No equity data)
+problem_df                                                   from_id  North Devon District Hos...
 Name: 5, dtype: object</code></pre>
 </div>
 </div>
 <div id="32cb486b" class="cell" data-execution_count="15">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>solution_public_transport</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="15">
-<pre><code>solution_rank                                                                           1
-site_names                              [North Devon District Hospital, Honiton Hospit...
-site_indices                                         [0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 12]
-coverage_threshold                                                                     60
-weighted_average                                                                59.643564
-unweighted_average                                                              59.643564
-90th_percentile                                                                      99.4
-max                                                                                 262.0
-total_cost                                                                            NaN
-proportion_within_coverage_threshold                                             0.575672
-weighted_by_equity_group                                                               {}
-unweighted_by_equity_group                                                             {}
-coverage_by_equity_group                                                               {}
-max_cost_by_equity_group                                                               {}
-gap_absolute_weighted                                                                None
-gap_relative_weighted                                                                None
-avg_lower_third_bins                                                                 None
-avg_middle_third_bins                                                                None
-avg_upper_third_bins                                                                 None
-inter_tertile_ratio                                                                  None
-gap_absolute_description                                             N/A (No equity data)
-gap_relative_description                                             N/A (No equity data)
-inter_tertile_description                                            N/A (No equity data)
-problem_df                                           from_id  North Devon District Hos...
+<pre><code>solution_rank                                                                                   1
+site_names                                      [North Devon District Hospital, Honiton Hospit...
+site_indices                                                 [0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 12]
+coverage_threshold                                                                             60
+weighted_average                                                                        59.643564
+unweighted_average                                                                      59.643564
+90th_percentile                                                                              99.4
+max                                                                                         262.0
+total_cost                                                                                    NaN
+proportion_within_coverage_threshold                                                     0.575672
+proportion_regions_within_coverage_threshold                                             0.575672
+weighted_by_equity_group                                                                       {}
+unweighted_by_equity_group                                                                     {}
+coverage_by_equity_group                                                                       {}
+coverage_regions_by_equity_group                                                               {}
+max_cost_by_equity_group                                                                       {}
+gap_absolute_weighted                                                                        None
+gap_relative_weighted                                                                        None
+avg_lower_third_bins                                                                         None
+avg_middle_third_bins                                                                        None
+avg_upper_third_bins                                                                         None
+inter_tertile_ratio                                                                          None
+gap_absolute_description                                                     N/A (No equity data)
+gap_relative_description                                                     N/A (No equity data)
+inter_tertile_description                                                    N/A (No equity data)
+problem_df                                                   from_id  North Devon District Hos...
 Name: 0, dtype: object</code></pre>
 </div>
 </div>
@@ -1109,60 +1113,64 @@ Note
 <span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>    )</span>
 <span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>solution_car_cov</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="19">
-<pre><code>solution_rank                                                                           4
-site_names                              [North Devon District Hospital, Honiton Hospit...
-site_indices                                         [0, 1, 2, 3, 4, 5, 6, 7, 11, 12, 14]
-coverage_threshold                                                                     20
-weighted_average                                                                15.663366
-unweighted_average                                                              15.663366
-90th_percentile                                                                      26.0
-max                                                                                  64.0
-total_cost                                                                            NaN
-proportion_within_coverage_threshold                                             0.735502
-weighted_by_equity_group                                                               {}
-unweighted_by_equity_group                                                             {}
-coverage_by_equity_group                                                               {}
-max_cost_by_equity_group                                                               {}
-gap_absolute_weighted                                                                None
-gap_relative_weighted                                                                None
-avg_lower_third_bins                                                                 None
-avg_middle_third_bins                                                                None
-avg_upper_third_bins                                                                 None
-inter_tertile_ratio                                                                  None
-gap_absolute_description                                             N/A (No equity data)
-gap_relative_description                                             N/A (No equity data)
-inter_tertile_description                                            N/A (No equity data)
-problem_df                                           from_id  North Devon District Hos...
+<pre><code>solution_rank                                                                                   4
+site_names                                      [North Devon District Hospital, Honiton Hospit...
+site_indices                                                 [0, 1, 2, 3, 4, 5, 6, 7, 11, 12, 14]
+coverage_threshold                                                                             20
+weighted_average                                                                        15.663366
+unweighted_average                                                                      15.663366
+90th_percentile                                                                              26.0
+max                                                                                          64.0
+total_cost                                                                                    NaN
+proportion_within_coverage_threshold                                                     0.735502
+proportion_regions_within_coverage_threshold                                             0.735502
+weighted_by_equity_group                                                                       {}
+unweighted_by_equity_group                                                                     {}
+coverage_by_equity_group                                                                       {}
+coverage_regions_by_equity_group                                                               {}
+max_cost_by_equity_group                                                                       {}
+gap_absolute_weighted                                                                        None
+gap_relative_weighted                                                                        None
+avg_lower_third_bins                                                                         None
+avg_middle_third_bins                                                                        None
+avg_upper_third_bins                                                                         None
+inter_tertile_ratio                                                                          None
+gap_absolute_description                                                     N/A (No equity data)
+gap_relative_description                                                     N/A (No equity data)
+inter_tertile_description                                                    N/A (No equity data)
+problem_df                                                   from_id  North Devon District Hos...
 Name: 3, dtype: object</code></pre>
 </div>
 </div>
 <div id="e86e27bb" class="cell" data-execution_count="20">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>solution_public_transport_cov</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="20">
-<pre><code>solution_rank                                                                          16
-site_names                              [North Devon District Hospital, Honiton Hospit...
-site_indices                                         [0, 1, 2, 3, 4, 5, 6, 7, 11, 12, 14]
-coverage_threshold                                                                     60
-weighted_average                                                                60.800566
-unweighted_average                                                              60.800566
-90th_percentile                                                                     104.8
-max                                                                                 262.0
-total_cost                                                                            NaN
-proportion_within_coverage_threshold                                              0.58133
-weighted_by_equity_group                                                               {}
-unweighted_by_equity_group                                                             {}
-coverage_by_equity_group                                                               {}
-max_cost_by_equity_group                                                               {}
-gap_absolute_weighted                                                                None
-gap_relative_weighted                                                                None
-avg_lower_third_bins                                                                 None
-avg_middle_third_bins                                                                None
-avg_upper_third_bins                                                                 None
-inter_tertile_ratio                                                                  None
-gap_absolute_description                                             N/A (No equity data)
-gap_relative_description                                             N/A (No equity data)
-inter_tertile_description                                            N/A (No equity data)
-problem_df                                           from_id  North Devon District Hos...
+<pre><code>solution_rank                                                                                  16
+site_names                                      [North Devon District Hospital, Honiton Hospit...
+site_indices                                                 [0, 1, 2, 3, 4, 5, 6, 7, 11, 12, 14]
+coverage_threshold                                                                             60
+weighted_average                                                                        60.800566
+unweighted_average                                                                      60.800566
+90th_percentile                                                                             104.8
+max                                                                                         262.0
+total_cost                                                                                    NaN
+proportion_within_coverage_threshold                                                      0.58133
+proportion_regions_within_coverage_threshold                                              0.58133
+weighted_by_equity_group                                                                       {}
+unweighted_by_equity_group                                                                     {}
+coverage_by_equity_group                                                                       {}
+coverage_regions_by_equity_group                                                               {}
+max_cost_by_equity_group                                                                       {}
+gap_absolute_weighted                                                                        None
+gap_relative_weighted                                                                        None
+avg_lower_third_bins                                                                         None
+avg_middle_third_bins                                                                        None
+avg_upper_third_bins                                                                         None
+inter_tertile_ratio                                                                          None
+gap_absolute_description                                                     N/A (No equity data)
+gap_relative_description                                                     N/A (No equity data)
+inter_tertile_description                                                    N/A (No equity data)
+problem_df                                                   from_id  North Devon District Hos...
 Name: 15, dtype: object</code></pre>
 </div>
 </div>
@@ -1208,7 +1216,7 @@ Note
 
 <a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
 <script type="application/vnd.jupyter.widget-state+json">
-{"state":{"0de3073476ba4a11971525b2f9af402d":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"11a8fedfa9dd4d579224b8a39e2fb76d":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_2d7525a44d904564bad5cb71dbc437e4","placeholder":"​","style":"IPY_MODEL_fcc68ecfde7643c191e332813e6a6441","tabbable":null,"tooltip":null,"value":" 1365/1365 [00:06&lt;00:00, 221.87it/s]"}},"2d7525a44d904564bad5cb71dbc437e4":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"3faa5c0edb7541c48dc95b9928068e83":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_69bfe32010dc496fb19bda7a18b744b7","placeholder":"​","style":"IPY_MODEL_cf2adb708b31416eaa856d41325062eb","tabbable":null,"tooltip":null,"value":"100%"}},"4a96485e10f84dff9b1a1756f8f9756b":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_cccaa54da16a44079b52f4b292dbebb6","IPY_MODEL_d72ee72a72eb4ab9905e5f75848bfd42","IPY_MODEL_11a8fedfa9dd4d579224b8a39e2fb76d"],"layout":"IPY_MODEL_9aa06ce399b1424b954d6257a4f1b034","tabbable":null,"tooltip":null}},"56079b2764da4469af9d5065dabbb0f0":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"5897f421271e4db4a1d1030d18f14015":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_a531c0b4bda149b5b1f9e45bfb2bbaf5","placeholder":"​","style":"IPY_MODEL_b68257af52e6415d9c7121e1c34b0c3c","tabbable":null,"tooltip":null,"value":" 1365/1365 [00:06&lt;00:00, 225.48it/s]"}},"69bfe32010dc496fb19bda7a18b744b7":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"8d65dc0ee9824a6ea2692d364c412b94":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"9aa06ce399b1424b954d6257a4f1b034":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"a531c0b4bda149b5b1f9e45bfb2bbaf5":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"a90fe6b10b184e00be210a929ba797c5":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"b68257af52e6415d9c7121e1c34b0c3c":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"b74130c72d5c4f9b8b77eb7a4b6c7055":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"cb86245fd4314493a399692aa48f263c":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_0de3073476ba4a11971525b2f9af402d","max":1365,"min":0,"orientation":"horizontal","style":"IPY_MODEL_b74130c72d5c4f9b8b77eb7a4b6c7055","tabbable":null,"tooltip":null,"value":1365}},"cccaa54da16a44079b52f4b292dbebb6":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_56079b2764da4469af9d5065dabbb0f0","placeholder":"​","style":"IPY_MODEL_d3eb1f57e99f4821b28488fea3f07fe6","tabbable":null,"tooltip":null,"value":"100%"}},"cf2adb708b31416eaa856d41325062eb":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"d3eb1f57e99f4821b28488fea3f07fe6":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"d72ee72a72eb4ab9905e5f75848bfd42":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_8d65dc0ee9824a6ea2692d364c412b94","max":1365,"min":0,"orientation":"horizontal","style":"IPY_MODEL_a90fe6b10b184e00be210a929ba797c5","tabbable":null,"tooltip":null,"value":1365}},"f1a4bd85fd054f4792e966d6c5531506":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"fbb82611b3f6454c8c51f6116b7f3e72":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_3faa5c0edb7541c48dc95b9928068e83","IPY_MODEL_cb86245fd4314493a399692aa48f263c","IPY_MODEL_5897f421271e4db4a1d1030d18f14015"],"layout":"IPY_MODEL_f1a4bd85fd054f4792e966d6c5531506","tabbable":null,"tooltip":null}},"fcc68ecfde7643c191e332813e6a6441":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}}},"version_major":2,"version_minor":0}
+{"state":{"02dca2320c5d48e192a3577097cb86fd":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"0ae1cf28661b43fe8d91e8d8a3b96640":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"0afc2763f42a4f599c72c6697ef61ed3":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"10806bdf1c3147fa9d5d66f0ec659019":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_7e214299cd7a45838c53a8bcac18a8de","placeholder":"​","style":"IPY_MODEL_3386a8d434574828bb50cf33eff9ddba","tabbable":null,"tooltip":null,"value":"100%"}},"21707b09c3e44be8a4dd3b1dedc58441":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"3386a8d434574828bb50cf33eff9ddba":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"3f38ec81680b40f89bcfca84619bf99e":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_eda50e0acdaa496ab8e0474f2a073b6c","IPY_MODEL_8bb52c06c9e84806b7d1391d61830beb","IPY_MODEL_7764d319916d47f98d476f8f3070f41e"],"layout":"IPY_MODEL_61a5b8703db6407c85118a607550407d","tabbable":null,"tooltip":null}},"48613636246a4d23aa8f3ffdbe330607":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"4cdb1693da854d2f9e686f2909fe038b":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_48613636246a4d23aa8f3ffdbe330607","placeholder":"​","style":"IPY_MODEL_0ae1cf28661b43fe8d91e8d8a3b96640","tabbable":null,"tooltip":null,"value":" 1365/1365 [00:07&lt;00:00, 187.09it/s]"}},"4f810799c50240f8853354c20ddfde06":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"61a5b8703db6407c85118a607550407d":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"70f9b4d347d2409eaf5fc6486c6ffb2f":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"7764d319916d47f98d476f8f3070f41e":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_0afc2763f42a4f599c72c6697ef61ed3","placeholder":"​","style":"IPY_MODEL_02dca2320c5d48e192a3577097cb86fd","tabbable":null,"tooltip":null,"value":" 1365/1365 [00:07&lt;00:00, 189.79it/s]"}},"7e214299cd7a45838c53a8bcac18a8de":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"85e84ac206bc45138e1e8acce8f59249":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"892cc75c4c474b3fb4d26d57ebb82b84":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_cf8219aacaad44f98aab015d93a1b976","max":1365,"min":0,"orientation":"horizontal","style":"IPY_MODEL_4f810799c50240f8853354c20ddfde06","tabbable":null,"tooltip":null,"value":1365}},"8ab3beeceb5342b1ab3dee749b54965e":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_10806bdf1c3147fa9d5d66f0ec659019","IPY_MODEL_892cc75c4c474b3fb4d26d57ebb82b84","IPY_MODEL_4cdb1693da854d2f9e686f2909fe038b"],"layout":"IPY_MODEL_cd857b6355034e94b11c350ce1a80853","tabbable":null,"tooltip":null}},"8bb52c06c9e84806b7d1391d61830beb":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_21707b09c3e44be8a4dd3b1dedc58441","max":1365,"min":0,"orientation":"horizontal","style":"IPY_MODEL_cdc3f9185b2745a5925ce99763461b0f","tabbable":null,"tooltip":null,"value":1365}},"cd857b6355034e94b11c350ce1a80853":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"cdc3f9185b2745a5925ce99763461b0f":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"cf8219aacaad44f98aab015d93a1b976":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"eda50e0acdaa496ab8e0474f2a073b6c":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_70f9b4d347d2409eaf5fc6486c6ffb2f","placeholder":"​","style":"IPY_MODEL_85e84ac206bc45138e1e8acce8f59249","tabbable":null,"tooltip":null,"value":"100%"}}},"version_major":2,"version_minor":0}
 </script>
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
