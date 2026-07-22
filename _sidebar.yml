@@ -6,7 +6,19 @@ website:
     - contents:
       - reference/site.SiteProblem.qmd
       - reference/site.SiteSolutionSet.qmd
+      - reference/multiobjective.ParetoMetric.qmd
+      - reference/site_solutions.SolutionComparator.qmd
       section: Location Optimization Problem Classes
+    - contents:
+      - reference/travel_utils.prepare_valhalla_network.qmd
+      - reference/travel_utils.build_time_matrix_valhalla.qmd
+      - reference/travel_utils.valhalla_detailed_route.qmd
+      - reference/travel_utils.valhalla_audit_route_speeds.qmd
+      - reference/travel_utils.valhalla_maneuvers_to_gdf.qmd
+      - reference/travel_utils.AdvancedSpeedUpdater.qmd
+      - reference/travel_utils.WayInspector.qmd
+      - reference/travel_utils.process_uk_network.qmd
+      section: Travel Matrix Helpers
     - contents:
       - reference/site.EvaluatedCombination.qmd
       - reference/mixins.site_solvers.qmd
