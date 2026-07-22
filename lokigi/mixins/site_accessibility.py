@@ -63,8 +63,146 @@ class SFCAMixin:
         return supply
 
     @staticmethod
+    def _resolve_catchment_weights(cost_frame, catchment_size, distance_decay):
+        """
+        Returns a `pandas.DataFrame` aligned to `cost_frame`, giving each
+        (demand location, site) pair's catchment weight in `[0, 1]`.
+
+        Exactly one of `catchment_size` (classic 2SFCA's hard cutoff) or
+        `distance_decay` (E2SFCA step-decay bands or a continuous kernel)
+        must be given.
+        """
+        if (catchment_size is None) == (distance_decay is None):
+            raise ValueError(
+                "Please provide exactly one of 'catchment_size' (a single "
+                "hard cutoff) or 'distance_decay' (step-decay bands or a "
+                "continuous decay spec) -- not both, not neither."
+            )
+
+        if catchment_size is not None:
+            return (cost_frame <= catchment_size).astype(float)
+
+        if isinstance(distance_decay, dict):
+            return SFCAMixin._resolve_continuous_decay_weights(
+                cost_frame, distance_decay
+            )
+        return SFCAMixin._resolve_step_decay_weights(cost_frame, distance_decay)
+
+    @staticmethod
+    def _resolve_step_decay_weights(cost_frame, bands):
+        """
+        Enhanced 2SFCA (E2SFCA, Luo & Qin 2009) step-decay weighting.
+
+        `bands` is a list of `(upper_bound, weight)` pairs, need not be
+        pre-sorted. A cost is assigned the weight of the smallest band whose
+        `upper_bound` it falls within (inclusive `<=`, matching
+        `catchment_size`'s convention); a cost beyond every band's
+        `upper_bound` gets weight `0.0` -- excluded from the catchment
+        entirely, the same as "beyond catchment_size" today.
+        """
+        bands = list(bands)
+        if not bands:
+            raise ValueError(
+                "distance_decay must contain at least one (upper_bound, "
+                "weight) band."
+            )
+
+        try:
+            bands = sorted((float(upper), float(weight)) for upper, weight in bands)
+        except (TypeError, ValueError) as e:
+            raise ValueError(
+                "distance_decay must be a list of (upper_bound, weight) "
+                f"pairs. Got: {bands!r}."
+            ) from e
+
+        upper_bounds = [upper for upper, _ in bands]
+        if len(set(upper_bounds)) != len(upper_bounds):
+            raise ValueError(
+                f"distance_decay band upper bounds must be unique: {upper_bounds}."
+            )
+
+        non_positive = [upper for upper in upper_bounds if upper <= 0]
+        if non_positive:
+            raise ValueError(
+                f"distance_decay upper bounds must be positive: {non_positive}."
+            )
+
+        negative_weights = [weight for _, weight in bands if weight < 0]
+        if negative_weights:
+            raise ValueError(
+                f"distance_decay weights must be non-negative: {negative_weights}."
+            )
+
+        weight_matrix = pd.DataFrame(
+            0.0, index=cost_frame.index, columns=cost_frame.columns
+        )
+        assigned = pd.DataFrame(
+            False, index=cost_frame.index, columns=cost_frame.columns
+        )
+        for upper, weight in bands:
+            band_mask = (cost_frame <= upper) & ~assigned
+            weight_matrix[band_mask] = weight
+            assigned |= band_mask
+
+        return weight_matrix
+
+    @staticmethod
+    def _resolve_continuous_decay_weights(cost_frame, spec):
+        """
+        Continuous distance-decay weighting. `spec` is a dict naming a
+        `method` and that method's parameters; only `"gaussian"` (Dai 2010)
+        is currently supported.
+        """
+        method = spec.get("method")
+        if method == "gaussian":
+            return SFCAMixin._resolve_gaussian_decay_weights(cost_frame, spec)
+
+        raise ValueError(
+            f"Unknown distance_decay method {method!r}. Supported: 'gaussian'."
+        )
+
+    @staticmethod
+    def _resolve_gaussian_decay_weights(cost_frame, spec):
+        """
+        Dai (2010)'s truncated/adjusted Gaussian decay: weight is exactly
+        `1.0` at distance 0, exactly `0.0` at `catchment_size` (the
+        truncation radius d0), and decays continuously in between --
+        unlike a raw untruncated Gaussian, which never reaches 0.
+
+            d0_term = exp(-0.5 * (d0/bandwidth)^2)
+            weight(d) = (exp(-0.5 * (d/bandwidth)^2) - d0_term) / (1 - d0_term)   for d <= d0
+            weight(d) = 0                                                          for d > d0
+        """
+        missing = [k for k in ("catchment_size", "bandwidth") if k not in spec]
+        if missing:
+            raise ValueError(
+                "distance_decay with method='gaussian' requires "
+                f"{missing}: e.g. {{'method': 'gaussian', 'catchment_size': "
+                "30, 'bandwidth': 10}}."
+            )
+
+        catchment_size = spec["catchment_size"]
+        bandwidth = spec["bandwidth"]
+
+        if catchment_size <= 0:
+            raise ValueError(
+                f"distance_decay['catchment_size'] must be positive: {catchment_size}."
+            )
+        if bandwidth <= 0:
+            raise ValueError(
+                f"distance_decay['bandwidth'] must be positive: {bandwidth}."
+            )
+
+        d0_term = np.exp(-0.5 * (catchment_size / bandwidth) ** 2)
+        raw = np.exp(-0.5 * (cost_frame / bandwidth) ** 2)
+        weight_matrix = (raw - d0_term) / (1 - d0_term)
+        weight_matrix = weight_matrix.where(cost_frame <= catchment_size, 0.0)
+
+        return weight_matrix
+
+    @staticmethod
     def _two_step_floating_catchment(
-        cost_frame, demand, supply, catchment_size, per_capita, return_site_ratios
+        cost_frame, demand, supply, weight_matrix, per_capita, return_site_ratios
     ):
         """
         Parameters
@@ -76,11 +214,13 @@ class SFCAMixin:
             Demand weight per demand location, aligned to `cost_frame.index`.
         supply : pandas.Series
             Supply quantity per site, aligned to `cost_frame.columns`.
-        catchment_size : float
-            Hard catchment threshold d0. Membership is inclusive (`<=`),
-            unlike the library's coverage metrics, which use strict `<` --
-            deliberate, matching the inclusive convention in the 2SFCA
-            literature.
+        weight_matrix : pandas.DataFrame
+            Catchment weight per (demand location, site) pair, aligned to
+            `cost_frame`, values in `[0, 1]`. A cell of `1.0` means "fully in
+            catchment" (classic 2SFCA's hard cutoff); `0.0` means "excluded
+            entirely"; anything in between is a distance-decay weight
+            (E2SFCA step bands or a continuous kernel). See
+            `_resolve_catchment_weights`.
         per_capita : float
             Multiplier applied to `accessibility`, e.g. 1_000 to express
             supply per 1,000 head instead of raw supply units per head.
@@ -91,11 +231,9 @@ class SFCAMixin:
         -------
         pandas.DataFrame or tuple of (pandas.DataFrame, pandas.DataFrame)
         """
-        in_catchment = cost_frame <= catchment_size
-
         # Step 1: supply-to-demand ratio per site.
-        catchment_demand = in_catchment.mul(demand, axis=0).sum(axis=0)
-        n_regions_in_catchment = in_catchment.sum(axis=0)
+        catchment_demand = weight_matrix.mul(demand, axis=0).sum(axis=0)
+        n_regions_in_catchment = (weight_matrix > 0).sum(axis=0)
 
         with np.errstate(invalid="ignore", divide="ignore"):
             ratio = supply / catchment_demand
@@ -108,10 +246,9 @@ class SFCAMixin:
         if empty_sites:
             warnings.warn(
                 "two_step_floating_catchment: the following sites have no "
-                f"demand within catchment_size={catchment_size}, so their "
-                "supply-to-demand ratio is undefined (NaN) and they are "
-                f"excluded from every region's accessibility score: "
-                f"{empty_sites}.",
+                "demand within their catchment, so their supply-to-demand "
+                "ratio is undefined (NaN) and they are excluded from every "
+                f"region's accessibility score: {empty_sites}.",
                 stacklevel=3,
             )
 
@@ -136,8 +273,8 @@ class SFCAMixin:
         # shouldn't poison every other region that happens to be near it
         # too.
         usable_ratio = ratio.fillna(0.0)
-        accessibility = in_catchment.mul(usable_ratio, axis=1).sum(axis=1) * per_capita
-        n_sites_in_catchment = in_catchment.sum(axis=1)
+        accessibility = weight_matrix.mul(usable_ratio, axis=1).sum(axis=1) * per_capita
+        n_sites_in_catchment = (weight_matrix > 0).sum(axis=1)
 
         region_frame = pd.DataFrame(
             {
@@ -154,7 +291,8 @@ class SFCAMixin:
     def two_step_floating_catchment(
         self,
         supply_col,
-        catchment_size,
+        catchment_size=None,
+        distance_decay=None,
         site_names=None,
         site_indices=None,
         matrix=None,
@@ -184,10 +322,27 @@ class SFCAMixin:
             Named at call time rather than registered via `add_sites()`,
             so the same problem can be scored under different supply
             definitions without re-adding sites.
-        catchment_size : float
-            Hard catchment threshold d0, in the travel matrix's registered
-            units. A site is "in catchment" for a demand region if the
-            travel cost between them is `<= catchment_size`.
+        catchment_size : float, optional
+            Classic 2SFCA's hard catchment threshold d0, in the travel
+            matrix's registered units. A site is "in catchment" for a
+            demand region if the travel cost between them is
+            `<= catchment_size`, with weight 1; beyond it, weight 0.
+            Mutually exclusive with `distance_decay` -- exactly one of the
+            two must be given.
+        distance_decay : list of (float, float) or dict, optional
+            A softer catchment than a single hard cutoff. Two forms:
+
+            - A list of `(upper_bound, weight)` pairs -- Enhanced 2SFCA
+              (E2SFCA, Luo & Qin 2009) step-decay bands, e.g.
+              ``[(10, 1.0), (20, 0.68), (30, 0.22)]``. Need not be
+              pre-sorted; a cost beyond the largest `upper_bound` gets
+              weight 0. `catchment_size=<upper_bound>` with a single band
+              of weight 1 is exactly equivalent to classic 2SFCA.
+            - A dict describing a continuous decay kernel, currently only
+              ``{"method": "gaussian", "catchment_size": d0, "bandwidth":
+              sigma}`` -- Dai (2010)'s truncated Gaussian: weight 1 at
+              distance 0, weight 0 at `catchment_size` (the truncation
+              radius), decaying continuously in between.
         site_names : list of str, optional
         site_indices : list of int, optional
             The site set to score. At most one may be given. If neither is
@@ -218,10 +373,12 @@ class SFCAMixin:
         Raises
         ------
         ValueError
-            If both `site_names` and `site_indices` are given, if no demand
-            data is registered, if `supply_col` is missing or contains a
-            null/negative value for a scored site, or if `matrix` is not a
-            registered secondary travel matrix label.
+            If both `site_names` and `site_indices` are given, if neither
+            or both of `catchment_size`/`distance_decay` are given, if no
+            demand data is registered, if `supply_col` is missing or
+            contains a null/negative value for a scored site, if `matrix`
+            is not a registered secondary travel matrix label, or if
+            `distance_decay` fails its own validation (see above).
         TypeError
             If `supply_col` is not numeric.
         IndexError
@@ -232,17 +389,20 @@ class SFCAMixin:
 
         Notes
         -----
-        A site with no demand within `catchment_size` has an undefined
+        A site with no demand within its catchment has an undefined
         (`NaN`) supply-to-demand ratio and is excluded from every region's
         accessibility score, with a warning naming it. A demand region with
-        no site in `catchment_size` correctly scores `accessibility == 0`
+        no site in its catchment correctly scores `accessibility == 0`
         (a real "no supply available" result, not a missing value) --
         these two zero-like cases are deliberately kept distinguishable.
+        `n_regions_in_catchment`/`n_sites_in_catchment` count non-zero-weight
+        membership, so this holds under `distance_decay` too.
 
         `accessibility` obeys `sum(demand * accessibility) == sum(supply)`
         (before `per_capita` scaling) whenever every scored site has at
         least one region in its catchment, since the sum of demand-weighted
-        ratios is exactly the supply that produced them.
+        ratios is exactly the supply that produced them -- true regardless
+        of whether `catchment_size` or `distance_decay` was used.
         """
         if site_names is not None and site_indices is not None:
             raise ValueError(
@@ -321,11 +481,15 @@ class SFCAMixin:
             site_names_resolved,
         )
 
+        weight_matrix = self._resolve_catchment_weights(
+            cost_frame, catchment_size, distance_decay
+        )
+
         return self._two_step_floating_catchment(
             cost_frame=cost_frame,
             demand=demand,
             supply=supply,
-            catchment_size=catchment_size,
+            weight_matrix=weight_matrix,
             per_capita=per_capita,
             return_site_ratios=return_site_ratios,
         )
@@ -355,6 +519,7 @@ class AccessibilityPlotMixin:
         site_frame=None,
         supply_col=None,
         catchment_size=None,
+        distance_decay=None,
         site_names=None,
         site_indices=None,
         matrix=None,
@@ -389,13 +554,14 @@ class AccessibilityPlotMixin:
             either is None (the default), both are computed automatically
             from `supply_col`/`catchment_size` and the selection arguments
             below.
-        supply_col, catchment_size, site_names, site_indices, matrix,
-        per_capita
+        supply_col, catchment_size, distance_decay, site_names, site_indices,
+        matrix, per_capita
             Forwarded to `two_step_floating_catchment()` when
             `region_frame`/`site_frame` are not supplied; see that
-            method's docstring. On a `SiteSolutionSet`, this always scores
-            `solution_rank=1` -- to plot a specific `rank_on`/
-            `solution_rank` solution, call
+            method's docstring (`catchment_size`/`distance_decay` are
+            mutually exclusive there too). On a `SiteSolutionSet`, this
+            always scores `solution_rank=1` -- to plot a specific
+            `rank_on`/`solution_rank` solution, call
             `two_step_floating_catchment(..., return_site_ratios=True)`
             yourself and pass the results in as `region_frame`/`site_frame`.
         interactive : bool, default False
@@ -436,9 +602,10 @@ class AccessibilityPlotMixin:
         Raises
         ------
         ValueError
-            If neither `region_frame`/`site_frame` nor both `supply_col`
-            and `catchment_size` are supplied, or if no region geometry
-            layer has been registered via `add_region_geometry_layer()`.
+            If neither `region_frame`/`site_frame` nor `supply_col` plus
+            one of `catchment_size`/`distance_decay` are supplied, or if no
+            region geometry layer has been registered via
+            `add_region_geometry_layer()`.
 
         Notes
         -----
@@ -457,16 +624,17 @@ class AccessibilityPlotMixin:
             )
 
         if region_frame is None or site_frame is None:
-            if supply_col is None or catchment_size is None:
+            if supply_col is None or (catchment_size is None and distance_decay is None):
                 raise ValueError(
                     "Either pass precomputed `region_frame`/`site_frame` "
                     "(from `two_step_floating_catchment(return_site_ratios="
-                    "True)`), or both `supply_col` and `catchment_size` so "
-                    "they can be computed automatically."
+                    "True)`), or `supply_col` plus one of `catchment_size`/"
+                    "`distance_decay` so they can be computed automatically."
                 )
             region_frame, site_frame = self.two_step_floating_catchment(
                 supply_col=supply_col,
                 catchment_size=catchment_size,
+                distance_decay=distance_decay,
                 site_names=site_names,
                 site_indices=site_indices,
                 matrix=matrix,

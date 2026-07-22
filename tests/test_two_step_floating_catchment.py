@@ -21,6 +21,8 @@ p=2 sites {Site_1, Site_2}, catchment_size=15.
   LSOA_3 = R_2 = 0.03333..., LSOA_Isolated = 0
 """
 
+import math
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -301,6 +303,228 @@ def test_negative_supply_raises():
     problem = _sfca_problem_with_supply_values([10, -5])
     with pytest.raises(ValueError, match="Site_2"):
         problem.two_step_floating_catchment(supply_col="supply", catchment_size=15)
+
+
+# --- Enhanced 2SFCA: step-decay bands --------------------------------------
+
+
+def test_step_decay_matches_hand_computation(sfca_problem):
+    """Bands [(10, 1.0), (15, 0.5), (30, 0.2)] against sfca_problem's costs
+    (Site_1: LSOA_1=10, LSOA_2=8, LSOA_3=30; Site_2: LSOA_1=12, LSOA_2=30,
+    LSOA_3=5):
+
+      weight(Site_1): LSOA_1=1.0 (<=10), LSOA_2=1.0 (<=10), LSOA_3=0.2 (<=30)
+      weight(Site_2): LSOA_1=0.5 (<=15), LSOA_2=0.2 (<=30), LSOA_3=1.0 (<=10)
+
+      catchment_demand(Site_1) = 1.0*100 + 1.0*100 + 0.2*50 = 210 -> R_1 = 10/210
+      catchment_demand(Site_2) = 0.5*100 + 0.2*100 + 1.0*50 = 120 -> R_2 = 5/120
+      accessibility(LSOA_1) = 1.0*R_1 + 0.5*R_2
+      accessibility(LSOA_2) = 1.0*R_1 + 0.2*R_2
+      accessibility(LSOA_3) = 0.2*R_1 + 1.0*R_2
+    """
+    bands = [(10, 1.0), (15, 0.5), (30, 0.2)]
+    region_frame, site_frame = sfca_problem.two_step_floating_catchment(
+        supply_col="supply",
+        distance_decay=bands,
+        site_names=["Site_1", "Site_2"],
+        return_site_ratios=True,
+    )
+
+    expected_r1 = 10 / 210
+    expected_r2 = 5 / 120
+    assert site_frame.loc["Site_1", "ratio"] == pytest.approx(expected_r1)
+    assert site_frame.loc["Site_2", "ratio"] == pytest.approx(expected_r2)
+
+    assert region_frame.loc["LSOA_1", "accessibility"] == pytest.approx(
+        1.0 * expected_r1 + 0.5 * expected_r2
+    )
+    assert region_frame.loc["LSOA_2", "accessibility"] == pytest.approx(
+        1.0 * expected_r1 + 0.2 * expected_r2
+    )
+    assert region_frame.loc["LSOA_3", "accessibility"] == pytest.approx(
+        0.2 * expected_r1 + 1.0 * expected_r2
+    )
+
+    total = (region_frame["demand"] * region_frame["accessibility"]).sum()
+    assert total == pytest.approx(10 + 5)
+
+
+def test_step_decay_bands_need_not_be_presorted(sfca_problem):
+    sorted_bands = [(10, 1.0), (15, 0.5), (30, 0.2)]
+    shuffled_bands = [(30, 0.2), (10, 1.0), (15, 0.5)]
+
+    sorted_result = sfca_problem.two_step_floating_catchment(
+        supply_col="supply", distance_decay=sorted_bands, site_names=["Site_1", "Site_2"]
+    )
+    shuffled_result = sfca_problem.two_step_floating_catchment(
+        supply_col="supply", distance_decay=shuffled_bands, site_names=["Site_1", "Site_2"]
+    )
+    pd.testing.assert_frame_equal(sorted_result, shuffled_result)
+
+
+def test_single_band_distance_decay_equals_classic_catchment_size(sfca_problem):
+    """The concrete proof that classic 2SFCA is the single-band special
+    case of the generalised weight-matrix engine, not a diverged path."""
+    via_catchment_size = sfca_problem.two_step_floating_catchment(
+        supply_col="supply", catchment_size=15, site_names=["Site_1", "Site_2"],
+        return_site_ratios=True,
+    )
+    via_distance_decay = sfca_problem.two_step_floating_catchment(
+        supply_col="supply",
+        distance_decay=[(15, 1.0)],
+        site_names=["Site_1", "Site_2"],
+        return_site_ratios=True,
+    )
+    pd.testing.assert_frame_equal(via_catchment_size[0], via_distance_decay[0])
+    pd.testing.assert_frame_equal(via_catchment_size[1], via_distance_decay[1])
+
+
+def test_step_decay_band_boundary_is_inclusive(sfca_problem):
+    """A cost exactly equal to a band's upper_bound belongs to that band,
+    not the next one up -- matching catchment_size's existing inclusive
+    `<=` convention. LSOA_1's and LSOA_2's cost to Site_1 are 10 and 8
+    (both <= 10, the first band); only Site_1 is scored, so
+    catchment_demand = 100 + 100 = 200 if the boundary is inclusive, not
+    100 (LSOA_2 only) if a cost of exactly 10 were wrongly pushed into the
+    second band."""
+    region_frame = sfca_problem.two_step_floating_catchment(
+        supply_col="supply",
+        distance_decay=[(10, 1.0), (20, 0.5)],
+        site_names=["Site_1"],
+    )
+    expected = 10 / (100 + 100) * 1.0
+    assert region_frame.loc["LSOA_1", "accessibility"] == pytest.approx(expected)
+
+
+def test_step_decay_empty_list_raises(sfca_problem):
+    with pytest.raises(ValueError, match="at least one"):
+        sfca_problem.two_step_floating_catchment(supply_col="supply", distance_decay=[])
+
+
+def test_step_decay_duplicate_upper_bounds_raises(sfca_problem):
+    with pytest.raises(ValueError, match="unique"):
+        sfca_problem.two_step_floating_catchment(
+            supply_col="supply", distance_decay=[(10, 1.0), (10, 0.5)]
+        )
+
+
+def test_step_decay_non_positive_upper_bound_raises(sfca_problem):
+    with pytest.raises(ValueError, match="positive"):
+        sfca_problem.two_step_floating_catchment(
+            supply_col="supply", distance_decay=[(0, 1.0), (10, 0.5)]
+        )
+
+
+def test_step_decay_negative_weight_raises(sfca_problem):
+    with pytest.raises(ValueError, match="non-negative"):
+        sfca_problem.two_step_floating_catchment(
+            supply_col="supply", distance_decay=[(10, -0.5)]
+        )
+
+
+# --- Enhanced 2SFCA: continuous Gaussian decay ------------------------------
+
+
+def test_gaussian_decay_boundary_and_truncation_values(gaussian_decay_problem):
+    """Dai (2010)'s truncated Gaussian: weight is exactly 1.0 at distance 0
+    and exactly 0.0 at distance == catchment_size (the truncation radius),
+    both algebraically exact (not approximations of the general formula).
+    LSOA_Beyond (distance 100) is also exactly 0.0 -- truncation beyond the
+    radius, not decay towards it."""
+    region_frame = gaussian_decay_problem.two_step_floating_catchment(
+        supply_col="supply",
+        distance_decay={"method": "gaussian", "catchment_size": 30, "bandwidth": 15},
+    )
+    assert region_frame.loc["LSOA_Boundary", "accessibility"] == 0.0
+    assert region_frame.loc["LSOA_Beyond", "accessibility"] == 0.0
+    assert region_frame.loc["LSOA_Beyond", "n_sites_in_catchment"] == 0
+
+    # LSOA_Zero (distance 0) has weight exactly 1.0, so its accessibility
+    # equals the site's ratio R directly.
+    d0_term = math.exp(-0.5 * (30 / 15) ** 2)
+    weight_mid = (math.exp(-0.5 * (15 / 15) ** 2) - d0_term) / (1 - d0_term)
+    catchment_demand = 1.0 * 100 + weight_mid * 100
+    expected_r = 10 / catchment_demand
+    assert region_frame.loc["LSOA_Zero", "accessibility"] == pytest.approx(expected_r)
+    assert region_frame.loc["LSOA_Mid", "accessibility"] == pytest.approx(
+        weight_mid * expected_r
+    )
+
+
+def test_gaussian_decay_weight_is_monotonically_non_increasing_with_distance(
+    gaussian_decay_problem,
+):
+    region_frame = gaussian_decay_problem.two_step_floating_catchment(
+        supply_col="supply",
+        distance_decay={"method": "gaussian", "catchment_size": 30, "bandwidth": 15},
+    )
+    ordered = region_frame.loc[["LSOA_Zero", "LSOA_Mid", "LSOA_Boundary", "LSOA_Beyond"]]
+    accessibility = ordered["accessibility"].tolist()
+    assert accessibility == sorted(accessibility, reverse=True)
+    # And it's a real effect, not every value coincidentally tied.
+    assert accessibility[0] > accessibility[1] > 0
+
+
+def test_gaussian_decay_unknown_method_raises(sfca_problem):
+    with pytest.raises(ValueError, match="Unknown distance_decay method"):
+        sfca_problem.two_step_floating_catchment(
+            supply_col="supply", distance_decay={"method": "exponential"}
+        )
+
+
+def test_gaussian_decay_missing_keys_raises(sfca_problem):
+    with pytest.raises(ValueError, match="catchment_size"):
+        sfca_problem.two_step_floating_catchment(
+            supply_col="supply", distance_decay={"method": "gaussian", "bandwidth": 10}
+        )
+
+
+def test_gaussian_decay_non_positive_catchment_size_raises(sfca_problem):
+    with pytest.raises(ValueError, match="catchment_size"):
+        sfca_problem.two_step_floating_catchment(
+            supply_col="supply",
+            distance_decay={"method": "gaussian", "catchment_size": 0, "bandwidth": 10},
+        )
+
+
+def test_gaussian_decay_non_positive_bandwidth_raises(sfca_problem):
+    with pytest.raises(ValueError, match="bandwidth"):
+        sfca_problem.two_step_floating_catchment(
+            supply_col="supply",
+            distance_decay={"method": "gaussian", "catchment_size": 30, "bandwidth": 0},
+        )
+
+
+# --- catchment_size / distance_decay mutual exclusivity ---------------------
+
+
+def test_both_catchment_size_and_distance_decay_raises(sfca_problem):
+    with pytest.raises(ValueError, match="exactly one"):
+        sfca_problem.two_step_floating_catchment(
+            supply_col="supply", catchment_size=15, distance_decay=[(15, 1.0)]
+        )
+
+
+def test_neither_catchment_size_nor_distance_decay_raises(sfca_problem):
+    with pytest.raises(ValueError, match="exactly one"):
+        sfca_problem.two_step_floating_catchment(supply_col="supply")
+
+
+def test_site_problem_and_solution_set_agree_under_distance_decay(sfca_problem):
+    result = sfca_problem.solve(p=2, objectives="p_median")
+
+    problem_side = sfca_problem.two_step_floating_catchment(
+        supply_col="supply",
+        distance_decay=[(10, 1.0), (20, 0.68), (30, 0.22)],
+        site_names=["Site_1", "Site_2"],
+    )
+    solution_side = result.two_step_floating_catchment(
+        supply_col="supply",
+        distance_decay=[(10, 1.0), (20, 0.68), (30, 0.22)],
+        site_names=["Site_1", "Site_2"],
+    )
+
+    pd.testing.assert_frame_equal(problem_side, solution_side)
 
 
 def _sfca_problem_with_supply_values(supply_values):

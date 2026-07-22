@@ -1304,7 +1304,8 @@ class SiteSolutionSet(
     def two_step_floating_catchment(
         self,
         supply_col,
-        catchment_size,
+        catchment_size=None,
+        distance_decay=None,
         rank_on=None,
         solution_rank=1,
         site_names=None,
@@ -1330,10 +1331,14 @@ class SiteSolutionSet(
         supply_col : str
             Column in `candidate_sites` holding each site's supply
             quantity (e.g. number of GPs, beds, weekly appointment slots).
-        catchment_size : float
-            Hard catchment threshold d0, in the travel matrix's registered
-            units. A site is "in catchment" for a demand region if the
-            travel cost between them is `<= catchment_size`.
+        catchment_size : float, optional
+            Classic 2SFCA's hard catchment threshold d0, in the travel
+            matrix's registered units. Mutually exclusive with
+            `distance_decay` -- exactly one of the two must be given. See
+            `SiteProblem.two_step_floating_catchment` for details.
+        distance_decay : list of (float, float) or dict, optional
+            Enhanced 2SFCA step-decay bands or a continuous decay kernel,
+            forwarded as-is. See `SiteProblem.two_step_floating_catchment`.
         rank_on : str, optional
         solution_rank : int, default 1
         site_names : list, optional
@@ -1380,6 +1385,7 @@ class SiteSolutionSet(
         return self.site_problem.two_step_floating_catchment(
             supply_col=supply_col,
             catchment_size=catchment_size,
+            distance_decay=distance_decay,
             site_names=selected_sites,
             matrix=matrix,
             per_capita=per_capita,

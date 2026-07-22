@@ -147,3 +147,30 @@ def test_site_problem_and_solution_set_plot_agree_on_marker_count(
     )
     site_markers = ax.collections[-1]
     assert len(site_markers.get_offsets()) == 2
+
+
+def test_distance_decay_is_forwarded_and_differs_from_catchment_size(
+    sfca_problem_with_geometry,
+):
+    """`plot_accessibility(distance_decay=...)` auto-computes via the
+    step-decay/Gaussian path rather than raising or silently falling back
+    to a hard cutoff."""
+    ax = sfca_problem_with_geometry.plot_accessibility(
+        supply_col="supply",
+        distance_decay=[(10, 1.0), (20, 0.5), (30, 0.2)],
+        site_names=["Site_1", "Site_2"],
+        add_basemap=False,
+    )
+    assert ax is not None
+
+    region_catchment_size = sfca_problem_with_geometry.two_step_floating_catchment(
+        supply_col="supply", catchment_size=15, site_names=["Site_1", "Site_2"]
+    )
+    region_distance_decay = sfca_problem_with_geometry.two_step_floating_catchment(
+        supply_col="supply",
+        distance_decay=[(10, 1.0), (20, 0.5), (30, 0.2)],
+        site_names=["Site_1", "Site_2"],
+    )
+    assert not region_catchment_size["accessibility"].equals(
+        region_distance_decay["accessibility"]
+    )

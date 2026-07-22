@@ -923,3 +923,47 @@ def sfca_problem_with_secondary_matrix(sfca_problem, sfca_secondary_travel_df):
         sfca_secondary_travel_df, source_col="source_id", label="public_transport"
     )
     return sfca_problem
+
+
+@pytest.fixture
+def gaussian_decay_problem():
+    """A single-site problem with four regions placed at cost 0, 15, 30 and
+    100 from the only site, for `distance_decay={"method": "gaussian",
+    "catchment_size": 30, "bandwidth": 15}` tests.
+
+    Dai (2010)'s truncated Gaussian weight is exactly 1.0 at distance 0 and
+    exactly 0.0 at distance == catchment_size (both algebraically exact, not
+    approximations), and 0.0 again beyond catchment_size (truncation) --
+    covering the boundary and truncation cases in one fixture. LSOA_Mid's
+    distance of 15 gives a weight strictly between 0 and 1, derivable from
+    the formula independently in the test.
+
+    Demand: LSOA_Zero=100, LSOA_Mid=100, LSOA_Boundary=50, LSOA_Beyond=75.
+    Supply: Site_1=10.
+    """
+    demand_df = pd.DataFrame(
+        {
+            "location_id": ["LSOA_Zero", "LSOA_Mid", "LSOA_Boundary", "LSOA_Beyond"],
+            "demand": [100, 100, 50, 75],
+        }
+    )
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": ["Site_1"],
+            "lat": [51.1],
+            "long": [-0.1],
+            "supply": [10],
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["LSOA_Zero", "LSOA_Mid", "LSOA_Boundary", "LSOA_Beyond"],
+            "Site_1": [0.0, 15.0, 30.0, 100.0],
+        }
+    )
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+    return problem
