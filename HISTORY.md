@@ -22,6 +22,8 @@
     - Every sort over solutions uses a stable sort (`kind="mergesort"`), so equally-good solutions are no longer reshuffled arbitrarily. pandas' default single-column sort is quicksort, which is not stable, so which of several tied solutions was reported as "best" could differ between runs, machines or library versions
     - Affects `rank_on=` ranking, `pareto_summary()`, and the solution the Pareto narrative methods anchor on. Ties are routine -- on the sample Brighton problem `max` takes only 5 distinct values across 15 candidate combinations
     - `solve()`'s own ranking already sorted on two columns, which pandas handles with a stable lexsort, so no existing solve output changes
+- Fix `plot_solution_comparison()` and `plot_solution_sets_comparison()` raising `AttributeError: 'SiteSolutionSet' object has no attribute '_get_ordinal_suffix'`
+    - The ordinal-suffix helper is a module-level function in `lokigi.utils` but was called as though it were a method on the solution set, so plotting any solution other than the top-ranked one crashed. `solution_rank=1` took a different branch and worked, which is why this went unnoticed
 - Fix `plot_travel_time_distribution(bottom_n=...)` raising `TypeError: list.append() takes no keyword arguments`
     - The bottom-ranked slice was appended with a stray keyword argument, so passing `bottom_n` at all crashed. Passing `top_n` alone was unaffected
 

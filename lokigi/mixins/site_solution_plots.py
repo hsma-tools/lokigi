@@ -1352,7 +1352,7 @@ class MapsMixin:
                         title_prefix = f"Best solution for {self.n_sites} sites"
                     else:
                         rank = config.get("solution_rank", 1)
-                        rank_suffix = self._get_ordinal_suffix(rank)
+                        rank_suffix = _get_ordinal_suffix(rank)
                         title_prefix = f"{rank}{rank_suffix} best solution for {self.n_sites} sites"
 
                     _, _, _, _, config_suffix = self._resolve_travel_columns(matrix)
