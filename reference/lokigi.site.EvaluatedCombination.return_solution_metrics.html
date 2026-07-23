@@ -78,8 +78,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-b9db622ab4cfbe3cb3a5c3b0cfe31a38.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-c2cb4ca64c758ea54772214a9ed67472.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-0d210a0509ecf4a0ffc439124ba9b804.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-0b786126e8e87865814929786bd75bd9.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -369,14 +369,30 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>If False (the default), each registered secondary travel matrix contributes only its core five metrics plus the float-valued equity aggregations (see point 6 below) – matching the output shape prior to this parameter’s introduction. If True, every registered secondary matrix also contributes its dict-valued equity breakdowns (<code>weighted_by_equity_group__&lt;label&gt;</code>, etc.) and description strings, exactly mirroring what the primary matrix already always returns unsuffixed. This costs nothing extra to compute – <code>_compute_travel_metrics</code> already produces these values for every matrix regardless – it only changes which of the already-computed keys get included here.</td>
 <td><code>False</code></td>
 </tr>
-<tr class="even">
-<td>INTERPRETATION</td>
-<td></td>
-<td></td>
-<td><em>required</em></td>
-</tr>
 </tbody>
 </table>
+</section>
+<section id="notes" class="level2 doc-section doc-section-notes">
+<h2 class="doc-section doc-section-notes anchored" data-anchor-id="notes">Notes</h2>
+<p>INTERPRETATION GUIDE FOR SUMMARY TABLES &amp; SORTING:</p>
+<p>1a. ‘weighted_average’ LOWER is better. Represents travel time adjusted for specified weighting factors.</p>
+<p>1b. Travel Costs (‘unweighted_average’, ‘90th_percentile’, ‘max’): LOWER is better. Represents travel time or distance.</p>
+<p>1c. ‘total_cost’ LOWER is better. Total fixed cost of the selected sites (sum of the <code>cost_col</code> configured via <code>add_sites()</code>). <code>NaN</code> if no <code>cost_col</code> was configured. Only influences which solution is selected if explicitly passed as a weight (weights={“cost”: …}).</p>
+<ol start="2" type="1">
+<li><p>Absolute Equity Gap (‘gap_absolute_weighted’): CLOSER TO 0 is better. Measures the flat minute/distance difference between the best-served and worst-served equity bands. High numbers mean severe geographical disparity.</p></li>
+<li><p>Relative Equity Gap (‘gap_relative_weighted’): CLOSER TO 1.0 is better. If it’s 1.5, the worst-served group travels 1.5x longer than the best-served group.</p></li>
+<li><p>Inter-Tertile Ratio (‘inter_tertile_ratio’): Measures macro-equity assuming lower bins = higher deprivation (e.g., IMD 1-3). SORTING CRITERIA:</p>
+<ul>
+<li>ITR &gt; 1.0: Inequity. The most deprived third faces longer travel times than the least deprived third (e.g., 1.25 = 25% longer travel).</li>
+<li>ITR = 1.0: Perfect equality in macro travel times.</li>
+<li>ITR &lt; 1.0: Progressive equity. Travel times are shorter for the most deprived communities.</li>
+</ul></li>
+<li><p>Coverage Metrics (‘proportion_within_coverage_threshold’, ‘coverage_by_equity_group’): HIGHER is better (Scale: 0.0 to 1.0). Represents accessibility. Look for solutions where coverage is both globally high and uniformly distributed across groups. Both are <code>NaN</code> if no <code>threshold_for_coverage</code> was given.</p>
+<p>NAMING RULE: an unqualified coverage metric is weighted by the demand registered via <code>add_demand()</code>, so it answers “what share of <em>people</em> are covered”. The <code>regions</code> variants (‘proportion_regions_within_coverage_threshold’, ‘coverage_regions_by_equity_group’) count every region equally and answer “what share of <em>places</em> are covered”. The two coincide when demand is uniform, including when <code>add_demand()</code> was never called.</p>
+<p>The demand-weighted figure is the one ‘mclp’ optimises, matching the textbook Maximal Covering Location Problem.</p></li>
+<li><p>Secondary travel matrices (columns suffixed <code>__&lt;label&gt;</code>, e.g. ’weighted_average__public_transport’):</p>
+<p>Registered via <code>add_secondary_travel_matrix(label=...)</code>. Same metrics and sort direction as their unsuffixed counterparts above (1a/1b/5), computed against that matrix’s own travel costs instead of the primary matrix. By default, only the core scalar metrics (both coverage proportions included) plus the float-valued equity aggregations (gap_absolute_weighted, gap_relative_weighted, avg_*_third_bins, inter_tertile_ratio) are included per matrix, to keep this table from growing unboundedly with each registered matrix – pass <code>full_secondary_metrics=True</code> to also include the dict-valued equity breakdowns and description strings, matching what the primary matrix already returns. The underlying per-region <code>problem_df</code> always carries <code>min_cost__&lt;label&gt;</code> / <code>selected_site__&lt;label&gt;</code> / <code>within_threshold__&lt;label&gt;</code> regardless of this setting.</p></li>
+</ol>
 
 
 </section>
