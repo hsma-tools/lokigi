@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Two-Step Floating Catchment Area (2SFCA) Accessibility – lokigi</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script><script src="../../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../../">
+<script src="../../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../../site_libs/bootstrap/bootstrap-b9db622ab4cfbe3cb3a5c3b0cfe31a38.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../../site_libs/bootstrap/bootstrap-dark-c2cb4ca64c758ea54772214a9ed67472.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.min.js" integrity="sha384-c9c+LnTbwQ3aujuU7ULEPVvgLs+Fn6fJUvIGTsuu1ZcCf11fiEubah0ttpca4ntM sha384-6V1/AdqZRWk1KAlWbKBlGhN7VG4iE/yAZcO6NZPMF8od0vukrvr0tg4qY6NSrItx" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+<script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@*/dist/embed-amd.js" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+
+<link rel="stylesheet" href="../../../lokigi_docs/resources/styles.css">
+</head>
+
+<body class="nav-fixed quarto-dark"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = true;
+    const darkModeDefault = authorPrefersDark;
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../../index.html">
+    <span class="navbar-title">lokigi</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../../lokigi_docs/index.html"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../../lokigi_docs/getting_started.html"> 
+<span class="menu-text">Getting Started</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../../examples/examples.html"> 
+<span class="menu-text">Examples</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../../reference/index.html"> 
+<span class="menu-text">API Reference</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../../lokigi_docs/changelog.html"> 
+<span class="menu-text">Changelog</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/hsma-tools/lokigi/"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://pypi.org/project/lokigi/"> <i class="bi bi-box-fill" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#setting-up-the-problem" id="toc-setting-up-the-problem" class="nav-link active" data-scroll-target="#setting-up-the-problem">Setting up the problem</a></li>
+  <li><a href="#baseline-accessibility-no-solve-required" id="toc-baseline-accessibility-no-solve-required" class="nav-link" data-scroll-target="#baseline-accessibility-no-solve-required">Baseline accessibility – no <code>solve()</code> required</a></li>
+  <li><a href="#where-2sfca-disagrees-with-coverage" id="toc-where-2sfca-disagrees-with-coverage" class="nav-link" data-scroll-target="#where-2sfca-disagrees-with-coverage">Where 2SFCA disagrees with coverage</a></li>
+  <li><a href="#visualising-the-disagreement" id="toc-visualising-the-disagreement" class="nav-link" data-scroll-target="#visualising-the-disagreement">Visualising the disagreement</a></li>
+  <li><a href="#inspecting-the-supply-side" id="toc-inspecting-the-supply-side" class="nav-link" data-scroll-target="#inspecting-the-supply-side">Inspecting the supply side</a></li>
+  <li><a href="#scoring-a-proposed-smaller-solution" id="toc-scoring-a-proposed-smaller-solution" class="nav-link" data-scroll-target="#scoring-a-proposed-smaller-solution">Scoring a proposed (smaller) solution</a></li>
+  <li><a href="#mapping-accessibility" id="toc-mapping-accessibility" class="nav-link" data-scroll-target="#mapping-accessibility">Mapping accessibility</a></li>
+  <li><a href="#enhanced-2sfca-distance-decay" id="toc-enhanced-2sfca-distance-decay" class="nav-link" data-scroll-target="#enhanced-2sfca-distance-decay">Enhanced 2SFCA (distance decay)</a></li>
+  <li><a href="#elsewhere-in-lokigi" id="toc-elsewhere-in-lokigi" class="nav-link" data-scroll-target="#elsewhere-in-lokigi">Elsewhere in lokigi</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Two-Step Floating Catchment Area (2SFCA) Accessibility</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>Binary threshold coverage (see the <a href="../../../examples/location/coverage_metrics/index.html">coverage metrics example</a>) answers “is this region within X minutes of a site?” – but it treats every region within the threshold identically, regardless of how many other regions are competing for the same site’s supply.</p>
+<p>The <strong>two-step floating catchment area (2SFCA)</strong> method fixes that. For each site, it computes a supply-to-demand ratio over everyone within reach of it (step 1), then for each demand region, sums the ratios of every site reachable from it (step 2). Two regions with the same travel time to their nearest site can end up with very different accessibility if one of them shares that site with far more competing demand, or has fewer other sites within reach.</p>
+<p><code>two_step_floating_catchment()</code> is available on both <code>SiteProblem</code> (scoring any set of sites directly, with no <code>solve()</code> required) and <code>SiteSolutionSet</code> (scoring one chosen solution’s selected sites) – this example mostly uses the former, since it’s useful even before optimising anything. With no <code>site_names</code>/<code>site_indices</code>, it scores every registered candidate site; pass the subset you want explicitly (e.g.&nbsp;only the sites already open) if your candidate pool also includes proposed sites that aren’t built yet.</p>
+<section id="setting-up-the-problem" class="level2">
+<h2 class="anchored" data-anchor-id="setting-up-the-problem">Setting up the problem</h2>
+<p>Same demand, sites, travel matrix and region geometry as the <a href="../../../examples/location/coverage_metrics/index.html">coverage metrics example</a>, so the two examples are directly comparable. 2SFCA additionally needs a <strong>supply</strong> figure per site – e.g.&nbsp;GP full-time-equivalent staff, beds, or weekly appointment slots. The Brighton sample dataset has no real staffing data, so we add an illustrative <code>gp_fte</code> column here for demonstration; <code>supply_col</code> is named at call time rather than registered via <code>add_sites()</code>, so the same problem could equally be scored under a different supply definition (e.g.&nbsp;<code>beds</code>) without re-adding sites.</p>
+<div id="9c6855c2" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T18:08:07.081868Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T18:08:07.081668Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T18:08:13.337446Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T18:08:13.336342Z&quot;}}" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> geopandas <span class="im">as</span> gpd</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.site <span class="im">import</span> SiteProblem</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>sites_gdf <span class="op">=</span> gpd.read_file(<span class="st">"../../../sample_data/brighton_sites_named.geojson"</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Illustrative GP staffing (FTE) -- made up for demonstration, since the</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># sample dataset has no real capacity data.</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>sites_gdf[<span class="st">"gp_fte"</span>] <span class="op">=</span> [<span class="dv">4</span>, <span class="dv">2</span>, <span class="dv">8</span>, <span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">6</span>]</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>problem <span class="op">=</span> SiteProblem()</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>problem.add_demand(</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="st">"../../../sample_data/brighton_demand.csv"</span>,</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    demand_col<span class="op">=</span><span class="st">"demand"</span>,</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    location_id_col<span class="op">=</span><span class="st">"LSOA"</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>problem.add_sites(</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    sites_gdf,</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    candidate_id_col<span class="op">=</span><span class="st">"site"</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>problem.add_travel_matrix(</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    travel_matrix_df<span class="op">=</span><span class="st">"../../../sample_data/brighton_travel_matrix_driving_named.csv"</span>,</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>    source_col<span class="op">=</span><span class="st">"LSOA"</span>,</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>    from_unit<span class="op">=</span><span class="st">"seconds"</span>,</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>    to_unit<span class="op">=</span><span class="st">"minutes"</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>problem.add_region_geometry_layer(</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>    <span class="st">"https://github.com/hsma-programme/h6_3d_facility_location_problems/raw/refs/heads/main/h6_3d_facility_location_problems/example_code/LSOA_2011_Boundaries_Super_Generalised_Clipped_BSC_EW_V4.geojson"</span>,</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>    common_col<span class="op">=</span><span class="st">"LSOA11NM"</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="baseline-accessibility-no-solve-required" class="level2">
+<h2 class="anchored" data-anchor-id="baseline-accessibility-no-solve-required">Baseline accessibility – no <code>solve()</code> required</h2>
+<p><code>two_step_floating_catchment()</code> can score all six candidate sites directly, with no <code>solve()</code> needed. Here every candidate genuinely represents a site that’s already open, so “all six” and “the current network” happen to coincide – that’s a property of this dataset, not something the method assumes; if your own candidate pool also includes proposed-but-unbuilt sites, pass <code>site_names</code>/<code>site_indices</code> for just the open ones. We use an 8-minute <code>catchment_size</code>, matching the coverage example’s <code>threshold_for_coverage</code> so the two are comparable.</p>
+<div id="5afaa14a" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T18:08:13.339904Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T18:08:13.339659Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T18:08:13.360914Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T18:08:13.359248Z&quot;}}" data-execution_count="2">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>region_accessibility <span class="op">=</span> problem.two_step_floating_catchment(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    supply_col<span class="op">=</span><span class="st">"gp_fte"</span>,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    catchment_size<span class="op">=</span><span class="dv">8</span>,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>region_accessibility.sort_values(<span class="st">"accessibility"</span>).head()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="2">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">accessibility</th>
+<th data-quarto-table-cell-role="th">n_sites_in_catchment</th>
+<th data-quarto-table-cell-role="th">demand</th>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">LSOA</th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Brighton and Hove 027F</th>
+<td>0.0</td>
+<td>0</td>
+<td>2323</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">Brighton and Hove 002B</th>
+<td>0.0</td>
+<td>0</td>
+<td>2665</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Brighton and Hove 033A</th>
+<td>0.0</td>
+<td>0</td>
+<td>929</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">Brighton and Hove 033E</th>
+<td>0.0</td>
+<td>0</td>
+<td>1406</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Brighton and Hove 033B</th>
+<td>0.0</td>
+<td>0</td>
+<td>1035</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p><code>accessibility</code> is GP FTE per head available within reach of each region (here, ordered lowest-first); <code>n_sites_in_catchment</code> is how many of the six sites are within 8 minutes; <code>demand</code> is echoed from <code>add_demand()</code> for weighting downstream.</p>
+</section>
+<section id="where-2sfca-disagrees-with-coverage" class="level2">
+<h2 class="anchored" data-anchor-id="where-2sfca-disagrees-with-coverage">Where 2SFCA disagrees with coverage</h2>
+<p>To compare directly against binary coverage, we evaluate the same six-site network with <code>evaluate_single_solution_single_objective()</code> and an 8-minute <code>threshold_for_coverage</code>, then join its per-region <code>min_cost</code>/<code>within_threshold</code> columns to the accessibility table above.</p>
+<div id="bfb5ffb9" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T18:08:13.363879Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T18:08:13.363659Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T18:08:13.381140Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T18:08:13.380165Z&quot;}}" data-execution_count="3">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>evaluated <span class="op">=</span> problem.evaluate_single_solution_single_objective(</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    objective<span class="op">=</span><span class="st">"p_median"</span>,</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    site_names<span class="op">=</span>sites_gdf[<span class="st">"site"</span>].tolist(),</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    threshold_for_coverage<span class="op">=</span><span class="dv">8</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>comparison <span class="op">=</span> (</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    evaluated.show_result_df()</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    .set_index(<span class="st">"LSOA"</span>)[[<span class="st">"min_cost"</span>, <span class="st">"within_threshold"</span>]]</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    .join(region_accessibility[[<span class="st">"accessibility"</span>]])</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>comparison.head()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="3">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">min_cost</th>
+<th data-quarto-table-cell-role="th">within_threshold</th>
+<th data-quarto-table-cell-role="th">accessibility</th>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">LSOA</th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Brighton and Hove 027E</th>
+<td>7.404833</td>
+<td>True</td>
+<td>0.000060</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">Brighton and Hove 027F</th>
+<td>8.318500</td>
+<td>False</td>
+<td>0.000000</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Brighton and Hove 027A</th>
+<td>6.840000</td>
+<td>True</td>
+<td>0.000024</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">Brighton and Hove 029E</th>
+<td>6.328667</td>
+<td>True</td>
+<td>0.000024</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Brighton and Hove 029D</th>
+<td>5.216667</td>
+<td>True</td>
+<td>0.000024</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div id="1c1093d0" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T18:08:13.383394Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T18:08:13.383192Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T18:08:13.389608Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T18:08:13.388888Z&quot;}}" data-execution_count="4">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>covered <span class="op">=</span> comparison[comparison[<span class="st">"within_threshold"</span>]]</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>lowest_access <span class="op">=</span> covered.sort_values(<span class="st">"accessibility"</span>).iloc[<span class="dv">0</span>]</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>highest_access <span class="op">=</span> covered.sort_values(<span class="st">"accessibility"</span>).iloc[<span class="op">-</span><span class="dv">1</span>]</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>lowest_access, highest_access</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="4">
+<pre><code>(min_cost                6.84
+ within_threshold        True
+ accessibility       0.000024
+ Name: Brighton and Hove 027A, dtype: object,
+ min_cost            3.995833
+ within_threshold        True
+ accessibility       0.000209
+ Name: Brighton and Hove 011D, dtype: object)</code></pre>
+</div>
+</div>
+<p>Both of these regions are “covered” under the binary metric (min_cost &lt; 8 minutes), but their 2SFCA accessibility differs by almost 8.8x: Brighton and Hove 027A sits at 6.84 minutes with an accessibility of 0.000024 GP FTE per head, while Brighton and Hove 011D is closer still (4.00 minutes) <em>and</em> far better served, at 0.000209 GP FTE per head. Coverage alone cannot distinguish these two cases; 2SFCA can. 153 of the 165 regions are “covered” at this threshold, so this is a genuine, common case, not an edge case.</p>
+</section>
+<section id="visualising-the-disagreement" class="level2">
+<h2 class="anchored" data-anchor-id="visualising-the-disagreement">Visualising the disagreement</h2>
+<p>Plotting every region’s travel time to its nearest site against its 2SFCA accessibility, coloured by whether it meets the coverage threshold, makes the blind spot visible directly: points to the left of the dashed line are all “covered” by the binary metric, yet spread across a wide range of accessibility.</p>
+<div id="7739af77" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T18:08:13.391934Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T18:08:13.391671Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T18:08:13.550367Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T18:08:13.548539Z&quot;}}" data-execution_count="5">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">7</span>, <span class="dv">5</span>))</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>colors <span class="op">=</span> comparison[<span class="st">"within_threshold"</span>].<span class="bu">map</span>({<span class="va">True</span>: <span class="st">"#2a9d8f"</span>, <span class="va">False</span>: <span class="st">"#e76f51"</span>})</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>ax.scatter(comparison[<span class="st">"min_cost"</span>], comparison[<span class="st">"accessibility"</span>], c<span class="op">=</span>colors, alpha<span class="op">=</span><span class="fl">0.7</span>)</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>ax.axvline(<span class="dv">8</span>, color<span class="op">=</span><span class="st">"grey"</span>, linestyle<span class="op">=</span><span class="st">"--"</span>, linewidth<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">"Travel time to nearest site (minutes)"</span>)</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>ax.set_ylabel(<span class="st">"2SFCA accessibility (GP FTE per head)"</span>)</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">"Coverage (colour) vs 2SFCA accessibility"</span>)</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-6-output-1.png" width="637" height="449" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Every green point is “covered” by the binary metric, but they are not equally well served – some sit near the bottom of the accessibility range because they share a popular site with a lot of competing demand.</p>
+</section>
+<section id="inspecting-the-supply-side" class="level2">
+<h2 class="anchored" data-anchor-id="inspecting-the-supply-side">Inspecting the supply side</h2>
+<p><code>return_site_ratios=True</code> also returns the step-1 per-site table, useful for finding which site is driving an implausible regional score.</p>
+<div id="51970b00" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T18:08:13.552682Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T18:08:13.552468Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T18:08:13.566278Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T18:08:13.565661Z&quot;}}" data-execution_count="6">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>_, site_ratios <span class="op">=</span> problem.two_step_floating_catchment(</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    supply_col<span class="op">=</span><span class="st">"gp_fte"</span>,</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    catchment_size<span class="op">=</span><span class="dv">8</span>,</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    return_site_ratios<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>site_ratios.sort_values(<span class="st">"ratio"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="6">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">supply</th>
+<th data-quarto-table-cell-role="th">catchment_demand</th>
+<th data-quarto-table-cell-role="th">n_regions_in_catchment</th>
+<th data-quarto-table-cell-role="th">ratio</th>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">site</th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Daisy (Site 4)</th>
+<td>3</td>
+<td>126472.0</td>
+<td>66</td>
+<td>0.000024</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">Begonia (Site 2)</th>
+<td>2</td>
+<td>74219.0</td>
+<td>44</td>
+<td>0.000027</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Dahlia (Site 1)</th>
+<td>4</td>
+<td>83042.0</td>
+<td>47</td>
+<td>0.000048</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">Snowdrop (Site 6)</th>
+<td>6</td>
+<td>114238.0</td>
+<td>71</td>
+<td>0.000053</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Daffodil (Site 5)</th>
+<td>5</td>
+<td>86171.0</td>
+<td>50</td>
+<td>0.000058</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">Tulip (Site 3)</th>
+<td>8</td>
+<td>134366.0</td>
+<td>59</td>
+<td>0.000060</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>A low <code>ratio</code> means that site’s supply is spread thin over a lot of catchment demand; a high one means it is relatively uncontested. A region’s <code>accessibility</code> is the sum of the ratios of every site it can reach, so being near a low-<code>ratio</code> site (even alone) can leave a region worse off than being near several higher-<code>ratio</code> ones.</p>
+</section>
+<section id="scoring-a-proposed-smaller-solution" class="level2">
+<h2 class="anchored" data-anchor-id="scoring-a-proposed-smaller-solution">Scoring a proposed (smaller) solution</h2>
+<p><code>SiteSolutionSet.two_step_floating_catchment()</code> takes the same solution-selection arguments as <code>site_allocation_summary()</code>, so a chosen solution’s accessibility can be compared against the six-site baseline above.</p>
+<div id="a2477dea" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T18:08:13.568368Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T18:08:13.568187Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T18:08:13.687131Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T18:08:13.686359Z&quot;}}" data-execution_count="7">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>solutions <span class="op">=</span> problem.solve(</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    objectives<span class="op">=</span><span class="st">"mclp"</span>,</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    p<span class="op">=</span><span class="dv">2</span>,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    threshold_for_coverage<span class="op">=</span><span class="dv">8</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>two_site_accessibility <span class="op">=</span> solutions.two_step_floating_catchment(</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    supply_col<span class="op">=</span><span class="st">"gp_fte"</span>,</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    catchment_size<span class="op">=</span><span class="dv">8</span>,</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    solution_rank<span class="op">=</span><span class="dv">1</span>,</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>two_site_accessibility.sort_values(<span class="st">"accessibility"</span>).head()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<script type="application/vnd.jupyter.widget-view+json">
+{"model_id":"f8cd0fe433184badbb9ea7bd32ca748c","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+</script>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="7">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">accessibility</th>
+<th data-quarto-table-cell-role="th">n_sites_in_catchment</th>
+<th data-quarto-table-cell-role="th">demand</th>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">LSOA</th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Brighton and Hove 027F</th>
+<td>0.0</td>
+<td>0</td>
+<td>2323</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">Brighton and Hove 003C</th>
+<td>0.0</td>
+<td>0</td>
+<td>300</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Brighton and Hove 011B</th>
+<td>0.0</td>
+<td>0</td>
+<td>1021</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">Brighton and Hove 011E</th>
+<td>0.0</td>
+<td>0</td>
+<td>1256</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Brighton and Hove 004D</th>
+<td>0.0</td>
+<td>0</td>
+<td>990</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>Dropping from six sites to the two MCLP selects (Tulip and Daisy) more than triples the number of regions with <strong>no</strong> site in <code>catchment_size</code> at all – from 12 out of 165 to 42 – and roughly triples typical accessibility scarcity: mean accessibility falls from about 9.2e-05 to about 3.1e-05 GP FTE per head. This tracks the conservation property noted in the method’s docstring – summed demand-weighted accessibility equals total supply among sites with a non-empty catchment (28 GP FTE across all six sites vs.&nbsp;11 across just Tulip and Daisy) – so a smaller network has less total supply to spread around, on top of any individual region losing its nearest site outright.</p>
+</section>
+<section id="mapping-accessibility" class="level2">
+<h2 class="anchored" data-anchor-id="mapping-accessibility">Mapping accessibility</h2>
+<p><code>plot_accessibility()</code> puts the two tables above on a map directly: a region choropleth of <code>accessibility</code>, overlaid with site markers coloured and sized by their step-1 <code>ratio</code> (red and small for an overloaded site, green and large for a relatively uncontested one). Like <code>two_step_floating_catchment()</code> itself, it needs no <code>solve()</code> – called on <code>problem</code>, it scores every candidate site; called on a <code>SiteSolutionSet</code>, it scores that solution’s selected sites.</p>
+<div id="fec86cec" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T18:08:13.689063Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T18:08:13.688889Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T18:08:13.950205Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T18:08:13.949510Z&quot;}}" data-execution_count="8">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>problem.plot_accessibility(</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    supply_col<span class="op">=</span><span class="st">"gp_fte"</span>,</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    catchment_size<span class="op">=</span><span class="dv">8</span>,</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    add_basemap<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">"Baseline (6 sites)"</span>,</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    )<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-9-output-1.png" width="571" height="397" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<div id="131f1cd0" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T18:08:13.952304Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T18:08:13.952097Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T18:08:14.203109Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T18:08:14.202408Z&quot;}}" data-execution_count="9">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>solutions.plot_accessibility(</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    supply_col<span class="op">=</span><span class="st">"gp_fte"</span>,</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    catchment_size<span class="op">=</span><span class="dv">8</span>,</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    add_basemap<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">"p=2 MCLP solution (Tulip, Daisy)"</span>,</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    )<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-10-output-1.png" width="517" height="411" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>With six sites, Tulip (the highest-<code>ratio</code>, largest green marker in the site-ratio table above) sits in an area that already reads as high-accessibility on the map. Dropping to the two-site solution visibly shrinks the high-accessibility area around it, and Daisy – the <em>lowest</em>-ratio site – now has to cover a much wider area alone, consistent with the mean-accessibility drop already noted above.</p>
+<p><code>interactive=True</code> returns the same two layers as a Folium map, with a tooltip on every region and site.</p>
+</section>
+<section id="enhanced-2sfca-distance-decay" class="level2">
+<h2 class="anchored" data-anchor-id="enhanced-2sfca-distance-decay">Enhanced 2SFCA (distance decay)</h2>
+<p>A single hard <code>catchment_size</code> treats a site 1 minute away identically to one 8 minutes away, as long as both are under the cutoff, and identically to “unreachable” for a site 9 minutes away. Enhanced 2SFCA (E2SFCA, Luo &amp; Qi 2009) softens this with step-decay bands: <code>distance_decay=[(upper_bound, weight), ...]</code>. A closer band counts for more, and the last band’s <code>upper_bound</code> becomes the effective catchment edge – <code>catchment_size=8</code> is exactly the single-band case <code>distance_decay=[(8, 1.0)]</code>.</p>
+<p>The bands below (breaks at 4/8/12 minutes) are scaled to match this example’s existing 8-minute baseline, not copied from the paper. Luo &amp; Qi’s own published zones are 0-10/10-20/20-30 minutes, with two named weight sets: <code>[(10, 1.0), (20, 0.68), (30, 0.22)]</code> (“weight set 1”, slower decay) and <code>[(10, 1.0), (20, 0.42), (30, 0.09)]</code> (“weight set 2”, their preferred, sharper decay) – real published values, not arbitrary illustrations, used elsewhere in this library’s own docstrings.</p>
+<div id="8b23c61d" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T18:08:14.205210Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T18:08:14.205018Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T18:08:14.220870Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T18:08:14.220034Z&quot;}}" data-execution_count="10">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>region_step_decay <span class="op">=</span> problem.two_step_floating_catchment(</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    supply_col<span class="op">=</span><span class="st">"gp_fte"</span>,</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    distance_decay<span class="op">=</span>[(<span class="dv">4</span>, <span class="fl">1.0</span>), (<span class="dv">8</span>, <span class="fl">0.6</span>), (<span class="dv">12</span>, <span class="fl">0.25</span>)],</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>region_step_decay.sort_values(<span class="st">"accessibility"</span>).head()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="10">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">accessibility</th>
+<th data-quarto-table-cell-role="th">n_sites_in_catchment</th>
+<th data-quarto-table-cell-role="th">demand</th>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">LSOA</th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Brighton and Hove 033E</th>
+<td>0.0</td>
+<td>0</td>
+<td>1406</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">Brighton and Hove 033A</th>
+<td>0.0</td>
+<td>0</td>
+<td>929</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Brighton and Hove 009E</th>
+<td>0.0</td>
+<td>0</td>
+<td>2457</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">Brighton and Hove 033B</th>
+<td>0.0</td>
+<td>0</td>
+<td>1035</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Brighton and Hove 009A</th>
+<td>0.0</td>
+<td>0</td>
+<td>2883</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>Widening the catchment out to 12 minutes (with decreasing weight) reaches more sites per region than the hard 8-minute cutoff did, but each further-away site now contributes less than a close one instead of counting the same as one right next door.</p>
+<p>A continuous alternative is Gaussian decay (Dai 2010): rather than discrete bands, weight falls off smoothly with distance, reaching exactly 0 at the truncation radius (<code>catchment_size</code> inside the spec) rather than dropping in steps.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>distance_decay<span class="op">=</span>{<span class="st">"method"</span>: <span class="st">"gaussian"</span>, <span class="st">"catchment_size"</span>: <span class="dv">12</span>, <span class="st">"bandwidth"</span>: <span class="dv">6</span>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="ced1810b" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T18:08:14.223160Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T18:08:14.222981Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T18:08:14.236248Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T18:08:14.235575Z&quot;}}" data-execution_count="11">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>region_gaussian <span class="op">=</span> problem.two_step_floating_catchment(</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    supply_col<span class="op">=</span><span class="st">"gp_fte"</span>,</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    distance_decay<span class="op">=</span>{<span class="st">"method"</span>: <span class="st">"gaussian"</span>, <span class="st">"catchment_size"</span>: <span class="dv">12</span>, <span class="st">"bandwidth"</span>: <span class="dv">6</span>},</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>region_gaussian.sort_values(<span class="st">"accessibility"</span>).head()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="11">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">accessibility</th>
+<th data-quarto-table-cell-role="th">n_sites_in_catchment</th>
+<th data-quarto-table-cell-role="th">demand</th>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">LSOA</th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Brighton and Hove 033E</th>
+<td>0.0</td>
+<td>0</td>
+<td>1406</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">Brighton and Hove 033A</th>
+<td>0.0</td>
+<td>0</td>
+<td>929</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Brighton and Hove 009E</th>
+<td>0.0</td>
+<td>0</td>
+<td>2457</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">Brighton and Hove 033B</th>
+<td>0.0</td>
+<td>0</td>
+<td>1035</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">Brighton and Hove 009A</th>
+<td>0.0</td>
+<td>0</td>
+<td>2883</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div id="dc454ae1" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T18:08:14.238173Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T18:08:14.237998Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T18:08:14.245283Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T18:08:14.244632Z&quot;}}" data-execution_count="12">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>pd.DataFrame(</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>    {</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">"hard cutoff (8 min)"</span>: [</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>            region_accessibility[<span class="st">"accessibility"</span>].mean(),</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>            (region_accessibility[<span class="st">"accessibility"</span>] <span class="op">==</span> <span class="dv">0</span>).<span class="bu">sum</span>(),</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>        ],</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>        <span class="st">"step decay (bands to 12 min)"</span>: [</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>            region_step_decay[<span class="st">"accessibility"</span>].mean(),</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>            (region_step_decay[<span class="st">"accessibility"</span>] <span class="op">==</span> <span class="dv">0</span>).<span class="bu">sum</span>(),</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>        ],</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>        <span class="st">"gaussian decay (radius 12 min)"</span>: [</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>            region_gaussian[<span class="st">"accessibility"</span>].mean(),</span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>            (region_gaussian[<span class="st">"accessibility"</span>] <span class="op">==</span> <span class="dv">0</span>).<span class="bu">sum</span>(),</span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>        ],</span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a>    },</span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a>    index<span class="op">=</span>[<span class="st">"mean accessibility"</span>, <span class="st">"regions with zero accessibility"</span>],</span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="12">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">hard cutoff (8 min)</th>
+<th data-quarto-table-cell-role="th">step decay (bands to 12 min)</th>
+<th data-quarto-table-cell-role="th">gaussian decay (radius 12 min)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">mean accessibility</th>
+<td>0.000092</td>
+<td>0.00009</td>
+<td>0.000092</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">regions with zero accessibility</th>
+<td>12.000000</td>
+<td>5.00000</td>
+<td>5.000000</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>The plain mean isn’t quite the right thing to compare here – the <em>demand-weighted</em> mean (<code>sum(demand * accessibility) / sum(demand)</code>) is exactly conserved across all three, since it always equals <code>sum(supply) / sum(demand)</code> regardless of how the catchment is defined (the conservation invariant from the baseline section above). What genuinely differs is <em>how many regions are reached at all</em>: the wider effective reach of both decay-based catchments (12 minutes, vs.&nbsp;the hard cutoff’s 8) more than halves the number of regions with zero accessibility.</p>
+</section>
+<section id="elsewhere-in-lokigi" class="level2">
+<h2 class="anchored" data-anchor-id="elsewhere-in-lokigi">Elsewhere in lokigi</h2>
+<ul>
+<li><code>site_allocation_summary()</code> answers a related but different question – how much <em>demand</em> is closest to each selected site, with no competition/overlap modelling. See the note in its own documentation about it being the nearest-provider special case of a floating catchment.</li>
+<li>2SFCA here is descriptive only: it does not feed into <code>solution_df</code>, <code>rank_on=</code>, or any <code>solve()</code> objective – a natural follow-up.</li>
+<li>See the <a href="../../../examples/location/coverage_metrics/index.html">coverage metrics example</a> for the demand-weighted vs.&nbsp;region-counted distinction in the binary coverage metrics this example contrasts with.</li>
+<li>See the <a href="../../../examples/location/site_utilisation/index.html">site utilisation example</a> for a different, solve-independent question: whether a site is already full <em>today</em>, using only real-world current-load/capacity data registered on <code>candidate_sites</code> – no travel matrix, no demand data, and no competition/overlap modelling at all.</li>
+</ul>
+
+
+</section>
+
+<a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
+<script type="application/vnd.jupyter.widget-state+json">
+{"state":{"15569e32860a43e19b0c678b1aa5273a":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"37405f7725ef424ebe2158986cc23080":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"5ca620395d5f47bb8b2526908ea03c09":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"947d7241a2414ff1b15c07653d8c7fc9":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"9634a6c3535342749ef7be1910577d73":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_947d7241a2414ff1b15c07653d8c7fc9","placeholder":"​","style":"IPY_MODEL_9b384281e84143d8b8922717aa009fc1","tabbable":null,"tooltip":null,"value":" 15/15 [00:00&lt;00:00, 190.82it/s]"}},"986f369346bb414997ed15250b11e6b3":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_37405f7725ef424ebe2158986cc23080","placeholder":"​","style":"IPY_MODEL_e98a74489b7c44158a2bdf70036acd8b","tabbable":null,"tooltip":null,"value":"100%"}},"9b384281e84143d8b8922717aa009fc1":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"a17b23d154314967b12448c7cdef8924":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"e98a74489b7c44158a2bdf70036acd8b":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"ea24c1ad6aa64416a5a8d1df98061d0a":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_a17b23d154314967b12448c7cdef8924","max":15,"min":0,"orientation":"horizontal","style":"IPY_MODEL_5ca620395d5f47bb8b2526908ea03c09","tabbable":null,"tooltip":null,"value":15}},"f8cd0fe433184badbb9ea7bd32ca748c":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_986f369346bb414997ed15250b11e6b3","IPY_MODEL_ea24c1ad6aa64416a5a8d1df98061d0a","IPY_MODEL_9634a6c3535342749ef7be1910577d73"],"layout":"IPY_MODEL_15569e32860a43e19b0c678b1aa5273a","tabbable":null,"tooltip":null}}},"version_major":2,"version_minor":0}
+</script>
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/hsma-tools\.github\.io\/lokigi\/");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+<p><a href="https://www.hsma.co.uk/"><img src="../../../lokigi_docs/assets/hsma_logo.png" class="img-fluid" width="150"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <a href="https://arc-swp.nihr.ac.uk/"><img src="../../../lokigi_docs/assets/nihr_logo.png" class="img-fluid" width="250"></a><br><br> <em>This work is independent research supported by the National Institute for Health and Care Research Applied Research Collaboration South West Peninsula.<br> The views expressed in this publication are those of the author(s) and not necessarily those of the National Institute for Health and Care Research or the Department of Health and Social Care.</em> <br><br></p>
+</div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>

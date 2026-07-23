@@ -346,6 +346,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#same-results-whichever-way-you-run-it" id="toc-same-results-whichever-way-you-run-it" class="nav-link" data-scroll-target="#same-results-whichever-way-you-run-it">Same results, whichever way you run it</a></li>
   <li><a href="#the-benefit" id="toc-the-benefit" class="nav-link" data-scroll-target="#the-benefit">The benefit</a></li>
   <li><a href="#the-catch-a-one-off-startup-cost" id="toc-the-catch-a-one-off-startup-cost" class="nav-link" data-scroll-target="#the-catch-a-one-off-startup-cost">The catch: a one-off startup cost</a></li>
+  <li><a href="#seeing-the-difference-in-practice" id="toc-seeing-the-difference-in-practice" class="nav-link" data-scroll-target="#seeing-the-difference-in-practice">Seeing the difference in practice</a></li>
+  <li><a href="#the-results" id="toc-the-results" class="nav-link" data-scroll-target="#the-results">The results</a></li>
   <li><a href="#when-its-actually-worth-using" id="toc-when-its-actually-worth-using" class="nav-link" data-scroll-target="#when-its-actually-worth-using">When it’s actually worth using</a></li>
   </ul>
 </nav>
@@ -390,7 +392,7 @@ Note
 <p>Credit for the creation of this dataset goes to <a href="https://github.com/TomMonks">Dr Tom Monks</a>.</p>
 </div>
 </div>
-<div id="41e6b653" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-20T14:55:25.243096Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-20T14:55:25.242478Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-20T14:55:40.726137Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-20T14:55:40.721957Z&quot;}}" data-execution_count="1">
+<div id="41e6b653" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T13:57:55.087087Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T13:57:55.086856Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T13:57:58.272470Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T13:57:58.271650Z&quot;}}" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.site <span class="im">import</span> SiteProblem</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>problem <span class="op">=</span> SiteProblem()</span>
@@ -404,17 +406,15 @@ Note
 <section id="using-n_jobs" class="level3">
 <h3 class="anchored" data-anchor-id="using-n_jobs">Using <code>n_jobs</code></h3>
 <p><code>n_jobs=1</code> (the default, and what every other example on this site uses) evaluates every combination in the current process. Pass <code>n_jobs=-1</code> to spread combinations across every available CPU core instead, or a positive integer (e.g.&nbsp;<code>n_jobs=4</code>) to request that many worker processes specifically.</p>
-<div id="e875068f" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-20T14:55:40.733273Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-20T14:55:40.732396Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-20T14:56:23.603325Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-20T14:56:23.601032Z&quot;}}" data-execution_count="2">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>solution <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">2</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, n_jobs<span class="op">=-</span><span class="dv">1</span>, show_progress<span class="op">=</span><span class="va">False</span>)</span>
+<div id="e875068f" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T13:57:58.274299Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T13:57:58.274094Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T13:58:02.319308Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T13:58:02.318606Z&quot;}}" data-execution_count="2">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>solution <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">2</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, n_jobs<span class="op">=</span><span class="dv">4</span>, show_progress<span class="op">=</span><span class="va">False</span>)</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>solution.show_solutions().head()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stderr">
-<pre><code>/__w/lokigi/lokigi/lokigi/site.py:743: UserWarning:
-
-No candidate site dataframe was given.
+<pre><code>C:\lokigi\lokigi\site.py:743: UserWarning: No candidate site dataframe was given.
 Sites names have been taken from the columns of your travel matrix: clinic_1, clinic_2, clinic_3, clinic_4, clinic_5, clinic_6, clinic_7, clinic_8, clinic_9, clinic_10, clinic_11, clinic_12, clinic_13, clinic_14, clinic_15, clinic_16, clinic_17, clinic_18, clinic_19, clinic_20, clinic_21, clinic_22, clinic_23, clinic_24, clinic_25, clinic_26, clinic_27, clinic_28.
 If you wish to override this, run .add_sites() to add your site dataframe before running .solve() again.
 You can use the .show_sites_format() to see the expected format beforehand.
-</code></pre>
+  warn(</code></pre>
 </div>
 <div class="cell-output cell-output-display" data-execution_count="2">
 <div>
@@ -588,6 +588,65 @@ You can use the .show_sites_format() to see the expected format beforehand.
 <h3 class="anchored" data-anchor-id="the-catch-a-one-off-startup-cost">The catch: a one-off startup cost</h3>
 <p>Parallel evaluation runs each worker as a separate process. The first time you use a given <code>n_jobs</code> value in a session (or any call right after switching to a <em>different</em> <code>n_jobs</code> value), lokigi has to start those worker processes up, and each one has to import pandas, numpy and the rest of the scientific stack from scratch before it can do anything useful – on Windows in particular, that alone can take several seconds, regardless of how small the actual problem is. Calls that reuse the same <code>n_jobs</code> value reuse the already-running workers instead and pay none of that cost.</p>
 <p>That startup cost is fixed, not proportional to problem size, so it matters most for small, one-off calls – and it bites hardest on environments with only a handful of CPU cores, such as most CI runners or budget cloud instances, where there’s little parallel work available to offset it against.</p>
+</section>
+<section id="seeing-the-difference-in-practice" class="level3">
+<h3 class="anchored" data-anchor-id="seeing-the-difference-in-practice">Seeing the difference in practice</h3>
+<p>Let’s put some real numbers on this, using the 4-site case from <a href="../../../examples/location/larger_problems/index.html">Solving larger problems</a> – 20,475 combinations across the same 28 candidates. We’ll time it three ways: serial (<code>n_jobs=1</code>), a first parallel call with a fresh <code>n_jobs=12</code> (paying the worker startup cost), and a second parallel call reusing the now-warm workers. We’re asking for 12 workers specifically rather than every core (<code>n_jobs=-1</code>), leaving a couple free for the OS and everything else running on the machine.</p>
+<div id="40ad97d9" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T13:58:02.321116Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T13:58:02.320964Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T13:58:02.324279Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T13:58:02.323652Z&quot;}}" data-execution_count="3">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> time</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"CPU cores available: </span><span class="sc">{</span>os<span class="sc">.</span>cpu_count()<span class="sc">}</span><span class="ss">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>CPU cores available: 20</code></pre>
+</div>
+</div>
+<div id="125fba3e" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T13:58:02.325694Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T13:58:02.325524Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T13:59:12.733467Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T13:59:12.732909Z&quot;}}" data-execution_count="4">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>start <span class="op">=</span> time.perf_counter()</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>solution_serial <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">4</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, n_jobs<span class="op">=</span><span class="dv">1</span>, show_progress<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>elapsed_serial <span class="op">=</span> time.perf_counter() <span class="op">-</span> start</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="6c4fea3c" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T13:59:12.735390Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T13:59:12.735244Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T13:59:46.750535Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T13:59:46.749625Z&quot;}}" data-execution_count="5">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>start <span class="op">=</span> time.perf_counter()</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>solution_parallel_cold <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">4</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, n_jobs<span class="op">=</span><span class="dv">12</span>, show_progress<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>elapsed_parallel_cold <span class="op">=</span> time.perf_counter() <span class="op">-</span> start</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="da76a706" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T13:59:46.752993Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T13:59:46.752699Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T14:00:11.622186Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T14:00:11.621408Z&quot;}}" data-execution_count="6">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>start <span class="op">=</span> time.perf_counter()</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>solution_parallel_warm <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">4</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, n_jobs<span class="op">=</span><span class="dv">12</span>, show_progress<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>elapsed_parallel_warm <span class="op">=</span> time.perf_counter() <span class="op">-</span> start</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>All three runs agree on the best combination, exactly as the earlier section promised – <code>n_jobs</code> only changes how the work is spread across processes, never the result.</p>
+<div id="1513dfa7" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T14:00:11.624813Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T14:00:11.624544Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T14:00:11.658011Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T14:00:11.657258Z&quot;}}" data-execution_count="7">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>solution_serial.show_solutions().iloc[<span class="dv">0</span>][<span class="st">"site_indices"</span>] <span class="op">==</span> solution_parallel_warm.show_solutions().iloc[<span class="dv">0</span>][<span class="st">"site_indices"</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="7">
+<pre><code>True</code></pre>
+</div>
+</div>
+</section>
+<section id="the-results" class="level3">
+<h3 class="anchored" data-anchor-id="the-results">The results</h3>
+<div id="85644f8d" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T14:00:11.659855Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T14:00:11.659677Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T14:00:13.004181Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T14:00:13.003587Z&quot;}}" data-execution_count="8">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> plotly.express <span class="im">as</span> px</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>timings <span class="op">=</span> pd.DataFrame({</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"run"</span>: [<span class="st">"Serial&lt;br&gt;(n_jobs=1)"</span>, <span class="st">"Parallel&lt;br&gt;first call"</span>, <span class="st">"Parallel&lt;br&gt;warm workers"</span>],</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"elapsed_seconds"</span>: [elapsed_serial, elapsed_parallel_cold, elapsed_parallel_warm],</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>fig <span class="op">=</span> px.bar(</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>    timings, x<span class="op">=</span><span class="st">"run"</span>, y<span class="op">=</span><span class="st">"elapsed_seconds"</span>,</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">"Time to brute-force 20,475 combinations (p=4, 28 candidates)"</span>,</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>    labels<span class="op">=</span>{<span class="st">"elapsed_seconds"</span>: <span class="st">"Elapsed time (seconds)"</span>, <span class="st">"run"</span>: <span class="st">""</span>},</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>    text_auto<span class="op">=</span><span class="st">".1f"</span></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>fig.update_layout(showlegend<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>fig</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<pre><code>Unable to display output for mime type(s): application/vnd.plotly.v1+json</code></pre>
+</div>
+</div>
+<p>Even paying the one-off worker startup cost, the first parallel call (~34s) was already about twice as fast as the serial run (~70s) – and once the workers were warm, the second parallel call (~25s) was faster still. The exact numbers will vary by machine and by how much else is competing for CPU time at the moment you run it, but the shape of the result won’t: startup cost eats into the first parallel call, and disappears from every call after it.</p>
 </section>
 <section id="when-its-actually-worth-using" class="level3">
 <h3 class="anchored" data-anchor-id="when-its-actually-worth-using">When it’s actually worth using</h3>

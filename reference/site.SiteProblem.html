@@ -379,6 +379,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">multiobjective.ParetoMetric</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/site_solutions.SolutionComparator.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">site_solutions.SolutionComparator</span></a>
+  </div>
+</li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
@@ -609,28 +615,36 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Add a region geodataframe to the site problem and validate its structure.</td>
 </tr>
 <tr class="odd">
+<td><a href="../reference/lokigi.site.SiteProblem.add_secondary_demand.html#lokigi.site.SiteProblem.add_secondary_demand">add_secondary_demand</a></td>
+<td>Register an additional demand scenario (e.g.&nbsp;projected future</td>
+</tr>
+<tr class="even">
 <td><a href="../reference/lokigi.site.SiteProblem.add_secondary_travel_matrix.html#lokigi.site.SiteProblem.add_secondary_travel_matrix">add_secondary_travel_matrix</a></td>
 <td>Register an additional travel/cost matrix for a different mode or</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="../reference/lokigi.site.SiteProblem.add_sites.html#lokigi.site.SiteProblem.add_sites">add_sites</a></td>
 <td>Add candidate facility sites to the problem and handle spatial alignment.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="../reference/lokigi.site.SiteProblem.add_travel_matrix.html#lokigi.site.SiteProblem.add_travel_matrix">add_travel_matrix</a></td>
 <td>Add a travel cost matrix to the problem and handle unit conversions.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="../reference/lokigi.site.SiteProblem.describe_models.html#lokigi.site.SiteProblem.describe_models">describe_models</a></td>
 <td>Prints a menu of available optimization strategies for healthcare.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="../reference/lokigi.site.SiteProblem.evaluate_single_solution_single_objective.html#lokigi.site.SiteProblem.evaluate_single_solution_single_objective">evaluate_single_solution_single_objective</a></td>
 <td>Evaluate a specific set of facility sites against a single objective.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="../reference/lokigi.site.SiteProblem.get_hotspots.html#lokigi.site.SiteProblem.get_hotspots">get_hotspots</a></td>
 <td>Identify statistically significant hotspots and coldspots.</td>
+</tr>
+<tr class="even">
+<td><a href="../reference/lokigi.site.SiteProblem.plot_accessibility.html#lokigi.site.SiteProblem.plot_accessibility">plot_accessibility</a></td>
+<td>Map 2SFCA accessibility: a region choropleth of <code>accessibility</code>,</td>
 </tr>
 <tr class="odd">
 <td><a href="../reference/lokigi.site.SiteProblem.plot_hotspots.html#lokigi.site.SiteProblem.plot_hotspots">plot_hotspots</a></td>
@@ -645,20 +659,28 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Visualize the regional geometry layer, optionally overlaid with demand data.</td>
 </tr>
 <tr class="even">
+<td><a href="../reference/lokigi.site.SiteProblem.plot_site_utilisation.html#lokigi.site.SiteProblem.plot_site_utilisation">plot_site_utilisation</a></td>
+<td>Map each candidate site’s current utilisation ratio.</td>
+</tr>
+<tr class="odd">
 <td><a href="../reference/lokigi.site.SiteProblem.plot_sites.html#lokigi.site.SiteProblem.plot_sites">plot_sites</a></td>
 <td>Generate a visualization of the candidate facility sites.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="../reference/lokigi.site.SiteProblem.show_demand.html#lokigi.site.SiteProblem.show_demand">show_demand</a></td>
 <td>Returns a loaded demand dataframe</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="../reference/lokigi.site.SiteProblem.show_demand_format.html#lokigi.site.SiteProblem.show_demand_format">show_demand_format</a></td>
 <td>Prints the expected structure for the demand DataFrame.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="../reference/lokigi.site.SiteProblem.show_region_geometry_layer.html#lokigi.site.SiteProblem.show_region_geometry_layer">show_region_geometry_layer</a></td>
 <td>Returns a loaded region geometry geodataframe</td>
+</tr>
+<tr class="odd">
+<td><a href="../reference/lokigi.site.SiteProblem.show_secondary_demand.html#lokigi.site.SiteProblem.show_secondary_demand">show_secondary_demand</a></td>
+<td>Returns a registered secondary demand scenario dataframe.</td>
 </tr>
 <tr class="even">
 <td><a href="../reference/lokigi.site.SiteProblem.show_secondary_travel_matrix.html#lokigi.site.SiteProblem.show_secondary_travel_matrix">show_secondary_travel_matrix</a></td>
@@ -677,8 +699,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Returns a loaded travel or cost matrix dataframe</td>
 </tr>
 <tr class="even">
+<td><a href="../reference/lokigi.site.SiteProblem.site_utilisation_summary.html#lokigi.site.SiteProblem.site_utilisation_summary">site_utilisation_summary</a></td>
+<td>Summarise each candidate site’s real-world current utilisation.</td>
+</tr>
+<tr class="odd">
 <td><a href="../reference/lokigi.site.SiteProblem.solve.html#lokigi.site.SiteProblem.solve">solve</a></td>
 <td>Solve the site location problem using the specified objective and strategy.</td>
+</tr>
+<tr class="even">
+<td><a href="../reference/lokigi.site.SiteProblem.two_step_floating_catchment.html#lokigi.site.SiteProblem.two_step_floating_catchment">two_step_floating_catchment</a></td>
+<td>Two-step floating catchment area (2SFCA) accessibility score.</td>
 </tr>
 </tbody>
 </table>

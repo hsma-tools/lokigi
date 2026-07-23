@@ -355,8 +355,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    capacity_col<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    cost_col<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    allow_missing_cost<span class="op">=</span><span class="va">False</span>,</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    skip_cols<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    current_load_col<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    utilisation_col<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    skip_cols<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Add candidate facility sites to the problem and handle spatial alignment.</p>
 <p>This method ingests site data from either a standard DataFrame or a GeoDataFrame. If tabular data is provided, it automatically converts coordinates into point geometries. It also ensures the data matches the object’s preferred CRS, attempting to guess the CRS if it’s not provided.</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">
@@ -438,6 +440,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>False</code></td>
 </tr>
 <tr class="odd">
+<td>current_load_col</td>
+<td>str</td>
+<td>The column name representing each site’s current real-world activity/caseload – today’s baseline, not anything derived from <code>solve()</code>. Must be paired with <code>capacity_col</code> (needed to turn a raw count into a utilisation ratio); pass a precomputed ratio via <code>utilisation_col</code> instead if you don’t have raw counts. Used by <code>site_utilisation_summary()</code> and <code>plot_site_utilisation()</code>. Defaults to None.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td>utilisation_col</td>
+<td>str</td>
+<td>The column name representing each site’s current utilisation as a precomputed ratio or percentage, for analysts who don’t have raw current-load/capacity counts to hand. Mutually exclusive with <code>current_load_col</code>. May optionally be combined with <code>capacity_col</code> to also derive <code>headroom</code> in <code>site_utilisation_summary()</code>. Defaults to None.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
 <td>skip_cols</td>
 <td>list of str</td>
 <td>A list of column names to ignore during the data loading process.</td>
@@ -469,9 +483,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-raises anchored" data-anchor-id="raises">Raises</h2>
 <table class="caption-top table">
 <colgroup>
+<col style="width: 2%">
 <col style="width: 3%">
-<col style="width: 5%">
-<col style="width: 90%">
+<col style="width: 94%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -484,7 +498,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td></td>
 <td>ValueError</td>
-<td>If required columns (ID, capacity, or geometry) are missing from the input data, or if <code>cost_col</code> has a missing value for one or more sites and <code>allow_missing_cost=False</code> (the default).</td>
+<td>If required columns (ID, capacity, or geometry) are missing from the input data, if <code>cost_col</code> has a missing value for one or more sites and <code>allow_missing_cost=False</code> (the default), if both <code>current_load_col</code> and <code>utilisation_col</code> are given, if <code>current_load_col</code> is given without <code>capacity_col</code>, or if <code>current_load_col</code>/<code>utilisation_col</code> contains a negative value.</td>
 </tr>
 </tbody>
 </table>
@@ -493,6 +507,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-notes anchored" data-anchor-id="notes">Notes</h2>
 <p>The method performs the following transformations: 1. Infers data type (spatial vs.&nbsp;tabular). 2. Validates schema based on the data type. 3. If tabular, converts to a <code>geopandas.GeoDataFrame</code> using the specified horizontal and vertical coordinate columns. 4. Matches or converts the dataset to <code>self.preferred_crs</code>.</p>
 <p>Updates internal state including <code>self.candidate_sites</code> and <code>self.total_n_sites</code>.</p>
+<p>Unlike <code>cost_col</code>, <code>current_load_col</code>/<code>utilisation_col</code> have no <code>allow_missing_*</code> flag and a missing (NaN) value is never rejected here. <code>candidate_sites</code> typically mixes already-operating sites (which have a real current load) with not-yet-built proposals (which have no current load simply because they don’t exist yet, not because of a data-entry gap). A missing cost has a dangerous silent default (looks free); a missing utilisation figure doesn’t – it means “not applicable”, not “0% full” – so <code>site_utilisation_summary()</code> reports it as an explicit <code>NaN</code> rather than coercing it to 0.</p>
 
 
 </section>

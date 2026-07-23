@@ -566,7 +566,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>The method requires a valid <code>region_geometry_layer</code> to be present in <code>site_problem</code>. This should be added prior to calling this method.</p>
 <p>The plot is generated using GeoPandas and includes a basemap via <code>contextily.add_basemap</code>.</p>
 <p>Depending on the flags provided, regions are coloured by: - “min_cost” (default): travel time/distance to the nearest site - “selected_site”: assigned site (categorical) - “within_threshold”: whether the region meets the coverage threshold</p>
-<p>When plotting site locations, only GeoPandas-based candidate sites are currently supported.</p>
+<p>Site markers require <code>candidate_sites</code> to carry real point geometry. This holds both for sites registered via a GeoDataFrame/geojson and for tabular lat/long input, which <code>add_sites()</code> converts internally – it does not hold if site names were inferred from the travel matrix’s columns without ever calling <code>add_sites()</code>.</p>
 <p>Titles are dynamically generated based on the objective type and may include metrics such as weighted/unweighted averages, maximum cost, and coverage proportion.</p>
 <p>The method assumes that lower values of the ranking metric correspond to better solutions.</p>
 

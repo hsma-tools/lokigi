@@ -594,6 +594,26 @@ Warning
 <p>THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
 </blockquote>
 <p>Modified metapy code is noted within the source code.</p>
+<hr>
+<p><code>tests/test_two_step_floating_catchment.py</code> cross-validates <code>two_step_floating_catchment()</code>’s gravity-weighted (<code>distance_decay={"method": "power", ...}</code>) accessibility calculation against the small hospital-accessibility example from the <a href="https://github.com/pysal/access">pysal/access</a> project (<code>access/tests/test_hospital_example.py</code>).</p>
+<p>pysal/access is released under the BSD 3-Clause licence. The licence is reproduced below in line with the terms of the licence.</p>
+<blockquote class="blockquote">
+<p>BSD 3-Clause License</p>
+<p>Copyright 2018 pysal-access developers</p>
+<p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>
+<ol type="1">
+<li><p>Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</p></li>
+<li><p>Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</p></li>
+<li><p>Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.</p></li>
+</ol>
+<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p>
+</blockquote>
+<p><strong>Extent of reuse.</strong> No pysal/access source code is included in lokigi – <code>test_two_step_floating_catchment.py</code> contains only new lokigi test code that builds a <code>SiteProblem</code> via lokigi’s own API. What is reused from pysal/access is:</p>
+<ul>
+<li>Their small example <strong>dataset</strong>: three locations with specific population, doctor-count and travel-cost values, taken directly from <code>test_hospital_example.py</code>’s four cost-matrix scenarios.</li>
+<li>The resulting <strong>expected accessibility values</strong>, computed by independently running pysal/access’s own <code>simple_2sfca</code> reference function (also defined in <code>test_hospital_example.py</code>, not copied into lokigi) over each scenario – not copied from any lokigi output.</li>
+</ul>
+<p>This lets lokigi’s generalised weight-matrix engine be checked against a real, independently maintained implementation’s numbers, rather than only lokigi’s own hand-derived arithmetic.</p>
 
 
 </section>
