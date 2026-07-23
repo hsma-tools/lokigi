@@ -1,16 +1,4 @@
-## v0.7.0
-
-### ⚠️ Breaking changes
-
-lokigi is pre-1.0, so breaking changes can land in any minor release. Read these before upgrading -- each is detailed in the notes below.
-
-- `proportion_within_coverage_threshold` and `coverage_by_equity_group` now report **demand-weighted** values rather than counts of regions. Existing numbers change on any problem with non-uniform demand. The previous behaviour is available as `proportion_regions_within_coverage_threshold` / `coverage_regions_by_equity_group`
-- The **`mclp` objective may now select a different combination of sites**, because it ranks on the metric above. It now maximises covered demand, matching the textbook Maximal Covering Location Problem
-- **`rank_on=` with a coverage metric now returns the best-covering solution, not the worst.** Anything ranking on a travel-cost metric is unchanged
-- Both coverage proportions are now **`NaN` rather than `0.0`** when no `threshold_for_coverage` was supplied
-- **`show_basemap` has been removed** from `plot_region_geometry_layer()`, `plot_hotspots()` and `plot_quadrant_map()`. Use `add_basemap`, which is now the argument name on every plotting method. Passing the old name raises a `TypeError` naming the replacement
-
-### Notes
+## v0.8.0
 
 - Add `add_secondary_demand()` to `SiteProblem`, registering additional demand scenarios (e.g. current vs projected future demand, or time-varying demand) alongside the primary demand set via `add_demand()`, mirroring `add_secondary_travel_matrix()`
     - A secondary demand scenario never drives site selection or search/pruning -- the primary demand always does. Instead each registered scenario contributes `weighted_average__<label>` and `proportion_within_coverage_threshold__<label>` columns -- the only two metrics that actually vary with demand -- to every solution `solve()` produces, so scenarios can be combined via `compute_pareto_front()` or blended into the objective via `weights={"future_demand": 0.4, ...}`, exactly like a secondary travel matrix's columns
@@ -54,6 +42,47 @@ lokigi is pre-1.0, so breaking changes can land in any minor release. Read these
 - Add `SolutionComparator.compare_site_allocation()`, putting two solutions' `site_allocation_summary()` results side by side with their difference -- e.g. a 2-site solution against a 3-site one, showing how much of the new site's catchment is genuinely new rather than taken from an existing site, or how much further a site's former patients would now have to travel if it closed
     - `metric="proportion"` (the default) compares allocation share; `metric="average_travel_cost"` compares the average travel cost column instead
     - With `metric="proportion"`, a site absent from a solution is `NaN` and a site that is opened but closest to nothing is `0.0`, so "not opened" and "opened but unused" stay distinguishable. With `metric="average_travel_cost"` both cases are `NaN`, since neither has a travel cost to average
+- `plot_pareto_facets()` now quantifies each Strengths/Sacrifices entry with its rank, e.g. `Sacrifices: Total build cost (18th of 18)` instead of a bare metric name, since two "trade-off" metrics can differ hugely in how bad they are
+    - New `rank_scope=` argument controls what a rank is computed against: `"all"` (the default) ranks against every enumerated solution, `"pareto_front"` ranks only against the other Pareto-optimal solutions shown in the plot
+- Fix `plot_pareto_facets()` subplot titles sometimes overlapping their own facet's raw-value labels or bleeding into the next subplot
+    - The title's fixed 8pt `pad` didn't scale with its (variable) line count or leave headroom for the `show_raw_labels` value bubbles, which sit close to the top of the axes for a solution near the top of the normalised scale -- most visible with a small `height_per_row`. `pad` is now 20pt
+    - The included-sites text wrapped to a fixed character width (`wrap_at`) regardless of subplot width, so with `ncols>1` a long site list could wrap wider than its own (narrower) column and overflow into the next one. The effective wrap width is now scaled down by `ncols`
+- Fix `add_sites(capacity_col=...)` silently accepting non-numeric values
+    - `capacity_col` was never included in the numeric-column validation that `cost_col` already had, so a string-typed capacity column passed `add_sites()` without error. Now validated the same way as `cost_col`, `current_load_col` and `utilisation_col` (below)
+- Add `site_utilisation_summary()` and `plot_site_utilisation()` to `SiteProblem`, reporting each candidate site's real-world current utilisation -- today's baseline load against capacity, independent of `solve()` or any catchment/demand modelling (there is no `SiteSolutionSet` counterpart, since there is nothing solved to select)
+    - `add_sites()` gains two new optional columns to register the baseline data: `current_load_col` (a raw current activity/caseload count, must be paired with `capacity_col` so a ratio can be derived) or `utilisation_col` (a precomputed ratio/percentage, for analysts without raw counts). Giving both raises a `ValueError`
+    - `site_utilisation_summary()` returns `capacity`/`current_load`/`utilisation_ratio`/`headroom`, each included only when derivable from whichever columns were registered. A site with no baseline data (typically not yet built) gets an explicit `NaN` in `utilisation_ratio`/`headroom`, not `0.0` -- `0.0` would misleadingly mean "measured, and currently idle". Values above 1.0 (genuinely over capacity) are left as-is, not clipped
+    - `plot_site_utilisation()` maps each site coloured and sized by `utilisation_ratio`. Deliberately inverted from `plot_accessibility()`'s site markers: `cmap="RdYlGn_r"` (red = high utilisation = bad, here, versus red = low ratio = bad there), and larger markers mean a *fuller* site (versus smaller = worse there), so a hotspot is easy to spot. Raises a `ValueError` if `candidate_sites` has no real point geometry, rather than silently drawing nothing
+
+## v0.7.0
+
+_Note: this is what is actually live on PyPI as `lokigi==0.7.0`. `pyproject.toml` was mistakenly bumped straight from `0.5.0` to `0.7.0` for what should have been the `0.6.0` release, so a `0.6.0` was never published. The entries below are what actually shipped under that version; the genuinely-new `v0.8.0` work above had not yet been published as of this correction._
+
+### ⚠️ Breaking changes
+
+lokigi is pre-1.0, so breaking changes can land in any minor release. Read these before upgrading -- each is detailed in the notes below.
+
+- `proportion_within_coverage_threshold` and `coverage_by_equity_group` now report **demand-weighted** values rather than counts of regions. Existing numbers change on any problem with non-uniform demand. The previous behaviour is available as `proportion_regions_within_coverage_threshold` / `coverage_regions_by_equity_group`
+- The **`mclp` objective may now select a different combination of sites**, because it ranks on the metric above. It now maximises covered demand, matching the textbook Maximal Covering Location Problem
+- **`rank_on=` with a coverage metric now returns the best-covering solution, not the worst.** Anything ranking on a travel-cost metric is unchanged
+- Both coverage proportions are now **`NaN` rather than `0.0`** when no `threshold_for_coverage` was supplied
+- **`show_basemap` has been removed** from `plot_region_geometry_layer()`, `plot_hotspots()` and `plot_quadrant_map()`. Use `add_basemap`, which is now the argument name on every plotting method. Passing the old name raises a `TypeError` naming the replacement
+
+### Notes
+
+- Add support for secondary travel matrices via `add_secondary_travel_matrix(travel_matrix_df, source_col, label, ...)`
+    - Registers an additional travel/cost matrix (e.g. public transport alongside a primary car matrix) that is never used as the optimisation cost matrix -- the matrix registered via `add_travel_matrix()` always drives site selection, search, and pruning
+    - Each registered secondary matrix contributes its own per-solution metric columns to `solution_df`, suffixed `__<label>` (e.g. `weighted_average__public_transport`, `min_cost__public_transport` on the per-region `problem_df`), so a single `solve()` produces one candidate ranking with metrics for every registered matrix side by side -- directly usable in `ParetoMetric(column=...)`, `rank_on=...`, and plots, without needing to `.copy()` the problem and solve twice
+    - Any number of secondary matrices may be registered, each with its own `unit`/`from_unit`/`to_unit` and optional per-matrix `threshold_for_coverage` (falls back to the value passed to `solve()` if not set)
+    - Secondary matrices must be complete (a row for every demand location, a column for every candidate site, no missing values) -- `solve()` raises a `KeyError` naming the label and the specific gap otherwise, rather than silently producing metrics over a different denominator than the primary matrix
+    - By default, each secondary matrix only contributes its core five metrics plus float-valued equity aggregations to `solution_df` (not the dict-valued equity breakdowns or description strings, to keep the table from growing unboundedly with each registered matrix). Pass `solve(..., full_secondary_metrics=True)` to also include those, matching what the primary matrix already always returns
+    - Plotting methods (`plot_best_combination`, `plot_n_best_combinations`, `plot_solution_comparison`, `plot_travel_time_distribution`, `check_solution_equity`, `plot_top_n_solution_equity`, `plot_combination_by_equity`) accept a new `matrix=` keyword to switch from the primary matrix to a registered secondary one
+    - `plot_simple_pareto_front_pairs`'s `x_axis`/`y_axis` parameters now accept any `solution_df` column (previously typed as a fixed `Literal` set that already undersold what was accepted)
+    - Ranking on a secondary matrix's columns (e.g. `rank_on="max__public_transport"`) only reorders candidates that were searched and pruned using the primary matrix -- see the new `add_secondary_travel_matrix()` docstring and the `multiple_travel_matrices` example for the `brute_force_keep_best_n`/`_worst_n` caveat this implies
+    - `SolutionComparator` and the `problem.copy()`-per-mode workflow are unchanged and remain the right tool for two genuinely independent optimisations; secondary matrices are the alternative for trading modes off within one candidate ranking (see the new cross-reference in the `comparing_solutions` example)
+- Add `expand_dict_columns` and `inplace` parameters to `show_solutions()`
+    - `show_solutions(expand_dict_columns=True)` flattens every dict-valued column (`weighted_by_equity_group`, `coverage_by_equity_group`, etc., including their `__<label>` secondary-matrix equivalents under `full_secondary_metrics=True`) into one column per dict key, named `<column>__<key>`. Off by default, so `solution_df`'s shape is unchanged for existing callers
+    - `show_solutions(expand_dict_columns=True, inplace=True)` also writes the expansion back to `solution_df` so it persists for later calls, plotting, and `rank_on`; `inplace` has no effect unless combined with `expand_dict_columns=True`, and warns if passed alone. Rounding is never made permanent
 - **Behaviour change:** coverage metrics are now weighted by demand rather than counting every region equally
     - `proportion_within_coverage_threshold` now reports the proportion of total *demand* within `threshold_for_coverage`, weighted by the demand registered via `add_demand()`. Previously it was the proportion of *regions*, so a sparsely-populated LSOA counted as much as a dense one
     - `coverage_by_equity_group` changes in the same way, reporting demand-weighted coverage within each equity band
@@ -84,33 +113,6 @@ lokigi is pre-1.0, so breaking changes can land in any minor release. Read these
     - The ordinal-suffix helper is a module-level function in `lokigi.utils` but was called as though it were a method on the solution set, so plotting any solution other than the top-ranked one crashed. `solution_rank=1` took a different branch and worked, which is why this went unnoticed
 - Fix `plot_travel_time_distribution(bottom_n=...)` raising `TypeError: list.append() takes no keyword arguments`
     - The bottom-ranked slice was appended with a stray keyword argument, so passing `bottom_n` at all crashed. Passing `top_n` alone was unaffected
-- `plot_pareto_facets()` now quantifies each Strengths/Sacrifices entry with its rank, e.g. `Sacrifices: Total build cost (18th of 18)` instead of a bare metric name, since two "trade-off" metrics can differ hugely in how bad they are
-    - New `rank_scope=` argument controls what a rank is computed against: `"all"` (the default) ranks against every enumerated solution, `"pareto_front"` ranks only against the other Pareto-optimal solutions shown in the plot
-- Fix `plot_pareto_facets()` subplot titles sometimes overlapping their own facet's raw-value labels or bleeding into the next subplot
-    - The title's fixed 8pt `pad` didn't scale with its (variable) line count or leave headroom for the `show_raw_labels` value bubbles, which sit close to the top of the axes for a solution near the top of the normalised scale -- most visible with a small `height_per_row`. `pad` is now 20pt
-    - The included-sites text wrapped to a fixed character width (`wrap_at`) regardless of subplot width, so with `ncols>1` a long site list could wrap wider than its own (narrower) column and overflow into the next one. The effective wrap width is now scaled down by `ncols`
-- Fix `add_sites(capacity_col=...)` silently accepting non-numeric values
-    - `capacity_col` was never included in the numeric-column validation that `cost_col` already had, so a string-typed capacity column passed `add_sites()` without error. Now validated the same way as `cost_col`, `current_load_col` and `utilisation_col` (below)
-- Add `site_utilisation_summary()` and `plot_site_utilisation()` to `SiteProblem`, reporting each candidate site's real-world current utilisation -- today's baseline load against capacity, independent of `solve()` or any catchment/demand modelling (there is no `SiteSolutionSet` counterpart, since there is nothing solved to select)
-    - `add_sites()` gains two new optional columns to register the baseline data: `current_load_col` (a raw current activity/caseload count, must be paired with `capacity_col` so a ratio can be derived) or `utilisation_col` (a precomputed ratio/percentage, for analysts without raw counts). Giving both raises a `ValueError`
-    - `site_utilisation_summary()` returns `capacity`/`current_load`/`utilisation_ratio`/`headroom`, each included only when derivable from whichever columns were registered. A site with no baseline data (typically not yet built) gets an explicit `NaN` in `utilisation_ratio`/`headroom`, not `0.0` -- `0.0` would misleadingly mean "measured, and currently idle". Values above 1.0 (genuinely over capacity) are left as-is, not clipped
-    - `plot_site_utilisation()` maps each site coloured and sized by `utilisation_ratio`. Deliberately inverted from `plot_accessibility()`'s site markers: `cmap="RdYlGn_r"` (red = high utilisation = bad, here, versus red = low ratio = bad there), and larger markers mean a *fuller* site (versus smaller = worse there), so a hotspot is easy to spot. Raises a `ValueError` if `candidate_sites` has no real point geometry, rather than silently drawing nothing
-
-## v0.6.0
-
-- Add support for secondary travel matrices via `add_secondary_travel_matrix(travel_matrix_df, source_col, label, ...)`
-    - Registers an additional travel/cost matrix (e.g. public transport alongside a primary car matrix) that is never used as the optimisation cost matrix -- the matrix registered via `add_travel_matrix()` always drives site selection, search, and pruning
-    - Each registered secondary matrix contributes its own per-solution metric columns to `solution_df`, suffixed `__<label>` (e.g. `weighted_average__public_transport`, `min_cost__public_transport` on the per-region `problem_df`), so a single `solve()` produces one candidate ranking with metrics for every registered matrix side by side -- directly usable in `ParetoMetric(column=...)`, `rank_on=...`, and plots, without needing to `.copy()` the problem and solve twice
-    - Any number of secondary matrices may be registered, each with its own `unit`/`from_unit`/`to_unit` and optional per-matrix `threshold_for_coverage` (falls back to the value passed to `solve()` if not set)
-    - Secondary matrices must be complete (a row for every demand location, a column for every candidate site, no missing values) -- `solve()` raises a `KeyError` naming the label and the specific gap otherwise, rather than silently producing metrics over a different denominator than the primary matrix
-    - By default, each secondary matrix only contributes its core five metrics plus float-valued equity aggregations to `solution_df` (not the dict-valued equity breakdowns or description strings, to keep the table from growing unboundedly with each registered matrix). Pass `solve(..., full_secondary_metrics=True)` to also include those, matching what the primary matrix already always returns
-    - Plotting methods (`plot_best_combination`, `plot_n_best_combinations`, `plot_solution_comparison`, `plot_travel_time_distribution`, `check_solution_equity`, `plot_top_n_solution_equity`, `plot_combination_by_equity`) accept a new `matrix=` keyword to switch from the primary matrix to a registered secondary one
-    - `plot_simple_pareto_front_pairs`'s `x_axis`/`y_axis` parameters now accept any `solution_df` column (previously typed as a fixed `Literal` set that already undersold what was accepted)
-    - Ranking on a secondary matrix's columns (e.g. `rank_on="max__public_transport"`) only reorders candidates that were searched and pruned using the primary matrix -- see the new `add_secondary_travel_matrix()` docstring and the `multiple_travel_matrices` example for the `brute_force_keep_best_n`/`_worst_n` caveat this implies
-    - `SolutionComparator` and the `problem.copy()`-per-mode workflow are unchanged and remain the right tool for two genuinely independent optimisations; secondary matrices are the alternative for trading modes off within one candidate ranking (see the new cross-reference in the `comparing_solutions` example)
-- Add `expand_dict_columns` and `inplace` parameters to `show_solutions()`
-    - `show_solutions(expand_dict_columns=True)` flattens every dict-valued column (`weighted_by_equity_group`, `coverage_by_equity_group`, etc., including their `__<label>` secondary-matrix equivalents under `full_secondary_metrics=True`) into one column per dict key, named `<column>__<key>`. Off by default, so `solution_df`'s shape is unchanged for existing callers
-    - `show_solutions(expand_dict_columns=True, inplace=True)` also writes the expansion back to `solution_df` so it persists for later calls, plotting, and `rank_on`; `inplace` has no effect unless combined with `expand_dict_columns=True`, and warns if passed alone. Rounding is never made permanent
 
 ## v0.5.0
 
@@ -118,7 +120,6 @@ lokigi is pre-1.0, so breaking changes can land in any minor release. Read these
     - `n_jobs=1` (the default) is unchanged: byte-for-byte identical output to previous versions
     - `n_jobs>1`/`n_jobs=-1` always returns a correctly-ranked, correctly-bounded `keep_best_n`/`keep_worst_n` result; on an exact score tie spanning more combinations than the requested count, which specific tied combination is returned can differ from a serial run (their scores are identical either way)
     - Note: the first `solve(..., n_jobs=...)` call in a process (or any call after switching to a different `n_jobs` value) pays a one-time worker-pool startup cost -- on Windows this can be several seconds regardless of workload size, since each worker process re-imports pandas/numpy/etc. from scratch. Calls that reuse the same `n_jobs` value reuse the already-running pool and are fast; for a small combination count, a single one-off parallel call can look slower than `n_jobs=1` purely because of this startup cost
-    - `joblib` is now a direct dependency (previously pulled in only transitively)
 
 ## v0.4.1
 
