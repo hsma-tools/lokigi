@@ -515,7 +515,7 @@ class SiteAttributeMixin:
                         stacklevel=2,
                     )
         else:
-            m = self.candidate_sites.explore()
+            m = self.candidate_sites.explore(marker_kwds=dict(radius=8))
             return m
 
     ###############################
@@ -806,6 +806,7 @@ class SiteAttributeMixin:
                 tooltip=tooltip_cols,
                 popup=True,
                 tiles=tiles if add_basemap else None,
+                marker_kwds=dict(radius=8),
                 missing_kwds=dict(color=missing_site_colour),
                 **kwargs,
             )
