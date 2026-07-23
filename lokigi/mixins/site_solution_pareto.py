@@ -736,6 +736,11 @@ class ParetoMixin:
         fig_width = len(self.pareto_metrics) * width_multiplier * ncols
         fig_height = nrows * height_per_row
 
+        # wrap_at is tuned for a full-width single-column figure; with ncols>1 each
+        # facet is proportionally narrower, so scale the wrap width down to match or
+        # the wrapped site list can overflow past its own subplot
+        effective_wrap_at = max(20, wrap_at // ncols)
+
         fig, axes = plt.subplots(
             nrows, ncols, figsize=(fig_width, fig_height), sharex=True, sharey=True
         )
@@ -957,7 +962,7 @@ class ParetoMixin:
                 else:
                     sites_str = str(sites_val)
                 # Wrap long site lists to keep layout clean
-                sites_str = textwrap.fill(sites_str, width=wrap_at)
+                sites_str = textwrap.fill(sites_str, width=effective_wrap_at)
 
             # Compile information into a neat, blocky subplot title
             label = label.replace(" ", r"\ ")
@@ -977,7 +982,7 @@ class ParetoMixin:
                 "\n".join(title_lines),
                 fontsize=8.5,
                 loc="left",
-                pad=8,
+                pad=20,  # Leaves headroom for the raw-value labels near the top of the axes
                 linespacing=1.3,
             )
 

@@ -78,6 +78,9 @@ lokigi is pre-1.0, so breaking changes can land in any minor release. Read these
     - The bottom-ranked slice was appended with a stray keyword argument, so passing `bottom_n` at all crashed. Passing `top_n` alone was unaffected
 - `plot_pareto_facets()` now quantifies each Strengths/Sacrifices entry with its rank, e.g. `Sacrifices: Total build cost (18th of 18)` instead of a bare metric name, since two "trade-off" metrics can differ hugely in how bad they are
     - New `rank_scope=` argument controls what a rank is computed against: `"all"` (the default) ranks against every enumerated solution, `"pareto_front"` ranks only against the other Pareto-optimal solutions shown in the plot
+- Fix `plot_pareto_facets()` subplot titles sometimes overlapping their own facet's raw-value labels or bleeding into the next subplot
+    - The title's fixed 8pt `pad` didn't scale with its (variable) line count or leave headroom for the `show_raw_labels` value bubbles, which sit close to the top of the axes for a solution near the top of the normalised scale -- most visible with a small `height_per_row`. `pad` is now 20pt
+    - The included-sites text wrapped to a fixed character width (`wrap_at`) regardless of subplot width, so with `ncols>1` a long site list could wrap wider than its own (narrower) column and overflow into the next one. The effective wrap width is now scaled down by `ncols`
 
 ## v0.6.0
 
