@@ -126,6 +126,63 @@ def test_unreachable_region_is_zero_not_nan(sfca_problem):
     assert region_frame.loc["LSOA_Isolated", "n_sites_in_catchment"] == 0
 
 
+def test_nan_travel_cost_treated_as_unreachable_not_propagated():
+    """A NaN travel cost is only rejected at registration time for secondary
+    matrices (`_build_secondary_travel_frames`) -- the primary matrix (used
+    here) allows it through unvalidated, so a missing origin-destination
+    route legitimately reaches `two_step_floating_catchment()`.
+
+    This underwrites the safety of building `weight_matrix` from boolean
+    comparisons against `cost_frame` (`cost_frame <= x`, `.where(cost_frame
+    <= x, 0.0)`): a NaN comparison is always False in pandas/numpy, so a
+    NaN cost cell always resolves to weight 0.0 ("not in catchment") and
+    never leaks a raw NaN into `weight_matrix` -- a precondition for
+    `_two_step_floating_catchment`'s internals to use `.dot()` (which
+    propagates NaN) instead of `.mul().sum()` (which silently skips it)
+    without changing behaviour on valid data.
+
+    LSOA_1's cost to Site_1 is NaN (route unknown); LSOA_1 can still reach
+    Site_2 (cost 12 <= 15). Site_1's catchment must exclude LSOA_1 entirely
+    (catchment_demand = LSOA_2's 100 only) rather than becoming NaN itself.
+    """
+    demand_df = pd.DataFrame(
+        {"location_id": ["LSOA_1", "LSOA_2", "LSOA_3"], "demand": [100, 100, 50]}
+    )
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": ["Site_1", "Site_2"],
+            "lat": [51.1, 51.2],
+            "long": [-0.1, -0.2],
+            "supply": [10, 5],
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["LSOA_1", "LSOA_2", "LSOA_3"],
+            "Site_1": [np.nan, 8.0, 30.0],
+            "Site_2": [12.0, 30.0, 5.0],
+        }
+    )
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+
+    region_frame, site_frame = problem.two_step_floating_catchment(
+        supply_col="supply", catchment_size=15, return_site_ratios=True
+    )
+
+    assert site_frame.loc["Site_1", "catchment_demand"] == 100
+    assert site_frame.loc["Site_1", "ratio"] == pytest.approx(10 / 100)
+
+    # LSOA_1 reaches only Site_2 -- Site_1's NaN cost must not make its own
+    # accessibility NaN, nor silently count it as "in catchment" for Site_1.
+    expected_r2 = 5 / (100 + 50)  # Site_2's catchment: LSOA_1 (12) + LSOA_3 (5)
+    assert region_frame.loc["LSOA_1", "accessibility"] == pytest.approx(expected_r2)
+    assert not np.isnan(region_frame.loc["LSOA_1", "accessibility"])
+    assert region_frame.loc["LSOA_1", "n_sites_in_catchment"] == 1
+
+
 def test_widening_catchment_size_never_decreases_sites_in_catchment(sfca_problem):
     narrow = sfca_problem.two_step_floating_catchment(
         supply_col="supply", catchment_size=5, site_names=["Site_1", "Site_2"]

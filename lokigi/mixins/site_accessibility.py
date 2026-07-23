@@ -289,8 +289,18 @@ class SFCAMixin:
         -------
         pandas.DataFrame or tuple of (pandas.DataFrame, pandas.DataFrame)
         """
-        # Step 1: supply-to-demand ratio per site.
-        catchment_demand = weight_matrix.mul(demand, axis=0).sum(axis=0)
+        # Step 1: supply-to-demand ratio per site. A matrix-vector dot
+        # product (BLAS gemv under the hood) rather than an elementwise
+        # multiply-then-sum: no N x M intermediate array, and materially
+        # faster once scoring hundreds of sites against thousands of
+        # regions. Safe against NaN propagating silently different from
+        # .mul().sum()'s skipna=True, because weight_matrix can never
+        # itself contain NaN -- every _resolve_*_decay_weights path builds
+        # it from a `cost_frame <= threshold`-style boolean comparison,
+        # and NaN comparisons are always False, so a NaN travel cost
+        # always resolves to weight 0.0 (see
+        # test_nan_travel_cost_treated_as_unreachable_not_propagated).
+        catchment_demand = weight_matrix.T.dot(demand)
         n_regions_in_catchment = (weight_matrix > 0).sum(axis=0)
 
         with np.errstate(invalid="ignore", divide="ignore"):
@@ -329,9 +339,10 @@ class SFCAMixin:
         # ratio (empty-catchment site) must drop out of this sum rather
         # than propagate -- an unreachable site's undefined ratio
         # shouldn't poison every other region that happens to be near it
-        # too.
+        # too. fillna(0.0) here is also what keeps this dot product safe;
+        # see the comment on catchment_demand above.
         usable_ratio = ratio.fillna(0.0)
-        accessibility = weight_matrix.mul(usable_ratio, axis=1).sum(axis=1) * per_capita
+        accessibility = weight_matrix.dot(usable_ratio) * per_capita
         n_sites_in_catchment = (weight_matrix > 0).sum(axis=1)
 
         region_frame = pd.DataFrame(
