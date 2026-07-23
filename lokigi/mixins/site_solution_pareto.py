@@ -511,6 +511,20 @@ class ParetoMixin:
 
         x_positions = list(range(len(self.pareto_metrics)))
 
+        # Rotated at a shallow angle, a long label overhangs a fair way to the
+        # left of its tick. tight_layout() (called below) treats that overhang
+        # as space the axes must yield, and since the overhang is a roughly
+        # fixed number of inches regardless of the figure's own width, a
+        # narrow figure (few metrics, small width_multiplier) can end up
+        # ceding nearly all of it -- collapsing the plot itself down to a
+        # sliver. Wrapping long labels onto multiple lines keeps that overhang
+        # bounded to roughly one width_multiplier's worth of characters.
+        metric_label_wrap_width = max(int(width_multiplier * 9), 12)
+        metric_labels = [
+            textwrap.fill(m.label, width=metric_label_wrap_width)
+            for m in self.pareto_metrics
+        ]
+
         # normalise every metric to 0-1 where 1 is always "better", using the
         # full solution set's range (not just the front) so axes reflect the
         # true spread of what was evaluated
@@ -639,9 +653,7 @@ class ParetoMixin:
                 )
 
         ax.set_xticks(x_positions)
-        ax.set_xticklabels(
-            [m.label for m in self.pareto_metrics], rotation=15, ha="right"
-        )
+        ax.set_xticklabels(metric_labels, rotation=15, ha="right")
         ax.set_yticks([])
         ax.set_ylim(-0.14, 1.16)
         ax.set_ylabel("Better \u2191 (rescaled per metric)")
@@ -663,8 +675,6 @@ class ParetoMixin:
                 "label next to each point shows whether it sits above (+) or below (\u2212) that target."
             )
         if caption:
-            import textwrap
-
             wrapped = "\n".join(textwrap.wrap(caption, width=105))
             fig.text(
                 0.01,
@@ -746,6 +756,18 @@ class ParetoMixin:
         )
         # Ensure axes is a flat array even if 1D or single subplot
         axes = np.array(axes).ravel()
+
+        # Rotated at a shallow angle, a long label overhangs a fair way to the
+        # left of its tick, which tight_layout() (called below) treats as
+        # space the axes must yield -- see the matching comment in
+        # plot_pareto_summary for why that can collapse a narrow facet down
+        # to a sliver. Wrapping bounds the overhang to roughly one
+        # width_multiplier's worth of characters per line.
+        metric_label_wrap_width = max(int(width_multiplier * 9), 12)
+        metric_labels = [
+            textwrap.fill(m.label, width=metric_label_wrap_width)
+            for m in self.pareto_metrics
+        ]
 
         # Normalise every metric to 0-1 (where 1 is always "better")
         normed = {}
@@ -990,7 +1012,7 @@ class ParetoMixin:
         for idx_ax, ax in enumerate(axes[:n_front]):
             ax.set_xticks(x_positions)
             ax.set_xticklabels(
-                [m.label for m in self.pareto_metrics],
+                metric_labels,
                 rotation=15,
                 ha="right",
                 fontsize=8,

@@ -99,6 +99,38 @@ def solved_solution_set(solution_set, pareto_metrics):
 
 
 @pytest.fixture
+def long_label_solution_set():
+    """Two metrics with long labels and only one Pareto-optimal solution --
+    with few metrics the figure is narrow by default, and long labels rotated
+    at a shallow angle used to overhang far enough to collapse the axes."""
+    df = pd.DataFrame(
+        {
+            "solution_rank": [1, 2],
+            "weighted_average": [20.0, 22.0],
+            "weighted_average_2": [21.0, 23.0],
+            "site_names": [["Site A"], ["Site B"]],
+        }
+    )
+    metrics = [
+        ParetoMetric(
+            column="weighted_average",
+            direction="lower_better",
+            label="whole-population weighted average travel time",
+            unit="minutes",
+        ),
+        ParetoMetric(
+            column="weighted_average_2",
+            direction="lower_better",
+            label="older-population weighted average travel time",
+            unit="minutes",
+        ),
+    ]
+    solution_set = DummySolutionSet(df)
+    solution_set.compute_pareto_front(metrics)
+    return solution_set
+
+
+@pytest.fixture
 def full_metrics_df():
     """Solution set using the exact hard-coded metric names the plotting
     helpers (plot_simple_pareto_front_pairs / plot_all_metric_pareto_front_pairs)
@@ -304,6 +336,36 @@ def test_plot_pareto_facets_returns_figure(solved_solution_set):
     fig = solved_solution_set.plot_pareto_facets()
     try:
         assert isinstance(fig, plt.Figure)
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_summary_axes_not_collapsed_by_long_labels(
+    long_label_solution_set,
+):
+    """Regression test: long metric labels in a narrow (few-metric) figure
+    used to overhang far enough that tight_layout() squeezed the axes down
+    to near-zero width -- see the module docstring comment on
+    metric_label_wrap_width for the mechanism."""
+    fig = long_label_solution_set.plot_pareto_summary()
+    try:
+        fig.canvas.draw()
+        ax = fig.axes[0]
+        bbox = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+        assert bbox.width > 0.2 * fig.get_size_inches()[0]
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_facets_axes_not_collapsed_by_long_labels(
+    long_label_solution_set,
+):
+    fig = long_label_solution_set.plot_pareto_facets()
+    try:
+        fig.canvas.draw()
+        ax = fig.axes[0]
+        bbox = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+        assert bbox.width > 0.5 * fig.get_size_inches()[0]
     finally:
         plt.close(fig)
 
