@@ -30,10 +30,20 @@
 # Reporting
 
 - State uncertainty plainly — distinguish directly-verified from inferred (e.g. "confirmed via code inspection, but couldn't trigger through the public API").
+- Named external citations (papers, APIs, specs) need a primary-source check before landing in code/docs — a recalled name or detail can be subtly wrong even when the surrounding content is right.
+
+# Third-party reuse
+
+- Reusing external code, data, or test fixtures — even a small amount — needs a licence check and attribution in THIRD_PARTY_LICENCES.md as part of the same change, proposed proactively rather than waiting to be asked.
+
+# Plotting
+
+- In any method that draws geometry (`.plot()`/`.explore()`) and also adds text labels via `adjust_text`, draw the geometry first. Labelling before the axes have real data limits lets `adjust_text` reposition labels against the still-default (0,1) range; once the real extent is applied afterward, those stale positions read as data coordinates far outside it. This doesn't error or show up in a normal render — it only surfaces as a huge, near-empty image on a `bbox_inches="tight"` save, which is what Jupyter's inline display uses. `plot_sites()` gets the order right; copy that order, not just its calls.
 
 # Example notebooks
 
-- Lives at `examples/<category>/<name>/index.ipynb` (`location`, `eda`, `travel_time_matrices`, `routing`, `other`). Front matter markdown cell: `title`, `toc: true`, `execute: {enabled: true}`, optional `image:`.
+- Lives at `examples/<category>/<name>/index.ipynb` (`location`, `eda`, `travel_time_matrices`, `routing`, `other`). Front matter markdown cell: `title`, `toc: true`, `execute: {enabled: true}`, `image:`.
+- `image:` is expected in practice, not truly optional -- it's the listing grid's thumbnail. Generate it from a representative static plot via `savefig`. If the notebook has no static representative plot to use, omit `image:`/`image.png` and say so rather than fabricating one.
 - Must be wired into `examples/examples.qmd` (both the `listing` metadata's `contents` list and the matching `:::{#id}:::` div) or it's invisible.
 - Prefer extending an existing example's setup (sample data, site/matrix registration) over a new one; cross-link with relative markdown links.
 - Committed with real executed outputs. After editing code cells, run `python -m jupyter nbconvert --to notebook --execute --inplace <path>` from the notebook's own directory and check for error outputs.
