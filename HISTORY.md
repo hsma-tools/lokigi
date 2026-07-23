@@ -75,6 +75,8 @@ lokigi is pre-1.0, so breaking changes can land in any minor release. Read these
     - The ordinal-suffix helper is a module-level function in `lokigi.utils` but was called as though it were a method on the solution set, so plotting any solution other than the top-ranked one crashed. `solution_rank=1` took a different branch and worked, which is why this went unnoticed
 - Fix `plot_travel_time_distribution(bottom_n=...)` raising `TypeError: list.append() takes no keyword arguments`
     - The bottom-ranked slice was appended with a stray keyword argument, so passing `bottom_n` at all crashed. Passing `top_n` alone was unaffected
+- `plot_pareto_facets()` now quantifies each Strengths/Sacrifices entry with its rank, e.g. `Sacrifices: Total build cost (18th of 18)` instead of a bare metric name, since two "trade-off" metrics can differ hugely in how bad they are
+    - New `rank_scope=` argument controls what a rank is computed against: `"all"` (the default) ranks against every enumerated solution, `"pareto_front"` ranks only against the other Pareto-optimal solutions shown in the plot
 
 ## v0.6.0
 

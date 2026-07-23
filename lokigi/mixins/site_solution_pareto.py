@@ -11,7 +11,7 @@ import seaborn as sns
 import sweetpareto.vis as spv
 import textwrap
 
-from lokigi.utils import _colours_and_styles, _is_maximise_metric
+from lokigi.utils import _colours_and_styles, _is_maximise_metric, _get_ordinal_suffix
 
 from lokigi.multiobjective import ParetoMetric
 
@@ -696,6 +696,7 @@ class ParetoMixin:
         title: str | None = None,
         wrap_at: int = 110,
         show_raw_labels: bool = True,
+        rank_scope: str = "all",
     ):
         """
         Plot each non-dominated (Pareto-optimal) solution on its own subplot facet.
@@ -707,8 +708,21 @@ class ParetoMixin:
         - The solution ID & custom name
         - Included sites (if `sites_col` is provided)
         - The count of overall alternatives this specific solution dominates
-        - Its key relative strengths and trade-offs compared to the Pareto average
+        - Its key relative strengths and trade-offs compared to the Pareto average, each
+          annotated with its rank (e.g. "Weighted average travel time (1st of 18)")
+
+        Parameters
+        ----------
+        rank_scope : str, default "all"
+            Scope used to rank each metric for the Strengths/Sacrifices annotations.
+            "all" ranks a solution's metric against every enumerated solution
+            (dominated + Pareto-optimal). "pareto_front" ranks it only against the
+            other non-dominated solutions shown in this plot.
         """
+        if rank_scope not in ("all", "pareto_front"):
+            raise ValueError(
+                f"rank_scope must be one of 'all' or 'pareto_front', got {rank_scope!r}"
+            )
         sns.set_style(theme)
         front = self.solution_df[self.solution_df["is_pareto_optimal"]].copy()
         rest = self.solution_df[~self.solution_df["is_pareto_optimal"]].copy()
@@ -751,6 +765,13 @@ class ParetoMixin:
         # Compute average performance across the Pareto front for trade-off reference
         front_normed = normed_df.loc[front.index]
         front_mean = front_normed.mean()
+
+        # Rank each metric (per rank_scope) for the Strengths/Sacrifices annotations.
+        # normed_df values are already oriented so higher = better regardless of the
+        # metric's original direction, so a single ranking rule covers all of them.
+        rank_source = normed_df if rank_scope == "all" else front_normed
+        rank_n = len(rank_source)
+        rank_df = rank_source.rank(method="min", ascending=False)
 
         # Build a persistent mapping of front-solution index to styling (color, marker, style)
         styles = _colours_and_styles(max(n_front, 1), palette)
@@ -886,6 +907,11 @@ class ParetoMixin:
             ).any(axis=1)
             num_dominated = dominates_mask.sum()
 
+            def _label_with_rank(m):
+                rank_val = int(rank_df.loc[idx, m.column])
+                rank_str = f"{rank_val}{_get_ordinal_suffix(rank_val)} of {rank_n}"
+                return f"{m.label} ({rank_str})"
+
             # Relative Strengths and Weaknesses (vs the average of the Pareto Front)
             strengths = []
             trade_offs = []
@@ -894,20 +920,20 @@ class ParetoMixin:
                 avg = front_mean[m.column]
                 diff = val - avg
                 if diff > 0.05:  # Noticeably above front average
-                    strengths.append(m.label)
+                    strengths.append(_label_with_rank(m))
                 elif diff < -0.05:  # Noticeably below front average
-                    trade_offs.append(m.label)
+                    trade_offs.append(_label_with_rank(m))
 
             # Fallbacks if metrics are entirely clustered around the mean
             if not strengths:
                 strengths = [
-                    m.label
+                    _label_with_rank(m)
                     for m in self.pareto_metrics
                     if curr_norm_vals[m.column] >= curr_norm_vals.median()
                 ][:2]
             if not trade_offs:
                 trade_offs = [
-                    m.label
+                    _label_with_rank(m)
                     for m in self.pareto_metrics
                     if curr_norm_vals[m.column] < curr_norm_vals.median()
                 ][:2]
