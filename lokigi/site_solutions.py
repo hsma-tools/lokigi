@@ -706,68 +706,74 @@ class EvaluatedCombination:
             these values for every matrix regardless -- it only changes
             which of the already-computed keys get included here.
 
+        Notes
+        -----
         INTERPRETATION GUIDE FOR SUMMARY TABLES & SORTING:
 
         1a. 'weighted_average'
-            - LOWER is better. Represents travel time adjusted for specified weighting factors.
+            LOWER is better. Represents travel time adjusted for specified weighting factors.
 
         1b. Travel Costs ('unweighted_average', '90th_percentile', 'max'):
-           - LOWER is better. Represents travel time or distance.
+            LOWER is better. Represents travel time or distance.
 
         1c. 'total_cost'
-           - LOWER is better. Total fixed cost of the selected sites (sum of
-             the `cost_col` configured via `add_sites()`). `NaN` if no
-             `cost_col` was configured. Only influences which solution is
-             selected if explicitly passed as a weight (weights={"cost": ...}).
+            LOWER is better. Total fixed cost of the selected sites (sum of
+            the `cost_col` configured via `add_sites()`). `NaN` if no
+            `cost_col` was configured. Only influences which solution is
+            selected if explicitly passed as a weight (weights={"cost": ...}).
 
         2. Absolute Equity Gap ('gap_absolute_weighted'):
-           - CLOSER TO 0 is better. Measures the flat minute/distance difference
-             between the best-served and worst-served equity bands. High numbers
-             mean severe geographical disparity.
+            CLOSER TO 0 is better. Measures the flat minute/distance difference
+            between the best-served and worst-served equity bands. High numbers
+            mean severe geographical disparity.
 
         3. Relative Equity Gap ('gap_relative_weighted'):
-           - CLOSER TO 1.0 is better. If it's 1.5, the worst-served group travels
-             1.5x longer than the best-served group.
+            CLOSER TO 1.0 is better. If it's 1.5, the worst-served group travels
+            1.5x longer than the best-served group.
 
         4. Inter-Tertile Ratio ('inter_tertile_ratio'):
-           - Measures macro-equity assuming lower bins = higher deprivation (e.g., IMD 1-3).
-           - SORTING CRITERIA:
-             * ITR > 1.0: Inequity. The most deprived third faces longer travel times
-                          than the least deprived third (e.g., 1.25 = 25% longer travel).
-             * ITR = 1.0: Perfect equality in macro travel times.
-             * ITR < 1.0: Progressive equity. Travel times are shorter for the most
-                          deprived communities.
+            Measures macro-equity assuming lower bins = higher deprivation (e.g., IMD 1-3).
+            SORTING CRITERIA:
+
+            * ITR > 1.0: Inequity. The most deprived third faces longer travel times
+              than the least deprived third (e.g., 1.25 = 25% longer travel).
+            * ITR = 1.0: Perfect equality in macro travel times.
+            * ITR < 1.0: Progressive equity. Travel times are shorter for the most
+              deprived communities.
 
         5. Coverage Metrics ('proportion_within_coverage_threshold', 'coverage_by_equity_group'):
-           - HIGHER is better (Scale: 0.0 to 1.0). Represents accessibility. Look for
-             solutions where coverage is both globally high and uniformly distributed
-             across groups. Both are `NaN` if no `threshold_for_coverage` was given.
-           - NAMING RULE: an unqualified coverage metric is weighted by the demand
-             registered via `add_demand()`, so it answers "what share of *people*
-             are covered". The `regions` variants
-             ('proportion_regions_within_coverage_threshold',
-             'coverage_regions_by_equity_group') count every region equally and
-             answer "what share of *places* are covered". The two coincide when
-             demand is uniform, including when `add_demand()` was never called.
-           - The demand-weighted figure is the one 'mclp' optimises, matching the
-             textbook Maximal Covering Location Problem.
+            HIGHER is better (Scale: 0.0 to 1.0). Represents accessibility. Look for
+            solutions where coverage is both globally high and uniformly distributed
+            across groups. Both are `NaN` if no `threshold_for_coverage` was given.
+
+            NAMING RULE: an unqualified coverage metric is weighted by the demand
+            registered via `add_demand()`, so it answers "what share of *people*
+            are covered". The `regions` variants
+            ('proportion_regions_within_coverage_threshold',
+            'coverage_regions_by_equity_group') count every region equally and
+            answer "what share of *places* are covered". The two coincide when
+            demand is uniform, including when `add_demand()` was never called.
+
+            The demand-weighted figure is the one 'mclp' optimises, matching the
+            textbook Maximal Covering Location Problem.
 
         6. Secondary travel matrices (columns suffixed `__<label>`, e.g.
            'weighted_average__public_transport'):
-           - Registered via `add_secondary_travel_matrix(label=...)`. Same metrics
-             and sort direction as their unsuffixed counterparts above (1a/1b/5),
-             computed against that matrix's own travel costs instead of the
-             primary matrix. By default, only the core scalar metrics (both
-             coverage proportions included) plus the
-             float-valued equity aggregations (gap_absolute_weighted,
-             gap_relative_weighted, avg_*_third_bins, inter_tertile_ratio) are
-             included per matrix, to keep this table from growing unboundedly
-             with each registered matrix -- pass `full_secondary_metrics=True`
-             to also include the dict-valued equity breakdowns and description
-             strings, matching what the primary matrix already returns. The
-             underlying per-region `problem_df` always carries
-             `min_cost__<label>` / `selected_site__<label>` /
-             `within_threshold__<label>` regardless of this setting.
+
+            Registered via `add_secondary_travel_matrix(label=...)`. Same metrics
+            and sort direction as their unsuffixed counterparts above (1a/1b/5),
+            computed against that matrix's own travel costs instead of the
+            primary matrix. By default, only the core scalar metrics (both
+            coverage proportions included) plus the
+            float-valued equity aggregations (gap_absolute_weighted,
+            gap_relative_weighted, avg_*_third_bins, inter_tertile_ratio) are
+            included per matrix, to keep this table from growing unboundedly
+            with each registered matrix -- pass `full_secondary_metrics=True`
+            to also include the dict-valued equity breakdowns and description
+            strings, matching what the primary matrix already returns. The
+            underlying per-region `problem_df` always carries
+            `min_cost__<label>` / `selected_site__<label>` /
+            `within_threshold__<label>` regardless of this setting.
         """
 
         # Return weighted average

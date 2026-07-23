@@ -5,7 +5,7 @@ on:
   push:
     branches: [main]
     paths:
-      - geosolvaro/**
+      - lokigi/**
       - tests/**
       - pyproject.toml
       - uv.lock*
@@ -88,4 +88,28 @@ jobs:
 
       - name: Run tests
         if: steps.should_run.outputs.run == 'true'
-        run: uv run pytest --verbose --tb=short
+        run: uv run pytest --verbose --tb=short -m "not slow_grasp"
+
+  slow-tests:
+    name: Medium/large-scale GRASP tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Run slow_grasp tests
+        run: uv run pytest --verbose --tb=short -m slow_grasp

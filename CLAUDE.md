@@ -22,6 +22,7 @@
 
 - Don't monkeypatch core objects (e.g. `pd.DataFrame`) to cover a trivial/unreachable branch — skip it.
 - For subtle-bug fixes (wrong direction, silent no-op, wrong ordering), prove the new test catches the regression by reverting the fix and confirming it fails, then restoring. "Tests pass" alone isn't proof.
+- Tests marked `slow_grasp` (medium/large-scale GRASP configs, run on their own CI job — see `tests.yml`) are excluded from the default local run. Don't run them routinely (e.g. as part of a general "run the tests" pass) — only run `-m slow_grasp` when specifically asked to, or when a change actually touches GRASP solver internals.
 
 # Deferred work
 
