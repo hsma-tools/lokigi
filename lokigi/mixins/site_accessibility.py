@@ -91,7 +91,7 @@ class SFCAMixin:
     @staticmethod
     def _resolve_step_decay_weights(cost_frame, bands):
         """
-        Enhanced 2SFCA (E2SFCA, Luo & Qin 2009) step-decay weighting.
+        Enhanced 2SFCA (E2SFCA, Luo & Qi 2009) step-decay weighting.
 
         `bands` is a list of `(upper_bound, weight)` pairs, need not be
         pre-sorted. A cost is assigned the weight of the smallest band whose
@@ -150,15 +150,18 @@ class SFCAMixin:
     def _resolve_continuous_decay_weights(cost_frame, spec):
         """
         Continuous distance-decay weighting. `spec` is a dict naming a
-        `method` and that method's parameters; only `"gaussian"` (Dai 2010)
-        is currently supported.
+        `method` and that method's parameters; `"gaussian"` (Dai 2010) and
+        `"power"` (the classic gravity-model decay) are supported.
         """
         method = spec.get("method")
         if method == "gaussian":
             return SFCAMixin._resolve_gaussian_decay_weights(cost_frame, spec)
+        if method == "power":
+            return SFCAMixin._resolve_power_decay_weights(cost_frame, spec)
 
         raise ValueError(
-            f"Unknown distance_decay method {method!r}. Supported: 'gaussian'."
+            f"Unknown distance_decay method {method!r}. Supported: "
+            "'gaussian', 'power'."
         )
 
     @staticmethod
@@ -197,6 +200,61 @@ class SFCAMixin:
         raw = np.exp(-0.5 * (cost_frame / bandwidth) ** 2)
         weight_matrix = (raw - d0_term) / (1 - d0_term)
         weight_matrix = weight_matrix.where(cost_frame <= catchment_size, 0.0)
+
+        return weight_matrix
+
+    @staticmethod
+    def _resolve_power_decay_weights(cost_frame, spec):
+        """
+        The classic gravity-model decay (Huff, 1963; the `d_ij^-beta` term
+        in the gravity-based accessibility index -- e.g. Luo & Qi (2009)'s
+        Eq. (1)), truncated to 0 beyond `catchment_size`:
+
+            weight(d) = (max(d, min_dist) / scale) ** alpha    for d <= catchment_size
+            weight(d) = 0                                       for d > catchment_size
+
+        `alpha` is not implicitly negative -- pass a negative `alpha` for
+        decay (weight falling with distance). `min_dist` guards the
+        singularity at `d=0` for negative `alpha` (default 0, matching a
+        raw inverse-distance weight, but a cost of exactly 0 combined with
+        `min_dist=0` and negative `alpha` raises rather than silently
+        producing an infinite weight). Parameterisation matches pysal/
+        access's `weights.gravity(scale, alpha, min_dist)`.
+        """
+        missing = [k for k in ("catchment_size", "scale", "alpha") if k not in spec]
+        if missing:
+            raise ValueError(
+                "distance_decay with method='power' requires "
+                f"{missing}: e.g. {{'method': 'power', 'catchment_size': "
+                "30, 'scale': 1, 'alpha': -1}}."
+            )
+
+        catchment_size = spec["catchment_size"]
+        scale = spec["scale"]
+        alpha = spec["alpha"]
+        min_dist = spec.get("min_dist", 0)
+
+        if catchment_size <= 0:
+            raise ValueError(
+                f"distance_decay['catchment_size'] must be positive: {catchment_size}."
+            )
+        if scale <= 0:
+            raise ValueError(f"distance_decay['scale'] must be positive: {scale}.")
+        if min_dist < 0:
+            raise ValueError(
+                f"distance_decay['min_dist'] must be non-negative: {min_dist}."
+            )
+
+        with np.errstate(divide="ignore", invalid="ignore"):
+            weight_matrix = np.power(cost_frame.clip(lower=min_dist) / scale, alpha)
+        weight_matrix = weight_matrix.where(cost_frame <= catchment_size, 0.0)
+
+        if np.isinf(weight_matrix.to_numpy()).any():
+            raise ValueError(
+                "distance_decay with method='power' produced an infinite "
+                "weight -- a cost of 0 combined with min_dist=0 and a "
+                "negative alpha. Set 'min_dist' to a small positive value."
+            )
 
         return weight_matrix
 
@@ -333,16 +391,27 @@ class SFCAMixin:
             A softer catchment than a single hard cutoff. Two forms:
 
             - A list of `(upper_bound, weight)` pairs -- Enhanced 2SFCA
-              (E2SFCA, Luo & Qin 2009) step-decay bands, e.g.
-              ``[(10, 1.0), (20, 0.68), (30, 0.22)]``. Need not be
-              pre-sorted; a cost beyond the largest `upper_bound` gets
-              weight 0. `catchment_size=<upper_bound>` with a single band
-              of weight 1 is exactly equivalent to classic 2SFCA.
-            - A dict describing a continuous decay kernel, currently only
+              (E2SFCA, Luo & Qi 2009) step-decay bands, e.g.
+              ``[(10, 1.0), (20, 0.68), (30, 0.22)]`` -- this is not just an
+              illustrative example: it is Luo & Qi's own published "weight
+              set 1" for 0-10/10-20/20-30 minute zones (their sharper
+              "weight set 2" is ``[(10, 1.0), (20, 0.42), (30, 0.09)]``).
+              Need not be pre-sorted; a cost beyond the largest
+              `upper_bound` gets weight 0. `catchment_size=<upper_bound>`
+              with a single band of weight 1 is exactly equivalent to
+              classic 2SFCA.
+            - A dict describing a continuous decay kernel. Two forms:
               ``{"method": "gaussian", "catchment_size": d0, "bandwidth":
               sigma}`` -- Dai (2010)'s truncated Gaussian: weight 1 at
               distance 0, weight 0 at `catchment_size` (the truncation
-              radius), decaying continuously in between.
+              radius), decaying continuously in between; or
+              ``{"method": "power", "catchment_size": d0, "scale": s,
+              "alpha": a, "min_dist": m=0}`` -- the classic gravity-model
+              decay, ``weight(d) = (max(d, min_dist)/scale)**alpha``,
+              truncated to 0 beyond `catchment_size` (`alpha` is not
+              implicitly negative; pass a negative value for decay).
+              Parameterisation matches pysal/access's
+              ``weights.gravity(scale, alpha, min_dist)``.
         site_names : list of str, optional
         site_indices : list of int, optional
             The site set to score. At most one may be given. If neither is

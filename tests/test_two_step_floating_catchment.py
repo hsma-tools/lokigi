@@ -495,6 +495,192 @@ def test_gaussian_decay_non_positive_bandwidth_raises(sfca_problem):
         )
 
 
+# --- Enhanced 2SFCA: continuous power/gravity decay -------------------------
+
+
+def test_power_decay_matches_hand_computation(sfca_problem):
+    """weight(d) = (d/scale)**alpha, truncated beyond catchment_size. With
+    scale=1, alpha=-1 this is a plain inverse-distance weight, 1/d. Using
+    only Site_1 (LSOA_1=10, LSOA_2=8, LSOA_3=30; demand 100/100/50):
+
+      catchment_demand(Site_1) = 100/10 + 100/8 + 50/30 = 10 + 12.5 + 1.6667 = 24.1667
+      R_1 = 10 / 24.1667
+      accessibility(LSOA_1) = R_1 / 10, accessibility(LSOA_2) = R_1 / 8,
+      accessibility(LSOA_3) = R_1 / 30
+    """
+    region_frame = sfca_problem.two_step_floating_catchment(
+        supply_col="supply",
+        distance_decay={"method": "power", "catchment_size": 30, "scale": 1, "alpha": -1},
+        site_names=["Site_1"],
+    )
+
+    catchment_demand = 100 / 10 + 100 / 8 + 50 / 30
+    expected_r1 = 10 / catchment_demand
+    assert region_frame.loc["LSOA_1", "accessibility"] == pytest.approx(expected_r1 / 10)
+    assert region_frame.loc["LSOA_2", "accessibility"] == pytest.approx(expected_r1 / 8)
+    assert region_frame.loc["LSOA_3", "accessibility"] == pytest.approx(expected_r1 / 30)
+
+
+def test_power_decay_truncates_beyond_catchment_size(sfca_problem):
+    region_frame = sfca_problem.two_step_floating_catchment(
+        supply_col="supply",
+        distance_decay={"method": "power", "catchment_size": 20, "scale": 1, "alpha": -1},
+        site_names=["Site_1"],
+    )
+    # LSOA_3's cost to Site_1 is 30, beyond catchment_size=20.
+    assert region_frame.loc["LSOA_3", "accessibility"] == 0.0
+    assert region_frame.loc["LSOA_3", "n_sites_in_catchment"] == 0
+
+
+def test_power_decay_missing_keys_raises(sfca_problem):
+    with pytest.raises(ValueError, match="scale"):
+        sfca_problem.two_step_floating_catchment(
+            supply_col="supply",
+            distance_decay={"method": "power", "catchment_size": 30, "alpha": -1},
+        )
+
+
+def test_power_decay_non_positive_catchment_size_raises(sfca_problem):
+    with pytest.raises(ValueError, match="catchment_size"):
+        sfca_problem.two_step_floating_catchment(
+            supply_col="supply",
+            distance_decay={"method": "power", "catchment_size": 0, "scale": 1, "alpha": -1},
+        )
+
+
+def test_power_decay_non_positive_scale_raises(sfca_problem):
+    with pytest.raises(ValueError, match="scale"):
+        sfca_problem.two_step_floating_catchment(
+            supply_col="supply",
+            distance_decay={"method": "power", "catchment_size": 30, "scale": 0, "alpha": -1},
+        )
+
+
+def test_power_decay_negative_min_dist_raises(sfca_problem):
+    with pytest.raises(ValueError, match="min_dist"):
+        sfca_problem.two_step_floating_catchment(
+            supply_col="supply",
+            distance_decay={
+                "method": "power", "catchment_size": 30, "scale": 1, "alpha": -1,
+                "min_dist": -1,
+            },
+        )
+
+
+def test_power_decay_zero_cost_with_zero_min_dist_raises():
+    """A cost of exactly 0 combined with min_dist=0 and negative alpha is a
+    singularity (1/0); this must raise rather than silently produce inf.
+    sfca_problem never has a zero cost, so this needs its own fixture."""
+    demand_df = pd.DataFrame({"location_id": ["LSOA_1", "LSOA_2"], "demand": [100, 100]})
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": ["Site_1", "Site_2"],
+            "lat": [51.1, 51.2],
+            "long": [-0.1, -0.2],
+            "supply": [10, 5],
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["LSOA_1", "LSOA_2"],
+            "Site_1": [0.0, 8.0],
+            "Site_2": [12.0, 30.0],
+        }
+    )
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+
+    with pytest.raises(ValueError, match="infinite"):
+        problem.two_step_floating_catchment(
+            supply_col="supply",
+            distance_decay={"method": "power", "catchment_size": 30, "scale": 1, "alpha": -1},
+        )
+
+
+# --- Cross-validation against pysal/access's published hospital example ----
+#
+# Dataset and expected values are from pysal/access's own hospital-accessibility
+# test fixture (3 locations, gravity-weighted 2SFCA) -- see THIRD_PARTY_LICENCES.md
+# for the licence and exactly what was and wasn't reused.
+
+
+def _pysal_hospital_problem(costs):
+    """`costs` is a dict of {(origin, dest): cost} matching pysal/access's
+    test_hospital_example.py scenarios. Locations 1/2/3 double as both
+    demand regions and candidate sites, as in the original fixture."""
+    demand_df = pd.DataFrame({"loc": [1, 2, 3], "pop": [100, 50, 10]})
+    candidate_df = pd.DataFrame(
+        {
+            "loc": [1, 2, 3],
+            "lat": [41.0, 41.1, 41.2],
+            "long": [-87.0, -87.1, -87.2],
+            "doc": [15, 20, 100],
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source": [1, 2, 3],
+            1: [costs[(1, 1)], costs[(2, 1)], costs[(3, 1)]],
+            2: [costs[(1, 2)], costs[(2, 2)], costs[(3, 2)]],
+            3: [costs[(1, 3)], costs[(2, 3)], costs[(3, 3)]],
+        }
+    )
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="pop", location_id_col="loc")
+    problem.add_sites(candidate_df, candidate_id_col="loc")
+    problem.add_travel_matrix(travel_df, source_col="source")
+    return problem
+
+
+_PYSAL_SCENARIOS = [
+    {  # Scenario 0: gridlock
+        (1, 1): 1, (2, 2): 1, (3, 3): 1,
+        (1, 3): 40, (2, 3): 40, (3, 1): 40, (3, 2): 40,
+        (1, 2): 80, (2, 1): 80,
+    },
+    {  # Scenario 1: faster inbound to location 3
+        (1, 1): 1, (2, 2): 1, (3, 3): 1,
+        (1, 3): 20, (2, 3): 20, (3, 1): 40, (3, 2): 40,
+        (1, 2): 80, (2, 1): 80,
+    },
+    {  # Scenario 2: faster outbound from location 3
+        (1, 1): 1, (2, 2): 1, (3, 3): 1,
+        (1, 3): 40, (2, 3): 40, (3, 1): 20, (3, 2): 20,
+        (1, 2): 80, (2, 1): 80,
+    },
+    {  # Scenario 3: symmetric, faster
+        (1, 1): 1, (2, 2): 1, (3, 3): 1,
+        (1, 3): 20, (2, 3): 20, (3, 1): 20, (3, 2): 20,
+        (1, 2): 40, (2, 1): 40,
+    },
+]
+
+_PYSAL_EXPECTED_ACCESSIBILITY = [
+    {1: 0.3314441169802766, 2: 0.5798281320669381, 3: 7.286418169862544},
+    {1: 0.43534022087638047, 2: 0.683724235963042, 3: 5.727976611420986},
+    {1: 0.3310719131614654, 2: 0.5778577857785778, 3: 7.299991939492457},
+    {1: 0.44256839539858406, 2: 0.6667582799658271, 3: 5.7405246461850234},
+]
+
+
+@pytest.mark.parametrize("scenario_index", [0, 1, 2, 3])
+def test_matches_pysal_access_hospital_example(scenario_index):
+    problem = _pysal_hospital_problem(_PYSAL_SCENARIOS[scenario_index])
+    region_frame = problem.two_step_floating_catchment(
+        supply_col="doc",
+        distance_decay={"method": "power", "catchment_size": 61, "scale": 1, "alpha": -1},
+    )
+
+    expected = _PYSAL_EXPECTED_ACCESSIBILITY[scenario_index]
+    for loc, expected_accessibility in expected.items():
+        assert region_frame.loc[loc, "accessibility"] == pytest.approx(
+            expected_accessibility
+        )
+
+
 # --- catchment_size / distance_decay mutual exclusivity ---------------------
 
 
