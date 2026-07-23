@@ -401,7 +401,11 @@ class SiteProblem(
             # merges below -- lets it ride through the same
             # reset_index()/merge sequence as every other computed column,
             # so it stays correctly row-aligned with evaluated_combination_df
-            # without depending on merge order being preserved.
+            # without depending on merge order being preserved. This
+            # alignment is what the equity-group breakdown in
+            # site_solutions.py (`active_weights.loc[group.index]`) relies
+            # on -- a separately-indexed Series would silently break that
+            # lookup whenever equity data is also registered.
             for label, dser in self._secondary_demand_frames.items():
                 active_facilities[f"demand__{label}"] = dser.loc[
                     active_facilities.index
