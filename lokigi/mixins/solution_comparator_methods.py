@@ -28,7 +28,13 @@ class SolutionComparatorMethodsMixin:
         return summary
 
     def compare_site_allocation(
-        self, by="demand", metric="proportion", config_a=None, config_b=None, matrix=None
+        self,
+        by="demand",
+        metric="proportion",
+        config_a=None,
+        config_b=None,
+        matrix=None,
+        demand=None,
     ):
         """
         Compare `site_allocation_summary()` between `set_a` and `set_b`,
@@ -55,6 +61,8 @@ class SolutionComparatorMethodsMixin:
             ``{"solution_rank": 2}``), selecting which solution from each
             set to summarise. Default to ``{"solution_rank": 1}``.
         matrix : str, optional
+            Passed to both sets' `site_allocation_summary()`.
+        demand : str, optional
             Passed to both sets' `site_allocation_summary()`.
 
         Returns
@@ -88,8 +96,12 @@ class SolutionComparatorMethodsMixin:
         config_a = config_a or {"solution_rank": 1}
         config_b = config_b or {"solution_rank": 1}
 
-        summary_a = self.set_a.site_allocation_summary(by=by, matrix=matrix, **config_a)
-        summary_b = self.set_b.site_allocation_summary(by=by, matrix=matrix, **config_b)
+        summary_a = self.set_a.site_allocation_summary(
+            by=by, matrix=matrix, demand=demand, **config_a
+        )
+        summary_b = self.set_b.site_allocation_summary(
+            by=by, matrix=matrix, demand=demand, **config_b
+        )
 
         master_site_order = self.set_a.site_problem.candidate_sites[
             self.set_a.site_problem._candidate_sites_candidate_id_col

@@ -365,6 +365,7 @@ class SFCAMixin:
         site_names=None,
         site_indices=None,
         matrix=None,
+        demand=None,
         per_capita=1,
         return_site_ratios=False,
     ):
@@ -431,6 +432,12 @@ class SFCAMixin:
             Label of a secondary travel matrix registered via
             `add_secondary_travel_matrix()`. Scores accessibility under
             that matrix's travel costs instead of the primary matrix's.
+        demand : str, optional
+            Label of a secondary demand scenario registered via
+            `add_secondary_demand()`. Scores accessibility under that
+            scenario's demand instead of the primary demand data (both
+            `catchment_demand` and `demand` in the returned frames reflect
+            the chosen scenario). Combines freely with `matrix=`.
         per_capita : float, default 1
             Multiplier applied to the `accessibility` column, e.g. 1_000
             to express supply per 1,000 head instead of raw supply units
@@ -457,7 +464,8 @@ class SFCAMixin:
             or both of `catchment_size`/`distance_decay` are given, if no
             demand data is registered, if `supply_col` is missing or
             contains a null/negative value for a scored site, if `matrix`
-            is not a registered secondary travel matrix label, or if
+            is not a registered secondary travel matrix label, if `demand`
+            is not a registered secondary demand scenario label, or if
             `distance_decay` fails its own validation (see above).
         TypeError
             If `supply_col` is not numeric.
@@ -499,6 +507,7 @@ class SFCAMixin:
         if self.travel_and_demand_df is None:
             self._create_joined_demand_travel_df(index_col=self._demand_data_id_col)
             self._build_secondary_travel_frames()
+            self._build_secondary_demand_frames()
 
         if site_indices is not None:
             if len(site_indices) != len(set(site_indices)):
@@ -550,9 +559,19 @@ class SFCAMixin:
                 )
             cost_frame = frame[site_names_resolved]
 
-        demand = self.travel_and_demand_df[self._demand_data_demand_col].reindex(
-            cost_frame.index
-        )
+        if demand is None:
+            demand_series = self.travel_and_demand_df[
+                self._demand_data_demand_col
+            ].reindex(cost_frame.index)
+        else:
+            if demand not in self.secondary_demand_matrices:
+                raise ValueError(
+                    f"Unknown secondary demand scenario '{demand}'. Registered "
+                    f"labels: {sorted(self.secondary_demand_matrices)}."
+                )
+            demand_series = self._secondary_demand_frames[demand].reindex(
+                cost_frame.index
+            )
 
         supply = self._resolve_supply(
             self.candidate_sites,
@@ -567,7 +586,7 @@ class SFCAMixin:
 
         return self._two_step_floating_catchment(
             cost_frame=cost_frame,
-            demand=demand,
+            demand=demand_series,
             supply=supply,
             weight_matrix=weight_matrix,
             per_capita=per_capita,

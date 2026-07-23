@@ -246,6 +246,18 @@ class EvaluatedCombination:
                             else "higher_better"
                         )
 
+                elif label in getattr(
+                    self.site_problem, "secondary_demand_matrices", {}
+                ):
+                    # A registered secondary demand scenario: its column
+                    # was merged into evaluated_combination_df as
+                    # `demand__<label>` (see evaluate_single_solution_
+                    # single_objective). 'demand' defaults to
+                    # higher_better for the same reason the primary demand
+                    # column does above.
+                    col_name = f"demand__{label}"
+                    direction = "higher_better"
+
                 else:
                     col_name = label
                     # Look up directionality from the problem configuration
@@ -387,6 +399,43 @@ class EvaluatedCombination:
                 cost_col, within_col, active_weights
             )
 
+        # Secondary demand scenarios: re-weight the primary matrix's
+        # min_cost/within_threshold (and, opt-in via also_weight_matrices,
+        # any secondary travel matrix's) using the scenario's own demand
+        # column, keyed by (secondary travel label or None) -> metrics.
+        # Always weighted by the scenario's *pure* demand -- never the
+        # compound `weights=` blend -- so a demand-scenario column is a
+        # stable, single-scenario view regardless of how the objective is
+        # weighted.
+        self.secondary_demand_metrics = {}
+        for dlabel, dmeta in getattr(
+            self.site_problem, "secondary_demand_matrices", {}
+        ).items():
+            demand_col = f"demand__{dlabel}"
+            if demand_col not in self.evaluated_combination_df.columns:
+                continue
+            dweights = self.evaluated_combination_df[demand_col]
+
+            per_matrix = {
+                None: self._compute_travel_metrics(
+                    "min_cost",
+                    "within_threshold",
+                    active_weights=dweights,
+                    coverage_demand=dweights,
+                )
+            }
+            for tlabel in dmeta["also_weight_matrices"]:
+                t_cost_col = f"min_cost__{tlabel}"
+                if t_cost_col not in self.evaluated_combination_df.columns:
+                    continue
+                per_matrix[tlabel] = self._compute_travel_metrics(
+                    t_cost_col,
+                    f"within_threshold__{tlabel}",
+                    active_weights=dweights,
+                    coverage_demand=dweights,
+                )
+            self.secondary_demand_metrics[dlabel] = per_matrix
+
     def _coverage_demand_series(self):
         """
         Raw per-region demand, used to weight the coverage metrics.
@@ -443,16 +492,28 @@ class EvaluatedCombination:
 
         return float((covered * demand).sum() / total_demand)
 
-    def _compute_travel_metrics(self, cost_col, within_col, active_weights):
+    def _compute_travel_metrics(
+        self, cost_col, within_col, active_weights, coverage_demand=None
+    ):
         """
         Compute weighted/unweighted travel-cost summary statistics and the
         equity breakdown for one travel matrix's min-cost column.
 
-        Used once for the primary matrix (`cost_col="min_cost"`) and once
-        per registered secondary travel matrix (`cost_col="min_cost__
-        <label>"`), so a secondary matrix gets identical treatment to the
-        primary one rather than a parallel, potentially-diverging
-        implementation.
+        Used once for the primary matrix (`cost_col="min_cost"`), once per
+        registered secondary travel matrix (`cost_col="min_cost__<label>"`),
+        and once per registered secondary demand scenario, so every
+        combination gets identical treatment rather than a parallel,
+        potentially-diverging implementation.
+
+        `coverage_demand` overrides the demand series used to weight
+        `proportion_within_coverage_threshold` (and its equity breakdown).
+        It defaults to the primary demand column (via
+        `_coverage_demand_series()`), which is correct for the primary
+        matrix and every secondary *travel* matrix -- both are always
+        weighted by the primary demand. A secondary *demand* scenario
+        passes its own scenario series here instead, so "proportion of
+        demand covered" reflects that scenario's demand rather than the
+        primary one.
         """
         df = self.evaluated_combination_df
 
@@ -461,7 +522,9 @@ class EvaluatedCombination:
         percentile_90th = np.percentile(df[cost_col], q=90)
         max_cost = np.max(df[cost_col])
 
-        demand_series = self._coverage_demand_series()
+        demand_series = (
+            coverage_demand if coverage_demand is not None else self._coverage_demand_series()
+        )
         proportion_within_coverage_threshold = self._coverage_proportion(
             df[within_col], demand_series
         )
@@ -796,6 +859,24 @@ class EvaluatedCombination:
                 ]
                 metrics[f"inter_tertile_description__{label}"] = secondary[
                     "inter_tertile_desc"
+                ]
+
+        # Secondary demand scenarios: only the two metrics that actually
+        # vary with demand (weighted_average, proportion_within_coverage_
+        # threshold -- see _compute_travel_metrics' coverage_demand
+        # docstring). Suffix order is travel-label-first, demand-label-
+        # second (`weighted_average__<travel>__<demand>`) for the opt-in
+        # cross with a secondary travel matrix registered via
+        # also_weight_matrices; `weighted_average__<demand>` for the
+        # (default) primary-travel case. Per-scenario equity breakdowns are
+        # not yet supported and are never emitted here, regardless of
+        # full_secondary_metrics.
+        for dlabel, per_matrix in self.secondary_demand_metrics.items():
+            for tlabel, dmetrics in per_matrix.items():
+                suffix = dlabel if tlabel is None else f"{tlabel}__{dlabel}"
+                metrics[f"weighted_average__{suffix}"] = dmetrics["weighted_average"]
+                metrics[f"proportion_within_coverage_threshold__{suffix}"] = dmetrics[
+                    "proportion_within_coverage_threshold"
                 ]
 
         return metrics
@@ -1134,6 +1215,7 @@ class SiteSolutionSet(
         site_names=None,
         site_indices=None,
         matrix=None,
+        demand=None,
     ):
         """
         Per-site summary of a chosen solution: the share of demand (or of
@@ -1173,6 +1255,12 @@ class SiteSolutionSet(
             computes `average_travel_cost`, under that matrix's own
             `selected_site__<label>` / `min_cost__<label>` columns instead
             of the primary matrix's.
+        demand : str, optional
+            Label of a secondary demand scenario registered via
+            `add_secondary_demand()`. Computes `total_demand` and (for
+            `by="demand"`) `proportion` / `average_travel_cost` under that
+            scenario's demand instead of the primary demand data. Combines
+            freely with `matrix=`.
 
         Returns
         -------
@@ -1230,7 +1318,19 @@ class SiteSolutionSet(
         selected_sites = list(solution["site_names"].iloc[0])
         per_region = solution["problem_df"].iloc[0]
 
-        demand_col = getattr(self.site_problem, "_demand_data_demand_col", None)
+        if demand is None:
+            demand_col = getattr(self.site_problem, "_demand_data_demand_col", None)
+        else:
+            registered_demand_labels = getattr(
+                self.site_problem, "secondary_demand_matrices", {}
+            )
+            if demand not in registered_demand_labels:
+                raise ValueError(
+                    f"Unknown secondary demand scenario '{demand}'. "
+                    f"Registered labels: {sorted(registered_demand_labels)}."
+                )
+            demand_col = f"demand__{demand}"
+
         has_demand = demand_col is not None and demand_col in per_region.columns
         if by == "demand" and not has_demand:
             raise ValueError(
@@ -1311,6 +1411,7 @@ class SiteSolutionSet(
         site_names=None,
         site_indices=None,
         matrix=None,
+        demand=None,
         per_capita=1,
         return_site_ratios=False,
     ):
@@ -1349,6 +1450,10 @@ class SiteSolutionSet(
             Label of a secondary travel matrix registered via
             `add_secondary_travel_matrix()`. Scores accessibility under
             that matrix's travel costs instead of the primary matrix's.
+        demand : str, optional
+            Label of a secondary demand scenario registered via
+            `add_secondary_demand()`. Scores accessibility under that
+            scenario's demand instead of the primary demand data.
         per_capita : float, default 1
             Multiplier applied to the `accessibility` column, e.g. 1_000
             to express supply per 1,000 head instead of raw supply units
@@ -1388,6 +1493,7 @@ class SiteSolutionSet(
             distance_decay=distance_decay,
             site_names=selected_sites,
             matrix=matrix,
+            demand=demand,
             per_capita=per_capita,
             return_site_ratios=return_site_ratios,
         )

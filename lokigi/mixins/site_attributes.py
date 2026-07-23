@@ -1135,6 +1135,14 @@ class SiteAttributeMixin:
                 f"{sorted(self.secondary_travel_matrices)}. Choose a "
                 "different label."
             )
+        if label in self.secondary_demand_matrices:
+            raise ValueError(
+                f"label '{label}' is already registered as a secondary "
+                "demand scenario. Secondary travel matrices and secondary "
+                "demand scenarios share the same suffix namespace, so "
+                "labels must be unique across both. Choose a different "
+                "label."
+            )
 
         loaded_df, df_type = _load_spatial_or_tabular_data(
             travel_matrix_df, skip_cols=skip_cols
@@ -1255,6 +1263,238 @@ class SiteAttributeMixin:
                 )
 
             self._secondary_travel_frames[label] = frame
+
+    #############################
+    # MARK: Secondary Demand Matrices
+    #############################
+    def add_secondary_demand(
+        self,
+        demand_df,
+        demand_col,
+        location_id_col,
+        label,
+        skip_cols=None,
+        also_weight_matrices=None,
+    ):
+        """
+        Register an additional demand scenario (e.g. projected future
+        demand alongside a primary current-demand dataset).
+
+        Unlike `add_demand()`, a secondary demand scenario never drives the
+        optimisation objective -- the primary demand set via `add_demand()`
+        (or the equal-demand fallback) always drives site selection and
+        search/pruning. Instead, each registered secondary demand scenario
+        contributes its own `weighted_average__<label>` and
+        `proportion_within_coverage_threshold__<label>` metric columns --
+        the two metrics that actually change with demand -- into every
+        solution `solve()` produces, so it can be used directly in plots,
+        `ParetoMetric(column=...)`, post-hoc ranking
+        (`rank_on="weighted_average__future_demand"`), or blended into the
+        optimisation objective via `weights={"future_demand": ...}`.
+
+        By default a secondary demand scenario only re-weights the primary
+        travel matrix. Pass `also_weight_matrices` to additionally compute
+        `weighted_average__<travel_label>__<label>` /
+        `proportion_within_coverage_threshold__<travel_label>__<label>`
+        against one or more registered secondary travel matrices -- this is
+        opt-in because the combination of secondary travel and secondary
+        demand matrices grows the output multiplicatively.
+
+        You may call this method multiple times with different `label`s to
+        register as many demand scenarios as needed. Each one adds
+        approximately the cost of one extra weighted-average/coverage pass
+        over the primary matrix (plus one per named `also_weight_matrices`
+        entry), so `solve()` time scales close to linearly with the number
+        of secondary demand scenarios registered.
+
+        Parameters
+        ----------
+        demand_df : pandas.DataFrame or geopandas.GeoDataFrame or str
+            The dataset containing demand for this scenario, or a local or
+            web path to its location.
+        demand_col : str
+            The name of the column in `demand_df` representing the quantity
+            of demand for this scenario.
+        location_id_col : str
+            The name of the column in `demand_df` used as a unique
+            identifier for demand locations (should correspond to IDs in
+            the primary demand data).
+        label : str
+            A unique label identifying this demand scenario, used to
+            suffix every metric column it produces (e.g.
+            `label="future_demand"` -> `weighted_average__future_demand`).
+            Must be non-empty, must not contain `"__"`, and must not
+            already be registered as either a secondary demand scenario or
+            a secondary travel matrix (suffix labels are shared between
+            the two).
+        skip_cols : list of str, optional
+            A list of column names to ignore during data loading.
+        also_weight_matrices : list of str, optional
+            Labels of registered secondary travel matrices (via
+            `add_secondary_travel_matrix()`) to also weight by this demand
+            scenario, producing `<metric>__<travel_label>__<label>`
+            columns. Order of registration does not matter -- membership
+            is checked when `solve()` builds the aligned frames.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        ValueError
+            If `label` is empty, contains `"__"`, or has already been
+            registered (as a secondary demand scenario or secondary travel
+            matrix).
+        KeyError
+            If `demand_col` or `location_id_col` is missing from the
+            provided dataframe.
+
+        Notes
+        -----
+        Secondary demand scenarios must be complete: every demand location
+        present in the primary demand/travel data must have a
+        non-missing value. This is validated when `solve()` builds the
+        aligned per-solution frames (not here, since the primary
+        demand/travel matrix may not yet be registered).
+        """
+        if not label or not isinstance(label, str):
+            raise ValueError(
+                "label must be a non-empty string identifying this "
+                "secondary demand scenario (e.g. 'future_demand')."
+            )
+        if "__" in label:
+            raise ValueError(
+                f"label '{label}' must not contain '__' -- this sequence "
+                "is reserved to separate a metric name from its "
+                "scenario/matrix label (e.g. "
+                "'weighted_average__future_demand')."
+            )
+        if label in self.secondary_demand_matrices:
+            raise ValueError(
+                f"A secondary demand scenario labelled '{label}' has "
+                "already been registered. Registered labels: "
+                f"{sorted(self.secondary_demand_matrices)}. Choose a "
+                "different label."
+            )
+        if label in self.secondary_travel_matrices:
+            raise ValueError(
+                f"label '{label}' is already registered as a secondary "
+                "travel matrix. Secondary demand scenarios and secondary "
+                "travel matrices share the same suffix namespace, so "
+                "labels must be unique across both. Choose a different "
+                "label."
+            )
+
+        loaded_df, df_type = _load_spatial_or_tabular_data(
+            demand_df, skip_cols=skip_cols
+        )
+
+        _validate_columns(
+            df=loaded_df,
+            col_names=[demand_col, location_id_col],
+            msg_template=(
+                "It looks like your secondary demand data is missing "
+                "these columns: {missing}. We found these instead: "
+                "{available}. Please double-check the column names you "
+                "are passing to the .add_secondary_demand() method."
+            ),
+        )
+
+        self.secondary_demand_matrices[label] = {
+            "data": loaded_df[[location_id_col, demand_col]],
+            "demand_col": demand_col,
+            "id_col": location_id_col,
+            "also_weight_matrices": (
+                list(also_weight_matrices) if also_weight_matrices else []
+            ),
+        }
+
+    def show_secondary_demand(self, label):
+        """
+        Returns a registered secondary demand scenario dataframe.
+
+        Parameters
+        ----------
+        label : str
+            The label the scenario was registered under via
+            `add_secondary_demand()`.
+
+        Returns
+        -------
+        pandas.DataFrame
+
+        Raises
+        ------
+        KeyError
+            If no secondary demand scenario has been registered under
+            `label`.
+        """
+        if label not in self.secondary_demand_matrices:
+            raise KeyError(
+                f"No secondary demand scenario registered under label "
+                f"'{label}'. Registered labels: "
+                f"{sorted(self.secondary_demand_matrices)}."
+            )
+        return self.secondary_demand_matrices[label]["data"]
+
+    def _build_secondary_demand_frames(self):
+        """
+        Build, for each registered secondary demand scenario, a Series of
+        demand values aligned to `self.travel_and_demand_df.index`. Stored
+        in `self._secondary_demand_frames[label]`.
+
+        Also validates every label in that scenario's
+        `also_weight_matrices` against `self.secondary_travel_matrices`,
+        so an unregistered or mistyped travel-matrix label is caught here
+        rather than surfacing as a missing-column error deep inside metric
+        computation.
+        """
+        self._secondary_demand_frames = {}
+
+        if not self.secondary_demand_matrices:
+            return
+
+        demand_index = self.travel_and_demand_df.index
+
+        for label, meta in self.secondary_demand_matrices.items():
+            for travel_label in meta["also_weight_matrices"]:
+                if travel_label not in self.secondary_travel_matrices:
+                    raise KeyError(
+                        f"Secondary demand scenario '{label}' names "
+                        f"'{travel_label}' in also_weight_matrices, but no "
+                        "secondary travel matrix is registered under that "
+                        "label. Registered secondary travel matrices: "
+                        f"{sorted(self.secondary_travel_matrices)}."
+                    )
+
+            series = meta["data"].set_index(meta["id_col"])[meta["demand_col"]]
+
+            missing_demand_ids = demand_index.difference(series.index)
+            if len(missing_demand_ids) > 0:
+                raise KeyError(
+                    f"Secondary demand scenario '{label}' is missing "
+                    f"{len(missing_demand_ids)} of {len(demand_index)} "
+                    "demand location(s) present in the primary demand "
+                    f"data (e.g. {list(missing_demand_ids[:5])}). Every "
+                    "demand location must have a row in every secondary "
+                    "demand scenario, or metrics computed from it would "
+                    "silently cover a different set of demand locations "
+                    "than the primary scenario."
+                )
+
+            series = series.reindex(demand_index).astype(float)
+
+            if series.isna().any():
+                nan_ids = series.index[series.isna()].tolist()
+                raise KeyError(
+                    f"Secondary demand scenario '{label}' has "
+                    f"{len(nan_ids)} demand location(s) with a missing "
+                    f"value (e.g. {nan_ids[:5]}). Fill or remove these "
+                    "rows before registering the scenario."
+                )
+
+            self._secondary_demand_frames[label] = series
 
     def _create_joined_demand_travel_df(self, index_col):
         """

@@ -188,6 +188,7 @@ class NonMapPlotsMixin:
         site_names=None,
         site_indices=None,
         matrix=None,
+        demand=None,
         interactive=True,
         sort=True,
         cmap="Set2",
@@ -205,7 +206,7 @@ class NonMapPlotsMixin:
 
         Parameters
         ----------
-        by, rank_on, solution_rank, site_names, site_indices, matrix
+        by, rank_on, solution_rank, site_names, site_indices, matrix, demand
             Passed straight through to `site_allocation_summary()`.
         metric : {"proportion", "average_travel_cost"}, default "proportion"
             Which `site_allocation_summary()` column to plot. "proportion"
@@ -270,6 +271,7 @@ class NonMapPlotsMixin:
             site_names=site_names,
             site_indices=site_indices,
             matrix=matrix,
+            demand=demand,
         ).reset_index()
 
         if sort:

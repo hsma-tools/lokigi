@@ -770,6 +770,70 @@ def loaded_problem_with_equity_and_secondary_matrix(
 
 
 @pytest.fixture
+def secondary_demand_df():
+    """Deliberately different id/demand column names than the primary
+    demand data (region_id/future_demand vs location_id/demand), and demand
+    weighted heavily toward LSOA_1 (300/50/50 vs the primary's 100/200/150)
+    so the p=1 weighted-average winner flips from Site_B (primary) to
+    Site_A (future) -- see test_secondary_demand_matrices.py for the
+    hand-computed values."""
+    return pd.DataFrame(
+        {
+            "region_id": ["LSOA_1", "LSOA_2", "LSOA_3"],
+            "future_demand": [300, 50, 50],
+        }
+    )
+
+
+@pytest.fixture
+def loaded_problem_with_secondary_demand(loaded_problem, secondary_demand_df):
+    """`loaded_problem` plus a registered secondary demand scenario
+    labelled 'future_demand' (see `secondary_demand_df`)."""
+    loaded_problem.add_secondary_demand(
+        secondary_demand_df,
+        demand_col="future_demand",
+        location_id_col="region_id",
+        label="future_demand",
+    )
+    return loaded_problem
+
+
+@pytest.fixture
+def loaded_problem_with_secondary_demand_and_travel(
+    loaded_problem_with_secondary_matrix, secondary_demand_df
+):
+    """`loaded_problem_with_secondary_matrix` (public_transport) plus a
+    registered secondary demand scenario ('future_demand') that also
+    cross-weights the public_transport matrix via also_weight_matrices."""
+    loaded_problem_with_secondary_matrix.add_secondary_demand(
+        secondary_demand_df,
+        demand_col="future_demand",
+        location_id_col="region_id",
+        label="future_demand",
+        also_weight_matrices=["public_transport"],
+    )
+    return loaded_problem_with_secondary_matrix
+
+
+@pytest.fixture
+def loaded_problem_with_equity_and_secondary_demand(
+    loaded_problem_with_equity, secondary_demand_df
+):
+    """`loaded_problem_with_equity` plus a registered secondary demand
+    scenario -- exercises that _compute_travel_metrics' equity-group
+    breakdown (computed internally regardless of whether it is emitted)
+    doesn't crash when active_weights is a scenario series rather than the
+    primary demand column."""
+    loaded_problem_with_equity.add_secondary_demand(
+        secondary_demand_df,
+        demand_col="future_demand",
+        location_id_col="region_id",
+        label="future_demand",
+    )
+    return loaded_problem_with_equity
+
+
+@pytest.fixture
 def additional_data_df():
     return pd.DataFrame(
         {
@@ -921,6 +985,43 @@ def sfca_problem_with_secondary_matrix(sfca_problem, sfca_secondary_travel_df):
     `sfca_secondary_travel_df`."""
     sfca_problem.add_secondary_travel_matrix(
         sfca_secondary_travel_df, source_col="source_id", label="public_transport"
+    )
+    return sfca_problem
+
+
+@pytest.fixture
+def sfca_secondary_demand_df():
+    """A 'future_demand' scenario for `sfca_problem` shifting weight away
+    from LSOA_1/LSOA_2 and toward LSOA_3 relative to the primary demand
+    (100/100/50/75 -> 50/50/100/25), so 2SFCA accessibility under this
+    scenario differs from the primary from-hand-computed values in
+    `sfca_problem`'s docstring.
+
+    With site_names=["Site_1", "Site_2"] (catchment_size=15):
+      Step 1: catchment_demand(Site_1) = 50 + 50  = 100 -> R_1 = 10/100 = 0.1
+              catchment_demand(Site_2) = 50 + 100 = 150 -> R_2 = 5/150  = 1/30
+      Step 2: accessibility(LSOA_1) = R_1 + R_2 = 0.1 + 1/30 = 0.13333...
+              accessibility(LSOA_2) = R_1         = 0.1
+              accessibility(LSOA_3) = R_2         = 1/30 = 0.03333...
+              accessibility(LSOA_Isolated) = 0
+    """
+    return pd.DataFrame(
+        {
+            "region_id": ["LSOA_1", "LSOA_2", "LSOA_3", "LSOA_Isolated"],
+            "future_demand": [50, 50, 100, 25],
+        }
+    )
+
+
+@pytest.fixture
+def sfca_problem_with_secondary_demand(sfca_problem, sfca_secondary_demand_df):
+    """`sfca_problem` plus the `future_demand` secondary demand scenario
+    from `sfca_secondary_demand_df`."""
+    sfca_problem.add_secondary_demand(
+        sfca_secondary_demand_df,
+        demand_col="future_demand",
+        location_id_col="region_id",
+        label="future_demand",
     )
     return sfca_problem
 

@@ -235,6 +235,7 @@ class SiteProblem(
             if self.travel_and_demand_df is None:
                 self._create_joined_demand_travel_df(index_col=self._demand_data_id_col)
                 self._build_secondary_travel_frames()
+                self._build_secondary_demand_frames()
 
             # We need to make sure that we use IDs and names completely consistently throughout.
             # 1. Resolve site_indices to actual Site IDs (names)
@@ -392,6 +393,19 @@ class SiteProblem(
                     active_facilities[f"within_threshold__{label}"] = (
                         active_facilities[f"min_cost__{label}"] < matrix_threshold
                     )
+
+            # Secondary demand scenarios: merge in a `demand__<label>`
+            # column while active_facilities' index is still the demand
+            # location IDs (matching _secondary_demand_frames' index).
+            # Adding it here -- rather than reindexing separately after the
+            # merges below -- lets it ride through the same
+            # reset_index()/merge sequence as every other computed column,
+            # so it stays correctly row-aligned with evaluated_combination_df
+            # without depending on merge order being preserved.
+            for label, dser in self._secondary_demand_frames.items():
+                active_facilities[f"demand__{label}"] = dser.loc[
+                    active_facilities.index
+                ]
 
             afi = active_facilities.index
             active_facilities = active_facilities.reset_index()
@@ -754,6 +768,7 @@ class SiteProblem(
 
         self._create_joined_demand_travel_df(index_col=self._demand_data_id_col)
         self._build_secondary_travel_frames()
+        self._build_secondary_demand_frames()
 
         # Data Existence Check
         # Ensure the user didn't typo a name in their weights dictionary
@@ -774,6 +789,12 @@ class SiteProblem(
             elif col_lower == "cost":
                 if getattr(self, "_candidate_sites_cost_col", None) is None:
                     missing_cols.append(col)
+
+            elif col in self.secondary_demand_matrices:
+                # Valid weight key -- a secondary demand scenario's column
+                # is resolved by EvaluatedCombination's compound_weights
+                # builder, exactly like an additional-data label.
+                pass
 
             elif col not in (self._additional_data_labels or []):
                 missing_cols.append(col)
