@@ -11,7 +11,7 @@ import seaborn as sns
 import sweetpareto.vis as spv
 import textwrap
 
-from lokigi.utils import _colours_and_styles, _is_maximise_metric
+from lokigi.utils import _colours_and_styles, _is_maximise_metric, _get_ordinal_suffix
 
 from lokigi.multiobjective import ParetoMetric
 
@@ -511,6 +511,20 @@ class ParetoMixin:
 
         x_positions = list(range(len(self.pareto_metrics)))
 
+        # Rotated at a shallow angle, a long label overhangs a fair way to the
+        # left of its tick. tight_layout() (called below) treats that overhang
+        # as space the axes must yield, and since the overhang is a roughly
+        # fixed number of inches regardless of the figure's own width, a
+        # narrow figure (few metrics, small width_multiplier) can end up
+        # ceding nearly all of it -- collapsing the plot itself down to a
+        # sliver. Wrapping long labels onto multiple lines keeps that overhang
+        # bounded to roughly one width_multiplier's worth of characters.
+        metric_label_wrap_width = max(int(width_multiplier * 9), 12)
+        metric_labels = [
+            textwrap.fill(m.label, width=metric_label_wrap_width)
+            for m in self.pareto_metrics
+        ]
+
         # normalise every metric to 0-1 where 1 is always "better", using the
         # full solution set's range (not just the front) so axes reflect the
         # true spread of what was evaluated
@@ -639,9 +653,7 @@ class ParetoMixin:
                 )
 
         ax.set_xticks(x_positions)
-        ax.set_xticklabels(
-            [m.label for m in self.pareto_metrics], rotation=15, ha="right"
-        )
+        ax.set_xticklabels(metric_labels, rotation=15, ha="right")
         ax.set_yticks([])
         ax.set_ylim(-0.14, 1.16)
         ax.set_ylabel("Better \u2191 (rescaled per metric)")
@@ -663,8 +675,6 @@ class ParetoMixin:
                 "label next to each point shows whether it sits above (+) or below (\u2212) that target."
             )
         if caption:
-            import textwrap
-
             wrapped = "\n".join(textwrap.wrap(caption, width=105))
             fig.text(
                 0.01,
@@ -696,6 +706,7 @@ class ParetoMixin:
         title: str | None = None,
         wrap_at: int = 110,
         show_raw_labels: bool = True,
+        rank_scope: str = "all",
     ):
         """
         Plot each non-dominated (Pareto-optimal) solution on its own subplot facet.
@@ -707,8 +718,21 @@ class ParetoMixin:
         - The solution ID & custom name
         - Included sites (if `sites_col` is provided)
         - The count of overall alternatives this specific solution dominates
-        - Its key relative strengths and trade-offs compared to the Pareto average
+        - Its key relative strengths and trade-offs compared to the Pareto average, each
+          annotated with its rank (e.g. "Weighted average travel time (1st of 18)")
+
+        Parameters
+        ----------
+        rank_scope : str, default "all"
+            Scope used to rank each metric for the Strengths/Sacrifices annotations.
+            "all" ranks a solution's metric against every enumerated solution
+            (dominated + Pareto-optimal). "pareto_front" ranks it only against the
+            other non-dominated solutions shown in this plot.
         """
+        if rank_scope not in ("all", "pareto_front"):
+            raise ValueError(
+                f"rank_scope must be one of 'all' or 'pareto_front', got {rank_scope!r}"
+            )
         sns.set_style(theme)
         front = self.solution_df[self.solution_df["is_pareto_optimal"]].copy()
         rest = self.solution_df[~self.solution_df["is_pareto_optimal"]].copy()
@@ -722,11 +746,28 @@ class ParetoMixin:
         fig_width = len(self.pareto_metrics) * width_multiplier * ncols
         fig_height = nrows * height_per_row
 
+        # wrap_at is tuned for a full-width single-column figure; with ncols>1 each
+        # facet is proportionally narrower, so scale the wrap width down to match or
+        # the wrapped site list can overflow past its own subplot
+        effective_wrap_at = max(20, wrap_at // ncols)
+
         fig, axes = plt.subplots(
             nrows, ncols, figsize=(fig_width, fig_height), sharex=True, sharey=True
         )
         # Ensure axes is a flat array even if 1D or single subplot
         axes = np.array(axes).ravel()
+
+        # Rotated at a shallow angle, a long label overhangs a fair way to the
+        # left of its tick, which tight_layout() (called below) treats as
+        # space the axes must yield -- see the matching comment in
+        # plot_pareto_summary for why that can collapse a narrow facet down
+        # to a sliver. Wrapping bounds the overhang to roughly one
+        # width_multiplier's worth of characters per line.
+        metric_label_wrap_width = max(int(width_multiplier * 9), 12)
+        metric_labels = [
+            textwrap.fill(m.label, width=metric_label_wrap_width)
+            for m in self.pareto_metrics
+        ]
 
         # Normalise every metric to 0-1 (where 1 is always "better")
         normed = {}
@@ -751,6 +792,13 @@ class ParetoMixin:
         # Compute average performance across the Pareto front for trade-off reference
         front_normed = normed_df.loc[front.index]
         front_mean = front_normed.mean()
+
+        # Rank each metric (per rank_scope) for the Strengths/Sacrifices annotations.
+        # normed_df values are already oriented so higher = better regardless of the
+        # metric's original direction, so a single ranking rule covers all of them.
+        rank_source = normed_df if rank_scope == "all" else front_normed
+        rank_n = len(rank_source)
+        rank_df = rank_source.rank(method="min", ascending=False)
 
         # Build a persistent mapping of front-solution index to styling (color, marker, style)
         styles = _colours_and_styles(max(n_front, 1), palette)
@@ -886,6 +934,11 @@ class ParetoMixin:
             ).any(axis=1)
             num_dominated = dominates_mask.sum()
 
+            def _label_with_rank(m):
+                rank_val = int(rank_df.loc[idx, m.column])
+                rank_str = f"{rank_val}{_get_ordinal_suffix(rank_val)} of {rank_n}"
+                return f"{m.label} ({rank_str})"
+
             # Relative Strengths and Weaknesses (vs the average of the Pareto Front)
             strengths = []
             trade_offs = []
@@ -894,20 +947,20 @@ class ParetoMixin:
                 avg = front_mean[m.column]
                 diff = val - avg
                 if diff > 0.05:  # Noticeably above front average
-                    strengths.append(m.label)
+                    strengths.append(_label_with_rank(m))
                 elif diff < -0.05:  # Noticeably below front average
-                    trade_offs.append(m.label)
+                    trade_offs.append(_label_with_rank(m))
 
             # Fallbacks if metrics are entirely clustered around the mean
             if not strengths:
                 strengths = [
-                    m.label
+                    _label_with_rank(m)
                     for m in self.pareto_metrics
                     if curr_norm_vals[m.column] >= curr_norm_vals.median()
                 ][:2]
             if not trade_offs:
                 trade_offs = [
-                    m.label
+                    _label_with_rank(m)
                     for m in self.pareto_metrics
                     if curr_norm_vals[m.column] < curr_norm_vals.median()
                 ][:2]
@@ -931,7 +984,7 @@ class ParetoMixin:
                 else:
                     sites_str = str(sites_val)
                 # Wrap long site lists to keep layout clean
-                sites_str = textwrap.fill(sites_str, width=wrap_at)
+                sites_str = textwrap.fill(sites_str, width=effective_wrap_at)
 
             # Compile information into a neat, blocky subplot title
             label = label.replace(" ", r"\ ")
@@ -951,7 +1004,7 @@ class ParetoMixin:
                 "\n".join(title_lines),
                 fontsize=8.5,
                 loc="left",
-                pad=8,
+                pad=20,  # Leaves headroom for the raw-value labels near the top of the axes
                 linespacing=1.3,
             )
 
@@ -959,7 +1012,7 @@ class ParetoMixin:
         for idx_ax, ax in enumerate(axes[:n_front]):
             ax.set_xticks(x_positions)
             ax.set_xticklabels(
-                [m.label for m in self.pareto_metrics],
+                metric_labels,
                 rotation=15,
                 ha="right",
                 fontsize=8,

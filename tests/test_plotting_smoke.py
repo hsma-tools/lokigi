@@ -146,6 +146,13 @@ def plottable_problem():
             "site_id": ["Site_A", "Site_B", "Site_C"],
             "lat": [51.52, 51.57, 51.62],
             "long": [-0.28, -0.22, -0.17],
+            # Only read by plot_accessibility()/two_step_floating_catchment();
+            # inert for every other test in this file.
+            "supply": [5, 3, 8],
+            # Only read by plot_site_utilisation()/site_utilisation_summary();
+            # inert for every other test in this file.
+            "capacity": [100, 200, 150],
+            "current_load": [80, 200, 180],
         }
     )
     travel_df = pd.DataFrame(
@@ -164,7 +171,12 @@ def plottable_problem():
     problem.add_demand(
         demand_df, demand_col="demand", location_id_col="location_id"
     )
-    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_sites(
+        candidate_df,
+        candidate_id_col="site_id",
+        capacity_col="capacity",
+        current_load_col="current_load",
+    )
     problem.add_travel_matrix(travel_df, source_col="source_id")
     problem.add_equity_data(
         equity_df,
@@ -205,6 +217,16 @@ def _drew_something(result):
 SOLUTION_PLOT_CALLS = {
     "plot_n_best_combinations_bar": lambda s: s.plot_n_best_combinations_bar(
         n_best=2
+    ),
+    "plot_site_allocation_summary": lambda s: s.plot_site_allocation_summary(),
+    "plot_site_allocation_summary__average_travel_cost": (
+        lambda s: s.plot_site_allocation_summary(metric="average_travel_cost")
+    ),
+    "plot_accessibility": lambda s: s.plot_accessibility(
+        supply_col="supply", catchment_size=15, add_basemap=False
+    ),
+    "plot_accessibility__interactive": lambda s: s.plot_accessibility(
+        supply_col="supply", catchment_size=15, add_basemap=False, interactive=True
     ),
     "plot_best_combination": lambda s: s.plot_best_combination(),
     "plot_n_best_combinations": lambda s: s.plot_n_best_combinations(n_best=2),
@@ -267,6 +289,16 @@ PROBLEM_PLOT_CALLS = {
     ),
     "plot_hotspots": lambda p: p.plot_hotspots(add_basemap=False),
     "plot_quadrant_map": lambda p: p.plot_quadrant_map(add_basemap=False),
+    "plot_accessibility": lambda p: p.plot_accessibility(
+        supply_col="supply", catchment_size=15, add_basemap=False
+    ),
+    "plot_accessibility__interactive": lambda p: p.plot_accessibility(
+        supply_col="supply", catchment_size=15, add_basemap=False, interactive=True
+    ),
+    "plot_site_utilisation": lambda p: p.plot_site_utilisation(add_basemap=False),
+    "plot_site_utilisation__interactive": lambda p: p.plot_site_utilisation(
+        add_basemap=False, interactive=True
+    ),
 }
 
 
@@ -339,6 +371,24 @@ def test_travel_time_distribution_with_bottom_n_does_not_raise(solutions):
     )
 
 
+def test_plot_best_combination_draws_site_markers_for_tabular_candidate_sites(
+    solutions,
+):
+    """Regression: site markers were gated on
+    `site_problem._candidate_sites_type == "geopandas"`, which records
+    `add_sites()`'s *input* format, not whether `candidate_sites` ended up
+    with real point geometry. `plottable_problem`'s `candidate_df` is
+    tabular lat/long input (`_candidate_sites_type == "pandas"`), but
+    `add_sites()` converts it to a real GeoDataFrame internally -- so the
+    old check silently skipped site markers for this, the most common
+    `add_sites()` usage pattern. Only the region choropleth was drawn
+    (one collection); with the fix, chosen and unchosen site markers add
+    two more.
+    """
+    ax = solutions.plot_best_combination()
+    assert len(ax.collections) >= 3
+
+
 @pytest.mark.parametrize("solution_rank", [1, 2, 3])
 def test_solution_comparison_handles_every_rank(solutions, solution_rank):
     """Regression: the ordinal-suffix helper was called as
@@ -350,6 +400,102 @@ def test_solution_comparison_handles_every_rank(solutions, solution_rank):
         solutions.plot_solution_comparison([{"solution_rank": solution_rank}])
         is not None
     )
+
+
+def test_plot_site_allocation_summary_keeps_zero_allocation_bar_visible(
+    five_site_problem,
+):
+    """A site closest to no region must still draw a bar (labelled 0%),
+    not vanish from the chart the way it would from a plain groupby -- see
+    the zero-allocation guard in `site_allocation_summary()`. Uses the
+    shared `five_site_problem` fixture, where a p=3 solution over
+    {Site_1, Site_2, Site_3} leaves Site_2 closest to nothing.
+    """
+    solved = five_site_problem.solve(p=3)
+    site_names = ["Site_1", "Site_2", "Site_3"]
+
+    static_fig = solved.plot_site_allocation_summary(
+        site_names=site_names, interactive=False
+    )
+    assert isinstance(static_fig, plt.Figure)
+    bars = static_fig.axes[0].containers[0]
+    assert len(bars) == 3
+
+    interactive_fig = solved.plot_site_allocation_summary(
+        site_names=site_names, interactive=True
+    )
+    assert type(interactive_fig).__module__.startswith("plotly")
+    assert len(interactive_fig.data[0].x) == 3
+
+
+def test_plot_site_allocation_summary_average_travel_cost_shows_na_not_zero(
+    five_site_problem,
+):
+    """With metric="average_travel_cost", a zero-allocation site (NaN in
+    site_allocation_summary()) must be labelled "N/A", not a numeric "0.0"
+    -- a real 0 would misleadingly read as "instant to reach" rather than
+    "not applicable". The bar itself is still drawn (at zero length), so
+    the site's row doesn't disappear from the chart."""
+    solved = five_site_problem.solve(p=3)
+    site_names = ["Site_1", "Site_2", "Site_3"]
+
+    static_fig = solved.plot_site_allocation_summary(
+        site_names=site_names, metric="average_travel_cost", interactive=False
+    )
+    ax = static_fig.axes[0]
+    assert len(ax.containers[0]) == 3
+    labels = [t.get_text() for t in ax.texts]
+    assert "N/A" in labels
+    assert sum(label == "N/A" for label in labels) == 1
+
+    interactive_fig = solved.plot_site_allocation_summary(
+        site_names=site_names, metric="average_travel_cost", interactive=True
+    )
+    assert len(interactive_fig.data[0].x) == 3
+    assert "N/A" in interactive_fig.data[0].text
+    # The NaN cost is filled to 0 for the bar's length (drawn, not hidden),
+    # while its text label stays "N/A" -- these are deliberately different.
+    na_index = list(interactive_fig.data[0].text).index("N/A")
+    assert interactive_fig.data[0].x[na_index] == 0
+
+
+def test_plot_site_allocation_summary_average_travel_cost_uses_registered_unit():
+    """The bar labels and axis title should reflect whatever unit the
+    travel matrix was registered with (e.g. "miles" for the average
+    travel distance per patient use case), not just a bare number."""
+    demand_df = pd.DataFrame(
+        {"location_id": ["LSOA_1", "LSOA_2"], "demand": [100, 100]}
+    )
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": ["Site_A", "Site_B"],
+            "lat": [51.1, 51.2],
+            "long": [-0.1, -0.2],
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["LSOA_1", "LSOA_2"],
+            "Site_A": [3.0, 12.0],
+            "Site_B": [9.0, 4.0],
+        }
+    )
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id", unit="miles")
+    solved = problem.solve(p=2)
+
+    fig = solved.plot_site_allocation_summary(
+        metric="average_travel_cost", interactive=True
+    )
+    assert "miles" in fig.layout.xaxis.title.text
+    assert all("miles" in text for text in fig.data[0].text)
+
+
+def test_plot_site_allocation_summary_invalid_metric_raises(solutions):
+    with pytest.raises(ValueError, match="metric must be"):
+        solutions.plot_site_allocation_summary(metric="cost")
 
 
 def test_plot_solution_sets_comparison_handles_every_rank(solutions):

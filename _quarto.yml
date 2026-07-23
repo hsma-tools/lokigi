@@ -88,7 +88,9 @@ quartodoc:
             - return_best_combination_details
             - return_best_combination_site_indices
             - return_best_combination_site_names
+            - site_allocation_summary
             - plot_n_best_combinations_bar
+            - plot_site_allocation_summary
             - plot_best_combination
             - plot_n_best_combinations
             - plot_travel_time_distribution
@@ -102,6 +104,17 @@ quartodoc:
             - plot_pareto_facets
         - name: multiobjective.ParetoMetric
           children: separate
+        - name: site_solutions.SolutionComparator
+          children: separate
+          members:
+            # Note that every new method must be manually listed here
+            # due to the use of mixins and them not being picked up if
+            # not explicitly included
+            - compare_top_results
+            - get_metric_summary
+            - compare_site_allocation
+            - site_overlap
+            - plot_comparison
     - title: Travel Matrix Helpers
       desc: "Classes and methods which can help with generation of travel matrices"
       contents:

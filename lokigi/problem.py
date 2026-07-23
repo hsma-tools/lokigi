@@ -30,6 +30,11 @@ class _Problem:
         # label -> aligned DataFrame (built at solve()/evaluate time)
         self._secondary_travel_frames = {}
 
+        # label -> {"data", "demand_col", "id_col", "also_weight_matrices"}
+        self.secondary_demand_matrices = {}
+        # label -> aligned Series (built at solve()/evaluate time)
+        self._secondary_demand_frames = {}
+
         self.region_geometry_layer = None
         self._region_geometry_layer_type = None
         self._region_geometry_layer_common_col = None
@@ -348,6 +353,7 @@ class _Problem:
         interactive=False,
         plot_demand=False,
         plot_equity=False,
+        demand=None,
         cmap="Blues",
         plot_region_of_interest_only=False,
         edgecolor="black",
@@ -373,6 +379,11 @@ class _Problem:
         plot_demand : bool, default False
             If True, merges the geometry with the demand dataset and styles
             the regions based on the demand column values.
+        demand : str, optional
+            Label of a secondary demand scenario registered via
+            `add_secondary_demand()`. When given (with `plot_demand=True`),
+            plots that scenario's demand instead of the primary demand
+            data. Ignored (and rejected) when `plot_demand=False`.
         cmap: str, default "Blues"
             Colour map to be used for plotting demand. Ignored if plot_demand=False.
         tiles: str, default "CartoDB positron"
@@ -399,7 +410,9 @@ class _Problem:
         ValueError
             If `self.region_geometry_layer` has not been initialized.
         ValueError
-            If `plot_demand` is True but `self.demand_data` is None.
+            If `plot_demand` is True but `self.demand_data` is None, if
+            `demand` is given but `plot_demand` is False, or if `demand`
+            does not name a registered secondary demand scenario.
         TypeError
             If the removed `show_basemap` argument is supplied.
 
@@ -419,10 +432,22 @@ class _Problem:
                 "No region geometry layer has been initialised."
                 "Please run `.add_region_geometry_layer()` first."
             )
+        if demand is not None and not plot_demand:
+            raise ValueError(
+                "demand=<label> selects which demand dataset to plot -- "
+                "set plot_demand=True to enable demand plotting."
+            )
+
         if plot_demand and self.demand_data is None:
             raise ValueError(
                 "Cannot plot demand when no demand data is present."
                 "Please run `.add_demand()` first or change the `plot_demand` parameter to False."
+            )
+
+        if demand is not None and demand not in self.secondary_demand_matrices:
+            raise ValueError(
+                f"Unknown secondary demand scenario '{demand}'. Registered "
+                f"labels: {sorted(self.secondary_demand_matrices)}."
             )
 
         if plot_demand and plot_equity:
@@ -431,16 +456,26 @@ class _Problem:
             )
 
         if plot_demand:
+            if demand is None:
+                demand_source = self.demand_data
+                demand_id_col = self._demand_data_id_col
+                demand_value_col = self._demand_data_demand_col
+            else:
+                demand_meta = self.secondary_demand_matrices[demand]
+                demand_source = demand_meta["data"]
+                demand_id_col = demand_meta["id_col"]
+                demand_value_col = demand_meta["demand_col"]
+
             plotting_df = self.region_geometry_layer.merge(
-                self.demand_data,
+                demand_source,
                 left_on=self._region_geometry_layer_common_col,
-                right_on=self._demand_data_id_col,
+                right_on=demand_id_col,
             )
 
             if interactive:
                 m = plotting_df.explore(
-                    column=self._demand_data_demand_col,  # make choropleth based on demand col
-                    tooltip=self._demand_data_demand_col,  # show demand col value in tooltip (on hover)
+                    column=demand_value_col,  # make choropleth based on demand col
+                    tooltip=demand_value_col,  # show demand col value in tooltip (on hover)
                     popup=True,  # show all values in popup (on click)
                     cmap=cmap,  # use "Blues" matplotlib colormap
                     style_kwds=dict(color="black"),
@@ -451,7 +486,7 @@ class _Problem:
                 return m
             else:
                 ax = plotting_df.plot(
-                    column=self._demand_data_demand_col,
+                    column=demand_value_col,
                     legend=True,
                     cmap=cmap,
                     edgecolor=edgecolor,

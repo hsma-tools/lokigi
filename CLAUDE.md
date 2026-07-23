@@ -1,47 +1,60 @@
+# Personality
+
+- No sycophancy. Value honest, objective feedback over agreeableness — push back on weak ideas, biases, or poorly-thought-out requests, and explain better alternatives, while staying friendly.
+
 # Git commit workflow
 
-- Never run `git commit` unless the user explicitly asks for it that turn. Drafting a message and staging files is fine anytime; committing is not.
-- Every commit must include a `Co-Authored-By: Claude <model-name> <noreply@anthropic.com>` trailer (via HEREDOC), even for a short "please commit this." If multiple models contributed this session, include a trailer for each.
+- Never run `git commit` unless explicitly asked that turn. Drafting/staging is fine anytime.
+- Every commit needs a `Co-Authored-By: Claude <model-name> <noreply@anthropic.com>` trailer (via HEREDOC), one per contributing model.
 
 # Fix scope
 
-- If a bug report floats a bigger, speculative fix alongside a smaller one consistent with existing patterns, don't default to the bigger one just because it was mentioned last. Surface the choice explicitly before planning — the smaller fix usually wins.
-- A same-sized adjacent bug found in passing is fine to fold in and flag in the summary. A structurally bigger one needs an explicit scope question first, even mid-task.
+- If a bug report floats a bigger speculative fix alongside a smaller one matching existing patterns, don't default to the bigger one — surface the choice explicitly before planning.
+- Fold in same-sized adjacent bugs found in passing (flag in summary); a structurally bigger one needs an explicit scope question first.
 
 # Breaking changes
 
-- lokigi is pre-1.0, so breaking changes are acceptable in any minor release. Prefer fixing an inconsistency properly over carrying a compatibility shim: rename the bad parameter, remove the wrong default, drop the deprecated alias.
-- Don't add a deprecation period (alias + `FutureWarning`) by default. Only do so if asked, or if the change is both silent and hard for a caller to notice — and say why in the summary.
-- When removing or renaming public API, make the failure legible. A bare removal is fine when Python raises a clear `TypeError` naming the method, but not when the argument would be absorbed by `**kwargs` and surface as an unrelated error from a dependency — add an explicit check that names the replacement.
-- Every breaking change needs a `**BREAKING:**` prefix on its HISTORY.md bullet and a line in that version's `### ⚠️ Breaking changes` summary at the top of the section (create it if absent). Treat as breaking anything that changes results without the caller changing code — a renamed or removed argument, a metric that changes meaning, a different solution being selected — not just signature changes.
+- lokigi is pre-1.0: prefer fixing an inconsistency properly (rename/remove the bad param or default) over a compatibility shim. No deprecation period (alias + `FutureWarning`) unless asked, or the break is silent and hard to notice — say why if added.
+- When removing/renaming public API, make failures legible: if it'd otherwise be absorbed by `**kwargs` and surface as an unrelated error, add an explicit check naming the replacement.
+- Breaking = anything that changes results without the caller changing code, not just signature changes. Each needs a `**BREAKING:**` HISTORY.md bullet plus a line in that version's `### ⚠️ Breaking changes` summary (create if absent).
 
 # Testing
 
-- Don't monkeypatch core objects (e.g. `pd.DataFrame`) just to cover an unreachable or trivial branch — skip it instead.
-- For fixes to subtle bugs (wrong direction, silent no-op, wrong ordering), prove the new test catches the regression: revert the fix, confirm it fails, then restore. "Tests pass" alone isn't proof.
+- Don't monkeypatch core objects (e.g. `pd.DataFrame`) to cover a trivial/unreachable branch — skip it.
+- For subtle-bug fixes (wrong direction, silent no-op, wrong ordering), prove the new test catches the regression by reverting the fix and confirming it fails, then restoring. "Tests pass" alone isn't proof.
 
 # Deferred work
 
-- When a fix needs a structural change and gets deferred, write a handover: context, a concrete repro, the proposed design and trade-offs, implementation notes, and testing guidance.
+- Structural fixes that get deferred need a handover: context, repro, proposed design/trade-offs, implementation notes, testing guidance.
 
 # Reporting
 
-- State uncertainty plainly. Distinguish what's directly verified from what's inferred, e.g. "confirmed via code inspection, but couldn't trigger through the public API."
+- State uncertainty plainly — distinguish directly-verified from inferred (e.g. "confirmed via code inspection, but couldn't trigger through the public API").
+- Named external citations (papers, APIs, specs) need a primary-source check before landing in code/docs — a recalled name or detail can be subtly wrong even when the surrounding content is right.
+
+# Third-party reuse
+
+- Reusing external code, data, or test fixtures — even a small amount — needs a licence check and attribution in THIRD_PARTY_LICENCES.md as part of the same change, proposed proactively rather than waiting to be asked.
+
+# Plotting
+
+- In any method that draws geometry (`.plot()`/`.explore()`) and also adds text labels via `adjust_text`, draw the geometry first. Labelling before the axes have real data limits lets `adjust_text` reposition labels against the still-default (0,1) range; once the real extent is applied afterward, those stale positions read as data coordinates far outside it. This doesn't error or show up in a normal render — it only surfaces as a huge, near-empty image on a `bbox_inches="tight"` save, which is what Jupyter's inline display uses. `plot_sites()` gets the order right; copy that order, not just its calls.
 
 # Example notebooks
 
-- Each example lives at `examples/<category>/<name>/index.ipynb` (categories: `location`, `eda`, `travel_time_matrices`, `routing`, `other`). Front matter is a markdown cell: `title`, `toc: true`, `execute: {enabled: true}`, and optionally `image: image.png` if a card image exists.
-- A new example is invisible until it's wired into `examples/examples.qmd`: add its path to the `contents` list of the right `listing` block (or a new one), under the heading section that already matches its topic. Check both the `listing` metadata at the top of the file and the `:::{#id}:::` div in the body — both reference the same `id`.
-- Prefer extending an existing example's problem setup (same sample data, same site/travel-matrix registration) over inventing a new one, so the reader isn't re-learning unrelated setup. Link back to the example you borrowed from, and forward to yours from it, with relative markdown links (`../other_example/index.ipynb`).
-- Notebooks are committed **with real, executed outputs**, not authored output. After writing or editing code cells, run `python -m jupyter nbconvert --to notebook --execute --inplace <path>` from the notebook's own directory (its relative sample-data paths assume that cwd), and check the result for error outputs before committing.
-- Don't fabricate specific numbers in prose ("coverage of 62%", "grows from three solutions to six") — derive them by actually running the scenario first, then write the sentence to match. If a change to core code could have shifted a number an existing notebook already narrates, re-run that notebook and check, rather than assuming the prose still holds.
-- If re-executing a notebook produces a diff that's purely execution timestamps / widget IDs / cell-execution-count churn with no actual value change, revert it — that's noise, not signal. Only keep a re-execution diff when it reflects a real output change.
-- When hand-editing prose in an already-executed `.ipynb` (no code change, so no need to re-run), edit the cell's `source` as a JSON list of lines (each ending `\n` except the last), matching the file's existing style — not a single string — so the diff stays line-granular and reviewable.
+- Lives at `examples/<category>/<name>/index.ipynb` (`location`, `eda`, `travel_time_matrices`, `routing`, `other`). Front matter markdown cell: `title`, `toc: true`, `execute: {enabled: true}`, `image:`.
+- `image:` is expected in practice, not truly optional -- it's the listing grid's thumbnail. Generate it from a representative static plot via `savefig`. If the notebook has no static representative plot to use, omit `image:`/`image.png` and say so rather than fabricating one.
+- Must be wired into `examples/examples.qmd` (both the `listing` metadata's `contents` list and the matching `:::{#id}:::` div) or it's invisible.
+- Prefer extending an existing example's setup (sample data, site/matrix registration) over a new one; cross-link with relative markdown links.
+- Committed with real executed outputs. After editing code cells, run `python -m jupyter nbconvert --to notebook --execute --inplace <path>` from the notebook's own directory and check for error outputs.
+- Don't fabricate numbers in prose — derive by running the scenario. Re-run and check any notebook whose narrated numbers a core-code change could have shifted.
+- Revert re-execution diffs that are pure timestamp/widget-ID/execution-count churn with no value change.
+- Hand-editing prose in an already-executed notebook (no re-run needed): edit `source` as a JSON list of lines (each ending `\n` except the last), matching existing style, for a line-granular diff.
 
 # HISTORY.md
 
-- Every user-facing change (new parameter, new method, behavior change, bugfix) needs an entry — check whether one is needed as part of the task, don't wait to be asked.
-- If the top section is an unreleased version (not yet tagged/published), add new bullets to it rather than starting a new `## vX.Y.Z` heading. Only start a new version section, and bump the version in `pyproject.toml` to match, for the first change since the last release.
-- Match the existing structure: one top-level bullet per feature/fix as a one-line summary, with nested (4-space-indented) sub-bullets for specifics — defaults, edge cases, caveats, what stays unchanged.
-- A version section that contains breaking changes opens with a `### ⚠️ Breaking changes` summary — one scannable line each, saying what changed and what to do about it — followed by `### Notes` for the full bullets. See v0.7.0. Versions with no breaking changes keep the plain flat list.
-- A docs-only or example-only change to an already-documented feature usually doesn't need a new bullet — refine the existing one if the wording needs to change (e.g. mentioning a new warning), otherwise leave it.
+- Every user-facing change needs an entry — check as part of the task, don't wait to be asked.
+- Add to the top section if it's unreleased; only start a new `## vX.Y.Z` (bumping `pyproject.toml`) for the first change since the last release.
+- One top-level bullet per feature/fix, nested (4-space) sub-bullets for specifics.
+- Versions with breaking changes open with `### ⚠️ Breaking changes` (scannable one-liners) then `### Notes` for full bullets — see v0.7.0. Otherwise a plain flat list.
+- Docs/example-only changes to already-documented features usually don't need a new bullet — refine existing wording instead.

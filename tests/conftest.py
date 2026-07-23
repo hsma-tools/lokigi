@@ -770,6 +770,70 @@ def loaded_problem_with_equity_and_secondary_matrix(
 
 
 @pytest.fixture
+def secondary_demand_df():
+    """Deliberately different id/demand column names than the primary
+    demand data (region_id/future_demand vs location_id/demand), and demand
+    weighted heavily toward LSOA_1 (300/50/50 vs the primary's 100/200/150)
+    so the p=1 weighted-average winner flips from Site_B (primary) to
+    Site_A (future) -- see test_secondary_demand_matrices.py for the
+    hand-computed values."""
+    return pd.DataFrame(
+        {
+            "region_id": ["LSOA_1", "LSOA_2", "LSOA_3"],
+            "future_demand": [300, 50, 50],
+        }
+    )
+
+
+@pytest.fixture
+def loaded_problem_with_secondary_demand(loaded_problem, secondary_demand_df):
+    """`loaded_problem` plus a registered secondary demand scenario
+    labelled 'future_demand' (see `secondary_demand_df`)."""
+    loaded_problem.add_secondary_demand(
+        secondary_demand_df,
+        demand_col="future_demand",
+        location_id_col="region_id",
+        label="future_demand",
+    )
+    return loaded_problem
+
+
+@pytest.fixture
+def loaded_problem_with_secondary_demand_and_travel(
+    loaded_problem_with_secondary_matrix, secondary_demand_df
+):
+    """`loaded_problem_with_secondary_matrix` (public_transport) plus a
+    registered secondary demand scenario ('future_demand') that also
+    cross-weights the public_transport matrix via also_weight_matrices."""
+    loaded_problem_with_secondary_matrix.add_secondary_demand(
+        secondary_demand_df,
+        demand_col="future_demand",
+        location_id_col="region_id",
+        label="future_demand",
+        also_weight_matrices=["public_transport"],
+    )
+    return loaded_problem_with_secondary_matrix
+
+
+@pytest.fixture
+def loaded_problem_with_equity_and_secondary_demand(
+    loaded_problem_with_equity, secondary_demand_df
+):
+    """`loaded_problem_with_equity` plus a registered secondary demand
+    scenario -- exercises that _compute_travel_metrics' equity-group
+    breakdown (computed internally regardless of whether it is emitted)
+    doesn't crash when active_weights is a scenario series rather than the
+    primary demand column."""
+    loaded_problem_with_equity.add_secondary_demand(
+        secondary_demand_df,
+        demand_col="future_demand",
+        location_id_col="region_id",
+        label="future_demand",
+    )
+    return loaded_problem_with_equity
+
+
+@pytest.fixture
 def additional_data_df():
     return pd.DataFrame(
         {
@@ -793,3 +857,214 @@ def loaded_problem_with_additional_data(loaded_problem, additional_data_df):
         direction="lower_better",
     )
     return loaded_problem
+
+
+@pytest.fixture
+def sfca_problem():
+    """
+    A 2SFCA fixture built so classic threshold coverage and 2SFCA
+    disagree, plus a deliberately isolated site and a deliberately
+    unreachable region for the empty-catchment / zero-accessibility edge
+    cases. `catchment_size=15` throughout (see test_two_step_floating_
+    catchment.py).
+
+    Travel matrix (rows=LSOA, cols=Site_1/Site_2/Site_Isolated):
+      LSOA_1:        Site_1=10,   Site_2=12,   Site_Isolated=1000
+      LSOA_2:        Site_1=8,    Site_2=30,   Site_Isolated=1000
+      LSOA_3:        Site_1=30,   Site_2=5,    Site_Isolated=1000
+      LSOA_Isolated: Site_1=1000, Site_2=1000, Site_Isolated=1000
+
+    Demand: LSOA_1=100, LSOA_2=100, LSOA_3=50, LSOA_Isolated=75.
+    Supply: Site_1=10, Site_2=5, Site_Isolated=8.
+
+    With site_names=["Site_1", "Site_2"] (Site_Isolated excluded):
+    LSOA_1 is within catchment_size=15 of BOTH sites (10, 12); LSOA_2 only
+    of Site_1 (8 < 15 < 30); LSOA_3 only of Site_2 (5 < 15 < 30).
+    Binary coverage rates LSOA_1 and LSOA_2 identically ("covered", since
+    both have min_cost < 15) despite LSOA_2 having to share Site_1's
+    supply with LSOA_1 and having no second option -- exactly what 2SFCA
+    is meant to separate out:
+
+      Step 1: catchment_demand(Site_1) = 100 + 100 = 200 -> R_1 = 10/200 = 0.05
+              catchment_demand(Site_2) = 100 + 50 = 150  -> R_2 = 5/150 = 1/30
+      Step 2: accessibility(LSOA_1) = R_1 + R_2 = 0.05 + 1/30 = 0.08333...
+              accessibility(LSOA_2) = R_1         = 0.05
+              accessibility(LSOA_3) = R_2         = 1/30 = 0.03333...
+              accessibility(LSOA_Isolated) = 0 (no site in catchment --
+              a real zero, not a missing value)
+
+    Conservation check (only holds when every scored site has a non-empty
+    catchment, i.e. Site_Isolated excluded): sum(demand * accessibility)
+    == 100*(0.05 + 1/30) + 100*0.05 + 50*(1/30) + 75*0 == 15.0 ==
+    sum(supply) == 10 + 5.
+
+    Site_Isolated is unreachable from (and to) every region at
+    catchment_size=15, so its catchment_demand is 0 and its ratio is
+    undefined (NaN) -- the empty-catchment edge case, only triggered when
+    it is included in site_names/site_indices.
+    """
+    demand_df = pd.DataFrame(
+        {
+            "location_id": ["LSOA_1", "LSOA_2", "LSOA_3", "LSOA_Isolated"],
+            "demand": [100, 100, 50, 75],
+        }
+    )
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": ["Site_1", "Site_2", "Site_Isolated"],
+            "lat": [51.1, 51.2, 51.3],
+            "long": [-0.1, -0.2, -0.3],
+            "supply": [10, 5, 8],
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["LSOA_1", "LSOA_2", "LSOA_3", "LSOA_Isolated"],
+            "Site_1": [10.0, 8.0, 30.0, 1000.0],
+            "Site_2": [12.0, 30.0, 5.0, 1000.0],
+            "Site_Isolated": [1000.0, 1000.0, 1000.0, 1000.0],
+        }
+    )
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+    return problem
+
+
+@pytest.fixture
+def sfca_problem_with_geometry(sfca_problem):
+    """`sfca_problem` plus a region geometry layer -- one small square per
+    demand region -- for `plot_accessibility()` tests. Geometry doesn't
+    need to be contiguous or realistic here, unlike the hotspot fixtures,
+    since plot_accessibility() doesn't build spatial-contiguity weights."""
+    regions = geopandas.GeoDataFrame(
+        {
+            "location_id": ["LSOA_1", "LSOA_2", "LSOA_3", "LSOA_Isolated"],
+            "geometry": [
+                Point(0, 0).buffer(0.4, cap_style=3),
+                Point(1, 0).buffer(0.4, cap_style=3),
+                Point(0, 1).buffer(0.4, cap_style=3),
+                Point(1, 1).buffer(0.4, cap_style=3),
+            ],
+        },
+        crs="EPSG:27700",
+    )
+    sfca_problem.add_region_geometry_layer(regions, common_col="location_id")
+    return sfca_problem
+
+
+@pytest.fixture
+def sfca_secondary_travel_df():
+    """A secondary ('public_transport') matrix for `sfca_problem` where
+    Site_1 is unreachable (cost 20 > catchment_size=15) for every region
+    and Site_2 is reachable by all (cost 5), unlike the primary matrix
+    where reachability varies by region. Site_Isolated stays unreachable
+    from everywhere, same as on the primary matrix -- every candidate site
+    must have a column in every registered secondary matrix, even one this
+    fixture's tests only query with site_names=["Site_1", "Site_2"].
+
+    Every one of the four demand regions ends up with the same
+    accessibility: catchment_demand(Site_2) = 100+100+50+75 = 325,
+    R_2 = 5/325 = 1/65, and Site_1/Site_Isolated contribute nothing
+    anywhere."""
+    return pd.DataFrame(
+        {
+            "source_id": ["LSOA_1", "LSOA_2", "LSOA_3", "LSOA_Isolated"],
+            "Site_1": [20.0, 20.0, 20.0, 20.0],
+            "Site_2": [5.0, 5.0, 5.0, 5.0],
+            "Site_Isolated": [1000.0, 1000.0, 1000.0, 1000.0],
+        }
+    )
+
+
+@pytest.fixture
+def sfca_problem_with_secondary_matrix(sfca_problem, sfca_secondary_travel_df):
+    """`sfca_problem` plus the `public_transport` secondary matrix from
+    `sfca_secondary_travel_df`."""
+    sfca_problem.add_secondary_travel_matrix(
+        sfca_secondary_travel_df, source_col="source_id", label="public_transport"
+    )
+    return sfca_problem
+
+
+@pytest.fixture
+def sfca_secondary_demand_df():
+    """A 'future_demand' scenario for `sfca_problem` shifting weight away
+    from LSOA_1/LSOA_2 and toward LSOA_3 relative to the primary demand
+    (100/100/50/75 -> 50/50/100/25), so 2SFCA accessibility under this
+    scenario differs from the primary from-hand-computed values in
+    `sfca_problem`'s docstring.
+
+    With site_names=["Site_1", "Site_2"] (catchment_size=15):
+      Step 1: catchment_demand(Site_1) = 50 + 50  = 100 -> R_1 = 10/100 = 0.1
+              catchment_demand(Site_2) = 50 + 100 = 150 -> R_2 = 5/150  = 1/30
+      Step 2: accessibility(LSOA_1) = R_1 + R_2 = 0.1 + 1/30 = 0.13333...
+              accessibility(LSOA_2) = R_1         = 0.1
+              accessibility(LSOA_3) = R_2         = 1/30 = 0.03333...
+              accessibility(LSOA_Isolated) = 0
+    """
+    return pd.DataFrame(
+        {
+            "region_id": ["LSOA_1", "LSOA_2", "LSOA_3", "LSOA_Isolated"],
+            "future_demand": [50, 50, 100, 25],
+        }
+    )
+
+
+@pytest.fixture
+def sfca_problem_with_secondary_demand(sfca_problem, sfca_secondary_demand_df):
+    """`sfca_problem` plus the `future_demand` secondary demand scenario
+    from `sfca_secondary_demand_df`."""
+    sfca_problem.add_secondary_demand(
+        sfca_secondary_demand_df,
+        demand_col="future_demand",
+        location_id_col="region_id",
+        label="future_demand",
+    )
+    return sfca_problem
+
+
+@pytest.fixture
+def gaussian_decay_problem():
+    """A single-site problem with four regions placed at cost 0, 15, 30 and
+    100 from the only site, for `distance_decay={"method": "gaussian",
+    "catchment_size": 30, "bandwidth": 15}` tests.
+
+    Dai (2010)'s truncated Gaussian weight is exactly 1.0 at distance 0 and
+    exactly 0.0 at distance == catchment_size (both algebraically exact, not
+    approximations), and 0.0 again beyond catchment_size (truncation) --
+    covering the boundary and truncation cases in one fixture. LSOA_Mid's
+    distance of 15 gives a weight strictly between 0 and 1, derivable from
+    the formula independently in the test.
+
+    Demand: LSOA_Zero=100, LSOA_Mid=100, LSOA_Boundary=50, LSOA_Beyond=75.
+    Supply: Site_1=10.
+    """
+    demand_df = pd.DataFrame(
+        {
+            "location_id": ["LSOA_Zero", "LSOA_Mid", "LSOA_Boundary", "LSOA_Beyond"],
+            "demand": [100, 100, 50, 75],
+        }
+    )
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": ["Site_1"],
+            "lat": [51.1],
+            "long": [-0.1],
+            "supply": [10],
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["LSOA_Zero", "LSOA_Mid", "LSOA_Boundary", "LSOA_Beyond"],
+            "Site_1": [0.0, 15.0, 30.0, 100.0],
+        }
+    )
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+    return problem

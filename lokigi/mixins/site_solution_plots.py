@@ -1,10 +1,13 @@
 import pandas as pd
+import geopandas
 import contextily as cx
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.ticker as mticker
 from matplotlib.colors import ListedColormap
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
+from matplotlib.colors import to_hex
 from matplotlib.lines import Line2D
 from warnings import warn
 import numpy as np
@@ -176,11 +179,213 @@ class NonMapPlotsMixin:
 
         return fig
 
+    def plot_site_allocation_summary(
+        self,
+        by="demand",
+        metric="proportion",
+        rank_on=None,
+        solution_rank=1,
+        site_names=None,
+        site_indices=None,
+        matrix=None,
+        demand=None,
+        interactive=True,
+        sort=True,
+        cmap="Set2",
+        site_color_map=None,
+        title="default",
+        x_axis_label="default",
+        y_axis_label="default",
+        interactive_width=800,
+        interactive_height=600,
+        static_width=10,
+        static_height=6,
+    ):
+        """
+        Bar chart of `site_allocation_summary()` for one chosen solution.
+
+        Parameters
+        ----------
+        by, rank_on, solution_rank, site_names, site_indices, matrix, demand
+            Passed straight through to `site_allocation_summary()`.
+        metric : {"proportion", "average_travel_cost"}, default "proportion"
+            Which `site_allocation_summary()` column to plot. "proportion"
+            shows the share of demand (or of regions) closest to each site.
+            "average_travel_cost" shows the average travel cost incurred by
+            each site's group instead -- e.g. to see how much further
+            people would have to travel if a site were closed. This is the
+            comparison inspired by Gill Baker's work using average travel
+            distance per patient to show that centralising services would
+            roughly double typical travel distance (see
+            `site_allocation_summary` for the full story).
+        interactive : bool, default=True
+            If True, generates an interactive Plotly bar chart. If False,
+            generates a static Matplotlib bar chart.
+        sort : bool, default=True
+            If True, bars are ordered ascending by `metric`, so the
+            smallest-catchment (or shortest-travel) site -- usually the one
+            being investigated -- is at the top. If False, sites keep
+            canonical site-index order, useful when lining this chart up
+            against another figure built in that order.
+        cmap : str, default="Set2"
+            Colormap for sites closest to at least one region, matching
+            `plot_best_combination(plot_site_allocation=True)`. Sites
+            closest to no region are coloured grey rather than drawn from
+            this colormap, since they colour no regions on that map
+            either.
+        site_color_map : dict, optional
+            Explicit ``{site_name: color}`` mapping, e.g. one already built
+            for a companion map, so the two figures share identical
+            colours. Sites not present in this mapping are coloured grey.
+
+        Returns
+        -------
+        plotly.graph_objects.Figure or matplotlib.figure.Figure
+            The generated bar chart. Returns a Plotly Figure if
+            ``interactive=True``, otherwise a Matplotlib Figure.
+
+        Notes
+        -----
+        With `metric="proportion"`, a zero-allocation site's bar has zero
+        length and would otherwise be invisible, so every bar is always
+        labelled with its percentage value -- that label is how a 0% site
+        stays visible on the chart at all.
+
+        With `metric="average_travel_cost"`, a zero-allocation site has no
+        travel cost to average (`NaN` in `site_allocation_summary()`), so
+        its bar is drawn at zero length but labelled "N/A" rather than a
+        number -- a "0" label there would misleadingly read as "instant to
+        reach" rather than "not applicable".
+        """
+        if metric not in ("proportion", "average_travel_cost"):
+            raise ValueError(
+                f"metric must be 'proportion' or 'average_travel_cost', got {metric!r}."
+            )
+
+        _, _, _, unit, _ = self._resolve_travel_columns(matrix)
+
+        summary = self.site_allocation_summary(
+            by=by,
+            rank_on=rank_on,
+            solution_rank=solution_rank,
+            site_names=site_names,
+            site_indices=site_indices,
+            matrix=matrix,
+            demand=demand,
+        ).reset_index()
+
+        if sort:
+            summary = summary.sort_values(metric, ascending=True).reset_index(drop=True)
+
+        if site_color_map is None:
+            allocated_sites = summary.loc[summary["n_regions"] > 0, "site"]
+            site_color_map = self._site_allocation_color_map(allocated_sites, cmap=cmap)
+
+        # Convert to hex up front so both the Plotly and Matplotlib branches
+        # can share one representation -- to_hex() accepts both the
+        # matplotlib RGBA tuples produced by `_site_allocation_color_map`
+        # and named colors like "lightgrey", and Plotly is happy with hex.
+        colors = [
+            to_hex(site_color_map.get(site, "lightgrey")) for site in summary["site"]
+        ]
+
+        by_label = "demand" if by == "demand" else "regions"
+
+        if metric == "proportion":
+            # NaN never occurs for `proportion` -- fillna is a no-op here,
+            # kept only so `plot_values` has one shared name below.
+            plot_values = summary["proportion"].fillna(0)
+            bar_text = [f"{v:.1%}" for v in summary["proportion"]]
+            if title == "default":
+                title = f"Share of {by_label} closest to each site"
+            x_label = (
+                f"Proportion of {by_label}" if x_axis_label == "default" else x_axis_label
+            )
+        else:
+            # A zero-allocation site is NaN in average_travel_cost (there is
+            # nothing to average), which most plotting backends render as a
+            # gap rather than a visible zero-length bar. Fill with 0 for the
+            # bar's actual length, but keep the label text "N/A" -- see the
+            # Notes above for why 0 would be a misleading label to show.
+            plot_values = summary["average_travel_cost"].fillna(0)
+            bar_text = [
+                "N/A" if pd.isna(v) else f"{v:.1f} {unit}"
+                for v in summary["average_travel_cost"]
+            ]
+            if title == "default":
+                title = f"Average {by_label}-weighted travel cost by closest site"
+            x_label = (
+                f"Average travel cost ({unit})"
+                if x_axis_label == "default"
+                else x_axis_label
+            )
+        y_label = "Site" if y_axis_label == "default" else y_axis_label
+
+        if interactive:
+            fig = px.bar(
+                summary.assign(_plot_value=plot_values),
+                x="_plot_value",
+                y="site",
+                orientation="h",
+                title=title,
+                labels={"_plot_value": x_label, "site": y_label},
+            )
+            fig.update_traces(
+                marker_color=colors,
+                text=bar_text,
+                textposition="outside",
+            )
+            fig.update_layout(
+                width=interactive_width,
+                height=interactive_height,
+                xaxis_tickformat=".0%" if metric == "proportion" else None,
+            )
+            # Plotly draws horizontal bars bottom-up by default, so without
+            # this the first (smallest, when sort=True) row ends up at the
+            # bottom instead of the top.
+            fig.update_yaxes(autorange="reversed")
+        else:
+            fig, ax = plt.subplots(figsize=(static_width, static_height))
+            bars = ax.barh(summary["site"], plot_values, color=colors)
+            ax.bar_label(bars, labels=bar_text)
+            if title is not None:
+                ax.set_title(title)
+            ax.set_xlabel(x_label)
+            ax.set_ylabel(y_label)
+            if metric == "proportion":
+                ax.xaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
+            # matplotlib's barh also plots bottom-up by default -- invert so
+            # the top row matches the top of the sorted (or canonically
+            # ordered) DataFrame, same reasoning as the Plotly branch above.
+            ax.invert_yaxis()
+            plt.tight_layout()
+            plt.close(fig)
+
+        return fig
+
 
 ##################################
 # MARK: Maps
 ##################################
 class MapsMixin:
+    def _site_allocation_color_map(self, allocated_sites, cmap="Set2"):
+        """
+        Build a ``{site: color}`` mapping for `allocated_sites`, ordered by
+        canonical site index (not alphabetically) so colours stay stable
+        across figures that show different subsets of sites -- e.g. the
+        allocation map built here and the allocation bar chart in
+        `plot_site_allocation_summary` assign the same site the same
+        colour as long as it's allocated in both.
+        """
+        master_site_order = self.site_problem.candidate_sites[
+            self.site_problem._candidate_sites_candidate_id_col
+        ].tolist()
+        allocated = set(allocated_sites)
+        ordered = [site for site in master_site_order if site in allocated]
+
+        cmap_obj = plt.get_cmap(cmap)
+        return {site: cmap_obj(i % cmap_obj.N) for i, site in enumerate(ordered)}
+
     def _plot_single_solution_map(
         self,
         ax,
@@ -339,8 +544,14 @@ class MapsMixin:
                 vmax=global_vmax,
             )
 
-        # Plot candidate sites if applicable
-        if self.site_problem._candidate_sites_type == "geopandas":
+        # Plot candidate sites if applicable. Deliberately not
+        # `_candidate_sites_type == "geopandas"`: that attribute records
+        # add_sites()'s *input* format, not whether candidate_sites ended up
+        # with real point geometry. Tabular lat/long input is converted to a
+        # GeoDataFrame internally but still leaves _candidate_sites_type ==
+        # "pandas", so that check silently skipped site markers for the most
+        # common add_sites() usage pattern.
+        if isinstance(self.site_problem.candidate_sites, geopandas.GeoDataFrame):
             selected_site_names = (
                 solution.site_names.iloc[0]
                 if hasattr(solution.site_names, "iloc")
@@ -607,8 +818,11 @@ class MapsMixin:
         - "selected_site": assigned site (categorical)
         - "within_threshold": whether the region meets the coverage threshold
 
-        When plotting site locations, only GeoPandas-based candidate sites
-        are currently supported.
+        Site markers require `candidate_sites` to carry real point geometry.
+        This holds both for sites registered via a GeoDataFrame/geojson and
+        for tabular lat/long input, which `add_sites()` converts internally
+        -- it does not hold if site names were inferred from the travel
+        matrix's columns without ever calling `add_sites()`.
 
         Titles are dynamically generated based on the objective type and may
         include metrics such as weighted/unweighted averages, maximum cost,
@@ -987,24 +1201,13 @@ class MapsMixin:
 
         elif plot_site_allocation:
             # Create consistent color mapping for sites
-            master_site_order = self.site_problem.candidate_sites[
-                self.site_problem._candidate_sites_candidate_id_col
-            ].tolist()
-
             all_allocated_sites = set()
             for df in sorted_df["problem_df"]:
                 all_allocated_sites.update(df[site_col].unique())
-            all_allocated_sites = sorted(list(all_allocated_sites))
 
-            sorted_allocated_sites = [
-                site for site in master_site_order if site in all_allocated_sites
-            ]
-
-            cmap_obj = plt.get_cmap(cmap)
-            site_color_map = {
-                site: cmap_obj(i % cmap_obj.N)
-                for i, site in enumerate(sorted_allocated_sites)
-            }
+            site_color_map = self._site_allocation_color_map(
+                all_allocated_sites, cmap=cmap
+            )
 
         elif plot_regions_not_meeting_threshold:
             # Set up discrete colormap for threshold

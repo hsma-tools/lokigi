@@ -3,7 +3,7 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from lokigi.utils import _min_max_normalize, _sort_solutions_by_metric
+from lokigi.utils import _min_max_normalize, _select_solution, _sort_solutions_by_metric
 
 from lokigi.mixins.site_solution_plots import (
     MapsMixin,
@@ -23,6 +23,7 @@ from lokigi.mixins.site_eda import (
     HotspotPlotMixin,
     SiteProblemEDAMixin,
 )
+from lokigi.mixins.site_accessibility import AccessibilityPlotMixin
 
 
 # MARK: CLASS EvaluatedCombination
@@ -245,6 +246,18 @@ class EvaluatedCombination:
                             else "higher_better"
                         )
 
+                elif label in getattr(
+                    self.site_problem, "secondary_demand_matrices", {}
+                ):
+                    # A registered secondary demand scenario: its column
+                    # was merged into evaluated_combination_df as
+                    # `demand__<label>` (see evaluate_single_solution_
+                    # single_objective). 'demand' defaults to
+                    # higher_better for the same reason the primary demand
+                    # column does above.
+                    col_name = f"demand__{label}"
+                    direction = "higher_better"
+
                 else:
                     col_name = label
                     # Look up directionality from the problem configuration
@@ -386,6 +399,43 @@ class EvaluatedCombination:
                 cost_col, within_col, active_weights
             )
 
+        # Secondary demand scenarios: re-weight the primary matrix's
+        # min_cost/within_threshold (and, opt-in via also_weight_matrices,
+        # any secondary travel matrix's) using the scenario's own demand
+        # column, keyed by (secondary travel label or None) -> metrics.
+        # Always weighted by the scenario's *pure* demand -- never the
+        # compound `weights=` blend -- so a demand-scenario column is a
+        # stable, single-scenario view regardless of how the objective is
+        # weighted.
+        self.secondary_demand_metrics = {}
+        for dlabel, dmeta in getattr(
+            self.site_problem, "secondary_demand_matrices", {}
+        ).items():
+            demand_col = f"demand__{dlabel}"
+            if demand_col not in self.evaluated_combination_df.columns:
+                continue
+            dweights = self.evaluated_combination_df[demand_col]
+
+            per_matrix = {
+                None: self._compute_travel_metrics(
+                    "min_cost",
+                    "within_threshold",
+                    active_weights=dweights,
+                    coverage_demand=dweights,
+                )
+            }
+            for tlabel in dmeta["also_weight_matrices"]:
+                t_cost_col = f"min_cost__{tlabel}"
+                if t_cost_col not in self.evaluated_combination_df.columns:
+                    continue
+                per_matrix[tlabel] = self._compute_travel_metrics(
+                    t_cost_col,
+                    f"within_threshold__{tlabel}",
+                    active_weights=dweights,
+                    coverage_demand=dweights,
+                )
+            self.secondary_demand_metrics[dlabel] = per_matrix
+
     def _coverage_demand_series(self):
         """
         Raw per-region demand, used to weight the coverage metrics.
@@ -442,16 +492,28 @@ class EvaluatedCombination:
 
         return float((covered * demand).sum() / total_demand)
 
-    def _compute_travel_metrics(self, cost_col, within_col, active_weights):
+    def _compute_travel_metrics(
+        self, cost_col, within_col, active_weights, coverage_demand=None
+    ):
         """
         Compute weighted/unweighted travel-cost summary statistics and the
         equity breakdown for one travel matrix's min-cost column.
 
-        Used once for the primary matrix (`cost_col="min_cost"`) and once
-        per registered secondary travel matrix (`cost_col="min_cost__
-        <label>"`), so a secondary matrix gets identical treatment to the
-        primary one rather than a parallel, potentially-diverging
-        implementation.
+        Used once for the primary matrix (`cost_col="min_cost"`), once per
+        registered secondary travel matrix (`cost_col="min_cost__<label>"`),
+        and once per registered secondary demand scenario, so every
+        combination gets identical treatment rather than a parallel,
+        potentially-diverging implementation.
+
+        `coverage_demand` overrides the demand series used to weight
+        `proportion_within_coverage_threshold` (and its equity breakdown).
+        It defaults to the primary demand column (via
+        `_coverage_demand_series()`), which is correct for the primary
+        matrix and every secondary *travel* matrix -- both are always
+        weighted by the primary demand. A secondary *demand* scenario
+        passes its own scenario series here instead, so "proportion of
+        demand covered" reflects that scenario's demand rather than the
+        primary one.
         """
         df = self.evaluated_combination_df
 
@@ -460,7 +522,9 @@ class EvaluatedCombination:
         percentile_90th = np.percentile(df[cost_col], q=90)
         max_cost = np.max(df[cost_col])
 
-        demand_series = self._coverage_demand_series()
+        demand_series = (
+            coverage_demand if coverage_demand is not None else self._coverage_demand_series()
+        )
         proportion_within_coverage_threshold = self._coverage_proportion(
             df[within_col], demand_series
         )
@@ -797,6 +861,24 @@ class EvaluatedCombination:
                     "inter_tertile_desc"
                 ]
 
+        # Secondary demand scenarios: only the two metrics that actually
+        # vary with demand (weighted_average, proportion_within_coverage_
+        # threshold -- see _compute_travel_metrics' coverage_demand
+        # docstring). Suffix order is travel-label-first, demand-label-
+        # second (`weighted_average__<travel>__<demand>`) for the opt-in
+        # cross with a secondary travel matrix registered via
+        # also_weight_matrices; `weighted_average__<demand>` for the
+        # (default) primary-travel case. Per-scenario equity breakdowns are
+        # not yet supported and are never emitted here, regardless of
+        # full_secondary_metrics.
+        for dlabel, per_matrix in self.secondary_demand_metrics.items():
+            for tlabel, dmetrics in per_matrix.items():
+                suffix = dlabel if tlabel is None else f"{tlabel}__{dlabel}"
+                metrics[f"weighted_average__{suffix}"] = dmetrics["weighted_average"]
+                metrics[f"proportion_within_coverage_threshold__{suffix}"] = dmetrics[
+                    "proportion_within_coverage_threshold"
+                ]
+
         return metrics
 
 
@@ -810,6 +892,7 @@ class SiteSolutionSet(
     SiteSolutionHotspotCalculationMixin,
     HotspotPlotMixin,
     SiteProblemEDAMixin,
+    AccessibilityPlotMixin,
 ):
     """
     Container for a set of evaluated site selection solutions.
@@ -1123,6 +1206,297 @@ class SiteSolutionSet(
             ].iloc[0]
         else:
             return self.solution_df["site_names"].iloc[0]
+
+    def site_allocation_summary(
+        self,
+        by="demand",
+        rank_on=None,
+        solution_rank=1,
+        site_names=None,
+        site_indices=None,
+        matrix=None,
+        demand=None,
+    ):
+        """
+        Per-site summary of a chosen solution: the share of demand (or of
+        regions) whose closest selected site is each site, and the average
+        travel cost incurred by that group.
+
+        Answers "how much work does this site actually do, and how far do
+        the people it serves have to travel?" for one chosen solution --
+        useful both for weighing up whether an additional site earns its
+        cost (a site closest to only a small share of demand is a weak case
+        for opening, even where it visibly lowers the average travel time),
+        and for comparing how consolidating or closing sites changes
+        typical travel distance for the people affected.
+
+        Parameters
+        ----------
+        by : {"demand", "regions"}, default "demand"
+            Basis for the `proportion` and `average_travel_cost` columns.
+            "demand" weights each region by the demand registered via
+            `add_demand()`, so `average_travel_cost` is the demand-weighted
+            mean travel cost among a site's closest regions -- the same
+            weighting as the solution-level `weighted_average`. "regions"
+            counts every region equally, matching `unweighted_average`.
+            Follows the same people-vs-places naming rule as the coverage
+            metrics (see `EvaluatedCombination.return_solution_metrics`):
+            unqualified means demand-weighted. The two coincide when demand
+            is uniform, including when `add_demand()` was never called.
+        rank_on : str, optional
+        solution_rank : int, default 1
+        site_names : list, optional
+        site_indices : list, optional
+            Solution selection, as in `plot_best_combination`. Priority is
+            site_indices > site_names > rank_on/solution_rank.
+        matrix : str, optional
+            Label of a secondary travel matrix registered via
+            `add_secondary_travel_matrix()`. Summarises allocation, and
+            computes `average_travel_cost`, under that matrix's own
+            `selected_site__<label>` / `min_cost__<label>` columns instead
+            of the primary matrix's.
+        demand : str, optional
+            Label of a secondary demand scenario registered via
+            `add_secondary_demand()`. Computes `total_demand` and (for
+            `by="demand"`) `proportion` / `average_travel_cost` under that
+            scenario's demand instead of the primary demand data. Combines
+            freely with `matrix=`.
+
+        Returns
+        -------
+        pandas.DataFrame
+            One row per site in the chosen solution, indexed by site name
+            ("site") in canonical site-index order. Columns: `n_regions`,
+            `total_demand` (omitted when no demand data is registered),
+            `proportion` (sums to 1.0 across the frame), and
+            `average_travel_cost` (in the travel matrix's registered unit
+            -- e.g. minutes, or miles if the matrix was built from
+            distances rather than times).
+
+        Raises
+        ------
+        ValueError
+            If `by` is not "demand" or "regions", or if `by="demand"` but no
+            demand column is registered on the problem (see Notes).
+
+        Notes
+        -----
+        Every selected site appears, including any that is closest to no
+        region at all -- it gets an explicit 0 row in `n_regions` and
+        `proportion` rather than being dropped. That case is usually the
+        finding being looked for, so silently losing it would defeat the
+        point of the method. `average_travel_cost` is `NaN` for such a site
+        rather than `0`: there is no travel cost to average over zero
+        regions, and `0` would misleadingly read as "instant to reach".
+
+        Regions exactly equidistant from two selected sites are assigned to
+        one of them, not split: the underlying allocation uses
+        `DataFrame.idxmin`, and its candidate columns are ordered by
+        canonical site index, so exact ties go to the lowest-indexed site.
+        Deterministic across runs, but arbitrary -- exact ties are rare on
+        real travel matrices and common on synthetic ones.
+
+        `average_travel_cost` was inspired by work from Gill Baker, who
+        used average travel distance per patient -- split by which site
+        was closest -- to show that centralising services onto fewer sites
+        would roughly double typical travel distance for patients, while
+        adding a third site offered only limited benefit over the existing
+        two.
+        """
+        if by not in ("demand", "regions"):
+            raise ValueError(f"by must be 'demand' or 'regions', got {by!r}.")
+
+        cost_col, selected_site_col, _, _, _ = self._resolve_travel_columns(matrix)
+
+        solution = _select_solution(
+            self.solution_df,
+            rank_on=rank_on,
+            solution_rank=solution_rank,
+            site_names=site_names,
+            site_indices=site_indices,
+        )
+        selected_sites = list(solution["site_names"].iloc[0])
+        per_region = solution["problem_df"].iloc[0]
+
+        if demand is None:
+            demand_col = getattr(self.site_problem, "_demand_data_demand_col", None)
+        else:
+            registered_demand_labels = getattr(
+                self.site_problem, "secondary_demand_matrices", {}
+            )
+            if demand not in registered_demand_labels:
+                raise ValueError(
+                    f"Unknown secondary demand scenario '{demand}'. "
+                    f"Registered labels: {sorted(registered_demand_labels)}."
+                )
+            demand_col = f"demand__{demand}"
+
+        has_demand = demand_col is not None and demand_col in per_region.columns
+        if by == "demand" and not has_demand:
+            raise ValueError(
+                "by='demand' requires demand data. No demand column is "
+                "registered on this problem -- call add_demand(), or pass "
+                "by='regions' to count every region equally."
+            )
+
+        counts_raw = per_region.groupby(selected_site_col).size()
+        unexpected = set(counts_raw.index) - set(selected_sites)
+        if unexpected:
+            # Reindexing below would silently DROP these, renormalising the
+            # remaining proportions to look complete. Warn instead: an
+            # allocation to a site that isn't in the solution means
+            # problem_df and site_names have gone out of step.
+            warnings.warn(
+                f"site_allocation_summary: {selected_site_col} contains "
+                f"site(s) not in this solution's site_names: "
+                f"{sorted(unexpected)}. These are excluded from the summary.",
+                stacklevel=2,
+            )
+
+        # Reindex against the solution's own site list, not the observed
+        # groups. A selected site that is closest to NO region is absent
+        # from the groupby entirely, and that is exactly the case this
+        # method exists to surface: "we opened a third site and it picks up
+        # nothing". Left as a plain groupby it would vanish from the table
+        # and the reader would conclude the solution has two sites, not
+        # three.
+        n_regions = counts_raw.reindex(selected_sites, fill_value=0)
+
+        result = pd.DataFrame({"n_regions": n_regions})
+        result.index.name = "site"
+
+        if has_demand:
+            total_demand = per_region[demand_col].astype(float).sum()
+            demand_by_site = (
+                per_region.groupby(selected_site_col)[demand_col]
+                .sum()
+                .reindex(selected_sites, fill_value=0.0)
+            )
+            result["total_demand"] = demand_by_site
+
+        if by == "demand":
+            result["proportion"] = result["total_demand"] / total_demand
+
+            # sum(cost * demand) / sum(demand) per site, mirroring how the
+            # solution-level `weighted_average` is computed. Grouping and
+            # dividing only over sites that actually appear in per_region
+            # (i.e. those with n_regions > 0) means the reindex below is
+            # the only place a zero-allocation site's average_travel_cost
+            # is produced, and it comes out NaN (no group to divide) rather
+            # than a 0/0 division warning.
+            weighted_cost = per_region[cost_col] * per_region[demand_col].astype(float)
+            weighted_cost_sum = weighted_cost.groupby(per_region[selected_site_col]).sum()
+            demand_sum = per_region.groupby(selected_site_col)[demand_col].sum()
+            result["average_travel_cost"] = (weighted_cost_sum / demand_sum).reindex(
+                selected_sites
+            )
+        else:
+            total_regions = len(per_region)
+            result["proportion"] = result["n_regions"] / total_regions
+            result["average_travel_cost"] = (
+                per_region.groupby(selected_site_col)[cost_col]
+                .mean()
+                .reindex(selected_sites)
+            )
+
+        return result
+
+    def two_step_floating_catchment(
+        self,
+        supply_col,
+        catchment_size=None,
+        distance_decay=None,
+        rank_on=None,
+        solution_rank=1,
+        site_names=None,
+        site_indices=None,
+        matrix=None,
+        demand=None,
+        per_capita=1,
+        return_site_ratios=False,
+    ):
+        """
+        Two-step floating catchment area (2SFCA) accessibility for one
+        chosen solution.
+
+        Resolves the solution's selected sites and delegates to
+        `SiteProblem.two_step_floating_catchment()`, which does the actual
+        step-1/step-2 calculation. Unlike `site_allocation_summary()`, this
+        cannot use `problem_df` (which only carries each region's nearest
+        site and cost, not the full per-site travel-cost row 2SFCA needs
+        for every site's catchment) so it goes back to the problem's
+        travel frame instead.
+
+        Parameters
+        ----------
+        supply_col : str
+            Column in `candidate_sites` holding each site's supply
+            quantity (e.g. number of GPs, beds, weekly appointment slots).
+        catchment_size : float, optional
+            Classic 2SFCA's hard catchment threshold d0, in the travel
+            matrix's registered units. Mutually exclusive with
+            `distance_decay` -- exactly one of the two must be given. See
+            `SiteProblem.two_step_floating_catchment` for details.
+        distance_decay : list of (float, float) or dict, optional
+            Enhanced 2SFCA step-decay bands or a continuous decay kernel,
+            forwarded as-is. See `SiteProblem.two_step_floating_catchment`.
+        rank_on : str, optional
+        solution_rank : int, default 1
+        site_names : list, optional
+        site_indices : list, optional
+            Solution selection, as in `site_allocation_summary`. Priority
+            is site_indices > site_names > rank_on/solution_rank.
+        matrix : str, optional
+            Label of a secondary travel matrix registered via
+            `add_secondary_travel_matrix()`. Scores accessibility under
+            that matrix's travel costs instead of the primary matrix's.
+        demand : str, optional
+            Label of a secondary demand scenario registered via
+            `add_secondary_demand()`. Scores accessibility under that
+            scenario's demand instead of the primary demand data.
+        per_capita : float, default 1
+            Multiplier applied to the `accessibility` column, e.g. 1_000
+            to express supply per 1,000 head instead of raw supply units
+            per head.
+        return_site_ratios : bool, default False
+            If True, also return the step-1 per-site table.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Per demand region, indexed by demand location ID: `accessibility`
+            (supply units per head, x `per_capita`), `n_sites_in_catchment`,
+            `demand`.
+        pandas.DataFrame
+            Only if `return_site_ratios=True`. Per site, indexed by site
+            name: `supply`, `catchment_demand`, `n_regions_in_catchment`,
+            `ratio`.
+
+        See Also
+        --------
+        SiteProblem.two_step_floating_catchment : The underlying
+            calculation, usable directly on the full candidate site set
+            without needing a solved solution.
+        """
+        solution = _select_solution(
+            self.solution_df,
+            rank_on=rank_on,
+            solution_rank=solution_rank,
+            site_names=site_names,
+            site_indices=site_indices,
+        )
+        selected_sites = list(solution["site_names"].iloc[0])
+
+        return self.site_problem.two_step_floating_catchment(
+            supply_col=supply_col,
+            catchment_size=catchment_size,
+            distance_decay=distance_decay,
+            site_names=selected_sites,
+            matrix=matrix,
+            demand=demand,
+            per_capita=per_capita,
+            return_site_ratios=return_site_ratios,
+        )
 
     def summary_table(self):
         pass
