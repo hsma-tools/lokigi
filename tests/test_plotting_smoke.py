@@ -149,6 +149,10 @@ def plottable_problem():
             # Only read by plot_accessibility()/two_step_floating_catchment();
             # inert for every other test in this file.
             "supply": [5, 3, 8],
+            # Only read by plot_site_utilisation()/site_utilisation_summary();
+            # inert for every other test in this file.
+            "capacity": [100, 200, 150],
+            "current_load": [80, 200, 180],
         }
     )
     travel_df = pd.DataFrame(
@@ -167,7 +171,12 @@ def plottable_problem():
     problem.add_demand(
         demand_df, demand_col="demand", location_id_col="location_id"
     )
-    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_sites(
+        candidate_df,
+        candidate_id_col="site_id",
+        capacity_col="capacity",
+        current_load_col="current_load",
+    )
     problem.add_travel_matrix(travel_df, source_col="source_id")
     problem.add_equity_data(
         equity_df,
@@ -285,6 +294,10 @@ PROBLEM_PLOT_CALLS = {
     ),
     "plot_accessibility__interactive": lambda p: p.plot_accessibility(
         supply_col="supply", catchment_size=15, add_basemap=False, interactive=True
+    ),
+    "plot_site_utilisation": lambda p: p.plot_site_utilisation(add_basemap=False),
+    "plot_site_utilisation__interactive": lambda p: p.plot_site_utilisation(
+        add_basemap=False, interactive=True
     ),
 }
 

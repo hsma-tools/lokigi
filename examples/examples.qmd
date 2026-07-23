@@ -40,6 +40,7 @@ listing:
       - "location/comparing_n_sites/index.ipynb"
       - "location/coverage_metrics/index.ipynb"
       - "location/accessibility_2sfca/index.ipynb"
+      - "location/site_utilisation/index.ipynb"
     type: grid
     sort: false
     grid-columns: 3

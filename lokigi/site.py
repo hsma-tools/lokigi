@@ -110,6 +110,8 @@ class SiteProblem(
         self._candidate_sites_horizontal_col = None
         self._candidate_sites_capacity_col = None
         self._candidate_sites_cost_col = None
+        self._candidate_sites_current_load_col = None
+        self._candidate_sites_utilisation_col = None
         self._candidate_sites_required_sites_col = None
         self.total_n_sites = None
 
