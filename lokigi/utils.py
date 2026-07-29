@@ -499,18 +499,152 @@ def _get_ranking_by_objective(objective):
         return "proportion_within_coverage_threshold"
 
 
+def _population_impact_metrics(
+    current, baseline, demand=None, meaningful_change_threshold=0.0
+):
+    """
+    Per-region diff of `current` vs `baseline`, classified into
+    improved/worsened/unchanged and summarised by region count and (if
+    `demand` is given) demand-weighted people count.
+
+    Shared by `SolutionComparator.population_impact_summary()` (v1) and
+    `solve(baseline=...)` (v2) so the two paths cannot silently drift apart
+    on the same underlying arithmetic.
+
+    Parameters
+    ----------
+    current, baseline : array-like of float
+        Per-region travel cost, aligned to the same region order (the
+        caller is responsible for alignment -- e.g. by demand-location ID,
+        never by position/index alone).
+    demand : array-like of float, optional
+        Per-region demand weight, aligned to the same region order. `None`
+        when no demand data is registered on the problem -- `demand_*`,
+        `proportion_demand_*`, `total_demand` and the two weighted-mean
+        columns are then `NaN`, and only the `regions_*` counts and the
+        (unweighted-mean) improvement/worsening magnitudes are populated.
+    meaningful_change_threshold : float, default 0.0
+        A region's cost must have moved by strictly more than
+        `max(meaningful_change_threshold, 1e-9)` to count as improved or
+        worsened; anything else (including exactly
+        `meaningful_change_threshold`) is `unchanged`. The `1e-9` floor
+        absorbs floating-point noise at the default threshold of 0.0.
+
+    Returns
+    -------
+    dict
+        `regions_improved`/`regions_worsened`/`regions_unchanged` (counts);
+        `demand_improved`/`demand_worsened`/`demand_unchanged` (`NaN` if
+        `demand` is None); `proportion_demand_improved`/
+        `proportion_demand_worsened` (share of `total_demand`, `NaN` if
+        `demand` is None or its total is <= 0); `total_demand` (`NaN` if
+        `demand` is None); `mean_reduction_among_improved`/
+        `mean_increase_among_worsened` (demand-weighted mean if `demand`
+        is given, else a plain mean; positive magnitudes; `NaN` if the
+        bucket is empty, or if `demand` is given but every region in the
+        bucket has zero/NaN demand); `max_reduction`/`max_increase`
+        (largest single-region change in each direction, positive; `NaN`
+        if the bucket is empty).
+
+    Notes
+    -----
+    All magnitudes are reported positive -- direction is carried by the
+    bucket name (`_improved`/`_worsened`), not by sign. This sidesteps the
+    `set_a - set_b` sign convention `get_metric_summary()` and
+    `compare_site_allocation()` use, which would otherwise be ambiguous
+    for a baseline diff that is naturally `candidate - baseline`.
+    """
+    current = np.asarray(current, dtype=float)
+    baseline = np.asarray(baseline, dtype=float)
+    delta = current - baseline  # negative = improved (cheaper)
+
+    tol = max(meaningful_change_threshold, 1e-9)
+    improved = delta < -tol
+    worsened = delta > tol
+    unchanged = ~improved & ~worsened
+
+    regions_improved = int(improved.sum())
+    regions_worsened = int(worsened.sum())
+    regions_unchanged = int(unchanged.sum())
+
+    max_reduction = -delta[improved].min() if regions_improved else np.nan
+    max_increase = delta[worsened].max() if regions_worsened else np.nan
+
+    if demand is None:
+        demand_improved = np.nan
+        demand_worsened = np.nan
+        demand_unchanged = np.nan
+        proportion_demand_improved = np.nan
+        proportion_demand_worsened = np.nan
+        total_demand = np.nan
+        mean_reduction_among_improved = (
+            -delta[improved].mean() if regions_improved else np.nan
+        )
+        mean_increase_among_worsened = (
+            delta[worsened].mean() if regions_worsened else np.nan
+        )
+    else:
+        demand = np.asarray(demand, dtype=float)
+        total_demand = demand.sum()
+        demand_improved = demand[improved].sum()
+        demand_worsened = demand[worsened].sum()
+        demand_unchanged = demand[unchanged].sum()
+
+        if total_demand > 0:
+            proportion_demand_improved = demand_improved / total_demand
+            proportion_demand_worsened = demand_worsened / total_demand
+        else:
+            proportion_demand_improved = np.nan
+            proportion_demand_worsened = np.nan
+
+        mean_reduction_among_improved = (
+            -np.average(delta[improved], weights=demand[improved])
+            if demand_improved and not np.isnan(demand_improved)
+            else np.nan
+        )
+        mean_increase_among_worsened = (
+            np.average(delta[worsened], weights=demand[worsened])
+            if demand_worsened and not np.isnan(demand_worsened)
+            else np.nan
+        )
+
+    return {
+        "regions_improved": regions_improved,
+        "regions_worsened": regions_worsened,
+        "regions_unchanged": regions_unchanged,
+        "demand_improved": demand_improved,
+        "demand_worsened": demand_worsened,
+        "demand_unchanged": demand_unchanged,
+        "proportion_demand_improved": proportion_demand_improved,
+        "proportion_demand_worsened": proportion_demand_worsened,
+        "total_demand": total_demand,
+        "mean_reduction_among_improved": mean_reduction_among_improved,
+        "mean_increase_among_worsened": mean_increase_among_worsened,
+        "max_reduction": max_reduction,
+        "max_increase": max_increase,
+    }
+
+
 def _is_maximise_metric(col):
     """
     True for solution metrics where a HIGHER value is better.
 
     Every other reported metric is a travel cost, where lower is better, so
-    the coverage proportions are the only maximisation objectives.
+    the coverage proportions and the "improvement" side of the population-
+    impact metrics (see `_population_impact_metrics`) are the only
+    maximisation objectives -- a bigger improved/reduced number is good, a
+    bigger worsened/increased number is bad.
 
     Matches on a substring rather than the exact column name so that it also
     covers the `regions` variant and any `__<label>` secondary-travel-matrix
     suffix -- the exact-equality checks this replaced silently treated
     `proportion_within_coverage_threshold__<label>` as a minimisation
     objective, sorting secondary-matrix coverage backwards.
+
+    `demand_unchanged`/`regions_unchanged` are directionless (neither a
+    higher nor lower count is inherently "better") and are treated as
+    lower-is-better here purely by omission; they are not meaningful
+    `rank_on` targets either way.
 
     Parameters
     ----------
@@ -521,7 +655,13 @@ def _is_maximise_metric(col):
     -------
     bool
     """
-    return isinstance(col, str) and "within_coverage_threshold" in col
+    if not isinstance(col, str):
+        return False
+    return (
+        "within_coverage_threshold" in col
+        or "improved" in col
+        or "reduction" in col
+    )
 
 
 def _sort_solutions_by_metric(solution_df, rank_on):

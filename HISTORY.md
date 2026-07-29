@@ -1,3 +1,15 @@
+## v0.9.0
+
+- Add population-impact-vs-baseline metrics, answering "how many people's journey actually changed, and by how much?" rather than only the region-wide `weighted_average` shift, which dilutes a large, genuinely local effect across everyone else who is unaffected by it
+    - Add `SiteProblem.evaluate_baseline()`, evaluating the current ("do-nothing") network as a one-solution `SiteSolutionSet` for use as a baseline. With no `site_names`/`site_indices`, defaults to the sites flagged via `add_sites(required_sites_col=...)`
+    - Add `SolutionComparator.population_impact_summary()`, a per-demand-location diff of `set_b` (candidate) against `set_a` (baseline): `demand_improved`/`demand_worsened`/`demand_unchanged`, `regions_improved`/`regions_worsened`/`regions_unchanged`, `mean_reduction_among_improved`, `mean_increase_among_worsened`, `max_reduction`, `max_increase`, `proportion_demand_improved`/`proportion_demand_worsened`, and `total_demand`. Takes `matrix=`/`demand=` to diff a registered secondary travel matrix or demand scenario instead of the primary, and a `meaningful_change_threshold` (default `0.0`) below which a region counts as unchanged rather than improved/worsened. All magnitudes are reported positive, with direction carried by the bucket name rather than by sign
+    - Add `solve(baseline=...)`, threading the same comparison through every enumerated combination automatically: `None` (default, off, `solution_df`'s column set is unchanged), `True` (build from `required_sites_col`, inheriting this call's objective/weights/threshold), or a one-solution `SiteSolutionSet` (typically from `evaluate_baseline()`). The baseline is evaluated once per `solve()` call, not once per combination, so the added cost is negligible for every search strategy (brute-force, greedy, GRASP)
+    - Secondary travel matrices and secondary demand scenarios get the demand-weighted subset of columns (`demand_improved__<label>`, etc.) by default; `full_secondary_metrics=True` also adds the region-count and max-change variants for secondary travel matrices, matching the existing "core metrics by default" convention
+
+## v0.8.1
+
+- Pin minimum version of numba to prevent build failure due to odd resolution to a very old version of numba by default
+
 ## v0.8.0
 
 - Add `add_secondary_demand()` to `SiteProblem`, registering additional demand scenarios (e.g. current vs projected future demand, or time-varying demand) alongside the primary demand set via `add_demand()`, mirroring `add_secondary_travel_matrix()`

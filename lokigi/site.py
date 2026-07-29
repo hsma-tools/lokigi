@@ -5,6 +5,7 @@ from lokigi.utils import (
     _get_ranking_by_objective,
     _add_rank_column,
     _apply_cost_weighting,
+    _get_required_site_indices,
 )
 
 from lokigi.site_solutions import EvaluatedCombination, SiteSolutionSet
@@ -131,6 +132,8 @@ class SiteProblem(
         site_indices=None,
         capacitated=False,
         threshold_for_coverage=None,
+        baseline_costs=None,
+        meaningful_change_threshold=0.0,
     ):
         """
         Evaluate a specific set of facility sites against a single objective.
@@ -161,6 +164,15 @@ class SiteProblem(
             demand registered via `add_demand()`; the unweighted share of
             regions is reported alongside it as
             `proportion_regions_within_coverage_threshold`.
+        baseline_costs : dict[str, pandas.Series], optional
+            Internal/advanced: forwarded to `EvaluatedCombination` to
+            compute population-impact-vs-baseline metrics. Most callers
+            should use `evaluate_baseline()` and
+            `SolutionComparator.population_impact_summary()`, or
+            `solve(baseline=...)`, rather than passing this directly.
+        meaningful_change_threshold : float, default 0.0
+            Only used when `baseline_costs` is given -- see
+            `lokigi.utils._population_impact_metrics`.
 
         Returns
         -------
@@ -484,6 +496,110 @@ class SiteProblem(
             weights=weights,
             site_problem=self,
             coverage_threshold=threshold_for_coverage,
+            baseline_costs=baseline_costs,
+            meaningful_change_threshold=meaningful_change_threshold,
+        )
+
+    # MARK: evaluate_baseline()
+    def evaluate_baseline(
+        self,
+        site_names=None,
+        site_indices=None,
+        objective: str = "p_median",
+        weights=None,
+        threshold_for_coverage=None,
+    ):
+        """
+        Evaluate the current ("do-nothing") network as a one-solution
+        `SiteSolutionSet`, for use as a baseline with
+        `SolutionComparator.population_impact_summary()` or
+        `solve(baseline=...)`.
+
+        A thin, ergonomic wrapper around
+        `evaluate_single_solution_single_objective()` -- it wraps that
+        single result in a one-row `solution_df` so the baseline can be
+        passed around and compared using the same `SiteSolutionSet` API as
+        any solved solution (`site_allocation_summary()`,
+        `SolutionComparator`, etc.), without hand-building that DataFrame.
+
+        Parameters
+        ----------
+        site_names : list of str, optional
+        site_indices : list of int, optional
+            The current network's sites. At most one of these may be
+            given. If neither is given, defaults to the sites flagged via
+            `add_sites(required_sites_col=...)` -- i.e. "the sites already
+            required in every solution" -- which is the existing network
+            in the common case of modelling "which *additional* sites
+            should we open". Raises `ValueError` if neither is given and
+            no `required_sites_col` is configured.
+        objective : str, default "p_median"
+            Forwarded to `evaluate_single_solution_single_objective()`.
+        weights : dict, optional
+            Forwarded to `evaluate_single_solution_single_objective()`.
+        threshold_for_coverage : float or int, optional
+            Forwarded to `evaluate_single_solution_single_objective()`.
+
+        Returns
+        -------
+        SiteSolutionSet
+            A one-row solution set wrapping the baseline evaluation.
+
+        Raises
+        ------
+        ValueError
+            If both `site_names` and `site_indices` are given (see
+            `evaluate_single_solution_single_objective()`), or if neither
+            is given and no `required_sites_col` was registered via
+            `add_sites()`.
+
+        Notes
+        -----
+        Unlike `evaluate_single_solution_single_objective()` called
+        directly, this mirrors `solve()`'s auto-setup: if no demand data
+        has been registered via `add_demand()`, demand from all regions is
+        assumed equal (with the same `UserWarning` `solve()` raises),
+        rather than failing with a merge error when
+        `evaluate_single_solution_single_objective()` hits `demand_data is
+        None`. This is what lets `evaluate_baseline()` be called with no
+        `add_demand()` step first, matching `solve()`'s own ergonomics.
+        """
+        if self.demand_data is None:
+            self._setup_equal_demand_df()
+            if objective != "mclp":
+                warn(
+                    "No demand data was provided. Demand from all regions "
+                    "has been assumed to be equal. If you wish to override "
+                    "this, run .add_demand() to add your demand dataframe "
+                    "before calling evaluate_baseline() again."
+                )
+
+        if site_names is None and site_indices is None:
+            required = _get_required_site_indices(self)
+            if not required:
+                raise ValueError(
+                    "evaluate_baseline() needs a baseline site set: either "
+                    "pass site_names= or site_indices= naming the current "
+                    "network directly, or register it via "
+                    "add_sites(required_sites_col=...) so evaluate_baseline() "
+                    "can default to it."
+                )
+            site_indices = required
+
+        evaluated = self.evaluate_single_solution_single_objective(
+            objective=objective,
+            weights=weights,
+            site_names=site_names,
+            site_indices=site_indices,
+            threshold_for_coverage=threshold_for_coverage,
+        )
+        metrics = evaluated.return_solution_metrics()
+
+        return SiteSolutionSet(
+            solution_df=pd.DataFrame([metrics]),
+            site_problem=self,
+            objectives=objective,
+            n_sites=len(evaluated.site_indices),
         )
 
     # MARK: solve()
@@ -509,6 +625,8 @@ class SiteProblem(
         grasp_max_swap_count_local_search=10,
         random_seed=42,
         full_secondary_metrics=False,
+        baseline=None,
+        meaningful_change_threshold=0.0,
     ):
         """
         Solve the site location problem using the specified objective and strategy.
@@ -630,6 +748,43 @@ class SiteProblem(
             registered, and costs nothing extra to compute -- the values are
             already computed either way, this only controls which of them
             are included in the returned table.
+        baseline : None, True, or SiteSolutionSet, default None
+            Compares every solution against a baseline "do-nothing"
+            network, adding `demand_improved`/`demand_worsened`/
+            `demand_unchanged`, `regions_improved`/`regions_worsened`/
+            `regions_unchanged`, `mean_reduction_among_improved`,
+            `mean_increase_among_worsened`, `max_reduction` and
+            `max_increase` to every row of `solution_df` -- how many
+            people's journey actually changed relative to the baseline,
+            and by how much, rather than only the region-wide
+            `weighted_average` shift (which dilutes a large local effect
+            across everyone unaffected by it). See
+            `EvaluatedCombination.return_solution_metrics`'s point 7, and
+            `SolutionComparator.population_impact_summary()` for the
+            equivalent baseline-vs-candidate comparison outside `solve()`.
+
+            - `None` (the default): off. `solution_df`'s column set is
+              byte-for-byte identical to before this parameter existed.
+            - `True`: build the baseline from the sites flagged via
+              `add_sites(required_sites_col=...)`, inheriting this call's
+              `objectives`/`weights`/`threshold_for_coverage` (see
+              `evaluate_baseline()`). Raises `ValueError` if no
+              `required_sites_col` is configured.
+            - A `SiteSolutionSet` containing exactly one solution
+              (typically from `evaluate_baseline()`): used directly, so a
+              baseline built with different objective/weights/threshold
+              settings than this `solve()` call can be supplied
+              explicitly.
+
+            The baseline itself is evaluated once per `solve()` call, not
+            once per enumerated combination -- negligible added cost
+            regardless of search strategy.
+        meaningful_change_threshold : float, default 0.0
+            Only used when `baseline` is given. A region's travel cost
+            must move by strictly more than
+            `max(meaningful_change_threshold, 1e-9)` to count as improved
+            or worsened; anything smaller (including floating-point noise
+            at the default 0.0) is `unchanged`.
 
         Returns
         -------
@@ -845,6 +1000,12 @@ class SiteProblem(
                 f"For now, just your first objective {objectives[0]} has been taken."
             )
 
+        # Resolved once here, not once per enumerated combination -- see
+        # solve()'s `baseline` parameter docstring above.
+        baseline_costs = self._resolve_baseline_costs(
+            baseline, objective, normalised_weights, threshold_for_coverage
+        )
+
         if max_value_cutoff is not None and objective not in [
             "hybrid_p_median",
             "hybrid_simple_p_median",
@@ -900,9 +1061,65 @@ class SiteProblem(
                 grasp_local_search_chance=grasp_local_search_chance,  # Chance that local searching will happen to improve found solution
                 grasp_max_swap_count_local_search=grasp_max_swap_count_local_search,
                 full_secondary_metrics=full_secondary_metrics,
+                baseline_costs=baseline_costs,
+                meaningful_change_threshold=meaningful_change_threshold,
             )
         else:
             raise ValueError(f"Unknown objective '{objective}'.")
+
+    # MARK: _resolve_baseline_costs
+    def _resolve_baseline_costs(self, baseline, objective, weights, threshold_for_coverage):
+        """
+        Resolve `solve()`'s `baseline` argument into a dict mapping cost-
+        column name ("min_cost", or "min_cost__<label>" for a registered
+        secondary travel matrix) to a baseline `pd.Series` indexed by
+        demand-location ID, or `None` if no baseline was requested. See
+        `solve()`'s `baseline` parameter for the accepted forms.
+        """
+        if baseline is None:
+            return None
+
+        if baseline is True:
+            baseline_set = self.evaluate_baseline(
+                objective=objective,
+                weights=weights,
+                threshold_for_coverage=threshold_for_coverage,
+            )
+        elif isinstance(baseline, SiteSolutionSet):
+            baseline_set = baseline
+        else:
+            raise TypeError(
+                "solve(baseline=...) must be None, True, or a "
+                "SiteSolutionSet (typically from evaluate_baseline()) -- "
+                f"got {type(baseline).__name__}."
+            )
+
+        if len(baseline_set.solution_df) != 1:
+            raise ValueError(
+                "solve(baseline=...) requires a SiteSolutionSet containing "
+                f"exactly one solution; got {len(baseline_set.solution_df)}. "
+                "Build one with evaluate_baseline(), or select a single row "
+                "before passing it in."
+            )
+
+        problem_df = baseline_set.solution_df.iloc[0]["problem_df"]
+        id_col = self._demand_data_id_col
+        if id_col not in problem_df.columns:
+            raise ValueError(
+                "solve(baseline=...) could not find demand-location ID "
+                f"column '{id_col}' in the baseline's problem_df. The "
+                "baseline must have been evaluated against this same "
+                "problem."
+            )
+        indexed = problem_df.set_index(id_col)
+
+        baseline_costs = {"min_cost": indexed["min_cost"]}
+        for label in getattr(self, "secondary_travel_matrices", {}):
+            col = f"min_cost__{label}"
+            if col in indexed.columns:
+                baseline_costs[col] = indexed[col]
+
+        return baseline_costs
 
     # MARK: solve pmed pcen mclp
     def _solve_pmedian_pcenter_mclp_problem(
@@ -926,6 +1143,8 @@ class SiteProblem(
         grasp_max_swap_count_local_search=10,
         random_seed=42,
         full_secondary_metrics=False,
+        baseline_costs=None,
+        meaningful_change_threshold=0.0,
     ):
         """
         Internal dispatcher for solving location-allocation problems.
@@ -1035,6 +1254,8 @@ class SiteProblem(
                 threshold_for_coverage=threshold_for_coverage,
                 n_jobs=n_jobs,
                 full_secondary_metrics=full_secondary_metrics,
+                baseline_costs=baseline_costs,
+                meaningful_change_threshold=meaningful_change_threshold,
             )
 
         if search_strategy == "greedy":
@@ -1048,6 +1269,8 @@ class SiteProblem(
                 threshold_for_coverage=threshold_for_coverage,
                 max_value_cutoff=max_value_cutoff,
                 full_secondary_metrics=full_secondary_metrics,
+                baseline_costs=baseline_costs,
+                meaningful_change_threshold=meaningful_change_threshold,
             )
 
         if search_strategy == "grasp":
@@ -1069,6 +1292,8 @@ class SiteProblem(
                 max_swap_count_local_search=grasp_max_swap_count_local_search,
                 max_value_cutoff=max_value_cutoff,
                 full_secondary_metrics=full_secondary_metrics,
+                baseline_costs=baseline_costs,
+                meaningful_change_threshold=meaningful_change_threshold,
             )
 
         # An empty result set would otherwise crash further down with a

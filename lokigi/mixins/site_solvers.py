@@ -60,12 +60,17 @@ def _evaluate_chunk(
     keep_worst_n,
     stream_top_n,
     full_secondary_metrics=False,
+    baseline_costs=None,
+    meaningful_change_threshold=0.0,
 ):
     """Evaluate one chunk of combinations. Returns either the list of
     metrics dicts (materialising path) or (local_best, local_worst) lists
     of (key, global_index, metrics) tuples (streaming path). Runs in a
     worker process under joblib, so it must not depend on any state that
-    changes across chunks (it doesn't -- the heaps below are local)."""
+    changes across chunks (it doesn't -- the heaps below are local).
+    `baseline_costs` (a dict of small pd.Series, see `solve()`'s `baseline`
+    parameter) pickles cheaply across the worker-process boundary -- it is
+    resolved once per `solve()` call, not once per combination."""
     if not stream_top_n:
         chunk_outputs = []
         for _global_index, possible_solution in indexed_chunk:
@@ -74,6 +79,8 @@ def _evaluate_chunk(
                 objective=objectives,
                 threshold_for_coverage=threshold_for_coverage,
                 weights=weights,
+                baseline_costs=baseline_costs,
+                meaningful_change_threshold=meaningful_change_threshold,
             ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
             if max_value_cutoff is None or metrics["max"] <= max_value_cutoff:
@@ -88,6 +95,8 @@ def _evaluate_chunk(
             objective=objectives,
             threshold_for_coverage=threshold_for_coverage,
             weights=weights,
+            baseline_costs=baseline_costs,
+            meaningful_change_threshold=meaningful_change_threshold,
         ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
         raw_score = metrics[rank_best_n_on]
@@ -120,6 +129,8 @@ class BruteForceMixin:
         threshold_for_coverage=None,
         n_jobs=1,
         full_secondary_metrics=False,
+        baseline_costs=None,
+        meaningful_change_threshold=0.0,
     ):
 
         # Greedy and GRASP already fail fast with a clear message when
@@ -249,6 +260,8 @@ class BruteForceMixin:
                 brute_force_keep_worst_n if stream_top_n else None,
                 stream_top_n,
                 full_secondary_metrics,
+                baseline_costs,
+                meaningful_change_threshold,
             )
             for chunk in chunks
         )
@@ -362,6 +375,8 @@ class GreedyMixin:
         threshold_for_coverage=None,
         max_value_cutoff=None,
         full_secondary_metrics=False,
+        baseline_costs=None,
+        meaningful_change_threshold=0.0,
     ):
         ranking = _get_ranking_by_objective(objective=objectives)
 
@@ -407,6 +422,8 @@ class GreedyMixin:
                         objective=objectives,
                         threshold_for_coverage=threshold_for_coverage,
                         weights=weights,
+                        baseline_costs=baseline_costs,
+                        meaningful_change_threshold=meaningful_change_threshold,
                     ).return_solution_metrics(
                         full_secondary_metrics=full_secondary_metrics
                     )
@@ -493,6 +510,8 @@ class GreedyMixin:
             objective=objectives,
             threshold_for_coverage=threshold_for_coverage,
             weights=weights,
+            baseline_costs=baseline_costs,
+            meaningful_change_threshold=meaningful_change_threshold,
         ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
         return [best_solution_metrics]
@@ -516,6 +535,8 @@ class GraspMixin:
         max_swap_count_local_search=10,
         max_value_cutoff=None,
         full_secondary_metrics=False,
+        baseline_costs=None,
+        meaningful_change_threshold=0.0,
     ):
         """
         GRASP (Greedy Randomised Adaptive Search Procedure) for finding multiple
@@ -580,6 +601,8 @@ class GraspMixin:
                 objective=objectives,
                 threshold_for_coverage=threshold_for_coverage,
                 weights=weights,
+                baseline_costs=baseline_costs,
+                meaningful_change_threshold=meaningful_change_threshold,
             ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
         pbar = None
@@ -886,6 +909,8 @@ class GraspMixin:
                 objective=objectives,
                 threshold_for_coverage=threshold_for_coverage,  # Applied only at the end
                 weights=weights,
+                baseline_costs=baseline_costs,
+                meaningful_change_threshold=meaningful_change_threshold,
             ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
             accepted_solution_sets.append(current_solution_set)

@@ -3,7 +3,12 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from lokigi.utils import _min_max_normalize, _select_solution, _sort_solutions_by_metric
+from lokigi.utils import (
+    _min_max_normalize,
+    _select_solution,
+    _sort_solutions_by_metric,
+    _population_impact_metrics,
+)
 
 from lokigi.mixins.site_solution_plots import (
     MapsMixin,
@@ -56,6 +61,17 @@ class EvaluatedCombination:
     coverage_threshold : float, optional
         Threshold used to determine whether a demand point is considered covered.
         If provided, used to compute the proportion of demand points within coverage.
+    baseline_costs : dict[str, pandas.Series], optional
+        Maps a cost-column name ("min_cost", or "min_cost__<label>" for a
+        registered secondary travel matrix) to a baseline per-region cost
+        Series, indexed by demand-location ID
+        (`site_problem._demand_data_id_col`). When given, `population_impact`
+        (and the corresponding `demand_improved`/`regions_improved`/etc.
+        keys in `return_solution_metrics()`) diff this combination's own
+        costs against it. `None` (the default) skips this entirely.
+    meaningful_change_threshold : float, default 0.0
+        Passed through to `_population_impact_metrics()` -- see there for
+        the improved/worsened/unchanged classification rule.
 
     Attributes
     ----------
@@ -94,6 +110,10 @@ class EvaluatedCombination:
         threshold, counting every region equally regardless of its demand.
         Identical to `proportion_within_coverage_threshold` when demand is
         uniform (including when `add_demand()` was never called).
+    population_impact : dict or None
+        `_population_impact_metrics()`'s output diffing this combination's
+        `min_cost` against `baseline_costs["min_cost"]`, or `None` if no
+        `baseline_costs` was supplied.
 
 
 
@@ -111,12 +131,51 @@ class EvaluatedCombination:
         weights,
         site_problem,
         coverage_threshold=None,
+        baseline_costs=None,
+        meaningful_change_threshold=0.0,
     ):
         self.solution_type = solution_type
         self.site_names = site_names
         self.site_indices = site_indices
         self.evaluated_combination_df = evaluated_combination_df
         self.site_problem = site_problem
+        self._meaningful_change_threshold = meaningful_change_threshold
+
+        # Population-impact-vs-baseline support (see _population_impact_
+        # metrics in utils.py). `baseline_costs` maps a cost-column name
+        # ("min_cost", or "min_cost__<label>" for a secondary travel
+        # matrix) to a baseline pd.Series indexed by demand-location ID
+        # (site_problem._demand_data_id_col). Aligned once here, by ID --
+        # NEVER by position -- and reused by every _compute_travel_metrics
+        # call below (primary matrix, each secondary matrix, each
+        # secondary demand scenario), since they all key off the same
+        # cost-column names.
+        self._baseline_cost_arrays = {}
+        if baseline_costs is not None:
+            id_col = getattr(site_problem, "_demand_data_id_col", None)
+            if id_col is None or id_col not in evaluated_combination_df.columns:
+                raise ValueError(
+                    "baseline_costs was supplied, but this combination's "
+                    "problem_df has no demand-location ID column "
+                    f"({id_col!r}) to align against. This should not be "
+                    "reachable through the public API."
+                )
+            region_ids = evaluated_combination_df[id_col]
+            for cost_col, baseline_series in baseline_costs.items():
+                missing_mask = ~region_ids.isin(baseline_series.index)
+                if missing_mask.any():
+                    missing_ids = region_ids[missing_mask].tolist()
+                    raise ValueError(
+                        f"Baseline is missing {len(missing_ids)} demand "
+                        f"location(s) present in this solution's problem_df "
+                        f"for '{cost_col}': {missing_ids[:10]}"
+                        f"{', ...' if len(missing_ids) > 10 else ''}. The "
+                        "baseline and candidate solutions must be evaluated "
+                        "against the exact same demand locations."
+                    )
+                self._baseline_cost_arrays[cost_col] = baseline_series.reindex(
+                    region_ids
+                ).to_numpy()
 
         self.weighted_by_equity_group = {}
         self.unweighted_by_equity_group = {}
@@ -383,6 +442,7 @@ class EvaluatedCombination:
         self.avg_upper_third_bins = primary_metrics["avg_upper_third_bins"]
         self.inter_tertile_ratio = primary_metrics["inter_tertile_ratio"]
         self.inter_tertile_desc = primary_metrics["inter_tertile_desc"]
+        self.population_impact = primary_metrics["population_impact"]
 
         # Secondary travel matrices: same statistics, computed from their
         # own suffixed `min_cost__<label>` / `within_threshold__<label>`
@@ -513,7 +573,14 @@ class EvaluatedCombination:
         weighted by the primary demand. A secondary *demand* scenario
         passes its own scenario series here instead, so "proportion of
         demand covered" reflects that scenario's demand rather than the
-        primary one.
+        primary one. It also determines the weighting for
+        `population_impact` (see below), for the same reason.
+
+        The returned dict also carries a `population_impact` key -- `None`
+        unless a baseline was supplied for `cost_col` (i.e.
+        `cost_col in self._baseline_cost_arrays`), in which case it is the
+        `_population_impact_metrics()` dict diffing `df[cost_col]` against
+        that baseline, weighted by `demand_series` above.
         """
         df = self.evaluated_combination_df
 
@@ -663,6 +730,18 @@ class EvaluatedCombination:
                     inter_tertile_ratio = np.nan
                     inter_tertile_desc = "N/A (Zero upper-third travel time)"
 
+        baseline_array = self._baseline_cost_arrays.get(cost_col)
+        population_impact = (
+            None
+            if baseline_array is None
+            else _population_impact_metrics(
+                current=df[cost_col].to_numpy(),
+                baseline=baseline_array,
+                demand=None if demand_series is None else demand_series.to_numpy(),
+                meaningful_change_threshold=self._meaningful_change_threshold,
+            )
+        )
+
         return {
             "weighted_average": weighted_average,
             "unweighted_average": unweighted_average,
@@ -684,6 +763,7 @@ class EvaluatedCombination:
             "avg_upper_third_bins": avg_upper_third_bins,
             "inter_tertile_ratio": inter_tertile_ratio,
             "inter_tertile_desc": inter_tertile_desc,
+            "population_impact": population_impact,
         }
 
     def show_result_df(self):
@@ -774,6 +854,33 @@ class EvaluatedCombination:
             underlying per-region `problem_df` always carries
             `min_cost__<label>` / `selected_site__<label>` /
             `within_threshold__<label>` regardless of this setting.
+
+        7. Population impact vs baseline (`demand_improved`,
+           `demand_worsened`, `demand_unchanged`, `regions_improved`,
+           `regions_worsened`, `regions_unchanged`,
+           `mean_reduction_among_improved`, `mean_increase_among_worsened`,
+           `max_reduction`, `max_increase`):
+
+            Only present when a baseline was supplied (`solve(baseline=...)`,
+            or a baseline was passed to `evaluate_single_solution_single_
+            objective()` directly) -- absent otherwise, not `NaN`, so
+            `solution_df`'s schema is unchanged for callers that never ask
+            for a baseline. `demand_*`/`mean_*` are HIGHER-is-better for the
+            `_improved`/`reduction` names (more people better off, or a
+            bigger improvement) and LOWER-is-better for the `_worsened`/
+            `increase` names; `*_unchanged` is directionless. See
+            `SolutionComparator.population_impact_summary()` for the
+            equivalent baseline-vs-candidate comparison without solving via
+            `solve(baseline=...)`. Secondary travel matrices and secondary
+            demand scenarios get only the demand-weighted subset
+            (`demand_improved__<label>`, `demand_worsened__<label>`,
+            `demand_unchanged__<label>`, `mean_reduction_among_improved__
+            <label>`, `mean_increase_among_worsened__<label>`) by default;
+            `full_secondary_metrics=True` also adds the region counts and
+            max change (`regions_improved__<label>`, etc.) for secondary
+            travel matrices. Demand scenarios never get the region-count/max
+            variants (region membership doesn't vary with demand), matching
+            point 6's "only what varies with demand" rule.
         """
 
         # Return weighted average
@@ -808,6 +915,27 @@ class EvaluatedCombination:
             # Underlying per-region df
             "problem_df": self.evaluated_combination_df,
         }
+
+        # Population impact vs baseline: only present when a baseline was
+        # actually supplied (self.population_impact is None otherwise), so
+        # solution_df's schema is unchanged for every caller that doesn't
+        # ask for one. See point 7 in the docstring above.
+        if self.population_impact is not None:
+            pi = self.population_impact
+            metrics["demand_improved"] = pi["demand_improved"]
+            metrics["demand_worsened"] = pi["demand_worsened"]
+            metrics["demand_unchanged"] = pi["demand_unchanged"]
+            metrics["regions_improved"] = pi["regions_improved"]
+            metrics["regions_worsened"] = pi["regions_worsened"]
+            metrics["regions_unchanged"] = pi["regions_unchanged"]
+            metrics["mean_reduction_among_improved"] = pi[
+                "mean_reduction_among_improved"
+            ]
+            metrics["mean_increase_among_worsened"] = pi[
+                "mean_increase_among_worsened"
+            ]
+            metrics["max_reduction"] = pi["max_reduction"]
+            metrics["max_increase"] = pi["max_increase"]
 
         # Secondary travel matrices: core five metrics + float-valued equity
         # aggregations by default (see the interpretation guide above); pass
@@ -867,6 +995,32 @@ class EvaluatedCombination:
                     "inter_tertile_desc"
                 ]
 
+            secondary_pi = secondary.get("population_impact")
+            if secondary_pi is not None:
+                metrics[f"demand_improved__{label}"] = secondary_pi["demand_improved"]
+                metrics[f"demand_worsened__{label}"] = secondary_pi["demand_worsened"]
+                metrics[f"demand_unchanged__{label}"] = secondary_pi[
+                    "demand_unchanged"
+                ]
+                metrics[f"mean_reduction_among_improved__{label}"] = secondary_pi[
+                    "mean_reduction_among_improved"
+                ]
+                metrics[f"mean_increase_among_worsened__{label}"] = secondary_pi[
+                    "mean_increase_among_worsened"
+                ]
+                if full_secondary_metrics:
+                    metrics[f"regions_improved__{label}"] = secondary_pi[
+                        "regions_improved"
+                    ]
+                    metrics[f"regions_worsened__{label}"] = secondary_pi[
+                        "regions_worsened"
+                    ]
+                    metrics[f"regions_unchanged__{label}"] = secondary_pi[
+                        "regions_unchanged"
+                    ]
+                    metrics[f"max_reduction__{label}"] = secondary_pi["max_reduction"]
+                    metrics[f"max_increase__{label}"] = secondary_pi["max_increase"]
+
         # Secondary demand scenarios: only the two metrics that actually
         # vary with demand (weighted_average, proportion_within_coverage_
         # threshold -- see _compute_travel_metrics' coverage_demand
@@ -884,6 +1038,24 @@ class EvaluatedCombination:
                 metrics[f"proportion_within_coverage_threshold__{suffix}"] = dmetrics[
                     "proportion_within_coverage_threshold"
                 ]
+
+                demand_pi = dmetrics.get("population_impact")
+                if demand_pi is not None:
+                    metrics[f"demand_improved__{suffix}"] = demand_pi[
+                        "demand_improved"
+                    ]
+                    metrics[f"demand_worsened__{suffix}"] = demand_pi[
+                        "demand_worsened"
+                    ]
+                    metrics[f"demand_unchanged__{suffix}"] = demand_pi[
+                        "demand_unchanged"
+                    ]
+                    metrics[f"mean_reduction_among_improved__{suffix}"] = demand_pi[
+                        "mean_reduction_among_improved"
+                    ]
+                    metrics[f"mean_increase_among_worsened__{suffix}"] = demand_pi[
+                        "mean_increase_among_worsened"
+                    ]
 
         return metrics
 

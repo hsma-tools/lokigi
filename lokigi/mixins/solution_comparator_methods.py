@@ -1,5 +1,11 @@
+import numpy as np
 import pandas as pd
-from lokigi.utils import _add_rank_column, _is_maximise_metric
+from lokigi.utils import (
+    _add_rank_column,
+    _is_maximise_metric,
+    _select_solution,
+    _population_impact_metrics,
+)
 
 
 class SolutionComparatorMethodsMixin:
@@ -118,6 +124,152 @@ class SolutionComparatorMethodsMixin:
         )
         comparison["difference"] = comparison[label_a] - comparison[label_b]
         return comparison
+
+    def population_impact_summary(
+        self,
+        matrix=None,
+        demand=None,
+        meaningful_change_threshold=0.0,
+        config_a=None,
+        config_b=None,
+        return_per_region=False,
+    ):
+        """
+        How many people's journey actually changed between `set_a` and
+        `set_b`, and by how much -- a per-demand-location diff, rather
+        than only the region-wide shift in `weighted_average`. A
+        `weighted_average` shift dilutes a real, large, local effect
+        across everyone else who is unaffected by it; this answers "how
+        many people are better/worse off, and by how much" directly.
+
+        **`self.set_a` is treated as the reference/baseline and `self.set_b`
+        as the candidate** -- e.g. `SolutionComparator(baseline, candidate)`,
+        where `baseline` is typically built with
+        `SiteProblem.evaluate_baseline()`. This is unlike
+        `get_metric_summary()`/`compare_site_allocation()`'s `difference`
+        column, which is `set_a - set_b` with no particular baseline/
+        candidate relationship implied -- but it does not conflict with it:
+        every value returned here is a positive magnitude, with direction
+        carried by the bucket name (`_improved`/`_worsened`) rather than by
+        sign, so there is no ambiguous sign convention to reconcile.
+
+        Parameters
+        ----------
+        matrix : str, optional
+            Label of a secondary travel matrix registered via
+            `add_secondary_travel_matrix()`. Diffs that matrix's own
+            `min_cost__<label>` column instead of the primary matrix's.
+        demand : str, optional
+            Label of a secondary demand scenario registered via
+            `add_secondary_demand()`. Weights the diff by that scenario's
+            demand instead of the primary demand data.
+        meaningful_change_threshold : float, default 0.0
+            A region's cost must move by strictly more than
+            `max(meaningful_change_threshold, 1e-9)` to count as improved
+            or worsened; anything smaller (including floating-point noise
+            at the default 0.0) is `unchanged`.
+        config_a, config_b : dict, optional
+            Keyword arguments forwarded to `_select_solution()` for
+            `set_a`/`set_b` respectively (e.g. ``{"solution_rank": 2}``),
+            selecting which solution from each set to compare. Default to
+            ``{"solution_rank": 1}``, matching `compare_site_allocation()`.
+        return_per_region : bool, default False
+            If True, also return a per-region DataFrame (`baseline_cost`,
+            `current_cost`, `demand` if available, `delta`, `bucket`) for
+            drill-down, indexed by demand-location ID.
+
+        Returns
+        -------
+        dict, or (dict, pandas.DataFrame) if `return_per_region=True`
+            `regions_improved`/`regions_worsened`/`regions_unchanged`
+            (counts); `demand_improved`/`demand_worsened`/
+            `demand_unchanged` (`NaN` if no demand data is registered);
+            `proportion_demand_improved`/`proportion_demand_worsened`;
+            `total_demand`; `mean_reduction_among_improved`/
+            `mean_increase_among_worsened` (demand-weighted, positive
+            magnitudes); `max_reduction`/`max_increase` (positive). See
+            `lokigi.utils._population_impact_metrics` for the full
+            definition -- this method is a thin wrapper around it that
+            handles solution selection and demand-location alignment.
+
+        Raises
+        ------
+        ValueError
+            If `demand` names an unregistered secondary demand scenario, or
+            if `set_a` and `set_b`'s selected solutions were evaluated
+            against different demand locations (their `problem_df`s must
+            share the exact same demand-location ID set).
+        """
+        config_a = config_a or {"solution_rank": 1}
+        config_b = config_b or {"solution_rank": 1}
+
+        solution_a = _select_solution(self.set_a.solution_df, **config_a)
+        solution_b = _select_solution(self.set_b.solution_df, **config_b)
+
+        cost_col, _, _, _, _ = self.set_b._resolve_travel_columns(matrix)
+
+        id_col = self.set_b.site_problem._demand_data_id_col
+        problem_df_a = solution_a["problem_df"].iloc[0].set_index(id_col)
+        problem_df_b = solution_b["problem_df"].iloc[0].set_index(id_col)
+
+        ids_a = set(problem_df_a.index)
+        ids_b = set(problem_df_b.index)
+        if ids_a != ids_b:
+            only_a = sorted(map(str, ids_a - ids_b))
+            only_b = sorted(map(str, ids_b - ids_a))
+            raise ValueError(
+                "population_impact_summary(): set_a and set_b's selected "
+                "solutions cover different demand locations -- "
+                f"{len(only_a)} only in set_a (e.g. {only_a[:5]}), "
+                f"{len(only_b)} only in set_b (e.g. {only_b[:5]}). Both "
+                "solutions must be evaluated against the exact same "
+                "demand locations."
+            )
+
+        current_cost = problem_df_b[cost_col]
+        baseline_cost = problem_df_a[cost_col].reindex(current_cost.index)
+
+        if demand is None:
+            demand_col = getattr(
+                self.set_b.site_problem, "_demand_data_demand_col", None
+            )
+        else:
+            registered_demand_labels = getattr(
+                self.set_b.site_problem, "secondary_demand_matrices", {}
+            )
+            if demand not in registered_demand_labels:
+                raise ValueError(
+                    f"Unknown secondary demand scenario '{demand}'. "
+                    f"Registered labels: {sorted(registered_demand_labels)}."
+                )
+            demand_col = f"demand__{demand}"
+
+        has_demand = demand_col is not None and demand_col in problem_df_b.columns
+        demand_series = problem_df_b[demand_col].astype(float) if has_demand else None
+
+        impact = _population_impact_metrics(
+            current=current_cost.to_numpy(),
+            baseline=baseline_cost.to_numpy(),
+            demand=None if demand_series is None else demand_series.to_numpy(),
+            meaningful_change_threshold=meaningful_change_threshold,
+        )
+
+        if not return_per_region:
+            return impact
+
+        per_region = pd.DataFrame(
+            {"baseline_cost": baseline_cost, "current_cost": current_cost}
+        )
+        if has_demand:
+            per_region["demand"] = demand_series
+        per_region["delta"] = per_region["current_cost"] - per_region["baseline_cost"]
+        tol = max(meaningful_change_threshold, 1e-9)
+        per_region["bucket"] = np.select(
+            [per_region["delta"] < -tol, per_region["delta"] > tol],
+            ["improved", "worsened"],
+            default="unchanged",
+        )
+        return impact, per_region
 
     def site_overlap(self, top_n=1):
         """
