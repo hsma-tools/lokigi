@@ -71,7 +71,7 @@ def test_devon_golden_regression_v1(devon_problem, devon_baseline, devon_existin
         threshold_for_coverage=30,
     )
     comparator = SolutionComparator(devon_baseline, candidate, labels=("Current", "Proposed"))
-    result = comparator.population_impact_summary()
+    result = comparator.population_impact_summary(as_dict=True)
 
     assert devon_baseline.solution_df.iloc[0]["weighted_average"] == pytest.approx(23.39, abs=0.01)
     assert candidate.solution_df.iloc[0]["weighted_average"] == pytest.approx(21.93, abs=0.01)
@@ -114,7 +114,7 @@ def test_v1_and_v2_agree_exactly(devon_problem, devon_baseline, devon_existing_s
     candidate = devon_problem.evaluate_baseline(
         site_names=candidate_sites, threshold_for_coverage=30
     )
-    v1 = SolutionComparator(devon_baseline, candidate).population_impact_summary()
+    v1 = SolutionComparator(devon_baseline, candidate).population_impact_summary(as_dict=True)
 
     solved = devon_problem.solve(
         p=5, threshold_for_coverage=30, baseline=devon_baseline, show_progress=False
@@ -240,7 +240,7 @@ def test_non_superset_comparison_has_both_buckets_populated():
     baseline = problem.evaluate_baseline(site_names=["A", "B"])
     candidate = problem.evaluate_baseline(site_names=["A", "C"])
 
-    result = SolutionComparator(baseline, candidate).population_impact_summary()
+    result = SolutionComparator(baseline, candidate).population_impact_summary(as_dict=True)
 
     assert result["regions_improved"] == 1
     assert result["regions_worsened"] == 1
@@ -262,8 +262,8 @@ def test_reversing_set_a_and_set_b_swaps_the_buckets_exactly():
     baseline = problem.evaluate_baseline(site_names=["A", "B"])
     candidate = problem.evaluate_baseline(site_names=["A", "C"])
 
-    forward = SolutionComparator(baseline, candidate).population_impact_summary()
-    reversed_ = SolutionComparator(candidate, baseline).population_impact_summary()
+    forward = SolutionComparator(baseline, candidate).population_impact_summary(as_dict=True)
+    reversed_ = SolutionComparator(candidate, baseline).population_impact_summary(as_dict=True)
 
     assert reversed_["demand_improved"] == forward["demand_worsened"]
     assert reversed_["demand_worsened"] == forward["demand_improved"]
@@ -279,7 +279,7 @@ def test_return_per_region_matches_summary_buckets():
     candidate = problem.evaluate_baseline(site_names=["A", "C"])
 
     summary, per_region = SolutionComparator(baseline, candidate).population_impact_summary(
-        return_per_region=True
+        return_per_region=True, as_dict=True
     )
 
     assert per_region.loc["D1", "bucket"] == "unchanged"
@@ -289,6 +289,68 @@ def test_return_per_region_matches_summary_buckets():
     assert per_region.loc["D3", "delta"] == pytest.approx(-15)
     assert (per_region["bucket"] == "improved").sum() == summary["regions_improved"]
     assert (per_region["bucket"] == "worsened").sum() == summary["regions_worsened"]
+
+
+# --- population_impact_summary DataFrame default / as_dict / native types ---
+
+
+def test_population_impact_summary_default_returns_dataframe():
+    problem = _swap_problem()
+    baseline = problem.evaluate_baseline(site_names=["A", "B"])
+    candidate = problem.evaluate_baseline(site_names=["A", "C"])
+
+    result = SolutionComparator(baseline, candidate).population_impact_summary()
+
+    assert isinstance(result, pd.DataFrame)
+    assert list(result.columns) == ["value"]
+    assert result.index.name == "metric"
+    assert result.loc["regions_improved", "value"] == 1
+    assert result.loc["demand_improved", "value"] == pytest.approx(200)
+    assert result.loc["mean_reduction_among_improved", "value"] == pytest.approx(15)
+
+
+def test_population_impact_summary_dataframe_keeps_region_counts_as_ints():
+    """Region counts must not be silently upcast to float64 (e.g. "61.0")
+    just because other metrics in the same column are floats -- the
+    object-dtype column keeps each metric's own native type."""
+    problem = _swap_problem()
+    baseline = problem.evaluate_baseline(site_names=["A", "B"])
+    candidate = problem.evaluate_baseline(site_names=["A", "C"])
+
+    result = SolutionComparator(baseline, candidate).population_impact_summary()
+
+    assert isinstance(result.loc["regions_improved", "value"], int)
+    assert isinstance(result.loc["demand_improved", "value"], float)
+
+
+def test_population_impact_summary_as_dict_true_returns_plain_dict_with_native_types():
+    """Regression guard for numpy>=2.0's np.float64(...) repr wrapper --
+    as_dict=True must hand back native Python floats/ints, not numpy
+    scalar types, so a bare dict repr in a notebook cell stays readable."""
+    problem = _swap_problem()
+    baseline = problem.evaluate_baseline(site_names=["A", "B"])
+    candidate = problem.evaluate_baseline(site_names=["A", "C"])
+
+    result = SolutionComparator(baseline, candidate).population_impact_summary(as_dict=True)
+
+    assert isinstance(result, dict)
+    assert type(result["regions_improved"]) is int
+    assert type(result["demand_improved"]) is float
+    assert "np.float64" not in repr(result)
+
+
+def test_population_impact_summary_return_per_region_with_dataframe_default():
+    problem = _swap_problem()
+    baseline = problem.evaluate_baseline(site_names=["A", "B"])
+    candidate = problem.evaluate_baseline(site_names=["A", "C"])
+
+    summary, per_region = SolutionComparator(baseline, candidate).population_impact_summary(
+        return_per_region=True
+    )
+
+    assert isinstance(summary, pd.DataFrame)
+    assert isinstance(per_region, pd.DataFrame)
+    assert summary.loc["regions_improved", "value"] == 1
 
 
 # --- population_impact_phrase ---
@@ -349,14 +411,14 @@ def test_meaningful_change_threshold_at_exact_boundary_is_unchanged():
     # D3's delta is exactly -15. A threshold of 15 must NOT count it as
     # improved (strictly-greater-than is required).
     at_boundary = SolutionComparator(baseline, candidate).population_impact_summary(
-        meaningful_change_threshold=15
+        meaningful_change_threshold=15, as_dict=True
     )
     assert at_boundary["regions_improved"] == 0
     assert at_boundary["regions_unchanged"] == 2  # D1 and D3
     assert at_boundary["regions_worsened"] == 1  # D2 (delta +40) still worsened
 
     just_under = SolutionComparator(baseline, candidate).population_impact_summary(
-        meaningful_change_threshold=14.9
+        meaningful_change_threshold=14.9, as_dict=True
     )
     assert just_under["regions_improved"] == 1
 
@@ -367,6 +429,28 @@ def test_default_threshold_absorbs_floating_point_noise():
     result = _population_impact_metrics(current, baseline, demand=None)
     assert result["regions_improved"] == 0
     assert result["regions_unchanged"] == 1
+
+
+def test_population_impact_metrics_returns_native_python_types_not_numpy_scalars():
+    current = np.array([1.0, 5.0])
+    baseline = np.array([5.0, 5.0])
+    demand = np.array([10.0, 20.0])
+    result = _population_impact_metrics(current, baseline, demand=demand)
+
+    float_keys = [
+        "demand_improved",
+        "demand_worsened",
+        "demand_unchanged",
+        "proportion_demand_improved",
+        "proportion_demand_worsened",
+        "total_demand",
+        "mean_reduction_among_improved",
+        "mean_increase_among_worsened",
+        "max_reduction",
+        "max_increase",
+    ]
+    for key in float_keys:
+        assert type(result[key]) is float, key
 
 
 # --- Edge cases on the shared helper ---
@@ -440,7 +524,7 @@ def test_population_impact_summary_with_secondary_matrix_and_demand(
     candidate = problem.evaluate_baseline(site_names=["Site_A", "Site_B"])
     comparator = SolutionComparator(baseline, candidate)
 
-    default = comparator.population_impact_summary()
+    default = comparator.population_impact_summary(as_dict=True)
     assert default["regions_improved"] == 2
     assert default["regions_unchanged"] == 1
     assert default["regions_worsened"] == 0
@@ -448,13 +532,13 @@ def test_population_impact_summary_with_secondary_matrix_and_demand(
     assert default["mean_reduction_among_improved"] == pytest.approx(15)
     assert default["max_reduction"] == pytest.approx(15)
 
-    via_matrix = comparator.population_impact_summary(matrix="public_transport")
+    via_matrix = comparator.population_impact_summary(matrix="public_transport", as_dict=True)
     assert via_matrix["regions_improved"] == 3
     assert via_matrix["regions_worsened"] == 0
     assert via_matrix["mean_reduction_among_improved"] == pytest.approx(40)
     assert via_matrix["max_reduction"] == pytest.approx(40)
 
-    via_demand = comparator.population_impact_summary(demand="future_demand")
+    via_demand = comparator.population_impact_summary(demand="future_demand", as_dict=True)
     # Region membership doesn't depend on demand weighting -- same regions
     # improved as the default primary-matrix comparison above.
     assert via_demand["regions_improved"] == default["regions_improved"]

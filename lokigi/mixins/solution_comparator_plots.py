@@ -159,6 +159,7 @@ class SolutionComparatorPlotsMixin:
             meaningful_change_threshold=meaningful_change_threshold,
             config_a=config_a,
             config_b=config_b,
+            as_dict=True,
         )
 
         if by == "demand" and pd.isna(impact["total_demand"]):

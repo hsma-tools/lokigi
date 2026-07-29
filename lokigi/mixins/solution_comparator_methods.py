@@ -133,6 +133,7 @@ class SolutionComparatorMethodsMixin:
         config_a=None,
         config_b=None,
         return_per_region=False,
+        as_dict=False,
     ):
         """
         How many people's journey actually changed between `set_a` and
@@ -177,10 +178,20 @@ class SolutionComparatorMethodsMixin:
             If True, also return a per-region DataFrame (`baseline_cost`,
             `current_cost`, `demand` if available, `delta`, `bucket`) for
             drill-down, indexed by demand-location ID.
+        as_dict : bool, default False
+            If False (the default), the summary is returned as a single-
+            column `pandas.DataFrame` (index = metric name, column =
+            `"value"`) -- pandas' own display formatting keeps this
+            readable in a notebook, unlike a bare dict (numpy >=2.0 reprs
+            its float scalars as e.g. `np.float64(46907.0)`, which shows
+            through verbatim on a plain dict). Pass `as_dict=True` for the
+            original `dict`, e.g. to pull out a single value with
+            `impact["demand_improved"]` for further computation.
 
         Returns
         -------
-        dict, or (dict, pandas.DataFrame) if `return_per_region=True`
+        pandas.DataFrame (or dict if `as_dict=True`), or a 2-tuple of
+        (summary, per-region DataFrame) if `return_per_region=True`
             `regions_improved`/`regions_worsened`/`regions_unchanged`
             (counts); `demand_improved`/`demand_worsened`/
             `demand_unchanged` (`NaN` if no demand data is registered);
@@ -254,8 +265,21 @@ class SolutionComparatorMethodsMixin:
             meaningful_change_threshold=meaningful_change_threshold,
         )
 
+        # dtype="object" (rather than letting pandas infer a single float64
+        # column) keeps each metric's own native type on display -- the
+        # region-count metrics stay integers (e.g. "61") instead of being
+        # upcast to float64 alongside the float-valued metrics ("61.0"),
+        # matching how the same values already render inside a dict.
+        summary = (
+            impact
+            if as_dict
+            else pd.DataFrame({"value": pd.Series(impact, dtype="object")}).rename_axis(
+                "metric"
+            )
+        )
+
         if not return_per_region:
-            return impact
+            return summary
 
         per_region = pd.DataFrame(
             {"baseline_cost": baseline_cost, "current_cost": current_cost}
@@ -269,7 +293,7 @@ class SolutionComparatorMethodsMixin:
             ["improved", "worsened"],
             default="unchanged",
         )
-        return impact, per_region
+        return summary, per_region
 
     def population_impact_phrase(
         self,
@@ -311,6 +335,7 @@ class SolutionComparatorMethodsMixin:
             meaningful_change_threshold=meaningful_change_threshold,
             config_a=config_a,
             config_b=config_b,
+            as_dict=True,
         )
 
         total_regions = (

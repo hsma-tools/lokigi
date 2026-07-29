@@ -608,20 +608,27 @@ def _population_impact_metrics(
             else np.nan
         )
 
+    # Cast every numeric value to a native Python float (regions_* are
+    # already native ints, above). Numpy >=2.0 reprs its scalar types as
+    # e.g. np.float64(46907.0) rather than 46907.0 -- harmless once these
+    # values sit inside a DataFrame column (which formats through its own
+    # display logic regardless), but a returned-bare dict repr shows the
+    # wrapper verbatim, which is exactly the case
+    # `population_impact_summary()` hits when `as_dict=True`.
     return {
         "regions_improved": regions_improved,
         "regions_worsened": regions_worsened,
         "regions_unchanged": regions_unchanged,
-        "demand_improved": demand_improved,
-        "demand_worsened": demand_worsened,
-        "demand_unchanged": demand_unchanged,
-        "proportion_demand_improved": proportion_demand_improved,
-        "proportion_demand_worsened": proportion_demand_worsened,
-        "total_demand": total_demand,
-        "mean_reduction_among_improved": mean_reduction_among_improved,
-        "mean_increase_among_worsened": mean_increase_among_worsened,
-        "max_reduction": max_reduction,
-        "max_increase": max_increase,
+        "demand_improved": float(demand_improved),
+        "demand_worsened": float(demand_worsened),
+        "demand_unchanged": float(demand_unchanged),
+        "proportion_demand_improved": float(proportion_demand_improved),
+        "proportion_demand_worsened": float(proportion_demand_worsened),
+        "total_demand": float(total_demand),
+        "mean_reduction_among_improved": float(mean_reduction_among_improved),
+        "mean_increase_among_worsened": float(mean_increase_among_worsened),
+        "max_reduction": float(max_reduction),
+        "max_increase": float(max_increase),
     }
 
 
