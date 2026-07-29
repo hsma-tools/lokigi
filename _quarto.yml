@@ -114,6 +114,7 @@ quartodoc:
             - get_metric_summary
             - compare_site_allocation
             - population_impact_summary
+            - population_impact_phrase
             - site_overlap
             - plot_comparison
             - plot_population_impact_summary

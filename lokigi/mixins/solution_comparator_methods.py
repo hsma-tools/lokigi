@@ -271,6 +271,80 @@ class SolutionComparatorMethodsMixin:
         )
         return impact, per_region
 
+    def population_impact_phrase(
+        self,
+        matrix=None,
+        demand=None,
+        meaningful_change_threshold=0.0,
+        config_a=None,
+        config_b=None,
+    ):
+        """
+        Stakeholder-facing sentence summarising `population_impact_summary()`,
+        e.g.:
+
+            "46,907 people (9.0% of the cohort) get a shorter journey,
+            averaging 16.1 minutes off. 61 of 729 regions improved; 0
+            worsened; 668 unchanged."
+
+        A "get a longer journey" clause is included only if people are
+        actually worse off (`demand_worsened > 0`) -- for the common
+        superset comparison (adding a site while keeping every existing
+        one), that clause would otherwise always read "0 people ...,
+        averaging nan minutes more", which is not a sentence worth
+        surfacing. The people-based clauses are omitted entirely if no
+        demand data is registered (`total_demand` is `NaN`); the
+        region-count clause always works.
+
+        Parameters
+        ----------
+        matrix, demand, meaningful_change_threshold, config_a, config_b
+            Passed straight through to `population_impact_summary()`.
+
+        Returns
+        -------
+        str
+        """
+        impact = self.population_impact_summary(
+            matrix=matrix,
+            demand=demand,
+            meaningful_change_threshold=meaningful_change_threshold,
+            config_a=config_a,
+            config_b=config_b,
+        )
+
+        total_regions = (
+            impact["regions_improved"]
+            + impact["regions_worsened"]
+            + impact["regions_unchanged"]
+        )
+
+        sentences = []
+
+        has_demand = not pd.isna(impact["total_demand"])
+        if has_demand and impact["demand_improved"] > 0:
+            sentences.append(
+                f"{impact['demand_improved']:,.0f} people "
+                f"({impact['proportion_demand_improved']:.1%} of the cohort) get "
+                f"a shorter journey, averaging "
+                f"{impact['mean_reduction_among_improved']:.1f} minutes off."
+            )
+        if has_demand and impact["demand_worsened"] > 0:
+            sentences.append(
+                f"{impact['demand_worsened']:,.0f} people "
+                f"({impact['proportion_demand_worsened']:.1%} of the cohort) get "
+                f"a longer journey, averaging "
+                f"{impact['mean_increase_among_worsened']:.1f} minutes more."
+            )
+
+        sentences.append(
+            f"{impact['regions_improved']} of {total_regions} regions improved; "
+            f"{impact['regions_worsened']} worsened; "
+            f"{impact['regions_unchanged']} unchanged."
+        )
+
+        return " ".join(sentences)
+
     def site_overlap(self, top_n=1):
         """
         Analyzes how many sites are common between the top N solutions

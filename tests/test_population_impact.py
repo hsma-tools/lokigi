@@ -291,6 +291,53 @@ def test_return_per_region_matches_summary_buckets():
     assert (per_region["bucket"] == "worsened").sum() == summary["regions_worsened"]
 
 
+# --- population_impact_phrase ---
+
+
+def test_population_impact_phrase_superset_omits_worsened_clause():
+    """The common superset case (add a site, keep every existing one) has
+    demand_worsened == 0 -- the phrase must not include a "0 people ...,
+    averaging nan minutes more" clause for it."""
+    problem = _swap_problem()
+    baseline = problem.evaluate_baseline(site_names=["A"])
+    candidate = problem.evaluate_baseline(site_names=["A", "B", "C"])
+
+    phrase = SolutionComparator(baseline, candidate).population_impact_phrase()
+
+    assert "shorter journey" in phrase
+    assert "longer journey" not in phrase
+    assert "nan" not in phrase
+    assert "regions improved" in phrase
+
+
+def test_population_impact_phrase_includes_both_clauses_when_both_nonzero():
+    problem = _swap_problem()
+    baseline = problem.evaluate_baseline(site_names=["A", "B"])
+    candidate = problem.evaluate_baseline(site_names=["A", "C"])
+
+    phrase = SolutionComparator(baseline, candidate).population_impact_phrase()
+
+    assert "200 people" in phrase
+    assert "shorter journey" in phrase
+    assert "50 people" in phrase
+    assert "longer journey" in phrase
+    assert "1 of 3 regions improved; 1 worsened; 1 unchanged." in phrase
+
+
+def test_population_impact_phrase_devon_matches_headline_numbers(
+    devon_problem, devon_baseline, devon_existing_sites
+):
+    candidate = devon_problem.evaluate_baseline(
+        site_names=devon_existing_sites + ["Barnstaple - Archwood Retail Park"],
+        threshold_for_coverage=30,
+    )
+    phrase = SolutionComparator(devon_baseline, candidate).population_impact_phrase()
+
+    assert "46,907 people" in phrase
+    assert "16.1 minutes off" in phrase
+    assert "61 of 729 regions improved; 0 worsened; 668 unchanged." in phrase
+
+
 # --- meaningful_change_threshold ---
 
 
