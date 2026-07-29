@@ -509,3 +509,40 @@ def test_plot_solution_sets_comparison_handles_every_rank(solutions):
         [{"solution_rank": 2}, {"solution_rank": 3}],
     )
     assert figure is not None
+
+
+# --- SolutionComparator.plot_population_impact_summary ---------------------
+
+
+@pytest.fixture
+def population_impact_comparator(plottable_problem):
+    from lokigi.site_solutions import SolutionComparator
+
+    baseline = plottable_problem.evaluate_baseline(site_names=["Site_A"])
+    candidate = plottable_problem.evaluate_baseline(site_names=["Site_A", "Site_B"])
+    return SolutionComparator(baseline, candidate, labels=("Current", "Proposed"))
+
+
+def test_plot_population_impact_summary_runs_and_renders(population_impact_comparator):
+    fig, axes = population_impact_comparator.plot_population_impact_summary()
+    assert fig is not None
+    assert len(axes) == 2
+    fig.canvas.draw()
+
+
+def test_plot_population_impact_summary_by_regions(population_impact_comparator):
+    fig, axes = population_impact_comparator.plot_population_impact_summary(by="regions")
+    assert fig is not None
+    fig.canvas.draw()
+
+
+def test_plot_population_impact_summary_invalid_by_raises(population_impact_comparator):
+    with pytest.raises(ValueError, match="by must be"):
+        population_impact_comparator.plot_population_impact_summary(by="nonsense")
+
+
+def test_plot_population_impact_summary_reuses_given_axes(population_impact_comparator):
+    fig, axes = plt.subplots(ncols=2)
+    out_fig, out_axes = population_impact_comparator.plot_population_impact_summary(ax=axes)
+    assert out_fig is fig
+    assert out_axes is axes
