@@ -576,5 +576,26 @@ def test_plot_population_impact_histogram_ylabel_reflects_demand_availability(
     candidate = plottable_problem.evaluate_baseline(site_names=["Site_A", "Site_B"])
     comparator = SolutionComparator(baseline, candidate)
 
-    fig, axis = comparator.plot_population_impact_histogram()
+    fig, axis = comparator.plot_population_impact_histogram(kind="hist")
     assert axis.get_ylabel() == "People"
+
+
+@pytest.mark.parametrize("kind", ["kde", "hist"])
+def test_plot_population_impact_histogram_kind_runs_and_renders(
+    population_impact_comparator, kind
+):
+    fig, axis = population_impact_comparator.plot_population_impact_histogram(kind=kind)
+    assert fig is not None
+    fig.canvas.draw()
+
+
+def test_plot_population_impact_histogram_invalid_kind_raises(population_impact_comparator):
+    with pytest.raises(ValueError, match="kind must be"):
+        population_impact_comparator.plot_population_impact_histogram(kind="bogus")
+
+
+def test_plot_population_impact_histogram_kde_default_ylabel_mentions_density(
+    population_impact_comparator,
+):
+    fig, axis = population_impact_comparator.plot_population_impact_histogram()
+    assert "Density" in axis.get_ylabel()

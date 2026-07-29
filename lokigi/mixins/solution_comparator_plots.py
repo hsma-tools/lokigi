@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from matplotlib.lines import Line2D
 
 from lokigi.plot_utils import plot_solution_sets_comparison
@@ -217,7 +218,9 @@ class SolutionComparatorPlotsMixin:
         demand=None,
         config_a=None,
         config_b=None,
+        kind="kde",
         bins=30,
+        bw_adjust=1,
         colors=("#9fb8ad", "#1b7a5e"),
         alpha=0.55,
         figsize=(9, 5),
@@ -225,7 +228,7 @@ class SolutionComparatorPlotsMixin:
         ax=None,
     ):
         """
-        Overlaid before/after histogram of per-region travel cost --
+        Overlaid before/after distribution of per-region travel cost --
         `set_a` (baseline) against `set_b` (candidate) -- with reference
         lines and a legend annotating each side's weighted mean and
         maximum travel cost.
@@ -238,11 +241,11 @@ class SolutionComparatorPlotsMixin:
         subgroup and everyone else, that a handful of summary numbers can
         collapse.
 
-        Bars are weighted by demand where available, so bar heights
-        represent people rather than regions -- consistent with
+        Weighted by demand where available, so the plotted mass
+        represents people rather than regions -- consistent with
         `population_impact_summary()`'s own demand-weighted framing.
-        Falls back to an unweighted (one region = one count) histogram
-        when no demand data is registered.
+        Falls back to unweighted (one region = one count) when no demand
+        data is registered.
 
         Parameters
         ----------
@@ -252,20 +255,35 @@ class SolutionComparatorPlotsMixin:
             travel costs instead of the primary matrix's.
         demand : str, optional
             Label of a secondary demand scenario registered via
-            `add_secondary_demand()`. Weights the histogram by that
+            `add_secondary_demand()`. Weights the distribution by that
             scenario's demand instead of the primary demand data.
         config_a, config_b : dict, optional
             Passed straight through to `population_impact_summary()`.
+        kind : {"kde", "hist"}, default "kde"
+            "kde" draws a smoothed kernel density estimate for each side
+            (via `seaborn.kdeplot`) -- usually the easier way to compare
+            the *shape* of two overlaid distributions, since it isn't
+            broken up into discrete bars that can visually clash between
+            the two sides. "hist" draws a traditional binned histogram
+            instead, which is more literal (bar height is an actual
+            people/region count rather than a smoothed density) at the
+            cost of being noisier and more prone to visual clutter where
+            the two distributions overlap.
         bins : int, default 30
-            Number of histogram bins. The same bin edges (spanning both
-            distributions) are used for both sides, so bar heights are
-            directly comparable.
+            Number of histogram bins. Only used when `kind="hist"`; the
+            same bin edges (spanning both distributions) are used for
+            both sides, so bar heights are directly comparable.
+        bw_adjust : float, default 1
+            Kernel bandwidth multiplier, forwarded to `seaborn.kdeplot`.
+            Only used when `kind="kde"` -- above 1 smooths the curve
+            further, below 1 follows the data more closely (and more
+            noisily). See `seaborn.kdeplot`'s own `bw_adjust` for details.
         colors : (str, str), default ("#9fb8ad", "#1b7a5e")
-            `(set_a colour, set_b colour)`, used for both the histogram
-            bars and their matching mean/max reference lines.
+            `(set_a colour, set_b colour)`, used for both the
+            distributions and their matching mean/max reference lines.
         alpha : float, default 0.55
-            Opacity of the histogram bars, so the overlap between the two
-            distributions stays visible.
+            Opacity of the filled distributions, so the overlap between
+            the two sides stays visible.
         figsize : tuple, default (9, 5)
             Figure size, ignored if `ax` is given.
         title : str, default "default"
@@ -281,11 +299,14 @@ class SolutionComparatorPlotsMixin:
         Raises
         ------
         ValueError
-            If `demand` names an unregistered secondary demand scenario,
-            or if `set_a` and `set_b`'s selected solutions were evaluated
-            against different demand locations (see
-            `population_impact_summary()`).
+            If `kind` is not "kde" or "hist"; if `demand` names an
+            unregistered secondary demand scenario; or if `set_a` and
+            `set_b`'s selected solutions were evaluated against different
+            demand locations (see `population_impact_summary()`).
         """
+        if kind not in ("kde", "hist"):
+            raise ValueError(f"kind must be 'kde' or 'hist', got {kind!r}.")
+
         config_a = config_a or {"solution_rank": 1}
         config_b = config_b or {"solution_rank": 1}
 
@@ -318,29 +339,44 @@ class SolutionComparatorPlotsMixin:
             axis = ax
             fig = axis.get_figure()
 
-        bin_edges = np.histogram_bin_edges(
-            np.concatenate(
-                [per_region["baseline_cost"].to_numpy(), per_region["current_cost"].to_numpy()]
-            ),
-            bins=bins,
-        )
-
-        axis.hist(
-            per_region["baseline_cost"],
-            bins=bin_edges,
-            weights=weights,
-            color=color_a,
-            alpha=alpha,
-            label=self.labels[0],
-        )
-        axis.hist(
-            per_region["current_cost"],
-            bins=bin_edges,
-            weights=weights,
-            color=color_b,
-            alpha=alpha,
-            label=self.labels[1],
-        )
+        if kind == "hist":
+            bin_edges = np.histogram_bin_edges(
+                np.concatenate(
+                    [
+                        per_region["baseline_cost"].to_numpy(),
+                        per_region["current_cost"].to_numpy(),
+                    ]
+                ),
+                bins=bins,
+            )
+            axis.hist(
+                per_region["baseline_cost"], bins=bin_edges, weights=weights, color=color_a,
+                alpha=alpha,
+            )
+            axis.hist(
+                per_region["current_cost"], bins=bin_edges, weights=weights, color=color_b,
+                alpha=alpha,
+            )
+            y_label = f"{'People' if has_demand else 'Regions'}"
+        else:
+            # clip=(0, None): travel cost can't be negative, so don't let
+            # the kernel's tails spill into a nonsensical negative range
+            # near zero.
+            for values, color in (
+                (per_region["baseline_cost"], color_a),
+                (per_region["current_cost"], color_b),
+            ):
+                sns.kdeplot(
+                    x=values,
+                    weights=weights,
+                    color=color,
+                    fill=True,
+                    alpha=alpha,
+                    bw_adjust=bw_adjust,
+                    clip=(0, None),
+                    ax=axis,
+                )
+            y_label = f"Density ({'people' if has_demand else 'region'}-weighted)"
 
         axis.axvline(weighted_average_a, color=color_a, linestyle="--", linewidth=2)
         axis.axvline(weighted_average_b, color=color_b, linestyle="--", linewidth=2)
@@ -374,7 +410,7 @@ class SolutionComparatorPlotsMixin:
         axis.legend(handles=legend_handles, loc="upper right", fontsize=9)
 
         axis.set_xlabel(f"Travel cost{unit_parenthetical}")
-        axis.set_ylabel("People" if has_demand else "Regions")
+        axis.set_ylabel(y_label)
 
         if title == "default":
             title = "Travel cost distribution: before vs after"
