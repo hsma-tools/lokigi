@@ -118,6 +118,7 @@ quartodoc:
             - site_overlap
             - plot_comparison
             - plot_population_impact_summary
+            - plot_population_impact_histogram
     - title: Travel Matrix Helpers
       desc: "Classes and methods which can help with generation of travel matrices"
       contents:

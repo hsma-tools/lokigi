@@ -546,3 +546,35 @@ def test_plot_population_impact_summary_reuses_given_axes(population_impact_comp
     out_fig, out_axes = population_impact_comparator.plot_population_impact_summary(ax=axes)
     assert out_fig is fig
     assert out_axes is axes
+
+
+def test_plot_population_impact_histogram_runs_and_renders(population_impact_comparator):
+    fig, axis = population_impact_comparator.plot_population_impact_histogram()
+    assert fig is not None
+    fig.canvas.draw()
+
+    legend_labels = [t.get_text() for t in axis.get_legend().get_texts()]
+    assert "Current" in legend_labels
+    assert "Proposed" in legend_labels
+    assert any(label.startswith("Mean --") for label in legend_labels)
+    assert any(label.startswith("Max --") for label in legend_labels)
+
+
+def test_plot_population_impact_histogram_reuses_given_axis(population_impact_comparator):
+    fig, axis = plt.subplots()
+    out_fig, out_axis = population_impact_comparator.plot_population_impact_histogram(ax=axis)
+    assert out_fig is fig
+    assert out_axis is axis
+
+
+def test_plot_population_impact_histogram_ylabel_reflects_demand_availability(
+    plottable_problem,
+):
+    from lokigi.site_solutions import SolutionComparator
+
+    baseline = plottable_problem.evaluate_baseline(site_names=["Site_A"])
+    candidate = plottable_problem.evaluate_baseline(site_names=["Site_A", "Site_B"])
+    comparator = SolutionComparator(baseline, candidate)
+
+    fig, axis = comparator.plot_population_impact_histogram()
+    assert axis.get_ylabel() == "People"
