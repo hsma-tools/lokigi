@@ -116,6 +116,8 @@ def test_baseline_impact_columns_absent_without_baseline(loaded_problem):
 
     assert "People with a longer journey" not in df.columns
     assert "People with a shorter journey" not in df.columns
+    assert "% of cohort with a longer journey" not in df.columns
+    assert "% of cohort with a shorter journey" not in df.columns
 
 
 def test_baseline_impact_columns_present_with_baseline(loaded_problem):
@@ -131,6 +133,12 @@ def test_baseline_impact_columns_present_with_baseline(loaded_problem):
     )
     assert df["People with a shorter journey"].iloc[0] == round(
         raw["demand_improved"]
+    )
+    assert df["% of cohort with a longer journey"].iloc[0] == round(
+        raw["proportion_demand_worsened"] * 100, 1
+    )
+    assert df["% of cohort with a shorter journey"].iloc[0] == round(
+        raw["proportion_demand_improved"] * 100, 1
     )
 
 

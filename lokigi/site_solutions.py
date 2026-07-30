@@ -1078,7 +1078,8 @@ class EvaluatedCombination:
             `within_threshold__<label>` regardless of this setting.
 
         7. Population impact vs baseline (`demand_improved`,
-           `demand_worsened`, `demand_unchanged`, `regions_improved`,
+           `demand_worsened`, `demand_unchanged`, `proportion_demand_
+           improved`, `proportion_demand_worsened`, `regions_improved`,
            `regions_worsened`, `regions_unchanged`,
            `mean_reduction_among_improved`, `mean_increase_among_worsened`,
            `max_reduction`, `max_increase`):
@@ -1248,6 +1249,8 @@ class EvaluatedCombination:
             metrics["demand_improved"] = pi["demand_improved"]
             metrics["demand_worsened"] = pi["demand_worsened"]
             metrics["demand_unchanged"] = pi["demand_unchanged"]
+            metrics["proportion_demand_improved"] = pi["proportion_demand_improved"]
+            metrics["proportion_demand_worsened"] = pi["proportion_demand_worsened"]
             metrics["regions_improved"] = pi["regions_improved"]
             metrics["regions_worsened"] = pi["regions_worsened"]
             metrics["regions_unchanged"] = pi["regions_unchanged"]
@@ -1515,6 +1518,8 @@ _SOLUTION_COLUMN_GROUPS = [
             "demand_improved",
             "demand_worsened",
             "demand_unchanged",
+            "proportion_demand_improved",
+            "proportion_demand_worsened",
             "regions_improved",
             "regions_worsened",
             "regions_unchanged",
@@ -1910,9 +1915,10 @@ Groups whose columns are genuinely absent from
         set on this solve. `Sites closed` and `Sites added` (`sites_closed_
         vs_baseline`/`sites_added_vs_baseline`, joined into readable
         strings) and the population-impact-vs-baseline columns (`People
-        with a longer/shorter journey`, `Avg increase/reduction for them
-        (mins)`) are only added if a baseline was supplied (`solve(baseline=
-        ...)` or `evaluate_baseline()`/`evaluate_single_solution_single_
+        with a longer/shorter journey`, `% of cohort with a longer/shorter
+        journey`, `Avg increase/reduction for them (mins)`) are only added
+        if a baseline was supplied (`solve(baseline=...)` or
+        `evaluate_baseline()`/`evaluate_single_solution_single_
         objective(baseline=...)`). Equity columns (`Equity gap (mins,
         best vs worst group)` and the two plain-English equity verdicts)
         are only added if equity data was registered via `add_equity_data()`.
@@ -1990,12 +1996,18 @@ Groups whose columns are genuinely absent from
             summary["People with a longer journey"] = (
                 df["demand_worsened"].round(0).astype("Int64")
             )
+            summary["% of cohort with a longer journey"] = (
+                df["proportion_demand_worsened"] * 100
+            ).round(1)
             summary["Avg increase for them (mins)"] = df[
                 "mean_increase_among_worsened"
             ].round(1)
             summary["People with a shorter journey"] = (
                 df["demand_improved"].round(0).astype("Int64")
             )
+            summary["% of cohort with a shorter journey"] = (
+                df["proportion_demand_improved"] * 100
+            ).round(1)
             summary["Avg reduction for them (mins)"] = df[
                 "mean_reduction_among_improved"
             ].round(1)
