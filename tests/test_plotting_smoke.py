@@ -861,6 +861,21 @@ def test_plot_population_impact_by_equity_group_reuses_given_axis(
     assert out_axis is axis
 
 
+def test_plot_population_impact_by_equity_group_xlabel_uses_equity_label(
+    population_impact_comparator,
+):
+    """The x-axis previously used the raw equity column name (by_band.index
+    .name, i.e. _equity_data_equity_col) -- broken/unreadable for a column
+    like the real-world IMD dataset's
+    "Index of Multiple Deprivation (IMD) Decile (where 1 is most deprived
+    10% of LSOA" (note the unbalanced parenthesis -- a genuine raw column
+    name, not a typo introduced here). Now prefers the human-readable
+    add_equity_data(label=...) instead. plottable_problem registers
+    label="equity"."""
+    fig, axis = population_impact_comparator.plot_population_impact_by_equity_group()
+    assert axis.get_xlabel() == "equity (most to least disadvantaged)"
+
+
 def test_plot_population_impact_by_equity_group_no_equity_data_raises():
     from lokigi.site_solutions import SolutionComparator
 

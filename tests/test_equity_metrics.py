@@ -34,6 +34,52 @@ def test_equity_band_gap_and_tertile_metrics(loaded_problem_with_equity):
     assert "Highly Progressive" in result.inter_tertile_desc
 
 
+def test_gap_absolute_description_names_registered_unit():
+    """gap_absolute_desc's "Spread of X units" previously always used the
+    literal word "units", regardless of what unit the travel matrix was
+    actually registered with -- meaningless when e.g. minutes or miles was
+    the real unit. Falls back to the literal word "units" only when no
+    unit was ever registered (see test_equity_band_gap_and_tertile_metrics,
+    whose loaded_problem_with_equity fixture registers no unit)."""
+    demand_df = pd.DataFrame(
+        {"location_id": ["LSOA_1", "LSOA_2", "LSOA_3"], "demand": [100, 100, 100]}
+    )
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": ["Site_A", "Site_B"],
+            "lat": [51.1, 51.2],
+            "long": [-0.1, -0.2],
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["LSOA_1", "LSOA_2", "LSOA_3"],
+            "Site_A": [10.0, 5.0, 15.0],
+            "Site_B": [20.0, 15.0, 25.0],
+        }
+    )
+    equity_df = pd.DataFrame(
+        {"location_id": ["LSOA_1", "LSOA_2", "LSOA_3"], "imd_decile": [1, 5, 10]}
+    )
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id", unit="minutes")
+    problem.add_equity_data(
+        equity_df,
+        equity_col="imd_decile",
+        common_col="location_id",
+        label="IMD decile",
+        disadvantaged_end="low",
+    )
+
+    result = problem.evaluate_single_solution_single_objective(
+        objective="p_median", site_indices=[0, 1]
+    )
+    assert "Spread of 10.0 minutes" in result.gap_absolute_desc
+
+
 def test_gap_relative_weighted_zero_baseline_guard():
     """When the best-performing equity band has a weighted average of
     exactly 0, gap_relative_weighted must not raise ZeroDivisionError -- it

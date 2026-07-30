@@ -465,7 +465,10 @@ class EvaluatedCombination:
         # matrices get the identical treatment below, applied to their own
         # suffixed columns -- see _compute_travel_metrics.
         primary_metrics = self._compute_travel_metrics(
-            "min_cost", "within_threshold", active_weights
+            "min_cost",
+            "within_threshold",
+            active_weights,
+            unit=getattr(self.site_problem, "_travel_matrix_unit", None),
         )
         self.weighted_average = primary_metrics["weighted_average"]
         self.unweighted_average = primary_metrics["unweighted_average"]
@@ -520,7 +523,10 @@ class EvaluatedCombination:
             if cost_col not in self.evaluated_combination_df.columns:
                 continue
             self.secondary_metrics[label] = self._compute_travel_metrics(
-                cost_col, within_col, active_weights
+                cost_col,
+                within_col,
+                active_weights,
+                unit=self.site_problem.secondary_travel_matrices[label]["unit"],
             )
 
         # Secondary demand scenarios: re-weight the primary matrix's
@@ -546,6 +552,7 @@ class EvaluatedCombination:
                     "within_threshold",
                     active_weights=dweights,
                     coverage_demand=dweights,
+                    unit=getattr(self.site_problem, "_travel_matrix_unit", None),
                 )
             }
             for tlabel in dmeta["also_weight_matrices"]:
@@ -557,6 +564,7 @@ class EvaluatedCombination:
                     f"within_threshold__{tlabel}",
                     active_weights=dweights,
                     coverage_demand=dweights,
+                    unit=self.site_problem.secondary_travel_matrices[tlabel]["unit"],
                 )
             self.secondary_demand_metrics[dlabel] = per_matrix
 
@@ -640,7 +648,7 @@ class EvaluatedCombination:
         return covered_demand / total_demand, covered_demand, covered_regions
 
     def _compute_travel_metrics(
-        self, cost_col, within_col, active_weights, coverage_demand=None
+        self, cost_col, within_col, active_weights, coverage_demand=None, unit=None
     ):
         """
         Compute weighted/unweighted travel-cost summary statistics and the
@@ -651,6 +659,13 @@ class EvaluatedCombination:
         and once per registered secondary demand scenario, so every
         combination gets identical treatment rather than a parallel,
         potentially-diverging implementation.
+
+        `unit` names the travel-cost unit this `cost_col` was registered
+        with (`add_travel_matrix(unit=...)`/`add_secondary_travel_matrix(
+        unit=...)`), used only in `gap_absolute_desc`'s wording ("Spread of
+        2.6 minutes" rather than the meaningless bare "Spread of 2.6
+        units"). Falls back to the literal word "units" if `None` -- e.g.
+        no unit was ever registered -- so the sentence still reads.
 
         `coverage_demand` overrides the demand series used to weight
         `proportion_within_coverage_threshold` (and its equity breakdown).
@@ -767,7 +782,11 @@ class EvaluatedCombination:
                 group_max_cost = max(weighted_vals)
 
                 gap_absolute_weighted = group_max_cost - group_min_cost
-                gap_absolute_desc = f"Spread of {gap_absolute_weighted:.1f} units between best and worst groups"
+                unit_word = unit if unit else "units"
+                gap_absolute_desc = (
+                    f"Spread of {gap_absolute_weighted:.1f} {unit_word} "
+                    "between best and worst groups"
+                )
 
                 if group_min_cost > 0:
                     gap_relative_weighted = group_max_cost / group_min_cost

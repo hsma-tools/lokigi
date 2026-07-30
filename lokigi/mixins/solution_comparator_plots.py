@@ -802,11 +802,14 @@ class SolutionComparatorPlotsMixin:
             label="Worsened",
         )
 
+        equity_axis_label = (
+            self.set_b.site_problem._equity_data_label or by_band.index.name
+        )
         axis.set_xticks(x)
         axis.set_xticklabels(bands)
         axis.set_xlabel(
-            f"{by_band.index.name} (most to least disadvantaged)"
-            if by_band.index.name
+            f"{equity_axis_label} (most to least disadvantaged)"
+            if equity_axis_label
             else "Equity band (most to least disadvantaged)"
         )
         axis.set_ylabel("% of band's own population")
