@@ -31,9 +31,9 @@ def test_worsened_direction_default(comparator):
     result = comparator.population_impact_worst_affected()
 
     assert list(result.index) == ["LSOA_2"]
-    assert result["Before (mins)"].loc["LSOA_2"] == 5.0
-    assert result["After (mins)"].loc["LSOA_2"] == 10.0
-    assert result["Change (mins)"].loc["LSOA_2"] == 5.0
+    assert result["Before"].loc["LSOA_2"] == 5.0
+    assert result["After"].loc["LSOA_2"] == 10.0
+    assert result["Change"].loc["LSOA_2"] == 5.0
     assert result["People affected"].loc["LSOA_2"] == 200
 
 
@@ -41,9 +41,9 @@ def test_improved_direction(comparator):
     result = comparator.population_impact_worst_affected(direction="improved")
 
     assert list(result.index) == ["LSOA_3"]
-    assert result["Before (mins)"].loc["LSOA_3"] == 15.0
-    assert result["After (mins)"].loc["LSOA_3"] == 8.0
-    assert result["Change (mins)"].loc["LSOA_3"] == -7.0
+    assert result["Before"].loc["LSOA_3"] == 15.0
+    assert result["After"].loc["LSOA_3"] == 8.0
+    assert result["Change"].loc["LSOA_3"] == -7.0
     assert result["People affected"].loc["LSOA_3"] == 150
 
 
@@ -73,3 +73,23 @@ def test_index_named_after_demand_location_id_col(comparator):
 def test_invalid_direction_raises(comparator):
     with pytest.raises(ValueError, match="direction"):
         comparator.population_impact_worst_affected(direction="sideways")
+
+
+def test_columns_named_after_registered_unit(basic_problem, demand_df, candidate_df, travel_df):
+    """Before/After/Change columns previously said "(mins)" unconditionally,
+    regardless of what unit (if any) was actually registered via
+    add_travel_matrix(unit=...) -- wrong for e.g. a distance matrix in
+    miles, and misleading even when no unit was registered at all."""
+    basic_problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    basic_problem.add_sites(candidate_df, candidate_id_col="site_id")
+    basic_problem.add_travel_matrix(travel_df, source_col="source_id", unit="miles")
+
+    baseline = basic_problem.evaluate_baseline(site_names=["Site_A", "Site_B"])
+    candidate = basic_problem.evaluate_baseline(site_names=["Site_A", "Site_C"])
+    comparator = SolutionComparator(baseline, candidate, labels=("Current", "Proposed"))
+
+    result = comparator.population_impact_worst_affected()
+    assert "Before (miles)" in result.columns
+    assert "After (miles)" in result.columns
+    assert "Change (miles)" in result.columns
+    assert "Before" not in result.columns

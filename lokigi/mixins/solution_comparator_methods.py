@@ -618,10 +618,12 @@ class SolutionComparatorMethodsMixin:
         -------
         pandas.DataFrame
             Indexed by demand-location ID, ordered from most- to least-
-            affected. Columns: `Before (mins)`, `After (mins)`, `Change
-            (mins)` (signed -- positive means longer/worse, negative means
-            shorter/better), and `People affected` (that location's demand
-            weight) if demand data is registered, else omitted.
+            affected. Columns: `Before`, `After`, `Change` (signed --
+            positive means longer/worse, negative means shorter/better),
+            each suffixed with the travel matrix's registered unit in
+            parentheses (e.g. `Before (minutes)`) if one was registered,
+            and `People affected` (that location's demand weight) if
+            demand data is registered, else omitted.
 
         Raises
         ------
@@ -648,12 +650,15 @@ class SolutionComparatorMethodsMixin:
             "delta", ascending=(direction == "improved")
         ).head(n)
 
+        unit = self.set_b._resolve_travel_columns(matrix)[3]
+        unit_parenthetical = f" ({unit})" if unit else ""
+
         id_col = self.set_b.site_problem._demand_data_id_col
         result = pd.DataFrame(
             {
-                "Before (mins)": affected["baseline_cost"].round(1),
-                "After (mins)": affected["current_cost"].round(1),
-                "Change (mins)": affected["delta"].round(1),
+                f"Before{unit_parenthetical}": affected["baseline_cost"].round(1),
+                f"After{unit_parenthetical}": affected["current_cost"].round(1),
+                f"Change{unit_parenthetical}": affected["delta"].round(1),
             },
             index=affected.index,
         ).rename_axis(id_col)
@@ -931,6 +936,117 @@ class SolutionComparatorMethodsMixin:
                         )
 
         return " ".join(sentences)
+
+    def decision_summary(
+        self,
+        matrix=None,
+        demand=None,
+        meaningful_change_threshold=0.0,
+        config_a=None,
+        config_b=None,
+        worst_affected_n=3,
+    ):
+        """
+        A single stakeholder-facing summary bundling everything a decision-
+        maker needs to weigh `set_b` (the candidate) against `set_a` (the
+        baseline): which sites close or open, how many people are better/
+        worse off and by how much, the specific places hit hardest, and
+        how equitable the candidate network is on its own terms. Combines
+        `population_impact_phrase()`, `population_impact_worst_affected()`,
+        and the candidate's own equity verdicts into one call, rather than
+        assembling the pieces by hand as the example notebooks otherwise
+        do.
+
+        Parameters
+        ----------
+        matrix, demand, meaningful_change_threshold, config_a, config_b
+            Passed straight through to `population_impact_phrase()` and
+            `population_impact_worst_affected()`.
+        worst_affected_n : int, default 3
+            Number of hardest-hit places to name (see
+            `population_impact_worst_affected(n=...)`). Kept small since
+            this is meant to read as a paragraph, not a table -- call
+            `population_impact_worst_affected()` directly for the full
+            list.
+
+        Returns
+        -------
+        str
+            A blank-line-separated, multi-paragraph summary: which sites
+            close/open (or a note that none do); the population-impact
+            phrase; the hardest-hit places by name, worsened by more than
+            `meaningful_change_threshold` (omitted entirely if nothing
+            worsened); and the candidate network's own equity verdicts
+            (best-vs-worst-group and most-vs-least-deprived-third),
+            omitted if no equity data is registered.
+        """
+        config_a = config_a or {"solution_rank": 1}
+        config_b = config_b or {"solution_rank": 1}
+
+        sites_a = set(
+            _select_solution(self.set_a.solution_df, **config_a)["site_names"].iloc[0]
+        )
+        sites_b = set(
+            _select_solution(self.set_b.solution_df, **config_b)["site_names"].iloc[0]
+        )
+        closed = sorted(sites_a - sites_b)
+        opened = sorted(sites_b - sites_a)
+
+        site_change_sentences = []
+        if closed:
+            site_change_sentences.append(
+                f"{len(closed)} site{'s' if len(closed) != 1 else ''} would "
+                f"close: {', '.join(closed)}."
+            )
+        if opened:
+            site_change_sentences.append(
+                f"{len(opened)} site{'s' if len(opened) != 1 else ''} would "
+                f"open: {', '.join(opened)}."
+            )
+        if not closed and not opened:
+            site_change_sentences.append(
+                "No sites differ between the two networks compared here."
+            )
+
+        paragraphs = [" ".join(site_change_sentences)]
+
+        paragraphs.append(
+            self.population_impact_phrase(
+                matrix=matrix,
+                demand=demand,
+                meaningful_change_threshold=meaningful_change_threshold,
+                config_a=config_a,
+                config_b=config_b,
+            )
+        )
+
+        worst_affected = self.population_impact_worst_affected(
+            n=worst_affected_n,
+            direction="worsened",
+            matrix=matrix,
+            demand=demand,
+            meaningful_change_threshold=meaningful_change_threshold,
+            config_a=config_a,
+            config_b=config_b,
+        )
+        if len(worst_affected) > 0:
+            before_col, after_col = worst_affected.columns[0], worst_affected.columns[1]
+            places = "; ".join(
+                f"{name} ({row[before_col]:.1f} -> {row[after_col]:.1f})"
+                for name, row in worst_affected.iterrows()
+            )
+            paragraphs.append(f"Hit hardest: {places}.")
+
+        equity_col = getattr(self.set_b.site_problem, "_equity_data_equity_col", None)
+        if equity_col is not None:
+            candidate = _select_solution(self.set_b.solution_df, **config_b).iloc[0]
+            paragraphs.append(
+                f"Equity in the proposed network: "
+                f"{candidate['gap_relative_description']} "
+                f"{candidate['inter_tertile_description']}"
+            )
+
+        return "\n\n".join(paragraphs)
 
     def site_overlap(self, top_n=1):
         """
