@@ -52,6 +52,7 @@ lokigi is pre-1.0, so breaking changes can land in any minor release. Read this 
 ### Other
 
 - Fix `describe_models()`'s closing instruction pointing at a `prob.solve_pmedian(p=3)` method that doesn't exist -- it now reads `prob.solve(p=3, objectives="p_median")`, the actual public API used everywhere else
+- Fix several colour bars/axes showing a bare, jargon-named column instead of a plain-English label with units: `plot_best_combination()`'s default (cost-based) map and `plot_n_best_combinations()`'s shared colour bar were unlabelled entirely; `check_solution_equity()` and `plot_combination_by_equity()` labelled their axes/titles/colour bar with the raw `min_cost`/equity-column name (e.g. a bare "IMD15"). All four now read "Travel time to nearest site"/"Average travel time", with the registered unit appended in parentheses when one was set via `add_travel_matrix(unit=...)`; the equity axis/title now uses the human-readable `add_equity_data(label=...)` instead of the raw column name
 - Pin minimum version of numba to prevent build failure due to odd resolution to a very old version of numba by default
 
 ## v0.8.0

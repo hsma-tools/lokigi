@@ -532,6 +532,7 @@ class MapsMixin:
 
         else:
             # Plot min_cost (or the secondary matrix's own min cost)
+            unit_parenthetical = f" ({unit})" if unit else ""
             ax = nearest_site_travel_gdf.plot(
                 cost_col,
                 legend=add_legend,
@@ -542,6 +543,11 @@ class MapsMixin:
                 ax=ax,
                 vmin=global_vmin,
                 vmax=global_vmax,
+                legend_kwds={
+                    "label": f"Travel time to nearest site{unit_parenthetical}"
+                }
+                if add_legend
+                else {},
             )
 
         # Plot candidate sites if applicable. Deliberately not
@@ -1282,7 +1288,14 @@ class MapsMixin:
                 cmap=cmap, norm=plt.Normalize(vmin=global_vmin, vmax=global_vmax)
             )
             sm._A = []
-            fig.colorbar(sm, ax=axs, fraction=0.02, pad=0.04, label="Min Cost")
+            unit_parenthetical = f" ({matrix_unit})" if matrix_unit else ""
+            fig.colorbar(
+                sm,
+                ax=axs,
+                fraction=0.02,
+                pad=0.04,
+                label=f"Travel time to nearest site{unit_parenthetical}",
+            )
 
         elif plot_site_allocation:
             legend_patches = [
@@ -1966,7 +1979,13 @@ class EquityPlotsMixin:
         - When using Matplotlib with a provided ``ax``, the plot is drawn onto the
         supplied axes and the corresponding figure is returned.
         """
-        cost_col, _, _, _, _ = self._resolve_travel_columns(matrix)
+        cost_col, _, _, unit, _ = self._resolve_travel_columns(matrix)
+        unit_parenthetical = f" ({unit})" if unit else ""
+        cost_axis_label = f"Average travel time{unit_parenthetical}"
+        equity_axis_label = (
+            self.site_problem._equity_data_label
+            or self.site_problem._equity_data_equity_col
+        )
 
         if rank_on is not None:
             plotting_row = _sort_solutions_by_metric(self.solution_df, rank_on).iloc[
@@ -2003,6 +2022,11 @@ class EquityPlotsMixin:
             if interactive:
                 import plotly.express as px
 
+                axis_labels = {
+                    self.site_problem._equity_data_equity_col: equity_axis_label,
+                    "min_cost": cost_axis_label,
+                }
+
                 if colour_mode == "gradient":
                     fig = px.bar(
                         summary_equity_df,
@@ -2014,6 +2038,7 @@ class EquityPlotsMixin:
                             "#f28b82",
                         ],  # soft green → soft red
                         title=title,
+                        labels=axis_labels,
                     )
 
                 elif colour_mode == "above_below_avg":
@@ -2032,6 +2057,7 @@ class EquityPlotsMixin:
                             False: "#a8e6a3",  # green
                         },
                         title=title,
+                        labels=axis_labels,
                     )
 
                 else:
@@ -2040,6 +2066,7 @@ class EquityPlotsMixin:
                         x=self.site_problem._equity_data_equity_col,
                         y="min_cost",
                         title=title,
+                        labels=axis_labels,
                     )
 
                 if show_average:
@@ -2077,8 +2104,8 @@ class EquityPlotsMixin:
                 ax.bar(x_vals, y_vals, color=colors)
 
                 ax.set_title(title)
-                ax.set_xlabel(self.site_problem._equity_data_equity_col)
-                ax.set_ylabel(cost_col)
+                ax.set_xlabel(equity_axis_label)
+                ax.set_ylabel(cost_axis_label)
 
                 if show_average:
                     ax.axhline(
@@ -2205,8 +2232,10 @@ class EquityPlotsMixin:
             coloured by that matrix's own min-cost column instead of the
             primary travel matrix.
         """
-        cost_col, _, _, _, _ = self._resolve_travel_columns(matrix)
+        cost_col, _, _, unit, _ = self._resolve_travel_columns(matrix)
         equity_col = self.site_problem._equity_data_equity_col
+        equity_axis_label = self.site_problem._equity_data_label or equity_col
+        unit_parenthetical = f" ({unit})" if unit else ""
 
         # ---- Base groups from data ----
         raw_groups = sorted(
@@ -2300,7 +2329,7 @@ class EquityPlotsMixin:
                 **kwargs,
             )
 
-            ax.set_title(f"{equity_col}: {label}")
+            ax.set_title(f"{equity_axis_label}: {label}")
 
             try:
                 cx.add_basemap(
@@ -2332,6 +2361,6 @@ class EquityPlotsMixin:
                 fraction=0.03,
                 pad=0.02,
             )
-            cbar.set_label(cost_col)
+            cbar.set_label(f"Travel time to nearest site{unit_parenthetical}")
 
         return fig, axes

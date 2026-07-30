@@ -273,6 +273,114 @@ def test_solution_plot_renders(solutions, method_name):
         assert result.to_dict()
 
 
+# --- Colour bar / axis unit labelling ---------------------------------------
+#
+# plot_best_combination()'s default (cost-based) choropleth, plot_n_best_
+# combinations()'s shared colorbar, check_solution_equity(), and
+# plot_combination_by_equity() all used to show a bare, jargon-named colour
+# bar/axis ("Min Cost", a raw min_cost/imd_decile column name) with no units
+# and no plain-English label -- these pin the fix.
+
+
+@pytest.fixture
+def unit_labelled_problem():
+    """Like plottable_problem, but with an explicit travel-matrix unit and
+    a human-readable equity label, so the fixed labels can be checked for
+    the actual unit/label text rather than just "present or absent"."""
+    region_ids = ["LSOA_1", "LSOA_2", "LSOA_3"]
+    regions = geopandas.GeoDataFrame(
+        {
+            "location_id": region_ids,
+            "geometry": [
+                Polygon([(i, 0), (i + 1, 0), (i + 1, 1), (i, 1)]) for i in range(3)
+            ],
+        },
+        crs="EPSG:4326",
+    )
+    demand_df = pd.DataFrame({"location_id": region_ids, "demand": [100, 200, 150]})
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": ["Site_A", "Site_B", "Site_C"],
+            "lat": [51.1, 51.2, 51.3],
+            "long": [-0.1, -0.2, -0.3],
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source_id": region_ids,
+            "Site_A": [10.0, 20.0, 30.0],
+            "Site_B": [25.0, 5.0, 15.0],
+            "Site_C": [30.0, 10.0, 8.0],
+        }
+    )
+    equity_df = pd.DataFrame({"location_id": region_ids, "imd_decile": [1, 5, 9]})
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id", unit="miles")
+    problem.add_region_geometry_layer(regions, common_col="location_id")
+    problem.add_equity_data(
+        equity_df,
+        equity_col="imd_decile",
+        common_col="location_id",
+        label="IMD Decile",
+        disadvantaged_end="low",
+    )
+    return problem
+
+
+@pytest.fixture
+def unit_labelled_solution(unit_labelled_problem):
+    return unit_labelled_problem.solve(
+        p=2, search_strategy="brute-force", show_progress=False
+    )
+
+
+def test_plot_best_combination_colorbar_labelled_with_unit(unit_labelled_solution):
+    ax = unit_labelled_solution.plot_best_combination()
+    colorbar_label = ax.figure.axes[-1].get_ylabel()
+    assert colorbar_label == "Travel time to nearest site (miles)"
+
+
+def test_plot_best_combination_colorbar_label_omits_unit_when_not_registered(
+    solutions,
+):
+    """plottable_problem's travel matrix is registered with no unit=."""
+    ax = solutions.plot_best_combination()
+    colorbar_label = ax.figure.axes[-1].get_ylabel()
+    assert colorbar_label == "Travel time to nearest site"
+
+
+def test_plot_n_best_combinations_colorbar_labelled_with_unit(unit_labelled_solution):
+    result = unit_labelled_solution.plot_n_best_combinations(n_best=2)
+    fig = result[0] if isinstance(result, tuple) else result
+    assert fig.axes[-1].get_ylabel() == "Travel time to nearest site (miles)"
+
+
+def test_check_solution_equity_matplotlib_labels(unit_labelled_solution):
+    fig = unit_labelled_solution.check_solution_equity(
+        interactive=False, return_plot=True
+    )
+    axis = fig.axes[0]
+    assert axis.get_xlabel() == "IMD Decile"
+    assert axis.get_ylabel() == "Average travel time (miles)"
+
+
+def test_check_solution_equity_interactive_labels(unit_labelled_solution):
+    fig = unit_labelled_solution.check_solution_equity(
+        interactive=True, return_plot=True
+    )
+    assert fig.layout.xaxis.title.text == "IMD Decile"
+    assert fig.layout.yaxis.title.text == "Average travel time (miles)"
+
+
+def test_plot_combination_by_equity_labels(unit_labelled_solution):
+    fig, axes = unit_labelled_solution.plot_combination_by_equity()
+    assert fig.axes[-1].get_ylabel() == "Travel time to nearest site (miles)"
+    assert axes[0].get_title().startswith("IMD Decile:")
+
+
 # --- problem-level plots --------------------------------------------------
 
 # These take the SiteProblem itself rather than a solved solution set, and
