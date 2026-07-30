@@ -8,7 +8,11 @@ from lokigi.utils import (
     _get_required_site_indices,
 )
 
-from lokigi.site_solutions import EvaluatedCombination, SiteSolutionSet
+from lokigi.site_solutions import (
+    EvaluatedCombination,
+    SiteSolutionSet,
+    _BASELINE_SITE_NAMES_KEY,
+)
 
 # Data manipulation imports
 import pandas as pd
@@ -1119,6 +1123,12 @@ class SiteProblem(
         secondary travel matrix) to a baseline `pd.Series` indexed by
         demand-location ID, or `None` if no baseline was requested. See
         `solve()`'s `baseline` parameter for the accepted forms.
+
+        Also carries the baseline's `site_names` under the reserved
+        `_BASELINE_SITE_NAMES_KEY`, for `EvaluatedCombination` to compute
+        `sites_closed_vs_baseline`/`sites_added_vs_baseline` -- see that
+        constant's own docstring for why this rides along in the same dict
+        rather than as a separate parameter.
         """
         if baseline is None:
             return None
@@ -1162,6 +1172,10 @@ class SiteProblem(
             col = f"min_cost__{label}"
             if col in indexed.columns:
                 baseline_costs[col] = indexed[col]
+
+        baseline_costs[_BASELINE_SITE_NAMES_KEY] = baseline_set.solution_df.iloc[0][
+            "site_names"
+        ]
 
         return baseline_costs
 

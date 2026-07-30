@@ -34,6 +34,19 @@ from lokigi.mixins.site_eda import (
 from lokigi.mixins.site_accessibility import AccessibilityPlotMixin
 
 
+# Reserved key `SiteProblem._resolve_baseline_costs()` uses to smuggle the
+# baseline's `site_names` through `baseline_costs` (nominally a
+# `dict[str, pandas.Series]` of cost columns) to `EvaluatedCombination.
+# __init__`, which pops it out before the cost-Series validation loop ever
+# sees it. Avoids threading a second `baseline_site_names` parameter through
+# every brute-force/greedy/GRASP call site that already passes
+# `baseline_costs` through unopened -- this key is never seen by any of
+# them, only by the two places that actually construct/consume the dict.
+# Dunder-style so it can never collide with a real cost-column name
+# ("min_cost", "min_cost__<label>").
+_BASELINE_SITE_NAMES_KEY = "__baseline_site_names__"
+
+
 # MARK: CLASS EvaluatedCombination
 class EvaluatedCombination:
     """
@@ -176,6 +189,18 @@ class EvaluatedCombination:
         # call below (primary matrix, each secondary matrix, each
         # secondary demand scenario), since they all key off the same
         # cost-column names.
+        # Popped out before the cost-Series validation loop below ever sees
+        # it -- see _BASELINE_SITE_NAMES_KEY's own docstring. None if
+        # baseline_costs didn't carry it (e.g. a direct, advanced caller of
+        # evaluate_single_solution_single_objective(baseline_costs=...) that
+        # built the dict by hand rather than via solve(baseline=...)).
+        self._baseline_site_names = None
+        if baseline_costs is not None:
+            baseline_costs = dict(baseline_costs)
+            self._baseline_site_names = baseline_costs.pop(
+                _BASELINE_SITE_NAMES_KEY, None
+            )
+
         self._baseline_cost_arrays = {}
         if baseline_costs is not None:
             id_col = getattr(site_problem, "_demand_data_id_col", None)
@@ -1067,6 +1092,20 @@ class EvaluatedCombination:
             not yet broken down for secondary travel matrices/demand
             scenarios.
 
+        7b. Which sites actually changed (`sites_closed_vs_baseline`,
+            `sites_added_vs_baseline`):
+
+            `sites_closed_vs_baseline` is the baseline's own site names
+            absent from this solution's `site_names`; `sites_added_vs_
+            baseline` is `site_names` absent from the baseline's. Answers
+            "which sites changed?" directly, rather than requiring a caller
+            to compute the set difference themselves -- useful when several
+            solutions share nearly all the same sites and only differ in
+            one or two, which a bare `site_names` column doesn't make
+            obvious at a glance. Present under the same condition as the
+            rest of this point (a baseline was supplied); absent, not empty
+            lists, otherwise.
+
         8. "Left behind" headcounts (`demand_beyond_threshold_<t>`,
            `regions_beyond_threshold_<t>`, one pair per threshold `t` in
            `beyond_thresholds`, plus a `_by_equity_group` dict variant of
@@ -1208,6 +1247,24 @@ class EvaluatedCombination:
                 metrics["demand_worsened_by_equity_group"] = (
                     self.demand_worsened_by_equity_group
                 )
+
+        # Which sites actually changed vs the baseline -- see point 7b in
+        # the docstring above. Gated independently of population_impact
+        # (rather than reusing that same `if`): both are normally present
+        # together, since both come from the same solve(baseline=...) call,
+        # but an advanced direct caller of evaluate_single_solution_single_
+        # objective(baseline_costs=...) could supply cost Series without
+        # the site-names sentinel, and these two should reflect exactly
+        # what was actually provided.
+        if self._baseline_site_names is not None:
+            current_names = set(self.site_names)
+            baseline_names = set(self._baseline_site_names)
+            metrics["sites_closed_vs_baseline"] = [
+                name for name in self._baseline_site_names if name not in current_names
+            ]
+            metrics["sites_added_vs_baseline"] = [
+                name for name in self.site_names if name not in baseline_names
+            ]
 
         # "Left behind" headcounts: only present when beyond_thresholds was
         # supplied (self.beyond_threshold_metrics is empty otherwise), so
@@ -1452,6 +1509,8 @@ _SOLUTION_COLUMN_GROUPS = [
             "demand_newly_uncovered",
             "demand_improved_by_equity_group",
             "demand_worsened_by_equity_group",
+            "sites_closed_vs_baseline",
+            "sites_added_vs_baseline",
         },
     ),
     (
@@ -1829,7 +1888,9 @@ Groups whose columns are genuinely absent from
 
         Coverage columns (`People within <threshold> mins`, `% within
         <threshold> mins`) are only added if `threshold_for_coverage` was
-        set on this solve. Population-impact-vs-baseline columns (`People
+        set on this solve. `Sites closed` and `Sites added` (`sites_closed_
+        vs_baseline`/`sites_added_vs_baseline`, joined into readable
+        strings) and the population-impact-vs-baseline columns (`People
         with a longer/shorter journey`, `Avg increase/reduction for them
         (mins)`) are only added if a baseline was supplied (`solve(baseline=
         ...)` or `evaluate_baseline()`/`evaluate_single_solution_single_
@@ -1897,6 +1958,14 @@ Groups whose columns are genuinely absent from
             summary[f"% within {threshold:.0f} mins"] = (
                 df["proportion_within_coverage_threshold"] * 100
             ).round(1)
+
+        if "sites_closed_vs_baseline" in df.columns:
+            summary["Sites closed"] = df["sites_closed_vs_baseline"].apply(
+                lambda names: ", ".join(names)
+            )
+            summary["Sites added"] = df["sites_added_vs_baseline"].apply(
+                lambda names: ", ".join(names)
+            )
 
         if "demand_worsened" in df.columns:
             summary["People with a longer journey"] = (
