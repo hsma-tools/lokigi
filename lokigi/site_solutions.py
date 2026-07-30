@@ -10,6 +10,7 @@ from lokigi.utils import (
     _population_impact_metrics,
     _split_bins_into_tertiles,
     _format_threshold,
+    _get_required_site_indices,
 )
 
 from lokigi.mixins.site_solution_plots import (
@@ -1089,12 +1090,48 @@ class EvaluatedCombination:
             demand scenarios get only the demand-weighted headcount, never
             region counts or equity breakdowns, matching point 6's "only
             what varies with demand" rule.
+
+        9. Additional sites chosen beyond required (`additional_site_names`):
+
+            `site_names` with the required sites (flagged via
+            `add_sites(required_sites_col=...)`) removed -- e.g. for a "we
+            have 4 sites and are opening 1 more" problem, this is just the
+            new site, rather than all 5 names, which otherwise look
+            identical across every solution that all correctly keep the
+            same 4 required sites. Only present when at least one required
+            site is configured; absent, not an empty list, otherwise.
+
+        10. Sites not selected (`unselected_site_names`):
+
+            Every registered candidate site absent from `site_names`, in
+            canonical site-index order -- the complement of `site_names`
+            among ALL candidates, not just the required ones point 9
+            removes. Always present (unlike point 9), since it doesn't
+            depend on any optional registered data.
         """
+
+        # getattr-guarded: a minimal stub site_problem (as used by some
+        # tests to isolate a single metric) may not define candidate_sites
+        # at all -- treated the same as "nothing to report" rather than
+        # raising, matching _get_required_site_indices's own tolerance.
+        candidate_sites = getattr(self.site_problem, "candidate_sites", None)
+        id_col = getattr(self.site_problem, "_candidate_sites_candidate_id_col", None)
+        if candidate_sites is not None and id_col is not None:
+            all_sites_in_order = candidate_sites.sort_values("canonical_site_index")[
+                id_col
+            ].tolist()
+            selected = set(self.site_names)
+            unselected_site_names = [
+                name for name in all_sites_in_order if name not in selected
+            ]
+        else:
+            unselected_site_names = []
 
         # Return weighted average
         metrics = {
             "site_names": self.site_names,
             "site_indices": self.site_indices,
+            "unselected_site_names": unselected_site_names,
             "coverage_threshold": self.coverage_threshold,
             "weighted_average": self.weighted_average,
             "unweighted_average": self.unweighted_average,
@@ -1125,6 +1162,24 @@ class EvaluatedCombination:
             # Underlying per-region df
             "problem_df": self.evaluated_combination_df,
         }
+
+        # Additional sites chosen beyond required: only present when at
+        # least one required site is configured (see point 9 above), so
+        # solution_df's schema is unchanged for every caller that never
+        # uses required_sites_col.
+        required_indices = _get_required_site_indices(self.site_problem)
+        if required_indices:
+            candidate_sites = self.site_problem.candidate_sites
+            id_col = self.site_problem._candidate_sites_candidate_id_col
+            required_names = set(
+                candidate_sites.loc[
+                    candidate_sites["canonical_site_index"].isin(required_indices),
+                    id_col,
+                ]
+            )
+            metrics["additional_site_names"] = [
+                name for name in self.site_names if name not in required_names
+            ]
 
         # Population impact vs baseline: only present when a baseline was
         # actually supplied (self.population_impact is None otherwise), so
@@ -1326,6 +1381,111 @@ class EvaluatedCombination:
         return metrics
 
 
+# Groups of `solution_df` base column names (before stripping any
+# `__<label>` secondary-matrix/demand-scenario suffix), for
+# `SiteSolutionSet.describe_solution_columns()`. Printed in this order.
+_SOLUTION_COLUMN_GROUPS = [
+    (
+        "Which sites",
+        "Which candidate sites make up this solution.",
+        {
+            "solution_rank",
+            "site_names",
+            "site_indices",
+            "additional_site_names",
+            "unselected_site_names",
+        },
+    ),
+    (
+        "Travel cost",
+        "How far people have to travel under this solution (lower is better).",
+        {"weighted_average", "unweighted_average", "90th_percentile", "max", "total_cost"},
+    ),
+    (
+        "Coverage",
+        "Share/headcount of people or places within threshold_for_coverage (higher is better).",
+        {
+            "coverage_threshold",
+            "proportion_within_coverage_threshold",
+            "proportion_regions_within_coverage_threshold",
+            "demand_within_coverage_threshold",
+            "regions_within_coverage_threshold",
+        },
+    ),
+    (
+        "Equity",
+        "How unevenly travel cost is spread across the groups registered via add_equity_data().",
+        {
+            "gap_absolute_weighted",
+            "gap_relative_weighted",
+            "avg_lower_third_bins",
+            "avg_middle_third_bins",
+            "avg_upper_third_bins",
+            "inter_tertile_ratio",
+            "gap_absolute_description",
+            "gap_relative_description",
+            "inter_tertile_description",
+            "weighted_by_equity_group",
+            "unweighted_by_equity_group",
+            "coverage_by_equity_group",
+            "coverage_regions_by_equity_group",
+            "max_cost_by_equity_group",
+        },
+    ),
+    (
+        "Change vs a baseline",
+        "Per-person/per-region comparison against the baseline passed to solve(baseline=...) -- present only if one was supplied.",
+        {
+            "demand_improved",
+            "demand_worsened",
+            "demand_unchanged",
+            "regions_improved",
+            "regions_worsened",
+            "regions_unchanged",
+            "mean_reduction_among_improved",
+            "mean_increase_among_worsened",
+            "max_reduction",
+            "max_increase",
+            "regions_newly_covered",
+            "regions_newly_uncovered",
+            "demand_newly_covered",
+            "demand_newly_uncovered",
+            "demand_improved_by_equity_group",
+            "demand_worsened_by_equity_group",
+        },
+    ),
+    (
+        "Underlying per-region data",
+        "The full per-region breakdown behind every metric above.",
+        {"problem_df"},
+    ),
+]
+
+
+def _classify_solution_column(col):
+    """
+    Return the `_SOLUTION_COLUMN_GROUPS` category name for a `solution_df`
+    column, or "Left behind (beyond a threshold)" for a
+    `demand_beyond_threshold_<t>`/`regions_beyond_threshold_<t>` column
+    (any suffix -- numeric threshold, `_by_equity_group`, `__<label>`), or
+    "Other" if it doesn't match anything known (e.g. a future metric this
+    grouping hasn't been updated for yet).
+
+    Secondary travel-matrix/demand-scenario columns (`<base>__<label>`) are
+    classified by their base name, same as the primary column.
+    """
+    if col.startswith("demand_beyond_threshold") or col.startswith(
+        "regions_beyond_threshold"
+    ):
+        return "Left behind (beyond a threshold)"
+
+    base = col.split("__", 1)[0]
+    for name, _description, members in _SOLUTION_COLUMN_GROUPS:
+        if base in members:
+            return name
+    return "Other"
+
+
 # MARK: CLASS SiteSolutionSet
 class SiteSolutionSet(
     MapsMixin,
@@ -1479,6 +1639,84 @@ class SiteSolutionSet(
         else:
             return self.solution_df.columns
 
+    def describe_solution_columns(self, return_dict=False):
+        """
+        Print (or return) `solution_df`'s columns grouped by what they
+        mean, for a first look at a table that can otherwise run to
+        30-40 columns (`show_solutions_colnames()` lists them, but flatly,
+        with no indication of which ones are related or why they're there).
+
+Groups whose columns are genuinely absent from
+        `solution_df` (e.g. "Change vs a baseline" without `solve(baseline=
+        ...)`) are omitted, as are "Coverage" and "Equity" when their
+        columns are present but hold nothing but placeholder `NaN`/`None`/
+        "N/A ..." values (those two are always part of `solution_df`'s
+        schema, unlike the others, so column presence alone can't be used
+        to decide whether to show them). Within a group, columns are
+        listed in `solution_df`'s own column order. A group named "Other"
+        is printed last if any column doesn't match a known category (e.g.
+        a metric added after this method was last updated) -- see
+        `return_solution_metrics()`'s docstring for what every column
+        actually means.
+
+        Parameters
+        ----------
+        return_dict : bool, default False
+            If True, return `{group_name: [column_name, ...]}` instead of
+            printing it.
+
+        Returns
+        -------
+        dict or None
+            The grouped columns if `return_dict=True`; otherwise None (the
+            grouping is printed instead).
+        """
+        descriptions = {
+            name: description for name, description, _members in _SOLUTION_COLUMN_GROUPS
+        }
+        descriptions["Left behind (beyond a threshold)"] = (
+            "Headcounts beyond each cutoff in beyond_thresholds (lower is better)."
+        )
+        descriptions["Other"] = (
+            "Not yet categorised -- see return_solution_metrics()'s docstring."
+        )
+
+        # Printed in this order; "Underlying per-region data" and "Other"
+        # stay last regardless of where they sit in _SOLUTION_COLUMN_GROUPS.
+        ordered_names = [
+            name
+            for name, _description, _members in _SOLUTION_COLUMN_GROUPS
+            if name != "Underlying per-region data"
+        ]
+        ordered_names += ["Left behind (beyond a threshold)", "Underlying per-region data", "Other"]
+
+        groups = {name: [] for name in ordered_names}
+        for col in self.solution_df.columns:
+            groups[_classify_solution_column(col)].append(col)
+
+        # Unlike the genuinely conditional groups above (present/absent as
+        # actual columns), "Coverage" and "Equity" columns are always part
+        # of solution_df's schema, holding placeholder NaN/None/"N/A ..."
+        # values when not applicable -- so gate these two explicitly on
+        # whether they're actually meaningful, matching
+        # show_solutions_summary()'s "no group full of placeholders" rule.
+        if self.site_problem.equity_data is None:
+            groups["Equity"] = []
+        if not self.solution_df["coverage_threshold"].notna().any():
+            groups["Coverage"] = []
+
+        groups = {name: cols for name, cols in groups.items() if cols}
+
+        if return_dict:
+            return groups
+
+        for name, cols in groups.items():
+            print(f"=== {name} ===")
+            print(descriptions[name])
+            for col in cols:
+                print(f"  {col}")
+            print()
+
     def _expand_dict_columns(self, df):
         """
         Return a copy of `df` with every dict-valued column (e.g. the
@@ -1562,6 +1800,130 @@ class SiteSolutionSet(
             return df.head(n_best)
         else:
             return round(df, rounding).head(n_best)
+
+    def show_solutions_summary(self, n_best=None):
+        """
+        Return a stakeholder-facing view of the solution table: a handful
+        of plain-English columns with units in the header, in place of
+        `show_solutions()`'s full ~30-40 column schema (jargon names, no
+        units, and placeholder `None`/`NaN`/"N/A (No equity data)" columns
+        whenever a given input -- equity data, a coverage threshold, a
+        baseline -- wasn't registered).
+
+        Always included: `Sites in this option` (`site_names`) and `Sites
+        not in this option` (`unselected_site_names`), both joined into one
+        readable string rather than a list pandas truncates mid-entry,
+        `Average travel time (mins)` (`weighted_average`), and `Longest
+        journey (mins)` (`max`). `Rank` is also included for a
+        multi-solution `SiteSolutionSet` (from `solve()`), but omitted for a
+        single directly-evaluated solution (`evaluate_baseline()` or
+        `evaluate_single_solution_single_objective()`), which has no
+        `solution_rank` column to show.
+
+        `Additional sites chosen` (site_names minus the sites flagged via
+        `add_sites(required_sites_col=...)`) is only added when at least one
+        required site is configured -- e.g. for a "we have 4 sites and are
+        opening 1 more" problem, it's just the new site, rather than
+        `Sites in this option` repeating the same 4 required names alongside
+        it in every row.
+
+        Coverage columns (`People within <threshold> mins`, `% within
+        <threshold> mins`) are only added if `threshold_for_coverage` was
+        set on this solve. Population-impact-vs-baseline columns (`People
+        with a longer/shorter journey`, `Avg increase/reduction for them
+        (mins)`) are only added if a baseline was supplied (`solve(baseline=
+        ...)` or `evaluate_baseline()`/`evaluate_single_solution_single_
+        objective(baseline=...)`). Equity columns (`Equity gap (mins,
+        best vs worst group)` and the two plain-English equity verdicts)
+        are only added if equity data was registered via `add_equity_data()`.
+        A section absent from the input is omitted entirely rather than
+        shown full of placeholders.
+
+        Parameters
+        ----------
+        n_best : int, optional
+            Number of top-ranked solutions to include. If None, every row
+            in `solution_df` is included.
+
+        Returns
+        -------
+        pandas.DataFrame
+            One row per solution, columns as described above. People counts
+            are whole numbers, travel times are rounded to 1 decimal place,
+            and coverage is given as both a headcount and a percentage. Any
+            `NaN` (e.g. `mean_reduction_among_improved` when nobody's
+            journey actually improved) is filled with 0, since a stakeholder
+            reading of "no one" is better served by 0 than an unexplained
+            blank.
+
+        Notes
+        -----
+        This is a read-only, additive view -- it never modifies
+        `solution_df`, and `show_solutions()`'s own column set is
+        unaffected. Use `show_solutions()` (optionally with
+        `expand_dict_columns=True`) for the full underlying data, e.g. for
+        further computation or export.
+
+        The equity verdict columns are full sentences and can exceed 50
+        characters. Displaying this DataFrame bare in Jupyter truncates any
+        cell over pandas' `display.max_colwidth` (50 by default) with
+        "..." -- run `pd.set_option("display.max_colwidth", None)` once at
+        the top of a notebook to see them in full, or call
+        `.to_string()` on the result.
+        """
+        df = self.solution_df.head(n_best)
+
+        summary = pd.DataFrame(index=df.index)
+        if "solution_rank" in df.columns:
+            summary["Rank"] = df["solution_rank"]
+        summary["Sites in this option"] = df["site_names"].apply(
+            lambda names: ", ".join(names)
+        )
+        if "additional_site_names" in df.columns:
+            summary["Additional sites chosen"] = df["additional_site_names"].apply(
+                lambda names: ", ".join(names)
+            )
+        summary["Sites not in this option"] = df["unselected_site_names"].apply(
+            lambda names: ", ".join(names)
+        )
+        summary["Average travel time (mins)"] = df["weighted_average"].round(1)
+        summary["Longest journey (mins)"] = df["max"].round(1)
+
+        if df["coverage_threshold"].notna().any():
+            threshold = df["coverage_threshold"].iloc[0]
+            summary[f"People within {threshold:.0f} mins"] = df[
+                "demand_within_coverage_threshold"
+            ].round(0).astype("Int64")
+            summary[f"% within {threshold:.0f} mins"] = (
+                df["proportion_within_coverage_threshold"] * 100
+            ).round(1)
+
+        if "demand_worsened" in df.columns:
+            summary["People with a longer journey"] = (
+                df["demand_worsened"].round(0).astype("Int64")
+            )
+            summary["Avg increase for them (mins)"] = df[
+                "mean_increase_among_worsened"
+            ].round(1)
+            summary["People with a shorter journey"] = (
+                df["demand_improved"].round(0).astype("Int64")
+            )
+            summary["Avg reduction for them (mins)"] = df[
+                "mean_reduction_among_improved"
+            ].round(1)
+
+        if self.site_problem.equity_data is not None:
+            summary["Equity gap (mins, best vs worst group)"] = df[
+                "gap_absolute_weighted"
+            ].round(1)
+            summary["Equity verdict (best vs worst group)"] = df[
+                "gap_relative_description"
+            ]
+            summary["Equity verdict (most vs least deprived third)"] = df[
+                "inter_tertile_description"
+            ]
+
+        return summary.fillna(0)
 
     def return_best_combination_details(self, rank_on=None, top_n=1):
         """

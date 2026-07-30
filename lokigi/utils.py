@@ -288,8 +288,15 @@ def _get_required_site_indices(site_problem) -> list:
     Flag values are matched case-insensitively against a set of sensible
     "truthy" markers, so the column may hold booleans, integers, or messy
     strings ("Y", " true ", 1, ...).
+
+    Tolerates a `site_problem` that doesn't define
+    `_candidate_sites_required_sites_col` at all (e.g. a minimal stub used
+    in tests to isolate a single metric), treating it the same as "no
+    required sites configured" rather than raising.
     """
-    if site_problem is None or site_problem._candidate_sites_required_sites_col is None:
+    if site_problem is None or getattr(
+        site_problem, "_candidate_sites_required_sites_col", None
+    ) is None:
         return []
 
     truthy_values = {"y", "yes", "true", "t", "required", "1"}

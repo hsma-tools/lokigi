@@ -328,6 +328,10 @@
       false
     ],
     [
+      "unselected_site_names",
+      false
+    ],
+    [
       "coverage_threshold",
       false
     ],

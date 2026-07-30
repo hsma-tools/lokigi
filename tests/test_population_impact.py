@@ -165,13 +165,18 @@ def test_solve_without_baseline_is_purely_additive(devon_problem):
     """solve() with no baseline and no beyond_thresholds must produce
     exactly the same solution_df column set as before those features
     existed, plus the always-on absolute coverage headcounts (demand_
-    within_coverage_threshold / regions_within_coverage_threshold) -- no
-    stray baseline- or beyond_thresholds-only columns leaking in."""
+    within_coverage_threshold / regions_within_coverage_threshold),
+    unselected_site_names (always present), and additional_site_names
+    (devon_problem registers required_sites_col="Existing", so this is
+    always present too) -- no stray baseline- or beyond_thresholds-only
+    columns leaking in."""
     solved = devon_problem.solve(p=5, threshold_for_coverage=30, show_progress=False)
     expected_columns = {
         "solution_rank",
         "site_names",
         "site_indices",
+        "unselected_site_names",
+        "additional_site_names",
         "coverage_threshold",
         "weighted_average",
         "unweighted_average",

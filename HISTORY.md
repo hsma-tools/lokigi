@@ -8,6 +8,19 @@ lokigi is pre-1.0, so breaking changes can land in any minor release. Read this 
 
 ### New Features
 
+- Add `SiteSolutionSet.show_solutions_summary()`, a stakeholder-facing view of `solution_df` for readers who aren't going to parse ~30-40 jargon-named columns (`weighted_average`, `inter_tertile_ratio`, ...) with no units and placeholder `None`/`NaN`/"N/A (No equity data)" columns whenever equity data, a coverage threshold, or a baseline weren't registered
+    - Always shows `Sites in this option` and `Sites not in this option` (site names joined into a readable string, not a list pandas truncates mid-entry -- the latter is every registered candidate site absent from that solution, in canonical site-index order), `Average travel time (mins)`, and `Longest journey (mins)`; `Rank` too for a multi-solution `SiteSolutionSet`
+    - Adds a coverage section (`People within <threshold> mins`, `% within <threshold> mins`) only if `threshold_for_coverage` was set, a population-impact-vs-baseline section (`People with a longer/shorter journey`, `Avg increase/reduction for them (mins)`) only if a baseline was supplied, and an equity section (`Equity gap (mins, best vs worst group)` plus the two plain-English equity verdicts) only if equity data was registered -- a section absent from the input is omitted rather than shown full of placeholders
+    - People counts are whole numbers, travel times are rounded to 1 decimal place, coverage is given as both a headcount and a percentage, and any `NaN` (e.g. the average reduction when nobody's journey actually improved) is filled with 0 rather than left blank
+    - Adds `Additional sites chosen` (see `additional_site_names` below) when at least one required site is configured
+- Add `unselected_site_names` and `additional_site_names` to `solution_df` (`EvaluatedCombination.return_solution_metrics()`), so both are available to any caller of `show_solutions()`, not only `show_solutions_summary()`
+    - `unselected_site_names`: every registered candidate site absent from `site_names`, in canonical site-index order -- always present, since it doesn't depend on any optional registered data. `show_solutions_summary()`'s `Sites not in this option` now just formats this column rather than recomputing it
+    - `additional_site_names`: `site_names` with the sites flagged via `add_sites(required_sites_col=...)` removed -- e.g. for a "we have 4 sites and are opening 1 more" problem, this is just the new site, rather than `site_names` repeating the same 4 required names identically across every solution, making them hard to tell apart at a glance. Only present when at least one required site is configured; absent, not an empty list, otherwise
+- Add `SiteSolutionSet.describe_solution_columns()`, a grouped, beginner-facing alternative to `show_solutions_colnames()`'s flat column list -- prints (or returns, via `return_dict=True`) `solution_df`'s columns bucketed into "Which sites", "Travel cost", "Coverage", "Equity", "Change vs a baseline", "Left behind (beyond a threshold)", and "Underlying per-region data", each with a one-line explanation
+    - A group whose columns are genuinely absent (e.g. "Change vs a baseline" without `solve(baseline=...)`) is omitted entirely; "Coverage" and "Equity" are likewise omitted whenever their (always-present-in-schema) columns hold nothing but placeholder values, rather than column presence alone deciding whether to show them
+    - Secondary travel-matrix/demand-scenario columns (`<base>__<label>`) are grouped by their base name alongside the primary column
+    - Purely additive: doesn't touch `solution_df` or `show_solutions()`'s existing column set
+
 - Add population-impact-vs-baseline metrics, answering "how many people's journey actually changed, and by how much?" rather than only the region-wide `weighted_average` shift, which dilutes a large, genuinely local effect across everyone else who is unaffected by it
     - Add `SiteProblem.evaluate_baseline()`, evaluating the current ("do-nothing") network as a one-solution `SiteSolutionSet` for use as a baseline. With no `site_names`/`site_indices`, defaults to the sites flagged via `add_sites(required_sites_col=...)`
     - Add `SolutionComparator.population_impact_summary()`, a per-demand-location diff of `set_b` (candidate) against `set_a` (baseline): `demand_improved`/`demand_worsened`/`demand_unchanged`, `regions_improved`/`regions_worsened`/`regions_unchanged`, `mean_reduction_among_improved`, `mean_increase_among_worsened`, `max_reduction`, `max_increase`, `proportion_demand_improved`/`proportion_demand_worsened`, and `total_demand`. Takes `matrix=`/`demand=` to diff a registered secondary travel matrix or demand scenario instead of the primary, and a `meaningful_change_threshold` (default `0.0`) below which a region counts as unchanged rather than improved/worsened. All magnitudes are reported positive, with direction carried by the bucket name rather than by sign
@@ -33,6 +46,7 @@ lokigi is pre-1.0, so breaking changes can land in any minor release. Read this 
 
 ### Other
 
+- Fix `describe_models()`'s closing instruction pointing at a `prob.solve_pmedian(p=3)` method that doesn't exist -- it now reads `prob.solve(p=3, objectives="p_median")`, the actual public API used everywhere else
 - Pin minimum version of numba to prevent build failure due to odd resolution to a very old version of numba by default
 
 ## v0.8.0

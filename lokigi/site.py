@@ -1433,7 +1433,7 @@ class SiteProblem(
             print(f"Main Trade-off: {info['trade_off']}")
             if not available_only:
                 print(f"Status: {info['status']}")
-        print("\nTo run a model, use: prob.solve_pmedian(p=3) or similar.")
+        print('\nTo run a model, use: prob.solve(p=3, objectives="p_median") or similar.')
 
     def copy(self):
         return copy.deepcopy(self)
