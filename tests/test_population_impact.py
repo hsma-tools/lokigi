@@ -10,6 +10,8 @@ v1 (`SiteProblem.evaluate_baseline()` +
 same data.
 """
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -160,9 +162,11 @@ def test_solve_baseline_true_matches_explicit_baseline(devon_problem, devon_base
 
 
 def test_solve_without_baseline_is_purely_additive(devon_problem):
-    """solve() with no baseline must produce exactly the same solution_df
-    column set as before this feature existed -- no stray always-on
-    columns leaking in."""
+    """solve() with no baseline and no beyond_thresholds must produce
+    exactly the same solution_df column set as before those features
+    existed, plus the always-on absolute coverage headcounts (demand_
+    within_coverage_threshold / regions_within_coverage_threshold) -- no
+    stray baseline- or beyond_thresholds-only columns leaking in."""
     solved = devon_problem.solve(p=5, threshold_for_coverage=30, show_progress=False)
     expected_columns = {
         "solution_rank",
@@ -176,6 +180,8 @@ def test_solve_without_baseline_is_purely_additive(devon_problem):
         "total_cost",
         "proportion_within_coverage_threshold",
         "proportion_regions_within_coverage_threshold",
+        "demand_within_coverage_threshold",
+        "regions_within_coverage_threshold",
         "weighted_by_equity_group",
         "unweighted_by_equity_group",
         "coverage_by_equity_group",
@@ -659,3 +665,532 @@ def test_greedy_and_grasp_carry_population_impact_columns(five_site_problem):
     )
     assert "demand_improved" in grasp.solution_df.columns
     assert grasp.solution_df["demand_improved"].notna().all()
+
+
+# --- Metric C: absolute coverage headcounts + total_demand -----------------
+
+
+def test_total_demand_property(five_site_problem):
+    assert five_site_problem.total_demand == pytest.approx(400.0)
+
+
+def test_total_demand_none_without_demand_data():
+    candidate_df = pd.DataFrame({"site_id": ["Site_A"], "lat": [51.5], "long": [-0.1]})
+    travel_df = pd.DataFrame({"source_id": ["D1"], "Site_A": [5.0]})
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+    assert problem.total_demand is None
+
+
+def test_demand_within_coverage_threshold_matches_proportion_times_total_demand(
+    devon_problem, devon_existing_sites
+):
+    """demand_within_coverage_threshold is explicitly NOT meant to be an
+    independent measurement -- it's the same proportion_within_coverage_
+    threshold, just in headcount units."""
+    result = devon_problem.evaluate_baseline(
+        site_names=devon_existing_sites, threshold_for_coverage=30
+    )
+    row = result.solution_df.iloc[0]
+    assert row["demand_within_coverage_threshold"] == pytest.approx(370510, abs=1)
+    assert row["proportion_within_coverage_threshold"] == pytest.approx(0.7132146, abs=1e-5)
+    assert row["demand_within_coverage_threshold"] / devon_problem.total_demand == pytest.approx(
+        row["proportion_within_coverage_threshold"]
+    )
+
+
+def test_coverage_headcounts_nan_without_threshold(five_site_problem):
+    result = five_site_problem.evaluate_single_solution_single_objective(
+        objective="p_median", site_indices=[0, 1]
+    )
+    metrics = result.return_solution_metrics()
+    assert pd.isna(metrics["demand_within_coverage_threshold"])
+    assert pd.isna(metrics["proportion_within_coverage_threshold"])
+
+
+def test_regions_within_coverage_threshold_counts_regions_not_demand():
+    """4 regions, one with much higher demand than the rest -- regions_
+    within_coverage_threshold must count regions equally regardless of
+    demand, unlike the demand-weighted headcount."""
+    demand_df = pd.DataFrame(
+        {"location_id": ["D1", "D2", "D3", "D4"], "demand": [10, 10, 10, 1000]}
+    )
+    candidate_df = pd.DataFrame(
+        {"site_id": ["Site_A"], "lat": [51.5], "long": [-0.1]}
+    )
+    travel_df = pd.DataFrame(
+        {"source_id": ["D1", "D2", "D3", "D4"], "Site_A": [5.0, 5.0, 25.0, 25.0]}
+    )
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+
+    result = problem.evaluate_single_solution_single_objective(
+        objective="p_median", site_indices=[0], threshold_for_coverage=10
+    )
+    metrics = result.return_solution_metrics()
+    assert metrics["regions_within_coverage_threshold"] == 2
+    assert metrics["demand_within_coverage_threshold"] == pytest.approx(20.0)
+
+
+def _coverage_transition_problem():
+    """Baseline = {A}, candidate = {A, B}, threshold=10: D1 stays covered
+    (unaffected by B), D2 gains coverage (was 20 via A, now 5 via B), D3
+    loses coverage relative to a wider network story is impossible here
+    (adding a site can only ever help), so a genuine BOTH-directions test
+    needs baseline={A} vs candidate={B} (a swap, not a superset): D1
+    (demand=100) goes from covered (A=5) to uncovered (B=20) -- a real
+    "newly uncovered" case; D2 (demand=50) goes from uncovered (A=20) to
+    covered (B=5) -- "newly covered"; D3 (demand=200) stays uncovered
+    either way (A=30, B=25, threshold=10)."""
+    demand_df = pd.DataFrame(
+        {"location_id": ["D1", "D2", "D3"], "demand": [100, 50, 200]}
+    )
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": ["A", "B"],
+            "lat": [51.1, 51.2],
+            "long": [-0.1, -0.2],
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["D1", "D2", "D3"],
+            "A": [5.0, 20.0, 30.0],
+            "B": [20.0, 5.0, 25.0],
+        }
+    )
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+    return problem
+
+
+def test_gross_coverage_transitions_both_directions():
+    problem = _coverage_transition_problem()
+    baseline = problem.evaluate_baseline(site_names=["A"], threshold_for_coverage=10)
+    candidate = problem.evaluate_baseline(site_names=["B"], threshold_for_coverage=10)
+
+    impact = SolutionComparator(baseline, candidate).population_impact_summary(as_dict=True)
+
+    assert impact["regions_newly_covered"] == 1
+    assert impact["regions_newly_uncovered"] == 1
+    assert impact["demand_newly_covered"] == pytest.approx(50.0)
+    assert impact["demand_newly_uncovered"] == pytest.approx(100.0)
+
+
+def test_gross_coverage_transitions_absent_without_threshold():
+    problem = _coverage_transition_problem()
+    baseline = problem.evaluate_baseline(site_names=["A"])
+    candidate = problem.evaluate_baseline(site_names=["B"])
+
+    impact = SolutionComparator(baseline, candidate).population_impact_summary(as_dict=True)
+
+    assert "regions_newly_covered" not in impact
+    assert "demand_newly_covered" not in impact
+
+
+# --- Metric B: "left behind" headcounts beyond one or more thresholds ------
+
+
+def test_devon_beyond_thresholds_matches_repro(devon_problem, devon_existing_sites):
+    """Golden regression matching notes/2026-07-29-handover-additional-
+    metrics.md's repro exactly: baseline (existing 4 sites) vs candidate
+    (existing + Barnstaple), at 30/45/60 minutes. The >60min tier is
+    deliberately unchanged by this candidate -- that's the actual finding,
+    not a bug in the fixture."""
+    baseline = devon_problem.evaluate_baseline(
+        threshold_for_coverage=30, beyond_thresholds=[30, 45, 60]
+    )
+    candidate = devon_problem.evaluate_baseline(
+        site_names=devon_existing_sites + ["Barnstaple - Archwood Retail Park"],
+        threshold_for_coverage=30,
+        beyond_thresholds=[30, 45, 60],
+    )
+    base_row = baseline.solution_df.iloc[0]
+    cand_row = candidate.solution_df.iloc[0]
+
+    assert base_row["demand_beyond_threshold_30"] == pytest.approx(148983, abs=1)
+    assert base_row["demand_beyond_threshold_45"] == pytest.approx(52145, abs=1)
+    assert base_row["demand_beyond_threshold_60"] == pytest.approx(2049, abs=1)
+    assert base_row["regions_beyond_threshold_30"] == 171
+    assert base_row["regions_beyond_threshold_45"] == 58
+    assert base_row["regions_beyond_threshold_60"] == 2
+
+    assert cand_row["demand_beyond_threshold_30"] == pytest.approx(127670, abs=1)
+    assert cand_row["demand_beyond_threshold_45"] == pytest.approx(39798, abs=1)
+    # The extreme tail is untouched by this candidate.
+    assert cand_row["demand_beyond_threshold_60"] == pytest.approx(2049, abs=1)
+    assert cand_row["regions_beyond_threshold_30"] == 145
+    assert cand_row["regions_beyond_threshold_45"] == 43
+    assert cand_row["regions_beyond_threshold_60"] == 2
+
+
+def test_beyond_thresholds_scalar_equals_single_element_list(five_site_problem):
+    scalar = five_site_problem.evaluate_single_solution_single_objective(
+        objective="p_median", site_indices=[0, 1], beyond_thresholds=20
+    ).return_solution_metrics()
+    as_list = five_site_problem.evaluate_single_solution_single_objective(
+        objective="p_median", site_indices=[0, 1], beyond_thresholds=[20]
+    ).return_solution_metrics()
+
+    assert scalar["demand_beyond_threshold_20"] == as_list["demand_beyond_threshold_20"]
+    assert scalar["regions_beyond_threshold_20"] == as_list["regions_beyond_threshold_20"]
+
+
+def test_beyond_threshold_column_naming_for_float_threshold(five_site_problem):
+    metrics = five_site_problem.evaluate_single_solution_single_objective(
+        objective="p_median", site_indices=[0, 1], beyond_thresholds=[42.5]
+    ).return_solution_metrics()
+    assert "demand_beyond_threshold_42.5" in metrics
+    assert "regions_beyond_threshold_42.5" in metrics
+
+
+def test_beyond_thresholds_absent_by_default(five_site_problem):
+    metrics = five_site_problem.evaluate_single_solution_single_objective(
+        objective="p_median", site_indices=[0, 1]
+    ).return_solution_metrics()
+    assert not any(key.startswith("demand_beyond_threshold_") for key in metrics)
+
+
+def test_nan_cost_counts_as_beyond_every_threshold():
+    """A demand location with no reachable site (NaN min_cost) must count
+    as beyond every threshold -- consistent with within_threshold's own
+    "NaN cost -> not covered" convention, just applied to the opposite
+    (bad) direction. Built directly via EvaluatedCombination (bypassing
+    evaluate_single_solution_single_objective()) since a genuinely all-NaN
+    row for the selected sites isn't reachable through the public solve
+    path -- pandas' idxmin() raises before EvaluatedCombination is ever
+    constructed in that case."""
+
+    class _StubSiteProblem:
+        _demand_data_demand_col = "demand"
+
+    df = pd.DataFrame(
+        {
+            "min_cost": [5.0, np.nan],
+            "demand": [100, 100],
+            "within_threshold": [True, np.nan],
+        }
+    )
+    result = EvaluatedCombination(
+        solution_type="p_median",
+        site_names=["A"],
+        site_indices=[0],
+        evaluated_combination_df=df,
+        weights=None,
+        site_problem=_StubSiteProblem(),
+        beyond_thresholds=[100],
+    )
+    metrics = result.return_solution_metrics()
+
+    assert metrics["regions_beyond_threshold_100"] == 1
+    assert metrics["demand_beyond_threshold_100"] == pytest.approx(100.0)
+
+
+def test_beyond_threshold_by_equity_group_present_iff_equity_data(
+    five_site_problem,
+):
+    without_equity = five_site_problem.evaluate_single_solution_single_objective(
+        objective="p_median", site_indices=[0, 1], beyond_thresholds=[20]
+    ).return_solution_metrics()
+    assert "demand_beyond_threshold_20_by_equity_group" not in without_equity
+
+    equity_df = pd.DataFrame(
+        {
+            "location_id": ["LSOA_1", "LSOA_2", "LSOA_3", "LSOA_4"],
+            "imd_decile": [1, 5, 10, 10],
+        }
+    )
+    five_site_problem.add_equity_data(
+        equity_df,
+        equity_col="imd_decile",
+        common_col="location_id",
+        label="equity",
+        disadvantaged_end="low",
+    )
+    with_equity = five_site_problem.evaluate_single_solution_single_objective(
+        objective="p_median", site_indices=[0, 1], beyond_thresholds=[20]
+    ).return_solution_metrics()
+    assert "demand_beyond_threshold_20_by_equity_group" in with_equity
+    assert "regions_beyond_threshold_20_by_equity_group" in with_equity
+
+
+def test_beyond_threshold_is_minimise_metric_by_default():
+    from lokigi.utils import _is_maximise_metric
+
+    assert _is_maximise_metric("demand_beyond_threshold_30") is False
+    assert _is_maximise_metric("regions_beyond_threshold_45") is False
+    assert _is_maximise_metric("demand_beyond_threshold_30__public_transport") is False
+
+
+# --- Metric A: population impact split by equity band -----------------------
+
+
+@pytest.fixture(scope="module")
+def devon_problem_with_equity(devon_problem):
+    """`devon_problem` with IMD decile equity data registered on a deep
+    copy -- kept separate from the plain `devon_problem` fixture (also
+    module-scoped and shared across many other tests in this file) so that
+    registering equity data here can never leak into them."""
+    problem = devon_problem.copy()
+    imd = pd.read_csv("sample_data/devon_imd_2025_2021_LSOAs.csv")
+    problem.add_equity_data(
+        imd,
+        equity_col=(
+            "Index of Multiple Deprivation (IMD) Decile "
+            "(where 1 is most deprived 10% of LSOA"
+        ),
+        common_col="LSOA name (2021)",
+        label="IMD decile",
+        disadvantaged_end="low",
+    )
+    return problem
+
+
+def test_devon_population_impact_by_equity_group_golden_regression(
+    devon_problem_with_equity, devon_existing_sites
+):
+    """Golden regression: 10 IMD deciles split via lokigi's own
+    array_split-based tertile convention (chunks of 4/3/3, remainder in
+    the first chunk) -- deciles 1-4 = most-deprived tertile, 8-10 =
+    least-deprived. These are NOT the handover note's manually-computed
+    1-3/8-10 thirds (a different, non-numpy split); they are the numbers
+    lokigi's own bucketing convention actually produces, confirmed by
+    direct computation against this exact fixture."""
+    baseline = devon_problem_with_equity.evaluate_baseline(threshold_for_coverage=30)
+    candidate = devon_problem_with_equity.evaluate_baseline(
+        site_names=devon_existing_sites + ["Barnstaple - Archwood Retail Park"],
+        threshold_for_coverage=30,
+    )
+    comparator = SolutionComparator(baseline, candidate, labels=("baseline", "candidate"))
+
+    by_band = comparator.population_impact_by_equity_group()
+
+    assert list(by_band.index) == list(range(1, 11))
+    assert by_band["demand_improved"].sum() == pytest.approx(46907, abs=1)
+    assert by_band["band_total_demand"].sum() == pytest.approx(519493, abs=1)
+
+    lower_third = by_band.iloc[:4]  # deciles 1-4
+    upper_third = by_band.iloc[-3:]  # deciles 8-10
+    lower_rate = lower_third["demand_improved"].sum() / lower_third["band_total_demand"].sum()
+    upper_rate = upper_third["demand_improved"].sum() / upper_third["band_total_demand"].sum()
+
+    assert lower_rate == pytest.approx(0.12156, abs=1e-4)
+    assert upper_rate == pytest.approx(0.04205, abs=1e-4)
+    # The qualitative finding the handover note surfaced: the most
+    # deprived tertile benefits at roughly double (here, even higher) the
+    # rate of the least deprived tertile.
+    assert lower_rate > 2 * upper_rate
+
+
+def test_population_impact_by_equity_group_no_equity_data_raises(
+    devon_problem, devon_existing_sites
+):
+    baseline = devon_problem.evaluate_baseline(threshold_for_coverage=30)
+    candidate = devon_problem.evaluate_baseline(
+        site_names=devon_existing_sites + ["Barnstaple - Archwood Retail Park"],
+        threshold_for_coverage=30,
+    )
+    comparator = SolutionComparator(baseline, candidate)
+    with pytest.raises(ValueError, match="add_equity_data"):
+        comparator.population_impact_by_equity_group()
+
+
+def test_population_impact_by_equity_group_respects_n_bins():
+    """A caller who registered 5 bins should get 5-band population-impact
+    numbers, not a silently different (e.g. hardcoded decile) granularity."""
+    problem = _swap_problem()
+    equity_df = pd.DataFrame(
+        {"location_id": ["D1", "D2", "D3"], "score": [1.0, 50.0, 99.0]}
+    )
+    problem.add_equity_data(
+        equity_df,
+        equity_col="score",
+        common_col="location_id",
+        label="score",
+        disadvantaged_end="low",
+        continuous_measure=True,
+        n_bins=3,
+    )
+    baseline = problem.evaluate_baseline(site_names=["A", "B"])
+    candidate = problem.evaluate_baseline(site_names=["A", "C"])
+    comparator = SolutionComparator(baseline, candidate)
+
+    by_band = comparator.population_impact_by_equity_group()
+    assert len(by_band) == 3
+
+
+def test_population_impact_by_equity_group_totals_match_summary():
+    """Per-band demand_improved/worsened/unchanged must sum to the same
+    totals population_impact_summary() reports region-wide."""
+    problem = _swap_problem()
+    equity_df = pd.DataFrame(
+        {"location_id": ["D1", "D2", "D3"], "imd_decile": [1, 5, 10]}
+    )
+    problem.add_equity_data(
+        equity_df,
+        equity_col="imd_decile",
+        common_col="location_id",
+        label="equity",
+        disadvantaged_end="low",
+    )
+    baseline = problem.evaluate_baseline(site_names=["A", "B"])
+    candidate = problem.evaluate_baseline(site_names=["A", "C"])
+    comparator = SolutionComparator(baseline, candidate)
+
+    summary = comparator.population_impact_summary(as_dict=True)
+    by_band = comparator.population_impact_by_equity_group()
+
+    assert by_band["demand_improved"].sum() == pytest.approx(summary["demand_improved"])
+    assert by_band["demand_worsened"].sum() == pytest.approx(summary["demand_worsened"])
+    assert by_band["demand_unchanged"].sum() == pytest.approx(summary["demand_unchanged"])
+    assert by_band["regions_improved"].sum() == summary["regions_improved"]
+    assert by_band["regions_worsened"].sum() == summary["regions_worsened"]
+
+
+def test_solve_path_equity_group_population_impact_columns(five_site_problem):
+    equity_df = pd.DataFrame(
+        {
+            "location_id": ["LSOA_1", "LSOA_2", "LSOA_3", "LSOA_4"],
+            "imd_decile": [1, 5, 10, 10],
+        }
+    )
+    five_site_problem.add_equity_data(
+        equity_df,
+        equity_col="imd_decile",
+        common_col="location_id",
+        label="equity",
+        disadvantaged_end="low",
+    )
+    baseline = five_site_problem.evaluate_baseline(site_names=["Site_1"])
+    solved = five_site_problem.solve(
+        p=2, baseline=baseline, show_progress=False
+    )
+    assert "demand_improved_by_equity_group" in solved.solution_df.columns
+    assert "demand_worsened_by_equity_group" in solved.solution_df.columns
+    first_row_bands = solved.solution_df.iloc[0]["demand_improved_by_equity_group"]
+    assert isinstance(first_row_bands, dict)
+    assert set(first_row_bands.keys()) <= {1, 5, 10}
+
+
+def test_solve_path_equity_group_columns_absent_without_equity_data(five_site_problem):
+    baseline = five_site_problem.evaluate_baseline(site_names=["Site_1"])
+    solved = five_site_problem.solve(p=2, baseline=baseline, show_progress=False)
+    assert "demand_improved_by_equity_group" not in solved.solution_df.columns
+
+
+def test_population_impact_phrase_includes_threshold_wording():
+    problem = _swap_problem()
+    baseline = problem.evaluate_baseline(site_names=["A", "B"])
+    candidate = problem.evaluate_baseline(site_names=["A", "C"])
+    phrase = SolutionComparator(baseline, candidate).population_impact_phrase(
+        meaningful_change_threshold=5.0
+    )
+    assert "shorter by more than 5.0 minutes" in phrase
+
+
+def test_population_impact_phrase_includes_equity_sentence(
+    devon_problem_with_equity, devon_existing_sites
+):
+    baseline = devon_problem_with_equity.evaluate_baseline(threshold_for_coverage=30)
+    candidate = devon_problem_with_equity.evaluate_baseline(
+        site_names=devon_existing_sites + ["Barnstaple - Archwood Retail Park"],
+        threshold_for_coverage=30,
+    )
+    phrase = SolutionComparator(baseline, candidate).population_impact_phrase()
+    assert "most disadvantaged third" in phrase
+    assert "least disadvantaged third" in phrase
+
+
+# --- Post-review fixes: disadvantaged_end ordering with <3 bands, numpy ----
+# --- integer thresholds, and cross-side threshold_for_coverage mismatch ---
+
+
+def _two_band_problem(disadvantaged_end):
+    """Baseline={A}, candidate={B}: D1 (band 1) improves, D2 (band 2)
+    worsens -- band 2 must sort first ("most disadvantaged") whenever
+    disadvantaged_end="high", even though only 2 bands means no tertile
+    split is possible."""
+    demand_df = pd.DataFrame({"location_id": ["D1", "D2"], "demand": [100, 100]})
+    candidate_df = pd.DataFrame(
+        {"site_id": ["A", "B"], "lat": [51.1, 51.2], "long": [-0.1, -0.2]}
+    )
+    travel_df = pd.DataFrame(
+        {"source_id": ["D1", "D2"], "A": [5.0, 20.0], "B": [20.0, 5.0]}
+    )
+    equity_df = pd.DataFrame({"location_id": ["D1", "D2"], "band": [1, 2]})
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+    problem.add_equity_data(
+        equity_df,
+        equity_col="band",
+        common_col="location_id",
+        label="band",
+        disadvantaged_end=disadvantaged_end,
+    )
+    return problem
+
+
+def test_population_impact_by_equity_group_orders_two_bands_by_disadvantaged_end_high():
+    """Regression: with fewer than 3 distinct bands (no tertile split
+    possible), the method previously fell back to plain ascending raw-bin
+    order regardless of disadvantaged_end, silently breaking the documented
+    "most- to least-disadvantaged" ordering for disadvantaged_end="high"."""
+    problem = _two_band_problem(disadvantaged_end="high")
+    baseline = problem.evaluate_baseline(site_names=["A"])
+    candidate = problem.evaluate_baseline(site_names=["B"])
+    by_band = SolutionComparator(baseline, candidate).population_impact_by_equity_group()
+    assert list(by_band.index) == [2, 1]
+
+
+def test_population_impact_by_equity_group_orders_two_bands_by_disadvantaged_end_low():
+    """Same 2-band fixture with disadvantaged_end="low" (the default
+    assumption) should keep ascending order -- band 1 first."""
+    problem = _two_band_problem(disadvantaged_end="low")
+    baseline = problem.evaluate_baseline(site_names=["A"])
+    candidate = problem.evaluate_baseline(site_names=["B"])
+    by_band = SolutionComparator(baseline, candidate).population_impact_by_equity_group()
+    assert list(by_band.index) == [1, 2]
+
+
+def test_beyond_thresholds_accepts_numpy_integer_scalar(five_site_problem):
+    """Regression: np.integer doesn't subclass int (unlike np.floating,
+    which subclasses float), so a numpy-integer threshold -- e.g. derived
+    from a column's .max() -- previously fell through to the "treat as an
+    iterable" branch and crashed with "'numpy.int64' object is not
+    iterable"."""
+    metrics = five_site_problem.evaluate_single_solution_single_objective(
+        objective="p_median", site_indices=[0, 1], beyond_thresholds=np.int64(20)
+    ).return_solution_metrics()
+    assert "demand_beyond_threshold_20" in metrics
+
+
+def test_population_impact_summary_warns_on_mismatched_coverage_thresholds():
+    """Regression: comparing two solutions evaluated with different
+    threshold_for_coverage values would silently diff 'covered' flags
+    computed against two different cutoffs for the gross newly-covered/
+    newly-uncovered metrics -- a misleading result with no signal to the
+    caller that anything was wrong."""
+    problem = _swap_problem()
+    baseline = problem.evaluate_baseline(site_names=["A", "B"], threshold_for_coverage=15)
+    candidate = problem.evaluate_baseline(site_names=["A", "C"], threshold_for_coverage=45)
+
+    with pytest.warns(UserWarning, match="different threshold_for_coverage"):
+        SolutionComparator(baseline, candidate).population_impact_summary()
+
+
+def test_population_impact_summary_no_warning_on_matching_coverage_thresholds():
+    problem = _swap_problem()
+    baseline = problem.evaluate_baseline(site_names=["A", "B"], threshold_for_coverage=15)
+    candidate = problem.evaluate_baseline(site_names=["A", "C"], threshold_for_coverage=15)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        SolutionComparator(baseline, candidate).population_impact_summary()

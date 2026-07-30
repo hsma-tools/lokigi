@@ -5,7 +5,7 @@ import seaborn as sns
 from matplotlib.lines import Line2D
 
 from lokigi.plot_utils import plot_solution_sets_comparison
-from lokigi.utils import _select_solution
+from lokigi.utils import _select_solution, _split_bins_into_tertiles
 
 
 class SolutionComparatorPlotsMixin:
@@ -414,6 +414,107 @@ class SolutionComparatorPlotsMixin:
 
         if title == "default":
             title = "Travel cost distribution: before vs after"
+        if title:
+            axis.set_title(title)
+
+        return fig, axis
+
+    def plot_population_impact_by_equity_group(
+        self,
+        matrix=None,
+        demand=None,
+        meaningful_change_threshold=0.0,
+        config_a=None,
+        config_b=None,
+        colors=("#1b7a5e", "#b23a48"),
+        figsize=(10, 5),
+        title="default",
+        ax=None,
+    ):
+        """
+        Bar chart of `population_impact_by_equity_group()`'s rate-
+        normalised improved/worsened proportions -- one paired bar per
+        equity band, ordered most- to least-disadvantaged.
+
+        Deliberately plots BOTH directions side by side rather than only
+        the improved rate: a candidate can win on `weighted_average` while
+        making some disadvantaged areas worse off, and a benefits-only
+        chart would hide exactly that. Each bar is a share of THAT band's
+        own population (not a share of the region-wide improved/worsened
+        total), so bands with different population sizes are directly
+        comparable.
+
+        Parameters
+        ----------
+        matrix, demand, meaningful_change_threshold, config_a, config_b
+            Passed straight through to `population_impact_by_equity_group()`.
+        colors : (str, str), default ("#1b7a5e", "#b23a48")
+            `(improved_color, worsened_color)`.
+        figsize : tuple, default (10, 5)
+            Figure size, ignored if `ax` is given.
+        title : str, default "default"
+            Plot title. If "default", an automatic title is generated.
+        ax : matplotlib.axes.Axes, optional
+            An existing Axes to draw into instead of creating a new
+            figure -- e.g. to embed this in a larger layout.
+
+        Returns
+        -------
+        (matplotlib.figure.Figure, matplotlib.axes.Axes)
+
+        Raises
+        ------
+        ValueError
+            If no equity data is registered on the problem, or any of the
+            errors `population_impact_summary()` raises -- see
+            `population_impact_by_equity_group()`.
+        """
+        by_band = self.population_impact_by_equity_group(
+            matrix=matrix,
+            demand=demand,
+            meaningful_change_threshold=meaningful_change_threshold,
+            config_a=config_a,
+            config_b=config_b,
+        )
+
+        improved_color, worsened_color = colors
+        bands = [str(b) for b in by_band.index]
+        x = np.arange(len(bands))
+        width = 0.38
+
+        if ax is None:
+            fig, axis = plt.subplots(figsize=figsize)
+        else:
+            axis = ax
+            fig = axis.get_figure()
+
+        axis.bar(
+            x - width / 2,
+            by_band["proportion_of_band_improved"] * 100,
+            width=width,
+            color=improved_color,
+            label="Improved",
+        )
+        axis.bar(
+            x + width / 2,
+            by_band["proportion_of_band_worsened"] * 100,
+            width=width,
+            color=worsened_color,
+            label="Worsened",
+        )
+
+        axis.set_xticks(x)
+        axis.set_xticklabels(bands)
+        axis.set_xlabel(
+            f"{by_band.index.name} (most to least disadvantaged)"
+            if by_band.index.name
+            else "Equity band (most to least disadvantaged)"
+        )
+        axis.set_ylabel("% of band's own population")
+        axis.legend()
+
+        if title == "default":
+            title = "Population impact by equity band"
         if title:
             axis.set_title(title)
 

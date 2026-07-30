@@ -632,6 +632,55 @@ def _population_impact_metrics(
     }
 
 
+def _format_threshold(t):
+    """
+    Render a threshold value for use in a column name, e.g. `30 -> "30"`,
+    `42.5 -> "42.5"`. Used to build `demand_beyond_threshold_<t>` /
+    `regions_beyond_threshold_<t>` column names -- deliberately a single
+    underscore before the value (not `__`, which is reserved for secondary
+    travel-matrix/demand-scenario suffixes) so the two conventions can never
+    collide, e.g. `demand_beyond_threshold_45__public_transport`.
+    """
+    return f"{float(t):g}"
+
+
+def _split_bins_into_tertiles(unique_bins, disadvantaged_end=None):
+    """
+    Split a sorted list of equity-band values into three roughly equal
+    chunks (via `np.array_split`), returning them ordered from
+    MOST-disadvantaged to LEAST-disadvantaged.
+
+    `disadvantaged_end` mirrors `add_equity_data()`'s parameter of the same
+    name: "low" means the lowest band values are the most disadvantaged
+    (e.g. IMD decile 1 = most deprived), "high" means the opposite. `None`
+    (its default) is treated as "low" -- the assumption every pre-existing
+    caller of this arithmetic hardcoded, so behaviour is unchanged for any
+    problem that never specified `disadvantaged_end`; only a problem that
+    explicitly set `disadvantaged_end="high"` gets a (correct) different
+    tertile ordering than before.
+
+    Parameters
+    ----------
+    unique_bins : sequence
+        Sorted, distinct equity-band values (e.g. IMD deciles 1-10).
+    disadvantaged_end : {"low", "high", None}, optional
+
+    Returns
+    -------
+    (list, list, list) or (None, None, None)
+        `(most_disadvantaged, middle, least_disadvantaged)` chunks, or
+        `(None, None, None)` if fewer than 3 distinct bins were given.
+    """
+    if len(unique_bins) < 3:
+        return None, None, None
+
+    chunks = np.array_split(list(unique_bins), 3)
+    if disadvantaged_end == "high":
+        chunks = list(reversed(chunks))
+
+    return list(chunks[0]), list(chunks[1]), list(chunks[2])
+
+
 def _is_maximise_metric(col):
     """
     True for solution metrics where a HIGHER value is better.

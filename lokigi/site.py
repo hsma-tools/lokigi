@@ -121,6 +121,21 @@ class SiteProblem(
 
         super().__init__(preferred_crs, debug_mode)
 
+    @property
+    def total_demand(self):
+        """
+        Sum of the demand column registered via `add_demand()`, or `None`
+        if no demand data has been registered. A stable, discoverable
+        denominator for sanity-checking absolute-headcount metrics (e.g.
+        `demand_within_coverage_threshold / total_demand ==
+        proportion_within_coverage_threshold`) without recomputing it ad
+        hoc, as `_coverage_stats()` and `site_allocation_summary()` each do
+        internally.
+        """
+        if self.demand_data is None or self._demand_data_demand_col is None:
+            return None
+        return float(self.demand_data[self._demand_data_demand_col].sum())
+
     ####################################
     # MARK: Single solution evaluation
     ####################################
@@ -134,6 +149,7 @@ class SiteProblem(
         threshold_for_coverage=None,
         baseline_costs=None,
         meaningful_change_threshold=0.0,
+        beyond_thresholds=None,
     ):
         """
         Evaluate a specific set of facility sites against a single objective.
@@ -173,6 +189,14 @@ class SiteProblem(
         meaningful_change_threshold : float, default 0.0
             Only used when `baseline_costs` is given -- see
             `lokigi.utils._population_impact_metrics`.
+        beyond_thresholds : float or sequence of float, optional
+            One or more "left behind" travel-cost thresholds -- forwarded
+            to `EvaluatedCombination`, see its `beyond_thresholds`
+            parameter for the resulting `demand_beyond_threshold_<t>` /
+            `regions_beyond_threshold_<t>` columns. Deliberately distinct
+            from `threshold_for_coverage`: "covered" (good) and "beyond"
+            (bad) cross the threshold in opposite directions, and this
+            parameter accepts more than one value at once.
 
         Returns
         -------
@@ -498,6 +522,7 @@ class SiteProblem(
             coverage_threshold=threshold_for_coverage,
             baseline_costs=baseline_costs,
             meaningful_change_threshold=meaningful_change_threshold,
+            beyond_thresholds=beyond_thresholds,
         )
 
     # MARK: evaluate_baseline()
@@ -508,6 +533,7 @@ class SiteProblem(
         objective: str = "p_median",
         weights=None,
         threshold_for_coverage=None,
+        beyond_thresholds=None,
     ):
         """
         Evaluate the current ("do-nothing") network as a one-solution
@@ -539,6 +565,10 @@ class SiteProblem(
             Forwarded to `evaluate_single_solution_single_objective()`.
         threshold_for_coverage : float or int, optional
             Forwarded to `evaluate_single_solution_single_objective()`.
+        beyond_thresholds : float or sequence of float, optional
+            Forwarded to `evaluate_single_solution_single_objective()` --
+            reports the baseline's own "left behind" headcounts alongside
+            its coverage.
 
         Returns
         -------
@@ -592,6 +622,7 @@ class SiteProblem(
             site_names=site_names,
             site_indices=site_indices,
             threshold_for_coverage=threshold_for_coverage,
+            beyond_thresholds=beyond_thresholds,
         )
         metrics = evaluated.return_solution_metrics()
 
@@ -627,6 +658,7 @@ class SiteProblem(
         full_secondary_metrics=False,
         baseline=None,
         meaningful_change_threshold=0.0,
+        beyond_thresholds=None,
     ):
         """
         Solve the site location problem using the specified objective and strategy.
@@ -785,6 +817,17 @@ class SiteProblem(
             `max(meaningful_change_threshold, 1e-9)` to count as improved
             or worsened; anything smaller (including floating-point noise
             at the default 0.0) is `unchanged`.
+        beyond_thresholds : float or sequence of float, optional
+            One or more "left behind" travel-cost thresholds, added to
+            every row of `solution_df` as `demand_beyond_threshold_<t>` /
+            `regions_beyond_threshold_<t>` -- how many people/regions have
+            a travel cost beyond `t`, for each `t`. Distinct from
+            `threshold_for_coverage`: "covered" (good) and "beyond" (bad)
+            cross the threshold in opposite directions, and this parameter
+            accepts more than one value at once (`threshold_for_coverage`
+            does not). `None` (the default): off, `solution_df`'s column
+            set is unchanged. See
+            `EvaluatedCombination.return_solution_metrics`'s point 8.
 
         Returns
         -------
@@ -1063,6 +1106,7 @@ class SiteProblem(
                 full_secondary_metrics=full_secondary_metrics,
                 baseline_costs=baseline_costs,
                 meaningful_change_threshold=meaningful_change_threshold,
+                beyond_thresholds=beyond_thresholds,
             )
         else:
             raise ValueError(f"Unknown objective '{objective}'.")
@@ -1145,6 +1189,7 @@ class SiteProblem(
         full_secondary_metrics=False,
         baseline_costs=None,
         meaningful_change_threshold=0.0,
+        beyond_thresholds=None,
     ):
         """
         Internal dispatcher for solving location-allocation problems.
@@ -1256,6 +1301,7 @@ class SiteProblem(
                 full_secondary_metrics=full_secondary_metrics,
                 baseline_costs=baseline_costs,
                 meaningful_change_threshold=meaningful_change_threshold,
+                beyond_thresholds=beyond_thresholds,
             )
 
         if search_strategy == "greedy":
@@ -1271,6 +1317,7 @@ class SiteProblem(
                 full_secondary_metrics=full_secondary_metrics,
                 baseline_costs=baseline_costs,
                 meaningful_change_threshold=meaningful_change_threshold,
+                beyond_thresholds=beyond_thresholds,
             )
 
         if search_strategy == "grasp":
@@ -1293,6 +1340,7 @@ class SiteProblem(
                 max_value_cutoff=max_value_cutoff,
                 full_secondary_metrics=full_secondary_metrics,
                 baseline_costs=baseline_costs,
+                beyond_thresholds=beyond_thresholds,
                 meaningful_change_threshold=meaningful_change_threshold,
             )
 

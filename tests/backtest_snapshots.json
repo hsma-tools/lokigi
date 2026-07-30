@@ -360,6 +360,14 @@
       true
     ],
     [
+      "demand_within_coverage_threshold",
+      true
+    ],
+    [
+      "regions_within_coverage_threshold",
+      true
+    ],
+    [
       "weighted_by_equity_group",
       false
     ],
@@ -441,6 +449,14 @@
     ],
     [
       "proportion_regions_within_coverage_threshold__public_transport",
+      true
+    ],
+    [
+      "demand_within_coverage_threshold__public_transport",
+      true
+    ],
+    [
+      "regions_within_coverage_threshold__public_transport",
       true
     ],
     [

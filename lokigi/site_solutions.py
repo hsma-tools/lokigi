@@ -8,6 +8,8 @@ from lokigi.utils import (
     _select_solution,
     _sort_solutions_by_metric,
     _population_impact_metrics,
+    _split_bins_into_tertiles,
+    _format_threshold,
 )
 
 from lokigi.mixins.site_solution_plots import (
@@ -72,6 +74,17 @@ class EvaluatedCombination:
     meaningful_change_threshold : float, default 0.0
         Passed through to `_population_impact_metrics()` -- see there for
         the improved/worsened/unchanged classification rule.
+    beyond_thresholds : float or sequence of float, optional
+        One or more "left behind" travel-cost thresholds. For each value
+        `t`, adds `demand_beyond_threshold_<t>` / `regions_beyond_
+        threshold_<t>` (headcount/region-count with a cost beyond `t`) to
+        `return_solution_metrics()`, plus a `_by_equity_group` dict variant
+        of each when equity data is registered. Deliberately a distinct
+        parameter from `coverage_threshold`/`threshold_for_coverage`
+        (opposite crossing direction: "covered" is good, "beyond" is bad)
+        and, unlike it, supports more than one threshold at once. `None`
+        (the default) adds no columns, keeping `solution_df`'s schema
+        unchanged for callers that never ask for this.
 
     Attributes
     ----------
@@ -133,6 +146,7 @@ class EvaluatedCombination:
         coverage_threshold=None,
         baseline_costs=None,
         meaningful_change_threshold=0.0,
+        beyond_thresholds=None,
     ):
         self.solution_type = solution_type
         self.site_names = site_names
@@ -140,6 +154,17 @@ class EvaluatedCombination:
         self.evaluated_combination_df = evaluated_combination_df
         self.site_problem = site_problem
         self._meaningful_change_threshold = meaningful_change_threshold
+
+        if beyond_thresholds is None:
+            self.beyond_thresholds = ()
+        elif isinstance(beyond_thresholds, (int, float, np.integer, np.floating)):
+            # np.integer doesn't subclass int (unlike np.floating, which
+            # does subclass float) -- without it, a numpy-integer scalar
+            # (e.g. from a column's .max()) fell into the `else` branch and
+            # crashed with "'numpy.int64' object is not iterable".
+            self.beyond_thresholds = (float(beyond_thresholds),)
+        else:
+            self.beyond_thresholds = tuple(float(t) for t in beyond_thresholds)
 
         # Population-impact-vs-baseline support (see _population_impact_
         # metrics in utils.py). `baseline_costs` maps a cost-column name
@@ -426,6 +451,13 @@ class EvaluatedCombination:
         self.proportion_regions_within_coverage_threshold = primary_metrics[
             "proportion_regions_within_coverage_threshold"
         ]
+        self.demand_within_coverage_threshold = primary_metrics[
+            "demand_within_coverage_threshold"
+        ]
+        self.regions_within_coverage_threshold = primary_metrics[
+            "regions_within_coverage_threshold"
+        ]
+        self.beyond_threshold_metrics = primary_metrics["beyond_threshold_metrics"]
         self.weighted_by_equity_group = primary_metrics["weighted_by_equity_group"]
         self.unweighted_by_equity_group = primary_metrics["unweighted_by_equity_group"]
         self.coverage_by_equity_group = primary_metrics["coverage_by_equity_group"]
@@ -433,6 +465,12 @@ class EvaluatedCombination:
             "coverage_regions_by_equity_group"
         ]
         self.max_cost_by_equity_group = primary_metrics["max_cost_by_equity_group"]
+        self.demand_improved_by_equity_group = primary_metrics[
+            "demand_improved_by_equity_group"
+        ]
+        self.demand_worsened_by_equity_group = primary_metrics[
+            "demand_worsened_by_equity_group"
+        ]
         self.gap_absolute_weighted = primary_metrics["gap_absolute_weighted"]
         self.gap_absolute_desc = primary_metrics["gap_absolute_desc"]
         self.gap_relative_weighted = primary_metrics["gap_relative_weighted"]
@@ -528,29 +566,52 @@ class EvaluatedCombination:
         Proportion covered -- demand-weighted when `demand` is supplied,
         otherwise the plain share of regions.
 
+        Thin wrapper around `_coverage_stats()` for the many call sites
+        that only need the proportion (e.g. the per-equity-band
+        breakdowns), keeping their signature unchanged.
+        """
+        proportion, _, _ = EvaluatedCombination._coverage_stats(within_flags, demand)
+        return proportion
+
+    @staticmethod
+    def _coverage_stats(within_flags, demand):
+        """
+        Proportion, absolute demand, and region count covered --
+        demand-weighted when `demand` is supplied, otherwise the plain
+        share/count of regions.
+
         The all-NaN check is load-bearing. `within_flags` is entirely NaN
         whenever no `threshold_for_coverage` was given, and that must stay
         NaN ("not measured"). It cannot be left to the arithmetic below,
         because pandas' `.sum()` skips NaN: the weighted branch would
         otherwise return a confident 0.0 -- "none of the demand is covered"
         -- for a problem where coverage was never assessed at all.
+
+        Returns
+        -------
+        (proportion, covered_demand, covered_regions) : (float, float, int)
+            `covered_demand` is `NaN` whenever `demand` is None (there is no
+            headcount to report, only a share of regions); `proportion` and
+            `covered_demand` are both `NaN` if `within_flags` is all-NaN.
         """
         if within_flags.isna().all():
-            return np.nan
+            return np.nan, np.nan, 0
 
         covered = within_flags.astype(float)
+        covered_regions = int(covered.sum())
 
         if demand is None:
-            return float(covered.sum() / len(covered))
+            return float(covered.sum() / len(covered)), np.nan, covered_regions
 
         total_demand = demand.sum()
         if total_demand <= 0:
             # Defensive only, and not reachable through the public API: a
             # zero-demand problem already raises "Weights sum to zero" from
             # np.average when weighted_average is computed further up.
-            return np.nan
+            return np.nan, np.nan, covered_regions
 
-        return float((covered * demand).sum() / total_demand)
+        covered_demand = float((covered * demand).sum())
+        return covered_demand / total_demand, covered_demand, covered_regions
 
     def _compute_travel_metrics(
         self, cost_col, within_col, active_weights, coverage_demand=None
@@ -581,6 +642,11 @@ class EvaluatedCombination:
         `cost_col in self._baseline_cost_arrays`), in which case it is the
         `_population_impact_metrics()` dict diffing `df[cost_col]` against
         that baseline, weighted by `demand_series` above.
+
+        It also carries a `beyond_threshold_metrics` dict, keyed by each
+        value in `self.beyond_thresholds` -- empty unless that was
+        populated (see `EvaluatedCombination`'s `beyond_thresholds`
+        parameter).
         """
         df = self.evaluated_combination_df
 
@@ -592,18 +658,46 @@ class EvaluatedCombination:
         demand_series = (
             coverage_demand if coverage_demand is not None else self._coverage_demand_series()
         )
-        proportion_within_coverage_threshold = self._coverage_proportion(
-            df[within_col], demand_series
-        )
+        (
+            proportion_within_coverage_threshold,
+            demand_within_coverage_threshold,
+            regions_within_coverage_threshold,
+        ) = self._coverage_stats(df[within_col], demand_series)
         proportion_regions_within_coverage_threshold = self._coverage_proportion(
             df[within_col], None
         )
+
+        # "Left behind" headcounts: how many people/regions have a travel
+        # cost beyond each threshold in self.beyond_thresholds, computed
+        # directly from cost_col rather than the single pre-baked
+        # within_col -- unlike coverage, this supports several thresholds
+        # at once. NaN (unreachable) cost counts as beyond every
+        # threshold, matching within_col's "NaN cost -> not covered"
+        # convention in direction (both treat unreachable as the bad
+        # outcome).
+        beyond_threshold_metrics = {}
+        beyond_flags_by_threshold = {
+            t: ~(df[cost_col] <= t) for t in self.beyond_thresholds
+        }
+        for t, beyond_flags in beyond_flags_by_threshold.items():
+            beyond_threshold_metrics[t] = {
+                "regions_beyond": int(beyond_flags.sum()),
+                "demand_beyond": (
+                    np.nan
+                    if demand_series is None
+                    else float((beyond_flags.astype(float) * demand_series).sum())
+                ),
+                "regions_beyond_by_equity_group": {},
+                "demand_beyond_by_equity_group": {},
+            }
 
         weighted_by_equity_group = {}
         unweighted_by_equity_group = {}
         coverage_by_equity_group = {}
         coverage_regions_by_equity_group = {}
         max_cost_by_equity_group = {}
+        demand_improved_by_equity_group = {}
+        demand_worsened_by_equity_group = {}
         gap_absolute_weighted = None
         gap_absolute_desc = "N/A (No equity data)"
         gap_relative_weighted = None
@@ -613,6 +707,11 @@ class EvaluatedCombination:
         avg_upper_third_bins = None
         inter_tertile_ratio = None
         inter_tertile_desc = "N/A (No equity data)"
+
+        # Resolved here (rather than just before the return statement, as
+        # in earlier versions of this method) so the equity-group breakdown
+        # below can also compute a per-band population impact.
+        baseline_array = self._baseline_cost_arrays.get(cost_col)
 
         equity_col = getattr(self.site_problem, "_equity_data_equity_col", None)
 
@@ -690,11 +789,71 @@ class EvaluatedCombination:
             # 5. Worst-Case Scenarios by Group
             max_cost_by_equity_group = grouped_df[cost_col].max().round(2).to_dict()
 
+            # 5b. Left-behind headcounts by group -- who's beyond each
+            # threshold, split by equity band (e.g. "how many of the
+            # people beyond 45 minutes are in the most deprived third?").
+            for t, beyond_flags in beyond_flags_by_threshold.items():
+                beyond_threshold_metrics[t]["regions_beyond_by_equity_group"] = {
+                    band: int(beyond_flags.loc[group.index].sum())
+                    for band, group in grouped_df
+                }
+                if demand_series is not None:
+                    beyond_threshold_metrics[t]["demand_beyond_by_equity_group"] = {
+                        band: float(
+                            (
+                                beyond_flags.loc[group.index].astype(float)
+                                * demand_series.loc[group.index]
+                            ).sum()
+                        )
+                        for band, group in grouped_df
+                    }
+
+            # 5c. Population impact by group -- who actually benefited from
+            # this solution vs the baseline, split by equity band (e.g.
+            # "are the most deprived areas improving at a higher rate than
+            # the least deprived?"). Only computed when a baseline was
+            # supplied for this cost_col. `df.index.get_indexer` converts
+            # each group's (label) index into positions, since
+            # `baseline_array` and `df[cost_col].to_numpy()` are positional
+            # arrays aligned to `df`'s row order, not necessarily identical
+            # to its index labels.
+            if baseline_array is not None:
+                cost_array = df[cost_col].to_numpy()
+                for band, group in grouped_df:
+                    positions = df.index.get_indexer(group.index)
+                    group_demand = (
+                        None
+                        if demand_series is None
+                        else demand_series.loc[group.index].to_numpy()
+                    )
+                    band_impact = _population_impact_metrics(
+                        current=cost_array[positions],
+                        baseline=baseline_array[positions],
+                        demand=group_demand,
+                        meaningful_change_threshold=self._meaningful_change_threshold,
+                    )
+                    demand_improved_by_equity_group[band] = band_impact[
+                        "demand_improved"
+                    ]
+                    demand_worsened_by_equity_group[band] = band_impact[
+                        "demand_worsened"
+                    ]
+
             # 6. Tertile Groupings (Averaging the bin results into thirds)
-            # Sorts the bins (e.g., 1-10) and splits them into 3 roughly equal chunks
+            # Sorts the bins (e.g., 1-10) and splits them into 3 roughly
+            # equal chunks, ordered most- to least-disadvantaged per
+            # `_equity_data_disadvantaged_end` (defaults to "low" --
+            # lower bins = more deprived -- when unset, matching every
+            # pre-existing caller's assumption).
             unique_bins = sorted(list(weighted_by_equity_group.keys()))
-            if len(unique_bins) >= 3:
-                chunks = np.array_split(unique_bins, 3)
+            disadvantaged_end = getattr(
+                self.site_problem, "_equity_data_disadvantaged_end", None
+            )
+            lower_chunk, middle_chunk, upper_chunk = _split_bins_into_tertiles(
+                unique_bins, disadvantaged_end
+            )
+            if lower_chunk is not None:
+                chunks = (lower_chunk, middle_chunk, upper_chunk)
                 avg_lower_third_bins = np.mean(
                     [weighted_by_equity_group[b] for b in chunks[0]]
                 )
@@ -708,8 +867,11 @@ class EvaluatedCombination:
                 if avg_upper_third_bins and avg_upper_third_bins > 0:
                     inter_tertile_ratio = avg_lower_third_bins / avg_upper_third_bins
 
-                    # Generate Inter-Tertile Ratio Descriptor
-                    # (Assuming lower bins = higher deprivation, e.g., IMD Deciles 1-3)
+                    # Generate Inter-Tertile Ratio Descriptor. "Most
+                    # deprived" always refers to `chunks[0]` above, which
+                    # `_split_bins_into_tertiles` has already ordered per
+                    # `disadvantaged_end` -- so this wording is correct
+                    # regardless of which end of the raw bin scale that is.
                     if 0.95 <= inter_tertile_ratio <= 1.05:
                         inter_tertile_desc = (
                             "Balanced (Macro travel times are broadly equal)"
@@ -730,7 +892,6 @@ class EvaluatedCombination:
                     inter_tertile_ratio = np.nan
                     inter_tertile_desc = "N/A (Zero upper-third travel time)"
 
-        baseline_array = self._baseline_cost_arrays.get(cost_col)
         population_impact = (
             None
             if baseline_array is None
@@ -749,11 +910,16 @@ class EvaluatedCombination:
             "max": max_cost,
             "proportion_within_coverage_threshold": proportion_within_coverage_threshold,
             "proportion_regions_within_coverage_threshold": proportion_regions_within_coverage_threshold,
+            "demand_within_coverage_threshold": demand_within_coverage_threshold,
+            "regions_within_coverage_threshold": regions_within_coverage_threshold,
+            "beyond_threshold_metrics": beyond_threshold_metrics,
             "weighted_by_equity_group": weighted_by_equity_group,
             "unweighted_by_equity_group": unweighted_by_equity_group,
             "coverage_by_equity_group": coverage_by_equity_group,
             "coverage_regions_by_equity_group": coverage_regions_by_equity_group,
             "max_cost_by_equity_group": max_cost_by_equity_group,
+            "demand_improved_by_equity_group": demand_improved_by_equity_group,
+            "demand_worsened_by_equity_group": demand_worsened_by_equity_group,
             "gap_absolute_weighted": gap_absolute_weighted,
             "gap_absolute_desc": gap_absolute_desc,
             "gap_relative_weighted": gap_relative_weighted,
@@ -812,7 +978,10 @@ class EvaluatedCombination:
             1.5x longer than the best-served group.
 
         4. Inter-Tertile Ratio ('inter_tertile_ratio'):
-            Measures macro-equity assuming lower bins = higher deprivation (e.g., IMD 1-3).
+            Measures macro-equity between the most- and least-disadvantaged
+            equity-band tertiles, per `add_equity_data(disadvantaged_end=...)`
+            -- lower bins = more disadvantaged (e.g. IMD 1-3) when
+            `disadvantaged_end="low"` or unset; the reverse when `"high"`.
             SORTING CRITERIA:
 
             * ITR > 1.0: Inequity. The most deprived third faces longer travel times
@@ -836,6 +1005,14 @@ class EvaluatedCombination:
 
             The demand-weighted figure is the one 'mclp' optimises, matching the
             textbook Maximal Covering Location Problem.
+
+        5b. Absolute coverage headcounts ('demand_within_coverage_threshold',
+            'regions_within_coverage_threshold'):
+            HIGHER is better. The literal headcount/region-count behind the
+            two coverage proportions above -- e.g. "391,823 people" rather
+            than "75.4%" -- for reporting to audiences who find an absolute
+            number more legible than a percentage. `NaN`/`0` under the same
+            conditions as the proportions.
 
         6. Secondary travel matrices (columns suffixed `__<label>`, e.g.
            'weighted_average__public_transport'):
@@ -881,6 +1058,37 @@ class EvaluatedCombination:
             travel matrices. Demand scenarios never get the region-count/max
             variants (region membership doesn't vary with demand), matching
             point 6's "only what varies with demand" rule.
+
+            When equity data is also registered, `demand_improved_by_equity_
+            group` / `demand_worsened_by_equity_group` (dict per band) are
+            also added -- e.g. "are the most deprived areas improving at a
+            higher rate than the least deprived?". Primary matrix only;
+            not yet broken down for secondary travel matrices/demand
+            scenarios.
+
+        8. "Left behind" headcounts (`demand_beyond_threshold_<t>`,
+           `regions_beyond_threshold_<t>`, one pair per threshold `t` in
+           `beyond_thresholds`, plus a `_by_equity_group` dict variant of
+           each when equity data is registered):
+
+            LOWER is better -- the opposite direction from the coverage
+            metrics in point 5, since these count people/regions a
+            threshold crossing leaves *outside* rather than within. A
+            distinct concept from `threshold_for_coverage`/'coverage
+            metrics' even though both compare a travel cost against a
+            cutoff: "covered" (good, one threshold) vs "beyond" (bad, any
+            number of thresholds at once). Thresholds are independent, not
+            cumulative -- `demand_beyond_threshold_45` is not a subset of
+            `demand_beyond_threshold_30`'s complement; each is a fresh
+            count against its own cutoff. Only present when
+            `beyond_thresholds` was supplied -- absent, not `NaN`,
+            otherwise. Secondary travel matrices get the demand-weighted
+            headcount by default (`demand_beyond_threshold_<t>__<label>`);
+            `full_secondary_metrics=True` also adds region counts and the
+            equity breakdowns, matching point 6/7's pattern. Secondary
+            demand scenarios get only the demand-weighted headcount, never
+            region counts or equity breakdowns, matching point 6's "only
+            what varies with demand" rule.
         """
 
         # Return weighted average
@@ -895,6 +1103,8 @@ class EvaluatedCombination:
             "total_cost": self.total_cost,
             "proportion_within_coverage_threshold": self.proportion_within_coverage_threshold,
             "proportion_regions_within_coverage_threshold": self.proportion_regions_within_coverage_threshold,
+            "demand_within_coverage_threshold": self.demand_within_coverage_threshold,
+            "regions_within_coverage_threshold": self.regions_within_coverage_threshold,
             # Granular Equity Collections
             "weighted_by_equity_group": self.weighted_by_equity_group,
             "unweighted_by_equity_group": self.unweighted_by_equity_group,
@@ -936,6 +1146,32 @@ class EvaluatedCombination:
             ]
             metrics["max_reduction"] = pi["max_reduction"]
             metrics["max_increase"] = pi["max_increase"]
+            if self.demand_improved_by_equity_group:
+                metrics["demand_improved_by_equity_group"] = (
+                    self.demand_improved_by_equity_group
+                )
+                metrics["demand_worsened_by_equity_group"] = (
+                    self.demand_worsened_by_equity_group
+                )
+
+        # "Left behind" headcounts: only present when beyond_thresholds was
+        # supplied (self.beyond_threshold_metrics is empty otherwise), so
+        # solution_df's schema is unchanged for callers that never ask for
+        # this. One demand/regions pair per threshold, plus a
+        # `_by_equity_group` dict variant of each whenever equity data is
+        # registered (empty dict otherwise, so no column is added).
+        for t, bt in self.beyond_threshold_metrics.items():
+            t_suffix = _format_threshold(t)
+            metrics[f"demand_beyond_threshold_{t_suffix}"] = bt["demand_beyond"]
+            metrics[f"regions_beyond_threshold_{t_suffix}"] = bt["regions_beyond"]
+            if bt["demand_beyond_by_equity_group"]:
+                metrics[f"demand_beyond_threshold_{t_suffix}_by_equity_group"] = bt[
+                    "demand_beyond_by_equity_group"
+                ]
+            if bt["regions_beyond_by_equity_group"]:
+                metrics[f"regions_beyond_threshold_{t_suffix}_by_equity_group"] = bt[
+                    "regions_beyond_by_equity_group"
+                ]
 
         # Secondary travel matrices: core five metrics + float-valued equity
         # aggregations by default (see the interpretation guide above); pass
@@ -952,6 +1188,12 @@ class EvaluatedCombination:
             metrics[f"proportion_regions_within_coverage_threshold__{label}"] = (
                 secondary["proportion_regions_within_coverage_threshold"]
             )
+            metrics[f"demand_within_coverage_threshold__{label}"] = secondary[
+                "demand_within_coverage_threshold"
+            ]
+            metrics[f"regions_within_coverage_threshold__{label}"] = secondary[
+                "regions_within_coverage_threshold"
+            ]
             metrics[f"gap_absolute_weighted__{label}"] = secondary[
                 "gap_absolute_weighted"
             ]
@@ -1021,6 +1263,24 @@ class EvaluatedCombination:
                     metrics[f"max_reduction__{label}"] = secondary_pi["max_reduction"]
                     metrics[f"max_increase__{label}"] = secondary_pi["max_increase"]
 
+            for t, bt in secondary.get("beyond_threshold_metrics", {}).items():
+                t_suffix = _format_threshold(t)
+                metrics[f"demand_beyond_threshold_{t_suffix}__{label}"] = bt[
+                    "demand_beyond"
+                ]
+                if full_secondary_metrics:
+                    metrics[f"regions_beyond_threshold_{t_suffix}__{label}"] = bt[
+                        "regions_beyond"
+                    ]
+                    if bt["demand_beyond_by_equity_group"]:
+                        metrics[
+                            f"demand_beyond_threshold_{t_suffix}_by_equity_group__{label}"
+                        ] = bt["demand_beyond_by_equity_group"]
+                    if bt["regions_beyond_by_equity_group"]:
+                        metrics[
+                            f"regions_beyond_threshold_{t_suffix}_by_equity_group__{label}"
+                        ] = bt["regions_beyond_by_equity_group"]
+
         # Secondary demand scenarios: only the two metrics that actually
         # vary with demand (weighted_average, proportion_within_coverage_
         # threshold -- see _compute_travel_metrics' coverage_demand
@@ -1055,6 +1315,12 @@ class EvaluatedCombination:
                     ]
                     metrics[f"mean_increase_among_worsened__{suffix}"] = demand_pi[
                         "mean_increase_among_worsened"
+                    ]
+
+                for t, bt in dmetrics.get("beyond_threshold_metrics", {}).items():
+                    t_suffix = _format_threshold(t)
+                    metrics[f"demand_beyond_threshold_{t_suffix}__{suffix}"] = bt[
+                        "demand_beyond"
                     ]
 
         return metrics

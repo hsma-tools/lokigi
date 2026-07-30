@@ -599,3 +599,52 @@ def test_plot_population_impact_histogram_kde_default_ylabel_mentions_density(
 ):
     fig, axis = population_impact_comparator.plot_population_impact_histogram()
     assert "Density" in axis.get_ylabel()
+
+
+# --- SolutionComparator.plot_population_impact_by_equity_group --------------
+
+
+def test_plot_population_impact_by_equity_group_runs_and_renders(
+    population_impact_comparator,
+):
+    fig, axis = population_impact_comparator.plot_population_impact_by_equity_group()
+    assert fig is not None
+    fig.canvas.draw()
+
+    legend_labels = [t.get_text() for t in axis.get_legend().get_texts()]
+    assert "Improved" in legend_labels
+    assert "Worsened" in legend_labels
+    # 9 imd_decile bands in plottable_problem -> 9 paired bars.
+    assert len(axis.get_xticklabels()) == 9
+
+
+def test_plot_population_impact_by_equity_group_reuses_given_axis(
+    population_impact_comparator,
+):
+    fig, axis = plt.subplots()
+    out_fig, out_axis = population_impact_comparator.plot_population_impact_by_equity_group(
+        ax=axis
+    )
+    assert out_fig is fig
+    assert out_axis is axis
+
+
+def test_plot_population_impact_by_equity_group_no_equity_data_raises():
+    from lokigi.site_solutions import SolutionComparator
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    demand_df = pd.DataFrame({"location_id": ["A", "B"], "demand": [10, 20]})
+    candidate_df = pd.DataFrame(
+        {"site_id": ["Site_A", "Site_B"], "lat": [51.1, 51.2], "long": [-0.1, -0.2]}
+    )
+    travel_df = pd.DataFrame({"source_id": ["A", "B"], "Site_A": [5.0, 8.0], "Site_B": [9.0, 3.0]})
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+
+    baseline = problem.evaluate_baseline(site_names=["Site_A"])
+    candidate = problem.evaluate_baseline(site_names=["Site_A", "Site_B"])
+    comparator = SolutionComparator(baseline, candidate)
+
+    with pytest.raises(ValueError, match="equity data"):
+        comparator.plot_population_impact_by_equity_group()

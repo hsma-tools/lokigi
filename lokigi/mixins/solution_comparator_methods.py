@@ -1,10 +1,12 @@
 import numpy as np
 import pandas as pd
+from warnings import warn
 from lokigi.utils import (
     _add_rank_column,
     _is_maximise_metric,
     _select_solution,
     _population_impact_metrics,
+    _split_bins_into_tertiles,
 )
 
 
@@ -125,6 +127,119 @@ class SolutionComparatorMethodsMixin:
         comparison["difference"] = comparison[label_a] - comparison[label_b]
         return comparison
 
+    def _population_impact_frame(self, matrix, demand, config_a, config_b):
+        """
+        Shared frame-building logic for `population_impact_summary()` and
+        `population_impact_by_equity_group()`: selects each set's solution,
+        resolves the cost column, aligns baseline vs current cost by
+        demand-location ID (raising if the two solutions don't cover the
+        same set of locations), and resolves the demand series to weight
+        by. Factored out so both methods build this frame identically
+        rather than risking two diverging implementations.
+
+        Returns
+        -------
+        dict
+            `baseline_cost`/`current_cost` (`pandas.Series`, indexed by
+            demand-location ID); `demand_series` (`pandas.Series` or
+            `None`); `problem_df_a`/`problem_df_b` (each set's full
+            per-region frame, both indexed by demand-location ID -- carry
+            any other column, e.g. an equity band or `within_threshold`,
+            for further breakdowns); `within_col` (the resolved
+            `within_threshold`/`within_threshold__<label>` column name for
+            `matrix`, present or not depending on whether a coverage
+            threshold was ever set -- callers check for its presence in
+            `problem_df_a`/`problem_df_b`'s columns before using it).
+
+        Raises
+        ------
+        ValueError
+            If `demand` names an unregistered secondary demand scenario, or
+            if `set_a` and `set_b`'s selected solutions were evaluated
+            against different demand locations.
+        """
+        config_a = config_a or {"solution_rank": 1}
+        config_b = config_b or {"solution_rank": 1}
+
+        solution_a = _select_solution(self.set_a.solution_df, **config_a)
+        solution_b = _select_solution(self.set_b.solution_df, **config_b)
+
+        cost_col, _, within_col, _, _ = self.set_b._resolve_travel_columns(matrix)
+
+        id_col = self.set_b.site_problem._demand_data_id_col
+        problem_df_a = solution_a["problem_df"].iloc[0].set_index(id_col)
+        problem_df_b = solution_b["problem_df"].iloc[0].set_index(id_col)
+
+        ids_a = set(problem_df_a.index)
+        ids_b = set(problem_df_b.index)
+        if ids_a != ids_b:
+            only_a = sorted(map(str, ids_a - ids_b))
+            only_b = sorted(map(str, ids_b - ids_a))
+            raise ValueError(
+                "set_a and set_b's selected solutions cover different demand "
+                f"locations -- {len(only_a)} only in set_a (e.g. {only_a[:5]}), "
+                f"{len(only_b)} only in set_b (e.g. {only_b[:5]}). Both "
+                "solutions must be evaluated against the exact same demand "
+                "locations."
+            )
+
+        # Best-effort sanity check for the gross coverage-transition metrics
+        # (population_impact_summary()'s demand_newly_covered/uncovered):
+        # those diff each side's within_threshold flags directly, which is
+        # only meaningful if both were assessed against the same coverage
+        # threshold. "coverage_threshold" always reflects the PRIMARY
+        # matrix's threshold, so this can't catch a mismatch specific to a
+        # secondary matrix passed via matrix= -- it's a heuristic, not a
+        # guarantee, but catches the common case of comparing two solutions
+        # built with different threshold_for_coverage values by mistake.
+        threshold_a = solution_a["coverage_threshold"].iloc[0]
+        threshold_b = solution_b["coverage_threshold"].iloc[0]
+        if (
+            not pd.isna(threshold_a)
+            and not pd.isna(threshold_b)
+            and threshold_a != threshold_b
+        ):
+            warn(
+                "set_a and set_b were evaluated with different "
+                f"threshold_for_coverage values ({threshold_a} vs "
+                f"{threshold_b}). Coverage-based comparisons (e.g. "
+                "population_impact_summary()'s newly-covered/newly-"
+                "uncovered counts) would then diff 'covered' flags computed "
+                "against two different cutoffs, which is misleading.",
+                UserWarning,
+                stacklevel=3,
+            )
+
+        current_cost = problem_df_b[cost_col]
+        baseline_cost = problem_df_a[cost_col].reindex(current_cost.index)
+
+        if demand is None:
+            demand_col = getattr(
+                self.set_b.site_problem, "_demand_data_demand_col", None
+            )
+        else:
+            registered_demand_labels = getattr(
+                self.set_b.site_problem, "secondary_demand_matrices", {}
+            )
+            if demand not in registered_demand_labels:
+                raise ValueError(
+                    f"Unknown secondary demand scenario '{demand}'. "
+                    f"Registered labels: {sorted(registered_demand_labels)}."
+                )
+            demand_col = f"demand__{demand}"
+
+        has_demand = demand_col is not None and demand_col in problem_df_b.columns
+        demand_series = problem_df_b[demand_col].astype(float) if has_demand else None
+
+        return {
+            "baseline_cost": baseline_cost,
+            "current_cost": current_cost,
+            "demand_series": demand_series,
+            "problem_df_a": problem_df_a,
+            "problem_df_b": problem_df_b,
+            "within_col": within_col,
+        }
+
     def population_impact_summary(
         self,
         matrix=None,
@@ -203,6 +318,18 @@ class SolutionComparatorMethodsMixin:
             definition -- this method is a thin wrapper around it that
             handles solution selection and demand-location alignment.
 
+            Also, whenever a coverage threshold was assessed on both `set_a`
+            and `set_b` (i.e. `within_threshold` isn't all-NaN on either
+            side): `demand_newly_covered`/`demand_newly_uncovered` and
+            `regions_newly_covered`/`regions_newly_uncovered` -- the GROSS
+            number of people/regions crossing the coverage threshold in
+            each direction (not the net change in
+            `proportion_within_coverage_threshold`, which can mask
+            simultaneous gains and losses). `demand_*` are `NaN` if no
+            demand data is registered; the whole group of four keys is
+            simply absent (not `NaN`) if no coverage threshold was ever
+            assessed.
+
         Raises
         ------
         ValueError
@@ -211,52 +338,11 @@ class SolutionComparatorMethodsMixin:
             against different demand locations (their `problem_df`s must
             share the exact same demand-location ID set).
         """
-        config_a = config_a or {"solution_rank": 1}
-        config_b = config_b or {"solution_rank": 1}
-
-        solution_a = _select_solution(self.set_a.solution_df, **config_a)
-        solution_b = _select_solution(self.set_b.solution_df, **config_b)
-
-        cost_col, _, _, _, _ = self.set_b._resolve_travel_columns(matrix)
-
-        id_col = self.set_b.site_problem._demand_data_id_col
-        problem_df_a = solution_a["problem_df"].iloc[0].set_index(id_col)
-        problem_df_b = solution_b["problem_df"].iloc[0].set_index(id_col)
-
-        ids_a = set(problem_df_a.index)
-        ids_b = set(problem_df_b.index)
-        if ids_a != ids_b:
-            only_a = sorted(map(str, ids_a - ids_b))
-            only_b = sorted(map(str, ids_b - ids_a))
-            raise ValueError(
-                "population_impact_summary(): set_a and set_b's selected "
-                "solutions cover different demand locations -- "
-                f"{len(only_a)} only in set_a (e.g. {only_a[:5]}), "
-                f"{len(only_b)} only in set_b (e.g. {only_b[:5]}). Both "
-                "solutions must be evaluated against the exact same "
-                "demand locations."
-            )
-
-        current_cost = problem_df_b[cost_col]
-        baseline_cost = problem_df_a[cost_col].reindex(current_cost.index)
-
-        if demand is None:
-            demand_col = getattr(
-                self.set_b.site_problem, "_demand_data_demand_col", None
-            )
-        else:
-            registered_demand_labels = getattr(
-                self.set_b.site_problem, "secondary_demand_matrices", {}
-            )
-            if demand not in registered_demand_labels:
-                raise ValueError(
-                    f"Unknown secondary demand scenario '{demand}'. "
-                    f"Registered labels: {sorted(registered_demand_labels)}."
-                )
-            demand_col = f"demand__{demand}"
-
-        has_demand = demand_col is not None and demand_col in problem_df_b.columns
-        demand_series = problem_df_b[demand_col].astype(float) if has_demand else None
+        frame = self._population_impact_frame(matrix, demand, config_a, config_b)
+        baseline_cost = frame["baseline_cost"]
+        current_cost = frame["current_cost"]
+        demand_series = frame["demand_series"]
+        has_demand = demand_series is not None
 
         impact = _population_impact_metrics(
             current=current_cost.to_numpy(),
@@ -264,6 +350,40 @@ class SolutionComparatorMethodsMixin:
             demand=None if demand_series is None else demand_series.to_numpy(),
             meaningful_change_threshold=meaningful_change_threshold,
         )
+
+        # Gross coverage transitions: who crossed the coverage threshold in
+        # each direction, not just how their travel cost changed -- e.g. a
+        # region can get a shorter journey (population_impact's "improved")
+        # without that being enough to newly cross threshold_for_coverage,
+        # or vice versa near the boundary. Only added when a coverage
+        # threshold was actually assessed on BOTH sides (an all-NaN
+        # within_col means "never assessed", per _coverage_stats'
+        # convention); silently omitted otherwise, matching this method's
+        # existing "absent, not NaN" pattern for optional metrics.
+        within_col = frame["within_col"]
+        problem_df_a = frame["problem_df_a"]
+        problem_df_b = frame["problem_df_b"]
+        if within_col in problem_df_a.columns and within_col in problem_df_b.columns:
+            within_a = problem_df_a[within_col].reindex(current_cost.index)
+            within_b = problem_df_b[within_col]
+            if not (within_a.isna().all() or within_b.isna().all()):
+                covered_a = within_a.astype(bool)
+                covered_b = within_b.astype(bool)
+                newly_covered = covered_b & ~covered_a
+                newly_uncovered = covered_a & ~covered_b
+
+                impact["regions_newly_covered"] = int(newly_covered.sum())
+                impact["regions_newly_uncovered"] = int(newly_uncovered.sum())
+                if has_demand:
+                    impact["demand_newly_covered"] = float(
+                        (newly_covered.astype(float) * demand_series).sum()
+                    )
+                    impact["demand_newly_uncovered"] = float(
+                        (newly_uncovered.astype(float) * demand_series).sum()
+                    )
+                else:
+                    impact["demand_newly_covered"] = np.nan
+                    impact["demand_newly_uncovered"] = np.nan
 
         # dtype="object" (rather than letting pandas infer a single float64
         # column) keeps each metric's own native type on display -- the
@@ -295,6 +415,121 @@ class SolutionComparatorMethodsMixin:
         )
         return summary, per_region
 
+    def population_impact_by_equity_group(
+        self,
+        matrix=None,
+        demand=None,
+        meaningful_change_threshold=0.0,
+        config_a=None,
+        config_b=None,
+    ):
+        """
+        `population_impact_summary()`, split by equity band -- e.g. "of the
+        people whose journey improved, what share of each deprivation band
+        actually benefited?". This is what distinguishes a candidate that
+        helps everyone roughly equally from one that wins on the region-wide
+        average while mostly helping people who were already well served
+        (or, just as importantly, one where the most disadvantaged areas are
+        the ones getting *worse* journeys) -- neither is visible from
+        `population_impact_summary()`'s single region-wide total.
+
+        The rate-normalised columns (`proportion_of_band_improved`/
+        `proportion_of_band_worsened` -- share of THIS band's own
+        population, not share of the region-wide improved-total) are the
+        headline: a band with more people can look like it "benefits most"
+        on a raw headcount alone even if only a small fraction of that band
+        actually improved.
+
+        Parameters
+        ----------
+        matrix, demand, meaningful_change_threshold, config_a, config_b
+            Passed straight through to the same frame-building logic as
+            `population_impact_summary()`.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Indexed by equity band (raw value, e.g. IMD decile 1-10),
+            ordered from most- to least-disadvantaged per
+            `add_equity_data(disadvantaged_end=...)` (ties within a tertile
+            keep ascending band order; bands are listed individually, not
+            bucketed into thirds). Columns: `regions_improved`/
+            `regions_worsened`/`regions_unchanged`, `demand_improved`/
+            `demand_worsened`/`demand_unchanged` (`NaN` if no demand data is
+            registered), `band_total_demand`, `proportion_of_band_improved`/
+            `proportion_of_band_worsened`.
+
+        Raises
+        ------
+        ValueError
+            If no equity data is registered on the problem -- call
+            `add_equity_data()` first -- or any of the errors
+            `population_impact_summary()` raises (mismatched demand
+            locations between `set_a`/`set_b`, or an unknown secondary
+            demand scenario).
+        """
+        frame = self._population_impact_frame(matrix, demand, config_a, config_b)
+        baseline_cost = frame["baseline_cost"]
+        current_cost = frame["current_cost"]
+        demand_series = frame["demand_series"]
+        problem_df_b = frame["problem_df_b"]
+
+        equity_col = getattr(self.set_b.site_problem, "_equity_data_equity_col", None)
+        if equity_col is None or equity_col not in problem_df_b.columns:
+            raise ValueError(
+                "population_impact_by_equity_group() requires equity data "
+                "to be registered on the problem -- call add_equity_data() "
+                "first."
+            )
+
+        rows = {}
+        for band, group in problem_df_b.groupby(equity_col):
+            band_demand = (
+                None if demand_series is None else demand_series.loc[group.index]
+            )
+            band_impact = _population_impact_metrics(
+                current=current_cost.loc[group.index].to_numpy(),
+                baseline=baseline_cost.loc[group.index].to_numpy(),
+                demand=None if band_demand is None else band_demand.to_numpy(),
+                meaningful_change_threshold=meaningful_change_threshold,
+            )
+            rows[band] = {
+                "regions_improved": band_impact["regions_improved"],
+                "regions_worsened": band_impact["regions_worsened"],
+                "regions_unchanged": band_impact["regions_unchanged"],
+                "demand_improved": band_impact["demand_improved"],
+                "demand_worsened": band_impact["demand_worsened"],
+                "demand_unchanged": band_impact["demand_unchanged"],
+                "band_total_demand": band_impact["total_demand"],
+                "proportion_of_band_improved": band_impact[
+                    "proportion_demand_improved"
+                ],
+                "proportion_of_band_worsened": band_impact[
+                    "proportion_demand_worsened"
+                ],
+            }
+
+        disadvantaged_end = getattr(
+            self.set_b.site_problem, "_equity_data_disadvantaged_end", None
+        )
+        unique_bins = sorted(rows.keys())
+        lower, middle, upper = _split_bins_into_tertiles(unique_bins, disadvantaged_end)
+        if lower is not None:
+            ordered_bins = lower + middle + upper
+        elif disadvantaged_end == "high":
+            # Fewer than 3 distinct bands -- no tertile split to reuse, but
+            # the most-to-least-disadvantaged ordering promised above still
+            # applies. Without this, disadvantaged_end="high" silently fell
+            # back to plain ascending raw-bin order (least-disadvantaged
+            # first) for exactly the same reason the old tertile code was
+            # wrong before its own disadvantaged_end fix.
+            ordered_bins = list(reversed(unique_bins))
+        else:
+            ordered_bins = unique_bins
+
+        result = pd.DataFrame.from_dict(rows, orient="index")
+        return result.loc[ordered_bins].rename_axis(equity_col)
+
     def population_impact_phrase(
         self,
         matrix=None,
@@ -319,6 +554,26 @@ class SolutionComparatorMethodsMixin:
         surfacing. The people-based clauses are omitted entirely if no
         demand data is registered (`total_demand` is `NaN`); the
         region-count clause always works.
+
+        When `meaningful_change_threshold` is greater than 0, both clauses
+        say so explicitly ("a journey shorter by more than 5.0 minutes"
+        rather than a bare "a shorter journey") -- a headline of "N people
+        benefit" is only as meaningful as the change it counts, and a
+        reader shouldn't have to separately go and check what threshold was
+        used to know whether "benefit" means "any improvement at all" or
+        something larger.
+
+        When equity data is registered on the problem (`add_equity_data()`),
+        two further clauses are added: the rate-normalised comparison
+        between the most- and least-disadvantaged equity-band tertiles
+        (per `population_impact_by_equity_group()` -- share of EACH
+        tertile's own population, not share of the region-wide total), and
+        -- unconditionally, whenever it is non-zero, regardless of whether
+        the overall worsened clause above already fired -- how many people
+        in the most disadvantaged tertile specifically saw a worse outcome.
+        A benefits-only summary risks reading as if a candidate helps
+        disadvantaged areas uniformly when some of them are in fact worse
+        off; this clause is never silently dropped.
 
         Parameters
         ----------
@@ -346,19 +601,32 @@ class SolutionComparatorMethodsMixin:
 
         sentences = []
 
+        shorter_clause = (
+            f"a journey shorter by more than {meaningful_change_threshold:.1f} "
+            "minutes"
+            if meaningful_change_threshold > 0
+            else "a shorter journey"
+        )
+        longer_clause = (
+            f"a journey longer by more than {meaningful_change_threshold:.1f} "
+            "minutes"
+            if meaningful_change_threshold > 0
+            else "a longer journey"
+        )
+
         has_demand = not pd.isna(impact["total_demand"])
         if has_demand and impact["demand_improved"] > 0:
             sentences.append(
                 f"{impact['demand_improved']:,.0f} people "
                 f"({impact['proportion_demand_improved']:.1%} of the cohort) get "
-                f"a shorter journey, averaging "
+                f"{shorter_clause}, averaging "
                 f"{impact['mean_reduction_among_improved']:.1f} minutes off."
             )
         if has_demand and impact["demand_worsened"] > 0:
             sentences.append(
                 f"{impact['demand_worsened']:,.0f} people "
                 f"({impact['proportion_demand_worsened']:.1%} of the cohort) get "
-                f"a longer journey, averaging "
+                f"{longer_clause}, averaging "
                 f"{impact['mean_increase_among_worsened']:.1f} minutes more."
             )
 
@@ -367,6 +635,53 @@ class SolutionComparatorMethodsMixin:
             f"{impact['regions_worsened']} worsened; "
             f"{impact['regions_unchanged']} unchanged."
         )
+
+        equity_col = getattr(self.set_b.site_problem, "_equity_data_equity_col", None)
+        if has_demand and equity_col is not None:
+            try:
+                by_band = self.population_impact_by_equity_group(
+                    matrix=matrix,
+                    demand=demand,
+                    meaningful_change_threshold=meaningful_change_threshold,
+                    config_a=config_a,
+                    config_b=config_b,
+                )
+            except ValueError:
+                by_band = None
+
+            if by_band is not None:
+                disadvantaged_end = getattr(
+                    self.set_b.site_problem, "_equity_data_disadvantaged_end", None
+                )
+                lower, _, upper = _split_bins_into_tertiles(
+                    sorted(by_band.index), disadvantaged_end
+                )
+                if lower is not None:
+                    lower_rows = by_band.loc[lower]
+                    upper_rows = by_band.loc[upper]
+                    lower_total = lower_rows["band_total_demand"].sum()
+                    upper_total = upper_rows["band_total_demand"].sum()
+                    lower_worsened = lower_rows["demand_worsened"].sum()
+
+                    if lower_total > 0 and upper_total > 0:
+                        lower_rate = lower_rows["demand_improved"].sum() / lower_total
+                        upper_rate = upper_rows["demand_improved"].sum() / upper_total
+                        sentences.append(
+                            f"In the most disadvantaged third of areas, "
+                            f"{lower_rate:.1%} of people see {shorter_clause}, "
+                            f"compared to {upper_rate:.1%} in the least "
+                            "disadvantaged third."
+                        )
+
+                    if lower_worsened > 0:
+                        lower_worsened_rate = (
+                            lower_worsened / lower_total if lower_total > 0 else np.nan
+                        )
+                        sentences.append(
+                            f"{lower_worsened:,.0f} people "
+                            f"({lower_worsened_rate:.1%}) in the most "
+                            f"disadvantaged third get {longer_clause}."
+                        )
 
         return " ".join(sentences)
 

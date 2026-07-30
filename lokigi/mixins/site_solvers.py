@@ -62,6 +62,7 @@ def _evaluate_chunk(
     full_secondary_metrics=False,
     baseline_costs=None,
     meaningful_change_threshold=0.0,
+    beyond_thresholds=None,
 ):
     """Evaluate one chunk of combinations. Returns either the list of
     metrics dicts (materialising path) or (local_best, local_worst) lists
@@ -81,6 +82,7 @@ def _evaluate_chunk(
                 weights=weights,
                 baseline_costs=baseline_costs,
                 meaningful_change_threshold=meaningful_change_threshold,
+                beyond_thresholds=beyond_thresholds,
             ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
             if max_value_cutoff is None or metrics["max"] <= max_value_cutoff:
@@ -97,6 +99,7 @@ def _evaluate_chunk(
             weights=weights,
             baseline_costs=baseline_costs,
             meaningful_change_threshold=meaningful_change_threshold,
+            beyond_thresholds=beyond_thresholds,
         ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
         raw_score = metrics[rank_best_n_on]
@@ -131,6 +134,7 @@ class BruteForceMixin:
         full_secondary_metrics=False,
         baseline_costs=None,
         meaningful_change_threshold=0.0,
+        beyond_thresholds=None,
     ):
 
         # Greedy and GRASP already fail fast with a clear message when
@@ -262,6 +266,7 @@ class BruteForceMixin:
                 full_secondary_metrics,
                 baseline_costs,
                 meaningful_change_threshold,
+                beyond_thresholds,
             )
             for chunk in chunks
         )
@@ -377,6 +382,7 @@ class GreedyMixin:
         full_secondary_metrics=False,
         baseline_costs=None,
         meaningful_change_threshold=0.0,
+        beyond_thresholds=None,
     ):
         ranking = _get_ranking_by_objective(objective=objectives)
 
@@ -424,6 +430,7 @@ class GreedyMixin:
                         weights=weights,
                         baseline_costs=baseline_costs,
                         meaningful_change_threshold=meaningful_change_threshold,
+                        beyond_thresholds=beyond_thresholds,
                     ).return_solution_metrics(
                         full_secondary_metrics=full_secondary_metrics
                     )
@@ -512,6 +519,7 @@ class GreedyMixin:
             weights=weights,
             baseline_costs=baseline_costs,
             meaningful_change_threshold=meaningful_change_threshold,
+            beyond_thresholds=beyond_thresholds,
         ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
         return [best_solution_metrics]
@@ -537,6 +545,7 @@ class GraspMixin:
         full_secondary_metrics=False,
         baseline_costs=None,
         meaningful_change_threshold=0.0,
+        beyond_thresholds=None,
     ):
         """
         GRASP (Greedy Randomised Adaptive Search Procedure) for finding multiple
@@ -603,6 +612,7 @@ class GraspMixin:
                 weights=weights,
                 baseline_costs=baseline_costs,
                 meaningful_change_threshold=meaningful_change_threshold,
+                beyond_thresholds=beyond_thresholds,
             ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
         pbar = None
@@ -911,6 +921,7 @@ class GraspMixin:
                 weights=weights,
                 baseline_costs=baseline_costs,
                 meaningful_change_threshold=meaningful_change_threshold,
+                beyond_thresholds=beyond_thresholds,
             ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
             accepted_solution_sets.append(current_solution_set)

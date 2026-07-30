@@ -132,6 +132,39 @@ def test_zero_weight_band_falls_back_to_unweighted_mean():
     )
 
 
+def test_tertile_ordering_respects_disadvantaged_end_high(loaded_problem):
+    """Same three-band setup as test_equity_band_gap_and_tertile_metrics
+    (deciles 1, 5, 10), but with disadvantaged_end="high" instead of "low"
+    -- i.e. band 10 is now the MOST disadvantaged and band 1 the LEAST.
+    The tertile ordering must flip accordingly: avg_lower_third_bins (most
+    disadvantaged) becomes band 10's value (15.0, not band 1's 10.0), and
+    avg_upper_third_bins (least disadvantaged) becomes band 1's value
+    (10.0). Before the disadvantaged_end fix, this ordering was hardcoded
+    to "lower raw bin value = more disadvantaged" regardless of this
+    parameter, which is wrong whenever disadvantaged_end="high"."""
+    equity_df = pd.DataFrame(
+        {"location_id": ["LSOA_1", "LSOA_2", "LSOA_3"], "imd_decile": [1, 5, 10]}
+    )
+    loaded_problem.add_equity_data(
+        equity_df,
+        equity_col="imd_decile",
+        common_col="location_id",
+        label="equity",
+        disadvantaged_end="high",
+    )
+
+    result = loaded_problem.evaluate_single_solution_single_objective(
+        objective="p_median", site_indices=[0, 1]
+    )
+
+    assert result.weighted_by_equity_group == {1: 10.0, 5: 5.0, 10: 15.0}
+    assert result.avg_lower_third_bins == pytest.approx(15.0)
+    assert result.avg_middle_third_bins == pytest.approx(5.0)
+    assert result.avg_upper_third_bins == pytest.approx(10.0)
+    assert result.inter_tertile_ratio == pytest.approx(15.0 / 10.0)
+    assert "Highly Inequitable" in result.inter_tertile_desc
+
+
 def test_fewer_than_three_equity_bins_skips_tertile_calculation():
     """Tertile metrics require >= 3 distinct equity bands (site_solutions.py:325);
     with only 2, avg_*_third_bins and inter_tertile_ratio should stay unset."""
