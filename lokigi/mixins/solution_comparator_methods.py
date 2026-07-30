@@ -415,6 +415,84 @@ class SolutionComparatorMethodsMixin:
         )
         return summary, per_region
 
+    def population_impact_worst_affected(
+        self,
+        n=10,
+        direction="worsened",
+        matrix=None,
+        demand=None,
+        meaningful_change_threshold=0.0,
+        config_a=None,
+        config_b=None,
+    ):
+        """
+        The `n` demand locations hit hardest by the change between `set_a`
+        and `set_b` -- naming names, rather than leaving a reader to infer
+        "9,669 people worsened" affects *somewhere in particular*.
+        `population_impact_summary()`/`population_impact_phrase()` give the
+        region-wide total; this is the drill-down, built from the same
+        per-region diff (`return_per_region=True`).
+
+        Parameters
+        ----------
+        n : int, default 10
+            Number of locations to return. If fewer than `n` locations fall
+            in `direction`, all of them are returned (no error).
+        direction : {"worsened", "improved"}, default "worsened"
+            Which locations to rank. "worsened" (the default) answers "who
+            is worst off?" -- the question that matters most for a
+            proposed closure. "improved" answers "who benefits most?".
+        matrix, demand, meaningful_change_threshold, config_a, config_b
+            Passed straight through to `population_impact_summary()`.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Indexed by demand-location ID, ordered from most- to least-
+            affected. Columns: `Before (mins)`, `After (mins)`, `Change
+            (mins)` (signed -- positive means longer/worse, negative means
+            shorter/better), and `People affected` (that location's demand
+            weight) if demand data is registered, else omitted.
+
+        Raises
+        ------
+        ValueError
+            If `direction` isn't "worsened" or "improved", or any of the
+            errors `population_impact_summary()` raises.
+        """
+        if direction not in ("worsened", "improved"):
+            raise ValueError(
+                f'direction must be "worsened" or "improved", got {direction!r}.'
+            )
+
+        _, per_region = self.population_impact_summary(
+            matrix=matrix,
+            demand=demand,
+            meaningful_change_threshold=meaningful_change_threshold,
+            config_a=config_a,
+            config_b=config_b,
+            return_per_region=True,
+        )
+
+        affected = per_region[per_region["bucket"] == direction]
+        affected = affected.sort_values(
+            "delta", ascending=(direction == "improved")
+        ).head(n)
+
+        id_col = self.set_b.site_problem._demand_data_id_col
+        result = pd.DataFrame(
+            {
+                "Before (mins)": affected["baseline_cost"].round(1),
+                "After (mins)": affected["current_cost"].round(1),
+                "Change (mins)": affected["delta"].round(1),
+            },
+            index=affected.index,
+        ).rename_axis(id_col)
+        if "demand" in affected.columns:
+            result["People affected"] = affected["demand"]
+
+        return result
+
     def population_impact_by_equity_group(
         self,
         matrix=None,
