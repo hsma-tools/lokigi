@@ -619,6 +619,130 @@ def test_plot_solution_sets_comparison_handles_every_rank(solutions):
     assert figure is not None
 
 
+# --- plot_solution_sets_comparison() / SolutionComparator.plot_comparison() --
+# shared colour scale --------------------------------------------------------
+#
+# Comparing e.g. a car-travel solution against a public-transport solution
+# side by side used to let each panel autoscale its own colour bar
+# independently -- a car map spanning 3-6 minutes and a PT map spanning
+# 30-60 minutes rendered with visually IDENTICAL colour gradients, making
+# the five-times-longer PT journeys look like a similar spread of outcomes.
+
+
+@pytest.fixture
+def differently_scaled_solutions():
+    """Two SiteSolutionSets sharing sites/geometry but registered with
+    travel matrices on very different scales (~3-12 vs ~30-120), like
+    comparing car vs public transport travel times -- so a shared vs
+    independent colour scale produces genuinely different, checkable
+    vmin/vmax."""
+    region_ids = ["LSOA_1", "LSOA_2", "LSOA_3"]
+    regions = geopandas.GeoDataFrame(
+        {
+            "location_id": region_ids,
+            "geometry": [
+                Polygon([(i, 0), (i + 1, 0), (i + 1, 1), (i, 1)]) for i in range(3)
+            ],
+        },
+        crs="EPSG:4326",
+    )
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": ["Site_A", "Site_B", "Site_C"],
+            "lat": [51.1, 51.2, 51.3],
+            "long": [-0.1, -0.2, -0.3],
+        }
+    )
+
+    base_problem = lokigi.site.SiteProblem(debug_mode=False)
+    base_problem.add_sites(candidate_df, candidate_id_col="site_id")
+    base_problem.add_region_geometry_layer(regions, common_col="location_id")
+
+    problem_small_scale = base_problem.copy()
+    problem_small_scale.add_travel_matrix(
+        pd.DataFrame(
+            {
+                "source_id": region_ids,
+                "Site_A": [5.0, 8.0, 12.0],
+                "Site_B": [9.0, 3.0, 6.0],
+                "Site_C": [11.0, 7.0, 4.0],
+            }
+        ),
+        source_col="source_id",
+        unit="minutes",
+    )
+    problem_large_scale = base_problem.copy()
+    problem_large_scale.add_travel_matrix(
+        pd.DataFrame(
+            {
+                "source_id": region_ids,
+                "Site_A": [50.0, 80.0, 120.0],
+                "Site_B": [90.0, 30.0, 60.0],
+                "Site_C": [110.0, 70.0, 40.0],
+            }
+        ),
+        source_col="source_id",
+        unit="minutes",
+    )
+
+    with pytest.warns(UserWarning, match="No demand data was provided"):
+        solution_small = problem_small_scale.solve(
+            p=2, search_strategy="brute-force", show_progress=False
+        )
+        solution_large = problem_large_scale.solve(
+            p=2, search_strategy="brute-force", show_progress=False
+        )
+    return solution_small, solution_large
+
+
+def test_plot_comparison_shares_color_scale_by_default(differently_scaled_solutions):
+    from lokigi.site_solutions import SolutionComparator
+
+    solution_small, solution_large = differently_scaled_solutions
+    comparator = SolutionComparator(solution_small, solution_large)
+
+    fig, axes = comparator.plot_comparison()
+    clims = [ax.collections[0].get_clim() for ax in axes]
+    assert clims[0] == clims[1]
+    assert clims[0] == (3.0, 60.0)
+
+
+def test_plot_comparison_shared_color_scale_false_restores_independent_scales(
+    differently_scaled_solutions,
+):
+    from lokigi.site_solutions import SolutionComparator
+
+    solution_small, solution_large = differently_scaled_solutions
+    comparator = SolutionComparator(solution_small, solution_large)
+
+    fig, axes = comparator.plot_comparison(shared_color_scale=False)
+    clims = [ax.collections[0].get_clim() for ax in axes]
+    assert clims[0] != clims[1]
+    assert clims[0] == (3.0, 6.0)
+    assert clims[1] == (30.0, 60.0)
+
+
+def test_plot_solution_sets_comparison_categorical_panel_unaffected_by_shared_scale(
+    differently_scaled_solutions,
+):
+    """A plot_site_allocation panel colours by categorical site, not travel
+    cost -- it must not be forced onto the cost-based shared vmin/vmax, and
+    must not itself pollute the shared scale computed for the other,
+    genuinely cost-based panel."""
+    from lokigi.plot_utils import plot_solution_sets_comparison
+
+    solution_small, solution_large = differently_scaled_solutions
+
+    fig, axes = plot_solution_sets_comparison(
+        [solution_small, solution_large],
+        [{"plot_site_allocation": True}, {}],
+    )
+    assert fig is not None
+    # The cost-based panel (index 1) is unaffected by the categorical one --
+    # its own scale, not some mix that includes categorical site indices.
+    assert axes[1].collections[0].get_clim() == (30.0, 60.0)
+
+
 # --- SolutionComparator.plot_population_impact_summary ---------------------
 
 

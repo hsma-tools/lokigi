@@ -1,5 +1,6 @@
 from lokigi.utils import _safe_evaluate, _select_solution, _get_ordinal_suffix
 import matplotlib.pyplot as plt
+import pandas as pd
 from matplotlib.colors import ListedColormap
 from matplotlib.lines import Line2D
 
@@ -10,6 +11,7 @@ def plot_solution_sets_comparison(
     figsize=(16, 8),
     title=None,
     title_fontsize=14,
+    shared_color_scale=True,
     **shared_plot_kwargs,
 ):
     """
@@ -37,6 +39,19 @@ def plot_solution_sets_comparison(
         Overall figure title (suptitle). If None, no suptitle is added.
     title_fontsize : int, default=14
         Font size for the overall figure title.
+    shared_color_scale : bool, default True
+        Every subplot using the default cost-based colouring (i.e. not
+        `plot_site_allocation` or `plot_regions_not_meeting_threshold`,
+        which already use their own categorical/fixed-`[0, 1]` scales)
+        shares one `vmin`/`vmax` across all such panels, computed from
+        their own selected solution's travel-cost values. Without this,
+        each panel independently autoscales to its own min/max -- two
+        panels can end up looking like a similar spread of outcomes on
+        the map even when, say, public transport times are five times
+        longer than car times everywhere, since the colour gradient
+        looks the same despite wildly different absolute numbers. Set to
+        False to restore each panel's own independent scale (e.g. if the
+        solution sets being compared use genuinely incomparable units).
     **shared_plot_kwargs
         Keyword arguments applied to all subplots. Individual subplot configs
         override these shared settings.
@@ -91,12 +106,12 @@ def plot_solution_sets_comparison(
     if n_plots == 1:
         axes = [axes]
 
-    # Plot each solution from its respective solution set
-    for i, (solution_set, config) in enumerate(zip(solution_sets, solutions_config)):
-        # Merge shared kwargs with individual config
+    # Resolve every panel's selected solution up front (rather than inside
+    # the plotting loop below) so a shared vmin/vmax can be computed across
+    # all cost-based panels before any of them are actually drawn.
+    resolved_solutions = []
+    for solution_set, config in zip(solution_sets, solutions_config):
         plot_kwargs = {**shared_plot_kwargs, **config}
-
-        # Get the solution
         solution = _select_solution(
             solution_set.solution_df,
             rank_on=config.get("rank_on"),
@@ -104,6 +119,35 @@ def plot_solution_sets_comparison(
             site_names=config.get("site_names"),
             site_indices=config.get("site_indices"),
         )
+        is_cost_based = not plot_kwargs.get(
+            "plot_site_allocation", False
+        ) and not plot_kwargs.get("plot_regions_not_meeting_threshold", False)
+        resolved_solutions.append((solution_set, solution, is_cost_based))
+
+    global_vmin = global_vmax = None
+    if shared_color_scale:
+        cost_values = []
+        for solution_set, solution, is_cost_based in resolved_solutions:
+            if not is_cost_based:
+                continue
+            cost_col, _, _, _, _ = solution_set._resolve_travel_columns(None)
+            problem_df = (
+                solution["problem_df"].values[0]
+                if hasattr(solution["problem_df"], "values")
+                else solution["problem_df"][0]
+            )
+            cost_values.append(problem_df[cost_col])
+        if cost_values:
+            combined_costs = pd.concat(cost_values)
+            global_vmin = combined_costs.min()
+            global_vmax = combined_costs.max()
+
+    # Plot each solution from its respective solution set
+    for i, (solution_set, config) in enumerate(zip(solution_sets, solutions_config)):
+        # Merge shared kwargs with individual config
+        plot_kwargs = {**shared_plot_kwargs, **config}
+        solution = resolved_solutions[i][1]
+        is_cost_based = resolved_solutions[i][2]
 
         # Extract plotting parameters (same as before)
         show_all_locations = plot_kwargs.pop("show_all_locations", True)
@@ -169,6 +213,8 @@ def plot_solution_sets_comparison(
             label_wrap_width=label_wrap_width,
             discrete_cmap=discrete_cmap,
             colors=colors,
+            global_vmin=global_vmin if is_cost_based else None,
+            global_vmax=global_vmax if is_cost_based else None,
             add_legend=True,
             legend_kwargs=legend_kwargs,
         )
