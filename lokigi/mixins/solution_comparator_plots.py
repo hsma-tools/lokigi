@@ -1,7 +1,9 @@
+import geopandas
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib.colors import TwoSlopeNorm
 from matplotlib.lines import Line2D
 
 from lokigi.plot_utils import plot_solution_sets_comparison
@@ -414,6 +416,303 @@ class SolutionComparatorPlotsMixin:
 
         if title == "default":
             title = "Travel cost distribution: before vs after"
+        if title:
+            axis.set_title(title)
+
+        return fig, axis
+
+    def plot_population_impact_map(
+        self,
+        direction="all",
+        n=None,
+        matrix=None,
+        demand=None,
+        meaningful_change_threshold=0.0,
+        config_a=None,
+        config_b=None,
+        cmap=None,
+        background_color="#dddddd",
+        edgecolor="black",
+        linewidth=0.3,
+        show_sites=None,
+        site_color="black",
+        site_markersize=40,
+        closed_site_color="black",
+        closed_site_marker="X",
+        closed_site_markersize=120,
+        figsize=(9, 7),
+        title="default",
+        legend=True,
+        ax=None,
+    ):
+        """
+        Map version of `population_impact_worst_affected()` --
+        colours each demand location's region by how its journey changed
+        between `set_a` (baseline) and `set_b` (candidate), so a reader
+        can see *where* an aggregate figure like "9,669 people worsened"
+        actually falls, not just how many.
+
+        Requires a `region_geometry_layer` registered on `set_b`'s
+        `SiteProblem` via `add_region_geometry_layer()`.
+
+        Parameters
+        ----------
+        direction : {"all", "worsened", "improved"}, default "all"
+            "all" colours every region by its signed change (`delta`,
+            `current_cost - baseline_cost`) on a diverging scale centred
+            on 0 -- red for a longer journey, blue for a shorter one,
+            white/pale for no meaningful change. This is the only mode
+            where the scale is genuinely diverging, since it is the only
+            one showing both directions at once.
+            "worsened"/"improved" colour only that bucket (per
+            `population_impact_summary()`'s `meaningful_change_threshold`
+            -gated classification) on a plain sequential scale from 0 to
+            the largest change in that direction; every other region is
+            drawn in `background_color` for geographic context.
+        n : int, optional
+            Restrict the coloured regions to the `n` most affected,
+            exactly matching `population_impact_worst_affected(n=n,
+            direction=direction, ...)` -- the two are meant to be shown
+            together. Only valid when `direction` is "worsened" or
+            "improved"; raises `ValueError` alongside `direction="all"`,
+            since "all" already means "every region" and silently
+            ignoring `n` there would be confusing.
+        matrix, demand, meaningful_change_threshold, config_a, config_b
+            Passed straight through to `population_impact_summary()`.
+        cmap : str, optional
+            Matplotlib colormap name. Defaults to `"RdBu_r"` for
+            `direction="all"` (diverging: red=longer, blue=shorter),
+            `"Reds"` for `"worsened"`, `"Blues"` for `"improved"`.
+        background_color : str, default "#dddddd"
+            Fill colour for regions outside the coloured bucket. Ignored
+            when `direction="all"`, since every region is coloured there.
+        edgecolor, linewidth
+            Region outline styling, applied to every region.
+        show_sites : {None, "all", "closed"}, optional
+            Overlay candidate sites as points, using the same point
+            geometry `plot_best_combination()` draws from (`add_sites()`
+            with lat/long columns, or a geopandas input). `None`
+            (default) draws no site markers.
+            "all" plots every candidate site on `set_b`'s `SiteProblem`:
+            sites closed relative to the baseline (in `set_a`'s selected
+            solution but not `set_b`'s) are drawn as a distinct marker
+            (`closed_site_marker`/`closed_site_color`/
+            `closed_site_markersize`); every other site (open in `set_b`,
+            or never open in either solution) is drawn as a plain point
+            (`site_color`/`site_markersize`).
+            "closed" draws only the closed sites -- the closure itself,
+            without the clutter of every other site.
+        site_color, site_markersize : default "black", 40
+            Styling for open/context site markers (`show_sites="all"`
+            only).
+        closed_site_color, closed_site_marker, closed_site_markersize :
+        default "black", "X", 120
+            Styling for the closed-site markers. `closed_site_marker`'s
+            shape ("X" vs `site_color`'s plain circle) is what
+            distinguishes the two by default -- deliberately not colour,
+            since a red marker would clash with the "worsened"/"all"
+            sequential and diverging red scales this plot itself uses.
+            Pass a different `closed_site_color` (e.g. a bright colour
+            not otherwise used by `cmap`) if the two need to stand apart
+            more strongly, e.g. against a busy basemap.
+        figsize : tuple, default (9, 7)
+            Figure size, ignored if `ax` is given.
+        title : str, default "default"
+            Plot title. If "default", an automatic title is generated.
+        legend : bool, default True
+            Whether to draw a colour bar, labelled with the travel-time
+            unit if one was set via `add_travel_matrix(unit=...)`.
+        ax : matplotlib.axes.Axes, optional
+            An existing Axes to draw into instead of creating a new
+            figure -- e.g. to embed this in a larger layout.
+
+        Returns
+        -------
+        (matplotlib.figure.Figure, matplotlib.axes.Axes)
+
+        Raises
+        ------
+        ValueError
+            If `direction` isn't "all"/"worsened"/"improved"; if `n` is
+            given alongside `direction="all"`; if `show_sites` isn't
+            `None`/"all"/"closed"; if `show_sites` is given but `set_b`'s
+            `SiteProblem` has no point geometry on its candidate sites;
+            if `set_b`'s `SiteProblem` has no `region_geometry_layer`
+            registered; or any of the errors `population_impact_summary()`
+            raises.
+        """
+        if direction not in ("all", "worsened", "improved"):
+            raise ValueError(
+                f'direction must be "all", "worsened", or "improved", got '
+                f"{direction!r}."
+            )
+        if direction == "all" and n is not None:
+            raise ValueError(
+                'n is only valid when direction is "worsened" or "improved" '
+                '-- "all" already plots every region.'
+            )
+        if show_sites not in (None, "all", "closed"):
+            raise ValueError(
+                f'show_sites must be None, "all", or "closed", got '
+                f"{show_sites!r}."
+            )
+
+        site_problem = self.set_b.site_problem
+        if site_problem.region_geometry_layer is None:
+            raise ValueError(
+                "plot_population_impact_map() requires a "
+                "region_geometry_layer -- call add_region_geometry_layer() "
+                "on set_b's SiteProblem first."
+            )
+        if show_sites is not None and not isinstance(
+            site_problem.candidate_sites, geopandas.GeoDataFrame
+        ):
+            raise ValueError(
+                "show_sites requires point geometry on set_b's SiteProblem's "
+                "candidate sites -- register add_sites() with lat/long "
+                "columns, or a geopandas GeoDataFrame."
+            )
+
+        config_a = config_a or {"solution_rank": 1}
+        config_b = config_b or {"solution_rank": 1}
+
+        _, per_region = self.population_impact_summary(
+            matrix=matrix,
+            demand=demand,
+            meaningful_change_threshold=meaningful_change_threshold,
+            config_a=config_a,
+            config_b=config_b,
+            return_per_region=True,
+        )
+
+        id_col = per_region.index.name
+        common_col = site_problem._region_geometry_layer_common_col
+        gdf = pd.merge(
+            site_problem.region_geometry_layer,
+            per_region.reset_index(),
+            left_on=common_col,
+            right_on=id_col,
+            suffixes=("", "_y"),
+        )
+        gdf = gdf.drop(gdf.filter(regex="_y$").columns, axis=1)
+
+        _, _, _, unit, _ = self.set_b._resolve_travel_columns(matrix)
+        unit_parenthetical = f" ({unit})" if unit else ""
+
+        if ax is None:
+            fig, axis = plt.subplots(figsize=figsize)
+        else:
+            axis = ax
+            fig = axis.get_figure()
+
+        if direction == "all":
+            resolved_cmap = cmap or "RdBu_r"
+            # min/max nudged away from exactly 0 -- TwoSlopeNorm requires
+            # vmin < vcenter < vmax strictly, which a candidate that only
+            # ever improves (or only ever worsens) things would otherwise
+            # violate.
+            delta_min = min(gdf["delta"].min(), -1e-9)
+            delta_max = max(gdf["delta"].max(), 1e-9)
+            norm = TwoSlopeNorm(vmin=delta_min, vcenter=0, vmax=delta_max)
+
+            plot_kwargs = {}
+            if legend:
+                plot_kwargs["legend"] = True
+                plot_kwargs["legend_kwds"] = {
+                    "label": f"Change in travel time{unit_parenthetical}"
+                }
+            gdf.plot(
+                column="delta",
+                cmap=resolved_cmap,
+                norm=norm,
+                edgecolor=edgecolor,
+                linewidth=linewidth,
+                ax=axis,
+                **plot_kwargs,
+            )
+            default_title = "Change in travel time by region"
+        else:
+            resolved_cmap = cmap or ("Reds" if direction == "worsened" else "Blues")
+
+            if n is not None:
+                worst_affected = self.population_impact_worst_affected(
+                    n=n,
+                    direction=direction,
+                    matrix=matrix,
+                    demand=demand,
+                    meaningful_change_threshold=meaningful_change_threshold,
+                    config_a=config_a,
+                    config_b=config_b,
+                )
+                subset = gdf[gdf[id_col].isin(worst_affected.index)]
+            else:
+                subset = gdf[gdf["bucket"] == direction]
+
+            gdf.plot(color=background_color, edgecolor=edgecolor, linewidth=linewidth, ax=axis)
+
+            if len(subset) > 0:
+                magnitude = subset["delta"].abs()
+                change_word = "Increase" if direction == "worsened" else "Reduction"
+                plot_kwargs = {}
+                if legend:
+                    plot_kwargs["legend"] = True
+                    plot_kwargs["legend_kwds"] = {
+                        "label": f"{change_word} in travel time{unit_parenthetical}"
+                    }
+                subset.plot(
+                    column=magnitude,
+                    cmap=resolved_cmap,
+                    vmin=0,
+                    vmax=magnitude.max(),
+                    edgecolor=edgecolor,
+                    linewidth=linewidth,
+                    ax=axis,
+                    **plot_kwargs,
+                )
+
+            default_title = (
+                "Regions with a longer journey"
+                if direction == "worsened"
+                else "Regions with a shorter journey"
+            )
+
+        if show_sites is not None:
+            baseline_names = set(
+                _select_solution(self.set_a.solution_df, **config_a).iloc[0][
+                    "site_names"
+                ]
+            )
+            candidate_names = set(
+                _select_solution(self.set_b.solution_df, **config_b).iloc[0][
+                    "site_names"
+                ]
+            )
+            closed_names = baseline_names - candidate_names
+
+            candidate_sites = site_problem.candidate_sites
+            site_id_col = site_problem._candidate_sites_candidate_id_col
+            closed_sites = candidate_sites[
+                candidate_sites[site_id_col].isin(closed_names)
+            ]
+
+            if show_sites == "all":
+                other_sites = candidate_sites[
+                    ~candidate_sites[site_id_col].isin(closed_names)
+                ]
+                if len(other_sites) > 0:
+                    other_sites.plot(ax=axis, color=site_color, markersize=site_markersize)
+
+            if len(closed_sites) > 0:
+                closed_sites.plot(
+                    ax=axis,
+                    color=closed_site_color,
+                    marker=closed_site_marker,
+                    markersize=closed_site_markersize,
+                )
+
+        axis.set_axis_off()
+        if title == "default":
+            title = default_title
         if title:
             axis.set_title(title)
 

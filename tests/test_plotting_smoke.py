@@ -648,3 +648,229 @@ def test_plot_population_impact_by_equity_group_no_equity_data_raises():
 
     with pytest.raises(ValueError, match="equity data"):
         comparator.plot_population_impact_by_equity_group()
+
+
+# --- SolutionComparator.plot_population_impact_map --------------------------
+
+
+@pytest.fixture
+def closure_impact_comparator(plottable_problem):
+    """Unlike `population_impact_comparator` (adding Site_B, a pure superset
+    that only ever improves or leaves things unchanged), this closes Site_A
+    -- baseline={Site_A, Site_B}, candidate={Site_B} -- so some regions
+    genuinely worsen, exercising the "worsened" bucket/direction rather than
+    always hitting the empty-subset path."""
+    from lokigi.site_solutions import SolutionComparator
+
+    baseline = plottable_problem.evaluate_baseline(site_names=["Site_A", "Site_B"])
+    candidate = plottable_problem.evaluate_baseline(site_names=["Site_B"])
+    return SolutionComparator(baseline, candidate, labels=("Current", "Proposed"))
+
+
+def test_plot_population_impact_map_all_runs_and_renders(population_impact_comparator):
+    fig, axis = population_impact_comparator.plot_population_impact_map()
+    assert fig is not None
+    fig.canvas.draw()
+    assert axis.get_title() == "Change in travel time by region"
+
+
+def test_plot_population_impact_map_worsened_runs_and_renders(
+    closure_impact_comparator,
+):
+    fig, axis = closure_impact_comparator.plot_population_impact_map(
+        direction="worsened"
+    )
+    fig.canvas.draw()
+    assert axis.get_title() == "Regions with a longer journey"
+
+
+def test_plot_population_impact_map_improved_runs_and_renders(
+    population_impact_comparator,
+):
+    fig, axis = population_impact_comparator.plot_population_impact_map(
+        direction="improved"
+    )
+    fig.canvas.draw()
+    assert axis.get_title() == "Regions with a shorter journey"
+
+
+def test_plot_population_impact_map_empty_bucket_does_not_crash(
+    population_impact_comparator,
+):
+    """population_impact_comparator only ever adds a site (Site_A -> Site_A
+    + Site_B), so nothing ever worsens -- the "worsened" bucket is empty.
+    Must render the background map, not raise or draw a broken colour bar."""
+    fig, axis = population_impact_comparator.plot_population_impact_map(
+        direction="worsened"
+    )
+    fig.canvas.draw()
+
+
+def test_plot_population_impact_map_n_matches_worst_affected(closure_impact_comparator):
+    worst_affected = closure_impact_comparator.population_impact_worst_affected(
+        n=2, direction="worsened"
+    )
+    fig, axis = closure_impact_comparator.plot_population_impact_map(
+        direction="worsened", n=2
+    )
+    fig.canvas.draw()
+    assert len(worst_affected) == 2
+
+
+def test_plot_population_impact_map_n_with_all_direction_raises(
+    population_impact_comparator,
+):
+    with pytest.raises(ValueError, match="n is only valid"):
+        population_impact_comparator.plot_population_impact_map(direction="all", n=5)
+
+
+def test_plot_population_impact_map_invalid_direction_raises(
+    population_impact_comparator,
+):
+    with pytest.raises(ValueError, match="direction must be"):
+        population_impact_comparator.plot_population_impact_map(direction="sideways")
+
+
+def test_plot_population_impact_map_show_sites_all_runs_and_renders(
+    closure_impact_comparator,
+):
+    """closure_impact_comparator closes Site_A -- show_sites="all" should
+    draw every candidate site, with Site_A picked out distinctly."""
+    fig, axis = closure_impact_comparator.plot_population_impact_map(
+        show_sites="all"
+    )
+    fig.canvas.draw()
+    # 1 collection for the closed-site marker + 1 for the other (open) sites,
+    # on top of however many the region choropleth itself drew.
+    assert len(axis.collections) >= 2
+
+
+def test_plot_population_impact_map_show_sites_closed_only(closure_impact_comparator):
+    fig, axis = closure_impact_comparator.plot_population_impact_map(
+        show_sites="closed"
+    )
+    fig.canvas.draw()
+    assert len(axis.collections) >= 1
+
+
+def test_plot_population_impact_map_show_sites_none_by_default_draws_no_markers(
+    closure_impact_comparator,
+):
+    """The choropleth alone draws exactly one collection (the region
+    polygons); show_sites=None (the default) must not add any more."""
+    fig, axis = closure_impact_comparator.plot_population_impact_map()
+    fig.canvas.draw()
+    assert len(axis.collections) == 1
+
+
+def test_plot_population_impact_map_invalid_show_sites_raises(
+    population_impact_comparator,
+):
+    with pytest.raises(ValueError, match="show_sites must be"):
+        population_impact_comparator.plot_population_impact_map(show_sites="bogus")
+
+
+def test_plot_population_impact_map_show_sites_without_point_geometry_raises():
+    """show_sites requires point geometry on candidate_sites -- the fallback
+    path where add_sites() is never called (candidate_sites auto-derived
+    from the travel matrix's own columns via _setup_sites_df_from_travel_matrix)
+    leaves it a plain DataFrame with no geometry at all, matching the same
+    scenario plot_best_combination() itself has to guard against."""
+    from lokigi.site_solutions import SolutionComparator
+
+    region_ids = ["LSOA_1", "LSOA_2"]
+    regions = geopandas.GeoDataFrame(
+        {
+            "location_id": region_ids,
+            "geometry": [
+                Polygon([(0, 0), (1, 0), (1, 1), (0, 1)]),
+                Polygon([(1, 0), (2, 0), (2, 1), (1, 1)]),
+            ],
+        },
+        crs="EPSG:4326",
+    )
+    demand_df = pd.DataFrame({"location_id": region_ids, "demand": [100, 200]})
+    travel_df = pd.DataFrame(
+        {"location_id": region_ids, "Site_A": [10.0, 20.0], "Site_B": [25.0, 5.0]}
+    )
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_travel_matrix(travel_df, source_col="location_id")
+    problem.add_region_geometry_layer(regions, common_col="location_id")
+
+    with pytest.warns(UserWarning, match="No candidate site dataframe was given"):
+        candidate = problem.solve(p=1, objectives="p_median", show_progress=False)
+    baseline = problem.evaluate_baseline(site_names=["Site_B"])
+    comparator = SolutionComparator(baseline, candidate)
+
+    with pytest.raises(ValueError, match="point geometry"):
+        comparator.plot_population_impact_map(show_sites="all")
+
+    # show_sites=None (the default) must still work fine without geometry.
+    fig, axis = comparator.plot_population_impact_map()
+    fig.canvas.draw()
+
+
+def test_plot_population_impact_map_reuses_given_axis(population_impact_comparator):
+    fig, axis = plt.subplots()
+    out_fig, out_axis = population_impact_comparator.plot_population_impact_map(ax=axis)
+    assert out_fig is fig
+    assert out_axis is axis
+
+
+def test_plot_population_impact_map_legend_mentions_unit():
+    """The colour bar should reflect whatever unit the travel matrix was
+    registered with, not just a bare "Change in travel time"."""
+    from lokigi.site_solutions import SolutionComparator
+
+    region_ids = ["LSOA_1", "LSOA_2"]
+    regions = geopandas.GeoDataFrame(
+        {
+            "location_id": region_ids,
+            "geometry": [Polygon([(0, 0), (1, 0), (1, 1), (0, 1)]),
+                         Polygon([(1, 0), (2, 0), (2, 1), (1, 1)])],
+        },
+        crs="EPSG:4326",
+    )
+    demand_df = pd.DataFrame({"location_id": region_ids, "demand": [100, 200]})
+    candidate_df = pd.DataFrame(
+        {"site_id": ["Site_A", "Site_B"], "lat": [51.1, 51.2], "long": [-0.1, -0.2]}
+    )
+    travel_df = pd.DataFrame(
+        {"source_id": region_ids, "Site_A": [10.0, 20.0], "Site_B": [25.0, 5.0]}
+    )
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id", unit="minutes")
+    problem.add_region_geometry_layer(regions, common_col="location_id")
+
+    baseline = problem.evaluate_baseline(site_names=["Site_A"])
+    candidate = problem.evaluate_baseline(site_names=["Site_A", "Site_B"])
+    comparator = SolutionComparator(baseline, candidate)
+
+    fig, axis = comparator.plot_population_impact_map()
+    fig.canvas.draw()
+    colorbar_label = fig.axes[-1].get_ylabel()
+    assert "minutes" in colorbar_label
+
+
+def test_plot_population_impact_map_no_region_geometry_raises():
+    from lokigi.site_solutions import SolutionComparator
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    demand_df = pd.DataFrame({"location_id": ["A", "B"], "demand": [10, 20]})
+    candidate_df = pd.DataFrame(
+        {"site_id": ["Site_A", "Site_B"], "lat": [51.1, 51.2], "long": [-0.1, -0.2]}
+    )
+    travel_df = pd.DataFrame({"source_id": ["A", "B"], "Site_A": [5.0, 8.0], "Site_B": [9.0, 3.0]})
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+
+    baseline = problem.evaluate_baseline(site_names=["Site_A"])
+    candidate = problem.evaluate_baseline(site_names=["Site_A", "Site_B"])
+    comparator = SolutionComparator(baseline, candidate)
+
+    with pytest.raises(ValueError, match="region_geometry_layer"):
+        comparator.plot_population_impact_map()
