@@ -302,6 +302,26 @@ def test_return_per_region_matches_summary_buckets():
     assert (per_region["bucket"] == "worsened").sum() == summary["regions_worsened"]
 
 
+def test_return_per_region_includes_previous_and_new_site():
+    problem = _swap_problem()
+    baseline = problem.evaluate_baseline(site_names=["A", "B"])
+    candidate = problem.evaluate_baseline(site_names=["A", "C"])
+
+    _, per_region = SolutionComparator(baseline, candidate).population_impact_summary(
+        return_per_region=True, as_dict=True
+    )
+
+    # D1: baseline and candidate both pick A -- unchanged, same site both sides.
+    assert per_region.loc["D1", "previous_site"] == "A"
+    assert per_region.loc["D1", "new_site"] == "A"
+    # D2: baseline picks B, candidate picks A -- worsened.
+    assert per_region.loc["D2", "previous_site"] == "B"
+    assert per_region.loc["D2", "new_site"] == "A"
+    # D3: baseline picks B, candidate picks C -- improved.
+    assert per_region.loc["D3", "previous_site"] == "B"
+    assert per_region.loc["D3", "new_site"] == "C"
+
+
 # --- population_impact_summary DataFrame default / as_dict / native types ---
 
 

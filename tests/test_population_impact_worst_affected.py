@@ -34,6 +34,8 @@ def test_worsened_direction_default(comparator):
     assert result["Before"].loc["LSOA_2"] == 5.0
     assert result["After"].loc["LSOA_2"] == 10.0
     assert result["Change"].loc["LSOA_2"] == 5.0
+    assert result["Previous site"].loc["LSOA_2"] == "Site_B"
+    assert result["New site"].loc["LSOA_2"] == "Site_C"
     assert result["People affected"].loc["LSOA_2"] == 200
 
 
@@ -44,7 +46,30 @@ def test_improved_direction(comparator):
     assert result["Before"].loc["LSOA_3"] == 15.0
     assert result["After"].loc["LSOA_3"] == 8.0
     assert result["Change"].loc["LSOA_3"] == -7.0
+    assert result["Previous site"].loc["LSOA_3"] == "Site_B"
+    assert result["New site"].loc["LSOA_3"] == "Site_C"
     assert result["People affected"].loc["LSOA_3"] == 150
+
+
+def test_previous_and_new_site_unaffected_by_secondary_travel_matrix(
+    loaded_problem_with_secondary_matrix,
+):
+    """previous_site/new_site should reflect the SAME matrix= being diffed
+    (selected_site__<label> for a secondary matrix), not silently fall
+    back to the primary matrix's selected_site."""
+    baseline = loaded_problem_with_secondary_matrix.evaluate_baseline(
+        site_names=["Site_A", "Site_B"]
+    )
+    candidate = loaded_problem_with_secondary_matrix.evaluate_baseline(
+        site_names=["Site_A", "Site_C"]
+    )
+    comparator = SolutionComparator(baseline, candidate, labels=("Current", "Proposed"))
+
+    result = comparator.population_impact_worst_affected(matrix="public_transport")
+    assert "Previous site" in result.columns
+    assert "New site" in result.columns
+    assert result["Previous site"].notna().all()
+    assert result["New site"].notna().all()
 
 
 def test_unchanged_location_never_appears(comparator):

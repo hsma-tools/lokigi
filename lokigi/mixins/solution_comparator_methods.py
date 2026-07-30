@@ -460,8 +460,11 @@ class SolutionComparatorMethodsMixin:
             ``{"solution_rank": 1}``, matching `compare_site_allocation()`.
         return_per_region : bool, default False
             If True, also return a per-region DataFrame (`baseline_cost`,
-            `current_cost`, `demand` if available, `delta`, `bucket`) for
-            drill-down, indexed by demand-location ID.
+            `current_cost`, `demand` if available, `delta`, `bucket`,
+            `previous_site`/`new_site` -- that region's closest site under
+            `set_a`/`set_b` respectively, omitted if `selected_site` isn't
+            on both sides for some reason) for drill-down, indexed by
+            demand-location ID.
         as_dict : bool, default False
             If False (the default), the summary is returned as a single-
             column `pandas.DataFrame` (index = metric name, column =
@@ -582,6 +585,19 @@ class SolutionComparatorMethodsMixin:
             ["improved", "worsened"],
             default="unchanged",
         )
+
+        selected_site_col = self.set_b._resolve_travel_columns(matrix)[1]
+        if (
+            selected_site_col in problem_df_a.columns
+            and selected_site_col in problem_df_b.columns
+        ):
+            per_region["previous_site"] = problem_df_a[selected_site_col].reindex(
+                per_region.index
+            )
+            per_region["new_site"] = problem_df_b[selected_site_col].reindex(
+                per_region.index
+            )
+
         return summary, per_region
 
     def population_impact_worst_affected(
@@ -621,9 +637,13 @@ class SolutionComparatorMethodsMixin:
             affected. Columns: `Before`, `After`, `Change` (signed --
             positive means longer/worse, negative means shorter/better),
             each suffixed with the travel matrix's registered unit in
-            parentheses (e.g. `Before (minutes)`) if one was registered,
-            and `People affected` (that location's demand weight) if
-            demand data is registered, else omitted.
+            parentheses (e.g. `Before (minutes)`) if one was registered;
+            `Previous site`/`New site` -- that location's closest site
+            under `set_a`/`set_b` respectively, so a "closed site X's
+            demand went to site Y" story can be read off a single row
+            rather than cross-referencing `site_reallocation_matrix()`
+            separately; and `People affected` (that location's demand
+            weight) if demand data is registered, else omitted.
 
         Raises
         ------
@@ -662,6 +682,9 @@ class SolutionComparatorMethodsMixin:
             },
             index=affected.index,
         ).rename_axis(id_col)
+        if "previous_site" in affected.columns and "new_site" in affected.columns:
+            result["Previous site"] = affected["previous_site"]
+            result["New site"] = affected["new_site"]
         if "demand" in affected.columns:
             result["People affected"] = affected["demand"]
 
