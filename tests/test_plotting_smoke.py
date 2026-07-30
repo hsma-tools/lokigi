@@ -780,6 +780,74 @@ def test_plot_population_impact_summary_reuses_given_axes(population_impact_comp
     assert out_axes is axes
 
 
+# --- SolutionComparator.plot_site_reallocation_matrix -----------------------
+
+
+def test_plot_site_reallocation_matrix_runs_and_renders(population_impact_comparator):
+    fig, ax = population_impact_comparator.plot_site_reallocation_matrix()
+    assert fig is not None
+    fig.canvas.draw()
+
+
+def test_plot_site_reallocation_matrix_by_regions(population_impact_comparator):
+    fig, ax = population_impact_comparator.plot_site_reallocation_matrix(by="regions")
+    assert fig is not None
+    fig.canvas.draw()
+
+
+def test_plot_site_reallocation_matrix_invalid_by_raises(population_impact_comparator):
+    with pytest.raises(ValueError, match="by must be"):
+        population_impact_comparator.plot_site_reallocation_matrix(by="nonsense")
+
+
+def test_plot_site_reallocation_matrix_reuses_given_axes(population_impact_comparator):
+    fig, ax = plt.subplots()
+    out_fig, out_ax = population_impact_comparator.plot_site_reallocation_matrix(ax=ax)
+    assert out_fig is fig
+    assert out_ax is ax
+
+
+def test_plot_site_reallocation_matrix_axis_labels_are_comparator_labels(
+    population_impact_comparator,
+):
+    fig, ax = population_impact_comparator.plot_site_reallocation_matrix()
+    assert ax.get_xlabel() == "Proposed"
+    assert ax.get_ylabel() == "Current"
+
+
+def test_plot_site_reallocation_matrix_colorbar_label_matches_by(
+    population_impact_comparator,
+):
+    fig, ax = population_impact_comparator.plot_site_reallocation_matrix(by="demand")
+    assert fig.axes[-1].get_ylabel() == "People"
+
+    fig, ax = population_impact_comparator.plot_site_reallocation_matrix(by="regions")
+    assert fig.axes[-1].get_ylabel() == "Regions"
+
+
+def test_plot_site_reallocation_matrix_default_caption_shown(
+    population_impact_comparator,
+):
+    fig, ax = population_impact_comparator.plot_site_reallocation_matrix()
+    assert len(fig.texts) == 1
+    assert "How to read this" in fig.texts[0].get_text()
+
+
+def test_plot_site_reallocation_matrix_caption_suppressed_with_empty_string(
+    population_impact_comparator,
+):
+    fig, ax = population_impact_comparator.plot_site_reallocation_matrix(caption="")
+    assert len(fig.texts) == 0
+
+
+def test_plot_site_reallocation_matrix_custom_caption(population_impact_comparator):
+    fig, ax = population_impact_comparator.plot_site_reallocation_matrix(
+        caption="Custom explanation."
+    )
+    assert len(fig.texts) == 1
+    assert "Custom explanation." in fig.texts[0].get_text()
+
+
 def test_plot_population_impact_histogram_runs_and_renders(population_impact_comparator):
     fig, axis = population_impact_comparator.plot_population_impact_histogram()
     assert fig is not None

@@ -1,3 +1,5 @@
+import textwrap
+
 import geopandas
 import matplotlib.pyplot as plt
 import numpy as np
@@ -213,6 +215,117 @@ class SolutionComparatorPlotsMixin:
             fig.suptitle(title)
 
         return fig, axes
+
+    def plot_site_reallocation_matrix(
+        self,
+        matrix=None,
+        demand=None,
+        config_a=None,
+        config_b=None,
+        by="demand",
+        cmap="Blues",
+        annot=True,
+        fmt=",.0f",
+        figsize=(8, 6),
+        title="default",
+        caption=None,
+        ax=None,
+    ):
+        """
+        Heatmap of `site_reallocation_matrix()`: rows = `set_a`'s selected
+        sites, columns = `set_b`'s, cell colour/annotation = the demand
+        (or region count) whose closest site moved from that row's site
+        to that column's site. A closed site's row and a newly opened
+        site's column are the reallocation the table exists to show; the
+        diagonal is the demand that stayed with the same site in both
+        solutions. Both axes are ordered persisting sites first, then
+        that axis's own changed sites last (see `site_reallocation_matrix`),
+        so the actual reallocation is grouped at the bottom/right rather
+        than scattered wherever an unrelated unchanged site's candidate
+        index happens to fall.
+
+        Parameters
+        ----------
+        matrix, demand, config_a, config_b, by
+            Passed straight through to `site_reallocation_matrix()`.
+        cmap : str, default "Blues"
+            Colormap for the heatmap. Sequential rather than diverging --
+            unlike `plot_population_impact_map()`'s travel-cost change,
+            reallocated demand has no natural "centre" and is never
+            negative.
+        annot : bool, default True
+            Whether to print each cell's value on the heatmap
+            (`seaborn.heatmap`'s own `annot`).
+        fmt : str, default ",.0f"
+            Format string for the cell annotations.
+        figsize : tuple, default (8, 6)
+            Figure size, ignored if `ax` is given.
+        title : str, default "default"
+            Title. If "default", an automatic title naming `set_a`/`set_b`
+            by their comparator labels is generated.
+        caption : str, optional
+            Explanatory text shown below the chart, wrapped to fit. If
+            `None` (the default), a sensible stakeholder-facing caption
+            explaining how to read the heatmap is generated; pass `""` to
+            suppress it, or a custom string to replace it.
+        ax : matplotlib.axes.Axes, optional
+            Existing Axes to draw into instead of creating a new figure.
+
+        Returns
+        -------
+        (matplotlib.figure.Figure, matplotlib.axes.Axes)
+        """
+        reallocation = self.site_reallocation_matrix(
+            matrix=matrix, demand=demand, config_a=config_a, config_b=config_b, by=by
+        )
+
+        if ax is None:
+            fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
+        else:
+            fig = ax.get_figure()
+
+        cbar_label = "People" if by == "demand" else "Regions"
+        sns.heatmap(
+            reallocation,
+            cmap=cmap,
+            annot=annot,
+            fmt=fmt,
+            ax=ax,
+            cbar_kws={"label": cbar_label},
+        )
+        ax.set_xlabel(self.labels[1])
+        ax.set_ylabel(self.labels[0])
+
+        if title == "default":
+            title = f"Site reallocation: {self.labels[0]} to {self.labels[1]}"
+        if title:
+            ax.set_title(title)
+
+        if caption is None:
+            caption = (
+                f"How to read this: read a row across to see where that site's "
+                f"demand ({self.labels[0]}) ended up in {self.labels[1]}; read a "
+                "column down to see which sites its demand came from. The "
+                "diagonal is demand that stayed with the same site. Sites "
+                "unique to one side -- closed (bottom rows) or newly opened "
+                "(rightmost columns) -- are grouped at the end of their axis "
+                "rather than sorted by candidate index."
+            )
+        if caption:
+            wrapped = "\n".join(textwrap.wrap(caption, width=90))
+            fig.text(
+                0.01,
+                -0.02,
+                wrapped,
+                ha="left",
+                va="top",
+                fontsize=8.5,
+                color="dimgray",
+                wrap=True,
+                transform=fig.transFigure,
+            )
+
+        return fig, ax
 
     def plot_population_impact_histogram(
         self,

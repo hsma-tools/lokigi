@@ -127,6 +127,175 @@ class SolutionComparatorMethodsMixin:
         comparison["difference"] = comparison[label_a] - comparison[label_b]
         return comparison
 
+    def site_reallocation_matrix(
+        self, matrix=None, demand=None, config_a=None, config_b=None, by="demand"
+    ):
+        """
+        Cross-tabulate each demand location's closest site under `set_a`
+        against its closest site under `set_b` -- "if a region's nearest
+        site changed, which site did it move from, and which did it move
+        to?"
+
+        A single table answers both directions of "reallocation": read a
+        row (a `set_a` site) across to see where that site's demand ended
+        up in `set_b` -- e.g. a closed site's row shows exactly which
+        remaining sites picked up its patients. Read a column (a `set_b`
+        site) down to see which `set_a` sites its demand came from -- e.g.
+        a newly opened site's column shows which existing sites it drew
+        demand away from. The diagonal (same site name in both) is the
+        demand that didn't move at all.
+
+        Parameters
+        ----------
+        matrix : str, optional
+            Label of a secondary travel matrix registered via
+            `add_secondary_travel_matrix()`. Cross-tabulates each side's
+            `selected_site__<label>` column instead of the primary
+            matrix's `selected_site`.
+        demand : str, optional
+            Label of a secondary demand scenario registered via
+            `add_secondary_demand()`. Weights by that scenario's demand
+            instead of the primary demand data (only relevant for
+            `by="demand"`).
+        config_a, config_b : dict, optional
+            Passed to `_select_solution()` to choose which solution from
+            `set_a`/`set_b` to compare (e.g. ``{"solution_rank": 2}``).
+            Default to ``{"solution_rank": 1}``.
+        by : {"demand", "regions"}, default "demand"
+            "demand" sums the registered demand weight moving between
+            each (from-site, to-site) pair; "regions" counts demand
+            locations instead, ignoring demand weighting entirely --
+            the only option available when no demand data is registered.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Rows = `set_a`'s selected sites, columns = `set_b`'s selected
+            sites. Cell (i, j) = the demand (or region count) whose
+            closest site was i under `set_a` and is j under `set_b`. Every
+            selected site gets a full row/column even if it captures no
+            reallocated demand at all -- those cells are 0.0, not `NaN`,
+            since "nothing moved this way" is a real, meaningful answer
+            (matching `site_allocation_summary()`'s own "explicit 0"
+            convention). The index/column names are
+            `self.labels[0]`/`self.labels[1]`.
+
+            Each axis is ordered persisting sites first (present on both
+            sides, in canonical site-index order), then that axis's own
+            "changed" sites last (closed sites at the bottom of the row
+            axis; newly opened sites at the right of the column axis).
+            Otherwise an unrelated unchanged site could sort after the
+            genuinely closed/opened ones purely by candidate index,
+            burying the actual reallocation in the middle of the table
+            instead of grouping it where it's easy to scan.
+
+        Raises
+        ------
+        ValueError
+            If `by` is not "demand" or "regions"; if `by="demand"` but no
+            demand data is registered (see `Notes`); if `demand` names an
+            unregistered secondary demand scenario; or if `set_a` and
+            `set_b`'s selected solutions were evaluated against different
+            demand locations (via `_population_impact_frame`).
+
+        Notes
+        -----
+        To see only what the review persona actually asked for -- "closed
+        sites down the left, the sites they moved to across the top" --
+        slice the result to just the rows/columns that differ between the
+        two solutions, e.g. using the already-available
+        `sites_closed_vs_baseline`/`sites_added_vs_baseline` columns:
+        ``result.loc[closed_sites]`` for "where did each closed site's
+        demand go?", or ``result[added_sites]`` for "which sites did each
+        added site draw demand from?". The full matrix is returned rather
+        than pre-filtered so that reallocation between two sites that are
+        BOTH still open after the change (e.g. a new site partially
+        stealing an existing site's catchment) isn't hidden either.
+        """
+        if by not in ("demand", "regions"):
+            raise ValueError(f"by must be 'demand' or 'regions', got {by!r}.")
+
+        frame = self._population_impact_frame(matrix, demand, config_a, config_b)
+        problem_df_a = frame["problem_df_a"].reindex(frame["problem_df_b"].index)
+        problem_df_b = frame["problem_df_b"]
+        demand_series = frame["demand_series"]
+
+        if by == "demand" and demand_series is None:
+            raise ValueError(
+                "by='demand' requires demand data. No demand column is "
+                "registered on this problem -- call add_demand(), or pass "
+                "by='regions' to count demand locations equally."
+            )
+
+        selected_site_col = self.set_b._resolve_travel_columns(matrix)[1]
+
+        if by == "demand":
+            # fillna(0.0): pivot_table (which crosstab delegates to once
+            # values/aggfunc are given) otherwise leaves NaN for a (from,
+            # to) pair that never co-occurs -- indistinguishable from "no
+            # data" when it actually means "zero regions moved this way".
+            crosstab = pd.crosstab(
+                problem_df_a[selected_site_col],
+                problem_df_b[selected_site_col],
+                values=demand_series,
+                aggfunc="sum",
+            ).fillna(0.0)
+        else:
+            crosstab = pd.crosstab(
+                problem_df_a[selected_site_col], problem_df_b[selected_site_col]
+            )
+
+        config_a = config_a or {"solution_rank": 1}
+        config_b = config_b or {"solution_rank": 1}
+        sites_a = list(
+            _select_solution(self.set_a.solution_df, **config_a)["site_names"].iloc[0]
+        )
+        sites_b = list(
+            _select_solution(self.set_b.solution_df, **config_b)["site_names"].iloc[0]
+        )
+
+        unexpected_rows = set(crosstab.index) - set(sites_a)
+        unexpected_cols = set(crosstab.columns) - set(sites_b)
+        if unexpected_rows or unexpected_cols:
+            # Mirrors site_allocation_summary()'s own guard: a selected_site
+            # value not in the solution's own site_names means problem_df
+            # and site_names have gone out of step -- reindexing below
+            # would otherwise silently drop these rather than flagging it.
+            warn(
+                f"site_reallocation_matrix: selected_site columns contain "
+                f"site(s) not in the corresponding solution's site_names -- "
+                f"{sorted(unexpected_rows)} in set_a, "
+                f"{sorted(unexpected_cols)} in set_b. These are excluded "
+                "from the result.",
+                stacklevel=2,
+            )
+
+        master_site_order = self.set_b.site_problem.candidate_sites[
+            self.set_b.site_problem._candidate_sites_candidate_id_col
+        ].tolist()
+
+        def _ordered(sites, other_sites):
+            # Persisting sites (present on both sides) first, in canonical
+            # order, then the sites unique to THIS side (closed, for rows;
+            # opened, for columns) at the end -- so the actual reallocation
+            # is grouped together at the bottom/right instead of scattered
+            # wherever its candidate index happens to fall, which is what a
+            # plain canonical-order listing would otherwise do (an unrelated
+            # unchanged site sorting last, purely by site ID, is easy to
+            # mistake for "the interesting one").
+            other = set(other_sites)
+            persisting = [s for s in master_site_order if s in sites and s in other]
+            changed = [s for s in master_site_order if s in sites and s not in other]
+            return persisting + changed
+
+        row_order = _ordered(sites_a, sites_b)
+        col_order = _ordered(sites_b, sites_a)
+
+        result = crosstab.reindex(index=row_order, columns=col_order, fill_value=0.0)
+        result.index.name = self.labels[0]
+        result.columns.name = self.labels[1]
+        return result
+
     def _population_impact_frame(self, matrix, demand, config_a, config_b):
         """
         Shared frame-building logic for `population_impact_summary()` and
