@@ -2269,9 +2269,18 @@ class EquityPlotsMixin:
             `add_secondary_travel_matrix()`. If provided, regions are
             coloured by that matrix's own min-cost column instead of the
             primary travel matrix.
+
+        Notes
+        -----
+        Each panel's title includes the region count and population
+        headcount actually in that group, e.g. "IMD decile: 1 (12 regions,
+        4,821 people)". Without this, a group with very little demand looks
+        identical to a well-served one -- both render as a near-empty map --
+        so a reader can't tell "few areas here" from "no problem here".
         """
         cost_col, _, _, unit, _ = self._resolve_travel_columns(matrix)
         equity_col = self.site_problem._equity_data_equity_col
+        demand_col = self.site_problem._demand_data_demand_col
         equity_axis_label = self.site_problem._equity_data_label or equity_col
         unit_parenthetical = f" ({unit})" if unit else ""
 
@@ -2367,7 +2376,11 @@ class EquityPlotsMixin:
                 **kwargs,
             )
 
-            ax.set_title(f"{equity_axis_label}: {label}")
+            n_regions = len(subset)
+            n_people = subset[demand_col].sum()
+            ax.set_title(
+                f"{equity_axis_label}: {label}\n({n_regions:,} regions, {n_people:,.0f} people)"
+            )
 
             try:
                 cx.add_basemap(

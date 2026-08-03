@@ -434,6 +434,21 @@ def test_plot_combination_by_equity_labels(unit_labelled_solution):
     assert axes[0].get_title().startswith("IMD Decile:")
 
 
+def test_plot_combination_by_equity_shows_region_and_people_counts(
+    unit_labelled_solution,
+):
+    """A sparse panel (few regions/little demand) previously rendered as a
+    near-empty map indistinguishable from "no problem here" -- the title now
+    states the region and population headcount actually in that group."""
+    fig, axes = unit_labelled_solution.plot_combination_by_equity()
+    titles = [ax.get_title() for ax in axes[:3]]
+    assert titles == [
+        "IMD Decile: 1\n(1 regions, 100 people)",
+        "IMD Decile: 5\n(1 regions, 200 people)",
+        "IMD Decile: 9\n(1 regions, 150 people)",
+    ]
+
+
 # --- problem-level plots --------------------------------------------------
 
 # These take the SiteProblem itself rather than a solved solution set, and
