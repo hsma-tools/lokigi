@@ -268,15 +268,16 @@ class SiteProblem(
                 "Each site may only be selected once per solution."
             )
 
-        try:
-            # If we haven't come via the solve method, we will need to make the joined
-            # demand and travel dataframe. Otherwise, that's handled once in that method.
-            # Otherwise
-            if self.travel_and_demand_df is None:
-                self._create_joined_demand_travel_df(index_col=self._demand_data_id_col)
-                self._build_secondary_travel_frames()
-                self._build_secondary_demand_frames()
+        # If we haven't come via the solve method, we will need to make the joined
+        # demand and travel dataframe. Otherwise, that's handled once in that method.
+        # Kept outside the try below so its own errors (e.g. no travel matrix
+        # registered) aren't rewrapped as "Error mapping site names".
+        if self.travel_and_demand_df is None:
+            self._create_joined_demand_travel_df(index_col=self._demand_data_id_col)
+            self._build_secondary_travel_frames()
+            self._build_secondary_demand_frames()
 
+        try:
             # We need to make sure that we use IDs and names completely consistently throughout.
             # 1. Resolve site_indices to actual Site IDs (names)
             if site_indices is not None:

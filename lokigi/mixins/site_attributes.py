@@ -1532,6 +1532,20 @@ class SiteAttributeMixin:
 
         The merged result is stored in the `self.travel_and_demand_df` attribute.
         """
+        if self.travel_matrix is None:
+            raise ValueError(
+                "No travel matrix or other cost matrix has been provided, "
+                "so demand locations cannot be linked to sites. Please add "
+                "one using the .add_travel_matrix() method and try again."
+            )
+
+        if self.demand_data is None:
+            raise ValueError(
+                "No demand data has been provided, so demand locations "
+                "cannot be linked to sites. Please add it using the "
+                ".add_demand() method and try again."
+            )
+
         # If one is a geopandas dataframe, put that first in the merge call so that the
         # output object will also be a geodataframe
         if self._demand_data_type == "geopandas":
