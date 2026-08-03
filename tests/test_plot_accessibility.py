@@ -93,6 +93,7 @@ def test_nan_ratio_site_gets_explicit_legend_entry(sfca_problem_with_geometry):
             supply_col="supply",
             catchment_size=15,
             site_names=["Site_1", "Site_2", "Site_Isolated"],
+            show_site_ratio=True,
             add_basemap=False,
         )
     legend = ax.get_legend()
@@ -108,9 +109,73 @@ def test_no_legend_when_every_site_has_a_ratio(sfca_problem_with_geometry):
         supply_col="supply",
         catchment_size=15,
         site_names=["Site_1", "Site_2"],
+        show_site_ratio=True,
         add_basemap=False,
     )
     assert ax.get_legend() is None
+
+
+def test_default_site_markers_are_plain_and_uniform(sfca_problem_with_geometry):
+    """`show_site_ratio` defaults to False: site markers should be plain,
+    uniformly coloured dots -- no ratio-driven colour/size, and no
+    "No catchment demand" legend even for a site with a NaN ratio (it's
+    still warned about by `two_step_floating_catchment()`, since that
+    warning is unrelated to how the map chooses to render it)."""
+    with pytest.warns(UserWarning, match="Site_Isolated"):
+        ax = sfca_problem_with_geometry.plot_accessibility(
+            supply_col="supply",
+            catchment_size=15,
+            site_names=["Site_1", "Site_2", "Site_Isolated"],
+            add_basemap=False,
+        )
+    site_markers = ax.collections[-1]
+    assert len(site_markers.get_offsets()) == 3
+    # A single shared facecolor (rather than one per point, as the
+    # ratio-cmap path produces) is itself evidence markers are uniformly
+    # coloured, not driven by `ratio`.
+    assert len(site_markers.get_facecolor()) == 1
+    assert ax.get_legend() is None
+
+
+def test_site_colour_overrides_default_marker_colour(sfca_problem_with_geometry):
+    import matplotlib.colors as mcolors
+
+    ax = sfca_problem_with_geometry.plot_accessibility(
+        supply_col="supply",
+        catchment_size=15,
+        site_names=["Site_1", "Site_2"],
+        site_colour="red",
+        add_basemap=False,
+    )
+    site_markers = ax.collections[-1]
+    facecolors = site_markers.get_facecolor()
+    assert (facecolors[0] == mcolors.to_rgba("red")).all()
+
+
+def test_caption_reflects_show_site_ratio(sfca_problem_with_geometry):
+    ax_default = sfca_problem_with_geometry.plot_accessibility(
+        supply_col="supply",
+        catchment_size=15,
+        site_names=["Site_1", "Site_2"],
+        add_basemap=False,
+    )
+    ax_ratio = sfca_problem_with_geometry.plot_accessibility(
+        supply_col="supply",
+        catchment_size=15,
+        site_names=["Site_1", "Site_2"],
+        show_site_ratio=True,
+        add_basemap=False,
+    )
+    # Caption text is line-wrapped for display; collapse back to a single
+    # line so substring checks aren't sensitive to where the wrap falls.
+    default_caption = " ".join(
+        ax_default.get_figure().texts[-1].get_text().split()
+    )
+    ratio_caption = " ".join(ax_ratio.get_figure().texts[-1].get_text().split())
+    assert "plain markers" in default_caption
+    assert "plain markers" not in ratio_caption
+    assert "coloured and sized by its own supply" in ratio_caption
+    assert "coloured and sized by its own supply" not in default_caption
 
 
 def test_precomputed_frames_skip_autocompute(sfca_problem_with_geometry, monkeypatch):
