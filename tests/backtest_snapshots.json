@@ -372,6 +372,18 @@
       true
     ],
     [
+      "regions_unreachable",
+      false
+    ],
+    [
+      "demand_unreachable",
+      false
+    ],
+    [
+      "proportion_demand_unreachable",
+      false
+    ],
+    [
       "weighted_by_equity_group",
       false
     ],
@@ -389,6 +401,14 @@
     ],
     [
       "max_cost_by_equity_group",
+      false
+    ],
+    [
+      "regions_unreachable_by_equity_group",
+      false
+    ],
+    [
+      "demand_unreachable_by_equity_group",
       false
     ],
     [
@@ -464,6 +484,18 @@
       true
     ],
     [
+      "regions_unreachable__public_transport",
+      false
+    ],
+    [
+      "demand_unreachable__public_transport",
+      false
+    ],
+    [
+      "proportion_demand_unreachable__public_transport",
+      false
+    ],
+    [
       "gap_absolute_weighted__public_transport",
       false
     ],
@@ -505,6 +537,14 @@
     ],
     [
       "max_cost_by_equity_group__public_transport",
+      false
+    ],
+    [
+      "regions_unreachable_by_equity_group__public_transport",
+      false
+    ],
+    [
+      "demand_unreachable_by_equity_group__public_transport",
       false
     ],
     [

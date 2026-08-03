@@ -33,6 +33,24 @@ import copy
 from lokigi.problem import _Problem
 
 
+def _safe_idxmin(cost_frame, min_cost):
+    """`cost_frame.idxmin(axis=1)`, tolerant of rows where every column is
+    NaN. Pandas raises `ValueError` ("Encountered all NA values") on those
+    rather than returning NaN, since >= 2.0 -- reachable whenever a demand
+    location has no feasible journey to any selected site.
+
+    `min_cost` (`cost_frame.min(axis=1)`, already computed by the caller)
+    is NaN precisely for those all-NaN rows, so its mask is reused rather
+    than re-derived. Returns an object-dtype Series: the selected site name
+    for reachable rows, `pandas.NA` for unreachable ones.
+    """
+    reachable = min_cost.notna()
+    selected_site = pd.Series(pd.NA, index=cost_frame.index, dtype=object)
+    if reachable.any():
+        selected_site.loc[reachable] = cost_frame.loc[reachable].idxmin(axis=1)
+    return selected_site
+
+
 class SiteProblem(
     _Problem,
     SiteAttributeMixin,
@@ -401,8 +419,14 @@ class SiteProblem(
             # Assume travel to closest facility
             active_facilities["min_cost"] = active_facilities.min(axis=1)
 
-            # Add column for the selected site (column name with minimum cost)
-            active_facilities["selected_site"] = active_facilities.idxmin(axis=1)
+            # Add column for the selected site (column name with minimum
+            # cost). NaN for a demand location with no feasible journey to
+            # any selected site (allow_missing=True travel matrices) --
+            # _safe_idxmin sidesteps idxmin's ValueError on such all-NaN
+            # rows rather than letting it propagate.
+            active_facilities["selected_site"] = _safe_idxmin(
+                active_facilities, active_facilities["min_cost"]
+            )
 
             if threshold_for_coverage is None:
                 active_facilities["within_threshold"] = np.nan
@@ -419,8 +443,11 @@ class SiteProblem(
             # meaningless for a secondary frame's own columns.
             for label, frame in self._secondary_travel_frames.items():
                 sub = frame.loc[active_facilities.index, final_names]
-                active_facilities[f"min_cost__{label}"] = sub.min(axis=1)
-                active_facilities[f"selected_site__{label}"] = sub.idxmin(axis=1)
+                sub_min_cost = sub.min(axis=1)
+                active_facilities[f"min_cost__{label}"] = sub_min_cost
+                active_facilities[f"selected_site__{label}"] = _safe_idxmin(
+                    sub, sub_min_cost
+                )
 
                 matrix_threshold = self.secondary_travel_matrices[label][
                     "threshold_for_coverage"
@@ -946,6 +973,40 @@ class SiteProblem(
         if self.travel_matrix is None:
             raise ValueError(
                 "No travel matrix or other cost matrix has been provided. Please add this using the .add_travel_matrix() method before running .solve() again."
+            )
+
+        # A primary travel matrix registered with allow_missing=True can
+        # legitimately hold NaN cost values (evaluate_single_solution_
+        # single_objective() already handles them correctly -- see
+        # EvaluatedCombination._compute_travel_metrics). solve()'s
+        # ranking/pruning is a different problem: computing
+        # weighted_average etc. over reachable rows only, as that method
+        # does, would silently reward a combination for stranding more
+        # demand, since the excluded rows simply vanish from the average
+        # rather than counting against it. Search/optimisation over a
+        # matrix with missing values needs an explicit cost policy for
+        # unreachable pairs (planned, not yet implemented) -- until then,
+        # raise rather than optimise on a metric that quietly prefers
+        # abandoning demand.
+        primary_cost_cols = self.travel_matrix.columns.drop(
+            self._travel_matrix_source_col
+        )
+        if self.travel_matrix[primary_cost_cols].isna().any().any():
+            raise NotImplementedError(
+                "solve() does not yet support a primary travel matrix "
+                "registered with allow_missing=True when it actually "
+                "contains missing (NaN) values -- optimising/ranking over "
+                "partially-unreachable demand isn't safe without an "
+                "explicit policy for how much an unreachable pair should "
+                "cost (planned for a future release). For now, either fill "
+                "the missing values before calling add_travel_matrix(), or "
+                "evaluate individual combinations via "
+                "evaluate_single_solution_single_objective(), whose "
+                "metrics already correctly treat a missing travel cost as "
+                "\"no reachable site\" rather than propagating NaN "
+                "everywhere. Secondary travel matrices (add_secondary_"
+                "travel_matrix()) are unaffected -- they never drive "
+                "optimisation, only reporting."
             )
 
         # If demand data not present,a ssume equal demand

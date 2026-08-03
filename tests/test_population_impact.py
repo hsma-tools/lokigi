@@ -168,8 +168,10 @@ def test_solve_without_baseline_is_purely_additive(devon_problem):
     within_coverage_threshold / regions_within_coverage_threshold),
     unselected_site_names (always present), and additional_site_names
     (devon_problem registers required_sites_col="Existing", so this is
-    always present too) -- no stray baseline- or beyond_thresholds-only
-    columns leaking in."""
+    always present too), and the always-on unreachable headcounts
+    (regions_unreachable/demand_unreachable/proportion_demand_unreachable
+    and their _by_equity_group variants) -- no stray baseline- or
+    beyond_thresholds-only columns leaking in."""
     solved = devon_problem.solve(p=5, threshold_for_coverage=30, show_progress=False)
     expected_columns = {
         "solution_rank",
@@ -187,11 +189,16 @@ def test_solve_without_baseline_is_purely_additive(devon_problem):
         "proportion_regions_within_coverage_threshold",
         "demand_within_coverage_threshold",
         "regions_within_coverage_threshold",
+        "regions_unreachable",
+        "demand_unreachable",
+        "proportion_demand_unreachable",
         "weighted_by_equity_group",
         "unweighted_by_equity_group",
         "coverage_by_equity_group",
         "coverage_regions_by_equity_group",
         "max_cost_by_equity_group",
+        "regions_unreachable_by_equity_group",
+        "demand_unreachable_by_equity_group",
         "gap_absolute_weighted",
         "gap_relative_weighted",
         "avg_lower_third_bins",

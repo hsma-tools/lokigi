@@ -127,10 +127,10 @@ def test_unreachable_region_is_zero_not_nan(sfca_problem):
 
 
 def test_nan_travel_cost_treated_as_unreachable_not_propagated():
-    """A NaN travel cost is only rejected at registration time for secondary
-    matrices (`_build_secondary_travel_frames`) -- the primary matrix (used
-    here) allows it through unvalidated, so a missing origin-destination
-    route legitimately reaches `two_step_floating_catchment()`.
+    """A NaN travel cost is rejected at registration time unless
+    `add_travel_matrix(allow_missing=True)` opts in -- passed here so a
+    genuinely missing origin-destination route reaches
+    `two_step_floating_catchment()`, rather than raising at registration.
 
     This underwrites the safety of building `weight_matrix` from boolean
     comparisons against `cost_frame` (`cost_frame <= x`, `.where(cost_frame
@@ -166,7 +166,7 @@ def test_nan_travel_cost_treated_as_unreachable_not_propagated():
     problem = lokigi.site.SiteProblem(debug_mode=False)
     problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
     problem.add_sites(candidate_df, candidate_id_col="site_id")
-    problem.add_travel_matrix(travel_df, source_col="source_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id", allow_missing=True)
 
     region_frame, site_frame = problem.two_step_floating_catchment(
         supply_col="supply", catchment_size=15, return_site_ratios=True

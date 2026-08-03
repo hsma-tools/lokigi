@@ -474,6 +474,17 @@ class EvaluatedCombination:
         self.unweighted_average = primary_metrics["unweighted_average"]
         self.percentile_90th = primary_metrics["percentile_90th"]
         self.max = primary_metrics["max"]
+        self.regions_unreachable = primary_metrics["regions_unreachable"]
+        self.demand_unreachable = primary_metrics["demand_unreachable"]
+        self.proportion_demand_unreachable = primary_metrics[
+            "proportion_demand_unreachable"
+        ]
+        self.regions_unreachable_by_equity_group = primary_metrics[
+            "regions_unreachable_by_equity_group"
+        ]
+        self.demand_unreachable_by_equity_group = primary_metrics[
+            "demand_unreachable_by_equity_group"
+        ]
         self.proportion_within_coverage_threshold = primary_metrics[
             "proportion_within_coverage_threshold"
         ]
@@ -688,17 +699,48 @@ class EvaluatedCombination:
         value in `self.beyond_thresholds` -- empty unless that was
         populated (see `EvaluatedCombination`'s `beyond_thresholds`
         parameter).
+
+        `weighted_average`/`unweighted_average`/`percentile_90th`/`max` are
+        computed over reachable rows only (`cost_col` not NaN) -- an
+        `allow_missing=True` travel matrix would otherwise poison every one
+        of these via plain NaN propagation (a single unreachable row turns
+        the demand-weighted average of every *other* row's real travel time
+        into NaN too). How much was excluded is reported alongside them via
+        `regions_unreachable`/`demand_unreachable`/
+        `proportion_demand_unreachable`, rather than silently dropped.
         """
         df = self.evaluated_combination_df
 
-        weighted_average = np.average(df[cost_col], weights=active_weights)
-        unweighted_average = np.average(df[cost_col])
-        percentile_90th = np.percentile(df[cost_col], q=90)
-        max_cost = np.max(df[cost_col])
+        reachable_mask = df[cost_col].notna()
+        regions_unreachable = int((~reachable_mask).sum())
+
+        if reachable_mask.any():
+            reachable_costs = df.loc[reachable_mask, cost_col]
+            weighted_average = np.average(
+                reachable_costs, weights=active_weights.loc[reachable_mask]
+            )
+            unweighted_average = np.average(reachable_costs)
+            percentile_90th = np.percentile(reachable_costs, q=90)
+            max_cost = np.max(reachable_costs)
+        else:
+            weighted_average = np.nan
+            unweighted_average = np.nan
+            percentile_90th = np.nan
+            max_cost = np.nan
 
         demand_series = (
             coverage_demand if coverage_demand is not None else self._coverage_demand_series()
         )
+
+        if demand_series is None:
+            demand_unreachable = np.nan
+            proportion_demand_unreachable = np.nan
+        else:
+            demand_unreachable = float(demand_series[~reachable_mask].sum())
+            total_demand = demand_series.sum()
+            proportion_demand_unreachable = (
+                demand_unreachable / total_demand if total_demand > 0 else np.nan
+            )
         (
             proportion_within_coverage_threshold,
             demand_within_coverage_threshold,
@@ -737,6 +779,8 @@ class EvaluatedCombination:
         coverage_by_equity_group = {}
         coverage_regions_by_equity_group = {}
         max_cost_by_equity_group = {}
+        regions_unreachable_by_equity_group = {}
+        demand_unreachable_by_equity_group = {}
         demand_improved_by_equity_group = {}
         demand_worsened_by_equity_group = {}
         gap_absolute_weighted = None
@@ -762,18 +806,32 @@ class EvaluatedCombination:
             # 1. Unweighted average by equity group
             unweighted_by_equity_group = grouped_df[cost_col].mean().round(2).to_dict()
 
-            # 2. Weighted average by equity group (matching global composite weights logic)
+            # 2. Weighted average by equity group (matching global composite
+            # weights logic). Restricted to this band's reachable rows for
+            # the same reason as the global weighted_average above -- a
+            # single unreachable row would otherwise turn the whole band's
+            # np.average into NaN via plain propagation. Unlike
+            # unweighted_by_equity_group/max_cost_by_equity_group (both
+            # pandas groupby aggregates, which skip NaN natively), this one
+            # calls np.average manually and needs the same explicit
+            # reachable-subset treatment as the primary computation.
             for band, group in grouped_df:
+                group_costs = group.loc[reachable_mask.loc[group.index], cost_col]
+
+                if group_costs.empty:
+                    weighted_by_equity_group[band] = np.nan
+                    continue
+
                 # Extract matching row weights for this specific group
-                group_weights = active_weights.loc[group.index]
+                group_weights = active_weights.loc[group_costs.index]
 
                 # Avoid ZeroDivisionError if the combined weight for this band is 0
                 if group_weights.sum() > 0:
                     weighted_by_equity_group[band] = np.average(
-                        group[cost_col], weights=group_weights
+                        group_costs, weights=group_weights
                     ).round(2)
                 else:
-                    weighted_by_equity_group[band] = group[cost_col].mean()
+                    weighted_by_equity_group[band] = group_costs.mean()
 
             # 3. Disparity Metrics & Verbal Descriptors
             if weighted_by_equity_group:
@@ -852,6 +910,25 @@ class EvaluatedCombination:
                         )
                         for band, group in grouped_df
                     }
+
+            # 5b2. Unreachable headcounts by group -- same "left behind"
+            # shape as 5b above, but for demand locations with no reachable
+            # site at all (NaN cost_col), rather than one beyond a specific
+            # cutoff.
+            unreachable_mask = ~reachable_mask
+            regions_unreachable_by_equity_group = {
+                band: int(unreachable_mask.loc[group.index].sum())
+                for band, group in grouped_df
+            }
+            if demand_series is not None:
+                demand_unreachable_by_equity_group = {
+                    band: float(
+                        demand_series.loc[group.index][
+                            unreachable_mask.loc[group.index]
+                        ].sum()
+                    )
+                    for band, group in grouped_df
+                }
 
             # 5c. Population impact by group -- who actually benefited from
             # this solution vs the baseline, split by equity band (e.g.
@@ -953,6 +1030,11 @@ class EvaluatedCombination:
             "unweighted_average": unweighted_average,
             "percentile_90th": percentile_90th,
             "max": max_cost,
+            "regions_unreachable": regions_unreachable,
+            "demand_unreachable": demand_unreachable,
+            "proportion_demand_unreachable": proportion_demand_unreachable,
+            "regions_unreachable_by_equity_group": regions_unreachable_by_equity_group,
+            "demand_unreachable_by_equity_group": demand_unreachable_by_equity_group,
             "proportion_within_coverage_threshold": proportion_within_coverage_threshold,
             "proportion_regions_within_coverage_threshold": proportion_regions_within_coverage_threshold,
             "demand_within_coverage_threshold": demand_within_coverage_threshold,
@@ -1059,14 +1141,30 @@ class EvaluatedCombination:
             number more legible than a percentage. `NaN`/`0` under the same
             conditions as the proportions.
 
+        5c. Unreachable headcounts ('regions_unreachable', 'demand_unreachable',
+            'proportion_demand_unreachable'):
+            LOWER is better. How many regions / how much demand had no
+            feasible journey to any selected site at all -- a missing (NaN)
+            travel cost, only possible once a travel matrix was registered
+            with `add_travel_matrix(allow_missing=True)`. `0`/`0.0` when
+            every region reached at least one selected site (including
+            every problem that never opted into `allow_missing`). Distinct
+            from -- and independent of -- `threshold_for_coverage`: a
+            region can be "beyond threshold" while still reachable, or
+            unreachable with no threshold ever configured.
+            `weighted_average`/`unweighted_average`/`90th_percentile`/`max`
+            above are computed over reachable regions only, rather than
+            this headcount silently dragging them toward whatever value an
+            unreachable pair happened to hold.
+
         6. Secondary travel matrices (columns suffixed `__<label>`, e.g.
            'weighted_average__public_transport'):
 
             Registered via `add_secondary_travel_matrix(label=...)`. Same metrics
-            and sort direction as their unsuffixed counterparts above (1a/1b/5),
+            and sort direction as their unsuffixed counterparts above (1a/1b/5/5c),
             computed against that matrix's own travel costs instead of the
             primary matrix. By default, only the core scalar metrics (both
-            coverage proportions included) plus the
+            coverage proportions and the unreachable headcounts included) plus the
             float-valued equity aggregations (gap_absolute_weighted,
             gap_relative_weighted, avg_*_third_bins, inter_tertile_ratio) are
             included per matrix, to keep this table from growing unboundedly
@@ -1201,12 +1299,17 @@ class EvaluatedCombination:
             "proportion_regions_within_coverage_threshold": self.proportion_regions_within_coverage_threshold,
             "demand_within_coverage_threshold": self.demand_within_coverage_threshold,
             "regions_within_coverage_threshold": self.regions_within_coverage_threshold,
+            "regions_unreachable": self.regions_unreachable,
+            "demand_unreachable": self.demand_unreachable,
+            "proportion_demand_unreachable": self.proportion_demand_unreachable,
             # Granular Equity Collections
             "weighted_by_equity_group": self.weighted_by_equity_group,
             "unweighted_by_equity_group": self.unweighted_by_equity_group,
             "coverage_by_equity_group": self.coverage_by_equity_group,
             "coverage_regions_by_equity_group": self.coverage_regions_by_equity_group,
             "max_cost_by_equity_group": self.max_cost_by_equity_group,
+            "regions_unreachable_by_equity_group": self.regions_unreachable_by_equity_group,
+            "demand_unreachable_by_equity_group": self.demand_unreachable_by_equity_group,
             # Numeric Aggregations
             "gap_absolute_weighted": self.gap_absolute_weighted,
             "gap_relative_weighted": self.gap_relative_weighted,
@@ -1328,6 +1431,11 @@ class EvaluatedCombination:
             metrics[f"regions_within_coverage_threshold__{label}"] = secondary[
                 "regions_within_coverage_threshold"
             ]
+            metrics[f"regions_unreachable__{label}"] = secondary["regions_unreachable"]
+            metrics[f"demand_unreachable__{label}"] = secondary["demand_unreachable"]
+            metrics[f"proportion_demand_unreachable__{label}"] = secondary[
+                "proportion_demand_unreachable"
+            ]
             metrics[f"gap_absolute_weighted__{label}"] = secondary[
                 "gap_absolute_weighted"
             ]
@@ -1360,6 +1468,12 @@ class EvaluatedCombination:
                 ]
                 metrics[f"max_cost_by_equity_group__{label}"] = secondary[
                     "max_cost_by_equity_group"
+                ]
+                metrics[f"regions_unreachable_by_equity_group__{label}"] = secondary[
+                    "regions_unreachable_by_equity_group"
+                ]
+                metrics[f"demand_unreachable_by_equity_group__{label}"] = secondary[
+                    "demand_unreachable_by_equity_group"
                 ]
                 metrics[f"gap_absolute_description__{label}"] = secondary[
                     "gap_absolute_desc"
@@ -1415,12 +1529,15 @@ class EvaluatedCombination:
                             f"regions_beyond_threshold_{t_suffix}_by_equity_group__{label}"
                         ] = bt["regions_beyond_by_equity_group"]
 
-        # Secondary demand scenarios: only the two metrics that actually
-        # vary with demand (weighted_average, proportion_within_coverage_
-        # threshold -- see _compute_travel_metrics' coverage_demand
-        # docstring). Suffix order is travel-label-first, demand-label-
-        # second (`weighted_average__<travel>__<demand>`) for the opt-in
-        # cross with a secondary travel matrix registered via
+        # Secondary demand scenarios: only the metrics that actually vary
+        # with demand (weighted_average, proportion_within_coverage_
+        # threshold, demand_unreachable -- see _compute_travel_metrics'
+        # coverage_demand docstring). regions_unreachable is deliberately
+        # excluded: which regions are reachable at all is a property of the
+        # cost matrix alone, identical across every demand scenario.
+        # Suffix order is travel-label-first, demand-label-second
+        # (`weighted_average__<travel>__<demand>`) for the opt-in cross
+        # with a secondary travel matrix registered via
         # also_weight_matrices; `weighted_average__<demand>` for the
         # (default) primary-travel case. Per-scenario equity breakdowns are
         # not yet supported and are never emitted here, regardless of
@@ -1431,6 +1548,9 @@ class EvaluatedCombination:
                 metrics[f"weighted_average__{suffix}"] = dmetrics["weighted_average"]
                 metrics[f"proportion_within_coverage_threshold__{suffix}"] = dmetrics[
                     "proportion_within_coverage_threshold"
+                ]
+                metrics[f"demand_unreachable__{suffix}"] = dmetrics[
+                    "demand_unreachable"
                 ]
 
                 demand_pi = dmetrics.get("population_impact")
@@ -1477,8 +1597,17 @@ _SOLUTION_COLUMN_GROUPS = [
     ),
     (
         "Travel cost",
-        "How far people have to travel under this solution (lower is better).",
-        {"weighted_average", "unweighted_average", "90th_percentile", "max", "total_cost"},
+        "How far people have to travel under this solution (lower is better), and how many had no feasible journey at all.",
+        {
+            "weighted_average",
+            "unweighted_average",
+            "90th_percentile",
+            "max",
+            "total_cost",
+            "regions_unreachable",
+            "demand_unreachable",
+            "proportion_demand_unreachable",
+        },
     ),
     (
         "Coverage",
@@ -1509,6 +1638,8 @@ _SOLUTION_COLUMN_GROUPS = [
             "coverage_by_equity_group",
             "coverage_regions_by_equity_group",
             "max_cost_by_equity_group",
+            "regions_unreachable_by_equity_group",
+            "demand_unreachable_by_equity_group",
         },
     ),
     (
