@@ -1006,7 +1006,10 @@ def test_brute_force_evaluates_every_combination_exactly_once(
     the chunk-splitting/merging path (`n_chunks = min(n_combinations,
     n_workers*4)`, merged back via `outputs.extend(result)` per chunk at
     line 297) never actually runs. At n_jobs=2, `five_site_problem`'s 10
-    combinations split into 8 chunks, exercising that merge."""
+    combinations split into 5 chunks of 2 each (n_chunks=8 is only a
+    target used to derive chunk_size=ceil(10/8)=2; ceil-rounding that size
+    up means fewer, larger chunks actually cover the 10 combinations),
+    exercising that merge."""
     result = five_site_problem.solve(
         p=2,
         objectives="p_median",
