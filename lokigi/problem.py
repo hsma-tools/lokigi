@@ -361,6 +361,7 @@ class _Problem:
         add_basemap: bool = True,
         tiles="CartoDB positron",
         show_axis: bool = False,
+        title=None,
         **kwargs,
     ):
         """
@@ -396,6 +397,12 @@ class _Problem:
             .. versionchanged:: 0.7.0
                 Renamed from ``show_basemap``, which has been removed.
 
+        title : str, optional
+            Title for a static plot (`ax.set_title()`). Ignored if
+            `interactive=True` -- a Folium map has no equivalent built-in
+            title support. `None` (the default) leaves the plot untitled,
+            matching prior behaviour.
+
         **kwargs : dict
             Additional keyword arguments passed to either
             `geopandas.GeoDataFrame.plot` or `geopandas.GeoDataFrame.explore`.
@@ -424,6 +431,12 @@ class _Problem:
 
         Interactive maps default to the "CartoDB positron" tile set and
         the "Blues" colormap for demand visualization.
+
+        The static plot's colour bar is labelled "Demand" (`plot_demand=
+        True`) or with the human-readable `add_equity_data(label=...)`,
+        falling back to the raw equity column name if no label was
+        registered (`plot_equity=True`) -- previously unlabelled either
+        way.
         """
         _reject_removed_basemap_alias(kwargs, "plot_region_geometry_layer")
 
@@ -488,11 +501,15 @@ class _Problem:
                 ax = plotting_df.plot(
                     column=demand_value_col,
                     legend=True,
+                    legend_kwds={"label": "Demand"},
                     cmap=cmap,
                     edgecolor=edgecolor,
                     linewidth=linewidth,
                     **kwargs,
                 )
+
+                if title:
+                    ax.set_title(title)
 
                 if add_basemap:
                     try:
@@ -543,14 +560,19 @@ class _Problem:
 
                 return m
             else:
+                equity_axis_label = self._equity_data_label or self._equity_data_equity_col
                 ax = plotting_df.plot(
                     column=self._equity_data_equity_col,
                     legend=True,
+                    legend_kwds={"label": equity_axis_label},
                     cmap=cmap,
                     edgecolor=edgecolor,
                     linewidth=linewidth,
                     **kwargs,
                 )
+
+                if title:
+                    ax.set_title(title)
 
                 if add_basemap:
                     try:
@@ -589,6 +611,9 @@ class _Problem:
             return m
         else:
             ax = self.region_geometry_layer.plot(**kwargs)
+
+            if title:
+                ax.set_title(title)
 
             if add_basemap:
                 try:

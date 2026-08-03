@@ -480,6 +480,65 @@ def test_problem_plot_renders(plottable_problem, method_name):
             figure.canvas.draw()
 
 
+# --- plot_region_geometry_layer: colour bar label + title -----------------
+
+
+def test_plot_region_geometry_layer_demand_colorbar_labelled(plottable_problem):
+    ax = plottable_problem.plot_region_geometry_layer(
+        plot_demand=True, add_basemap=False
+    )
+    assert ax.figure.axes[-1].get_ylabel() == "Demand"
+
+
+def test_plot_region_geometry_layer_equity_colorbar_uses_registered_label(
+    plottable_problem,
+):
+    ax = plottable_problem.plot_region_geometry_layer(
+        plot_equity=True, add_basemap=False
+    )
+    assert ax.figure.axes[-1].get_ylabel() == "equity"
+
+
+def test_plot_region_geometry_layer_equity_colorbar_falls_back_to_raw_column(
+    plottable_problem,
+):
+    """If add_equity_data() was never given a label=, the colour bar
+    falls back to the raw equity column name rather than showing nothing."""
+    plottable_problem._equity_data_label = None
+    ax = plottable_problem.plot_region_geometry_layer(
+        plot_equity=True, add_basemap=False
+    )
+    assert ax.figure.axes[-1].get_ylabel() == "imd_decile"
+
+
+def test_plot_region_geometry_layer_title_set_on_demand_plot(plottable_problem):
+    ax = plottable_problem.plot_region_geometry_layer(
+        plot_demand=True, add_basemap=False, title="Demand across LSOAs"
+    )
+    assert ax.get_title() == "Demand across LSOAs"
+
+
+def test_plot_region_geometry_layer_title_set_on_equity_plot(plottable_problem):
+    ax = plottable_problem.plot_region_geometry_layer(
+        plot_equity=True, add_basemap=False, title="Equity across LSOAs"
+    )
+    assert ax.get_title() == "Equity across LSOAs"
+
+
+def test_plot_region_geometry_layer_title_set_on_plain_plot(plottable_problem):
+    ax = plottable_problem.plot_region_geometry_layer(
+        add_basemap=False, title="Region boundaries"
+    )
+    assert ax.get_title() == "Region boundaries"
+
+
+def test_plot_region_geometry_layer_no_title_by_default(plottable_problem):
+    ax = plottable_problem.plot_region_geometry_layer(
+        plot_demand=True, add_basemap=False
+    )
+    assert ax.get_title() == ""
+
+
 # --- the basemap stubbing is load-bearing, not decorative -----------------
 
 
