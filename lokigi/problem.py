@@ -1,4 +1,5 @@
 import pandas as pd
+from lokigi.plot_utils import _attach_deferred_fit_bounds
 from lokigi.utils import (
     _load_spatial_or_tabular_data,
     GEOPANDAS_EXTS,
@@ -496,7 +497,7 @@ class _Problem:
                     **kwargs,
                 )
 
-                return m
+                return _attach_deferred_fit_bounds(m)
             else:
                 ax = plotting_df.plot(
                     column=demand_value_col,
@@ -558,7 +559,7 @@ class _Problem:
                     **kwargs,
                 )
 
-                return m
+                return _attach_deferred_fit_bounds(m)
             else:
                 equity_axis_label = self._equity_data_label or self._equity_data_equity_col
                 ax = plotting_df.plot(
@@ -608,7 +609,7 @@ class _Problem:
             m = plotting_df.explore(
                 tiles=tiles, edgecolor=edgecolor, linewidth=linewidth, **kwargs
             )
-            return m
+            return _attach_deferred_fit_bounds(m)
         else:
             ax = plotting_df.plot(**kwargs)
 

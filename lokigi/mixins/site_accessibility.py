@@ -8,6 +8,7 @@ from matplotlib.lines import Line2D
 import pandas as pd
 from requests.exceptions import RequestException
 
+from lokigi.plot_utils import _attach_deferred_fit_bounds
 from lokigi.utils import _min_max_normalize
 
 
@@ -807,7 +808,7 @@ class AccessibilityPlotMixin:
                     missing_kwds=dict(color=missing_site_colour),
                 )
 
-            return m
+            return _attach_deferred_fit_bounds(m)
 
         if ax is None:
             _, ax = plt.subplots(figsize=figsize)

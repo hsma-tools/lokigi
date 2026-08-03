@@ -1,3 +1,4 @@
+from lokigi.plot_utils import _attach_deferred_fit_bounds
 from lokigi.utils import (
     _validate_columns,
     _load_spatial_or_tabular_data,
@@ -516,7 +517,7 @@ class SiteAttributeMixin:
                     )
         else:
             m = self.candidate_sites.explore(marker_kwds=dict(radius=8))
-            return m
+            return _attach_deferred_fit_bounds(m)
 
     ###############################
     # MARK: Site Utilisation
@@ -810,7 +811,7 @@ class SiteAttributeMixin:
                 missing_kwds=dict(color=missing_site_colour),
                 **kwargs,
             )
-            return m
+            return _attach_deferred_fit_bounds(m)
 
         if ax is None:
             _, ax = plt.subplots(figsize=figsize)

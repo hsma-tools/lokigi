@@ -1,8 +1,105 @@
 from lokigi.utils import _safe_evaluate, _select_solution, _get_ordinal_suffix
+import json
 import matplotlib.pyplot as plt
 import pandas as pd
+from branca.element import MacroElement, Template
 from matplotlib.colors import ListedColormap
 from matplotlib.lines import Line2D
+
+#: Whether interactive maps carry the hidden-container zoom guard (see
+#: :func:`_attach_deferred_fit_bounds`). Set
+#: ``lokigi.plot_utils.DEFERRED_FIT_BOUNDS = False`` to stop attaching it.
+DEFERRED_FIT_BOUNDS = True
+
+
+class _DeferredFitBounds(MacroElement):
+    """Re-run ``fitBounds`` once the map container first gains a real size.
+
+    Leaflet derives its zoom level from the pixel size of the map
+    container. If the map is initialised while that container is hidden
+    (``display: none``, as reveal.js does for every non-active slide, and
+    Quarto tabsets do for inactive tabs), the container measures 0x0 and
+    ``fitBounds`` clamps to zoom 0 -- the whole world. Showing the slide
+    later fixes tile layout but never re-runs ``fitBounds``, so the map
+    stays zoomed out.
+
+    This element watches for the container gaining a non-zero size and,
+    when it does, re-applies the correct bounds exactly once. Maps that
+    were visible when they loaded skip the observer entirely.
+    """
+
+    _template = Template(
+        """
+        {% macro script(this, kwargs) %}
+            (function () {
+                var map = {{ this._parent.get_name() }};
+                var bounds = {{ this.bounds_json }};
+                var container = map.getContainer();
+
+                function rendered() {
+                    return container.clientWidth > 0
+                        && container.clientHeight > 0;
+                }
+
+                // Leaflet caches the size it measured at init, so this
+                // reports what fitBounds actually used, not the size now.
+                var size = map.getSize();
+
+                // Laid out correctly already, or no way to watch for it.
+                if ((size.x > 0 && size.y > 0)
+                        || typeof ResizeObserver === "undefined") {
+                    return;
+                }
+
+                var observer = new ResizeObserver(function () {
+                    if (!rendered()) {
+                        return;
+                    }
+                    // One shot: never fight the user's own pan or zoom.
+                    observer.disconnect();
+                    map.invalidateSize();
+                    map.fitBounds(bounds);
+                });
+                observer.observe(container);
+            })();
+        {% endmacro %}
+        """
+    )
+
+    def __init__(self, bounds):
+        super().__init__()
+        self._name = "DeferredFitBounds"
+        self.bounds_json = json.dumps(bounds)
+
+
+def _attach_deferred_fit_bounds(m):
+    """Attach the hidden-container zoom guard to a folium map.
+
+    Call this only once every layer has been added -- the bounds are read
+    back off the map's children.
+
+    Parameters
+    ----------
+    m : folium.Map
+        The map to guard.
+
+    Returns
+    -------
+    folium.Map
+        The same map, for use as ``return _attach_deferred_fit_bounds(m)``.
+    """
+    if not DEFERRED_FIT_BOUNDS:
+        return m
+
+    bounds = m.get_bounds()
+
+    # No child layer could report bounds, so there is nothing to fit to.
+    if any(coord is None for corner in bounds for coord in corner):
+        return m
+
+    m.add_child(_DeferredFitBounds(bounds))
+
+    return m
 
 
 def plot_solution_sets_comparison(

@@ -21,6 +21,7 @@ import matplotlib.colors as mcolors
 import warnings
 from requests.exceptions import RequestException
 
+from lokigi.plot_utils import _attach_deferred_fit_bounds
 from lokigi.utils import _reject_removed_basemap_alias
 
 
@@ -986,7 +987,7 @@ class HotspotPlotMixin:
             # Fit the map to the data extent
             m.fit_bounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]])
 
-            return m
+            return _attach_deferred_fit_bounds(m)
         else:
             hotspots_df["_plot_colour"] = hotspots_df["cluster_type"].map(colours)
 
@@ -1407,7 +1408,7 @@ class HotspotPlotMixin:
             folium.LayerControl(collapsed=False).add_to(m)
             m.fit_bounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]])
 
-            return m
+            return _attach_deferred_fit_bounds(m)
 
         # ---------------------------------------------------------------------
         # Static Map (Matplotlib)

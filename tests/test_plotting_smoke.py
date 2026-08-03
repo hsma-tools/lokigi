@@ -32,6 +32,7 @@ matplotlib.use("Agg")
 
 import contextily
 import geopandas
+import json
 import matplotlib.pyplot as plt
 import pandas as pd
 import pytest
@@ -1436,3 +1437,106 @@ def test_plot_population_impact_map_no_region_geometry_raises():
 
     with pytest.raises(ValueError, match="region_geometry_layer"):
         comparator.plot_population_impact_map()
+
+
+# --- interactive maps: hidden-container zoom guard ------------------------
+
+# Leaflet takes its zoom from the pixel size of the map container. A map
+# initialised inside a hidden container (a non-active reveal.js slide, an
+# inactive Quarto tabset panel) measures 0x0 and fitBounds clamps to zoom
+# 0 -- the whole world -- and nothing re-fits it when the container is
+# later shown. Every interactive map therefore carries a one-shot
+# ResizeObserver that re-applies the bounds on first real layout.
+
+# Every code path that returns a folium map, including the three
+# separate branches of plot_region_geometry_layer and the two in
+# site_eda that build their map by hand rather than via .explore().
+INTERACTIVE_MAP_CALLS = {
+    **{
+        name: call
+        for name, call in PROBLEM_PLOT_CALLS.items()
+        if name.endswith("__interactive")
+    },
+    "plot_region_geometry_layer__plain": lambda p: p.plot_region_geometry_layer(
+        interactive=True, add_basemap=False
+    ),
+    "plot_region_geometry_layer__demand": lambda p: p.plot_region_geometry_layer(
+        interactive=True, add_basemap=False, plot_demand=True
+    ),
+    "plot_region_geometry_layer__equity": lambda p: p.plot_region_geometry_layer(
+        interactive=True, add_basemap=False, plot_equity=True
+    ),
+    "plot_hotspots": lambda p: p.plot_hotspots(
+        interactive=True, add_basemap=False, verbose=False
+    ),
+    "plot_quadrant_map": lambda p: p.plot_quadrant_map(
+        interactive=True, add_basemap=False, verbose=False
+    ),
+}
+
+
+def _guard_children(folium_map):
+    from lokigi.plot_utils import _DeferredFitBounds
+
+    return [
+        child
+        for child in folium_map._children.values()
+        if isinstance(child, _DeferredFitBounds)
+    ]
+
+
+@pytest.mark.parametrize("method_name", sorted(INTERACTIVE_MAP_CALLS))
+def test_interactive_map_carries_zoom_guard(plottable_problem, method_name):
+    folium_map = INTERACTIVE_MAP_CALLS[method_name](plottable_problem)
+
+    assert len(_guard_children(folium_map)) == 1, (
+        f"{method_name} returned a map with no hidden-container zoom guard"
+    )
+
+    # It must be added last: the guard reads the map's bounds off its
+    # children, so anything added afterwards would not be fitted to.
+    assert _guard_children(folium_map)[0] is list(folium_map._children.values())[-1]
+
+
+@pytest.mark.parametrize("method_name", sorted(INTERACTIVE_MAP_CALLS))
+def test_interactive_map_zoom_guard_renders(plottable_problem, method_name):
+    """The guard is a Jinja template, so a bad reference renders silently
+    wrong rather than raising -- assert on the emitted JavaScript."""
+    folium_map = INTERACTIVE_MAP_CALLS[method_name](plottable_problem)
+    html = folium_map.get_root().render()
+
+    assert "ResizeObserver" in html
+    assert "invalidateSize" in html
+
+    # Bound to the right Leaflet map object, and re-fitting to the real
+    # data extent rather than a placeholder.
+    assert f"var map = {folium_map.get_name()};" in html
+    bounds = folium_map.get_bounds()
+    assert f"var bounds = {json.dumps(bounds)};" in html
+
+    # Must run after Leaflet has created the map.
+    assert html.index("ResizeObserver") > html.index("L.map(")
+
+
+def test_zoom_guard_skipped_when_map_has_no_boundable_layers():
+    """An empty map has bounds of [[None, None], [None, None]]; fitting to
+    that would emit `fitBounds([[null, null], ...])` and break the map."""
+    import folium
+
+    from lokigi.plot_utils import _attach_deferred_fit_bounds
+
+    empty = folium.Map()
+
+    assert _attach_deferred_fit_bounds(empty) is empty
+    assert _guard_children(empty) == []
+
+
+def test_zoom_guard_kill_switch(plottable_problem, monkeypatch):
+    import lokigi.plot_utils
+
+    monkeypatch.setattr(lokigi.plot_utils, "DEFERRED_FIT_BOUNDS", False)
+
+    folium_map = plottable_problem.plot_sites(add_basemap=False, interactive=True)
+
+    assert _guard_children(folium_map) == []
+    assert "ResizeObserver" not in folium_map.get_root().render()
