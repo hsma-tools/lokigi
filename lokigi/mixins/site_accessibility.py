@@ -8,7 +8,7 @@ from matplotlib.lines import Line2D
 import pandas as pd
 from requests.exceptions import RequestException
 
-from lokigi.plot_utils import _attach_deferred_fit_bounds
+from lokigi.plot_utils import _add_plot_caption, _attach_deferred_fit_bounds
 from lokigi.utils import _min_max_normalize
 
 
@@ -635,6 +635,7 @@ class AccessibilityPlotMixin:
         add_basemap=True,
         show_axis=False,
         title=None,
+        caption=None,
         ax=None,
         figsize=None,
         **kwargs,
@@ -686,6 +687,12 @@ class AccessibilityPlotMixin:
             download entirely.
         title : str, optional
             Axes title. Ignored on interactive maps.
+        caption : str, optional
+            Explanatory text shown below the chart, wrapped to fit. If
+            `None` (the default), a stakeholder-facing caption explaining
+            how to read the region shading and site colour/size is
+            generated; pass `""` to suppress it, or a custom string to
+            replace it. Ignored on interactive maps.
         ax : matplotlib.axes.Axes, optional
             Existing axes to plot onto. Ignored if `interactive=True`.
         figsize : tuple, optional
@@ -811,7 +818,9 @@ class AccessibilityPlotMixin:
             return _attach_deferred_fit_bounds(m)
 
         if ax is None:
-            _, ax = plt.subplots(figsize=figsize)
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.get_figure()
 
         region_gdf.plot(
             column="accessibility",
@@ -873,5 +882,22 @@ class AccessibilityPlotMixin:
 
         if not show_axis:
             ax.axis("off")
+
+        default_caption = (
+            "How to read this: each region is shaded by its accessibility "
+            "score -- how much supply is available per head within reach, "
+            "relative to the rest of this map (see the legend for the "
+            "scale)."
+        )
+        if has_site_geometry:
+            default_caption += (
+                " Each site is coloured and sized by its own supply:demand "
+                "ratio: a small marker means a low ratio (an overloaded "
+                "site with little spare capacity), a large marker means a "
+                "high ratio (relatively more to go around); a grey marker "
+                "means no demand fell within that site's catchment, so no "
+                "ratio could be calculated."
+            )
+        _add_plot_caption(fig, caption, default_caption)
 
         return ax

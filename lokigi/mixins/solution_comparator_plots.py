@@ -1,5 +1,3 @@
-import textwrap
-
 import geopandas
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,7 +6,7 @@ import seaborn as sns
 from matplotlib.colors import TwoSlopeNorm
 from matplotlib.lines import Line2D
 
-from lokigi.plot_utils import plot_solution_sets_comparison
+from lokigi.plot_utils import _add_plot_caption, plot_solution_sets_comparison
 from lokigi.utils import _select_solution, _split_bins_into_tertiles
 
 
@@ -310,29 +308,16 @@ class SolutionComparatorPlotsMixin:
         if title:
             ax.set_title(title)
 
-        if caption is None:
-            caption = (
-                f"How to read this: read a row across to see where that site's "
-                f"demand ({self.labels[0]}) ended up in {self.labels[1]}; read a "
-                "column down to see which sites its demand came from. The "
-                "diagonal is demand that stayed with the same site. Sites "
-                "unique to one side -- closed (bottom rows) or newly opened "
-                "(rightmost columns) -- are grouped at the end of their axis "
-                "rather than sorted by candidate index."
-            )
-        if caption:
-            wrapped = "\n".join(textwrap.wrap(caption, width=90))
-            fig.text(
-                0.01,
-                -0.02,
-                wrapped,
-                ha="left",
-                va="top",
-                fontsize=8.5,
-                color="dimgray",
-                wrap=True,
-                transform=fig.transFigure,
-            )
+        default_caption = (
+            f"How to read this: read a row across to see where that site's "
+            f"demand ({self.labels[0]}) ended up in {self.labels[1]}; read a "
+            "column down to see which sites its demand came from. The "
+            "diagonal is demand that stayed with the same site. Sites "
+            "unique to one side -- closed (bottom rows) or newly opened "
+            "(rightmost columns) -- are grouped at the end of their axis "
+            "rather than sorted by candidate index."
+        )
+        _add_plot_caption(fig, caption, default_caption)
 
         return fig, ax
 
@@ -549,27 +534,16 @@ class SolutionComparatorPlotsMixin:
         if title:
             axis.set_title(title)
 
-        if caption is None and kind == "kde":
+        default_caption = None
+        if kind == "kde":
             cohort = "people" if has_demand else "regions"
-            caption = (
+            default_caption = (
                 f"How to read this: curve height is the relative share of "
                 f"{cohort} at each travel time, not a literal headcount -- a "
                 "taller peak means more concentrated here, not more affected "
                 "overall. Pass kind=\"hist\" for literal counts instead."
             )
-        if caption:
-            wrapped = "\n".join(textwrap.wrap(caption, width=90))
-            fig.text(
-                0.01,
-                -0.02,
-                wrapped,
-                ha="left",
-                va="top",
-                fontsize=8.5,
-                color="dimgray",
-                wrap=True,
-                transform=fig.transFigure,
-            )
+        _add_plot_caption(fig, caption, default_caption)
 
         return fig, axis
 

@@ -1,5 +1,7 @@
 ## v0.9.0
 
+- Add a `caption` parameter to `plot_accessibility()`: `None` (the default) prints a stakeholder-facing "how to read this" explanation of the region shading and site colour/size below the chart; pass `""` to suppress it or a custom string to replace it, matching the existing `caption` convention on `plot_pareto_summary()`/`plot_site_reallocation_matrix()`/`plot_population_impact_histogram()`. Also factors the shared caption-rendering logic those four now use into `lokigi.plot_utils._add_plot_caption()` (internal, no behaviour change to the existing three)
+
 ### ⚠️ Breaking changes
 
 lokigi is pre-1.0, so breaking changes can land in any minor release. Read this before upgrading -- it is detailed in the notes below.

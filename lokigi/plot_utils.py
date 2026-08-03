@@ -1,5 +1,6 @@
 from lokigi.utils import _safe_evaluate, _select_solution, _get_ordinal_suffix
 import json
+import textwrap
 import matplotlib.pyplot as plt
 import pandas as pd
 from branca.element import MacroElement, Template
@@ -100,6 +101,43 @@ def _attach_deferred_fit_bounds(m):
     m.add_child(_DeferredFitBounds(bounds))
 
     return m
+
+
+def _add_plot_caption(fig, caption, default_caption, width=90):
+    """
+    Render a stakeholder-facing "how to read this" caption below a chart.
+
+    Parameters
+    ----------
+    fig : matplotlib.figure.Figure
+        Figure to draw the caption on.
+    caption : str or None
+        Caller-supplied override. `None` uses `default_caption`; `""`
+        suppresses the caption entirely; any other string is used verbatim.
+    default_caption : str or None
+        Caption used when `caption` is None. Pass None (not just an empty
+        string) when the caller has no default to offer for this particular
+        plot configuration.
+    width : int, default 90
+        `textwrap.wrap` fill width the caption is wrapped to before being
+        drawn.
+    """
+    if caption is None:
+        caption = default_caption
+    if not caption:
+        return
+    wrapped = "\n".join(textwrap.wrap(caption, width=width))
+    fig.text(
+        0.01,
+        -0.02,
+        wrapped,
+        ha="left",
+        va="top",
+        fontsize=8.5,
+        color="dimgray",
+        wrap=True,
+        transform=fig.transFigure,
+    )
 
 
 def plot_solution_sets_comparison(

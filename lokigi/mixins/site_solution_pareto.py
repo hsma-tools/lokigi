@@ -11,6 +11,7 @@ import seaborn as sns
 import sweetpareto.vis as spv
 import textwrap
 
+from lokigi.plot_utils import _add_plot_caption
 from lokigi.utils import _colours_and_styles, _is_maximise_metric, _get_ordinal_suffix
 
 from lokigi.multiobjective import ParetoMetric
@@ -708,28 +709,16 @@ class ParetoMixin:
         if title:
             ax.set_title(title, fontsize=13, fontweight="bold", pad=14, loc="left")
 
-        if caption is None:
-            caption = (
-                "How to read this chart: each coloured line is one option that isn't beaten on every "
-                "measure by any other -- there's no single best choice. Higher always means better on "
-                "every axis, even though the measures use different units, so a line near the top of an "
-                "axis is doing well on that measure and a line near the bottom is doing poorly. Grey lines "
-                "are options that were beaten everywhere by another combination, shown only for context. "
-                "For a 'target' measure, height shows how close an option is to the ideal value; the small "
-                "label next to each point shows whether it sits above (+) or below (\u2212) that target."
-            )
-        if caption:
-            wrapped = "\n".join(textwrap.wrap(caption, width=105))
-            fig.text(
-                0.01,
-                -0.02,
-                wrapped,
-                ha="left",
-                va="top",
-                fontsize=8.5,
-                color="dimgray",
-                wrap=True,
-            )
+        default_caption = (
+            "How to read this chart: each coloured line is one option that isn't beaten on every "
+            "measure by any other -- there's no single best choice. Higher always means better on "
+            "every axis, even though the measures use different units, so a line near the top of an "
+            "axis is doing well on that measure and a line near the bottom is doing poorly. Grey lines "
+            "are options that were beaten everywhere by another combination, shown only for context. "
+            "For a 'target' measure, height shows how close an option is to the ideal value; the small "
+            "label next to each point shows whether it sits above (+) or below (\u2212) that target."
+        )
+        _add_plot_caption(fig, caption, default_caption, width=105)
 
         fig.tight_layout()
         return fig
