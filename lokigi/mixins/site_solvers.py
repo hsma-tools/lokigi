@@ -63,6 +63,7 @@ def _evaluate_chunk(
     baseline_costs=None,
     meaningful_change_threshold=0.0,
     beyond_thresholds=None,
+    unreachable_cost=None,
 ):
     """Evaluate one chunk of combinations. Returns either the list of
     metrics dicts (materialising path) or (local_best, local_worst) lists
@@ -71,7 +72,13 @@ def _evaluate_chunk(
     changes across chunks (it doesn't -- the heaps below are local).
     `baseline_costs` (a dict of small pd.Series, see `solve()`'s `baseline`
     parameter) pickles cheaply across the worker-process boundary -- it is
-    resolved once per `solve()` call, not once per combination."""
+    resolved once per `solve()` call, not once per combination.
+
+    The `max_value_cutoff` feasibility check reads `max_for_ranking`, not
+    `max` -- identical to `max` unless `unreachable_cost` is set, in which
+    case a combination that strands demand behind an unreachable pair is
+    correctly judged against the assumed cost of that failure, not judged
+    as if the stranded rows were never there at all."""
     if not stream_top_n:
         chunk_outputs = []
         for _global_index, possible_solution in indexed_chunk:
@@ -83,9 +90,13 @@ def _evaluate_chunk(
                 baseline_costs=baseline_costs,
                 meaningful_change_threshold=meaningful_change_threshold,
                 beyond_thresholds=beyond_thresholds,
+                unreachable_cost=unreachable_cost,
             ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
-            if max_value_cutoff is None or metrics["max"] <= max_value_cutoff:
+            if (
+                max_value_cutoff is None
+                or metrics["max_for_ranking"] <= max_value_cutoff
+            ):
                 chunk_outputs.append(metrics)
         return chunk_outputs
 
@@ -100,11 +111,12 @@ def _evaluate_chunk(
             baseline_costs=baseline_costs,
             meaningful_change_threshold=meaningful_change_threshold,
             beyond_thresholds=beyond_thresholds,
+            unreachable_cost=unreachable_cost,
         ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
         raw_score = metrics[rank_best_n_on]
         score = -raw_score if higher_is_better else raw_score
-        max_value = metrics["max"]
+        max_value = metrics["max_for_ranking"]
 
         if max_value_cutoff is not None and max_value > max_value_cutoff:
             continue
@@ -135,6 +147,7 @@ class BruteForceMixin:
         baseline_costs=None,
         meaningful_change_threshold=0.0,
         beyond_thresholds=None,
+        unreachable_cost=None,
     ):
 
         # Greedy and GRASP already fail fast with a clear message when
@@ -267,6 +280,7 @@ class BruteForceMixin:
                 baseline_costs,
                 meaningful_change_threshold,
                 beyond_thresholds,
+                unreachable_cost,
             )
             for chunk in chunks
         )
@@ -383,8 +397,11 @@ class GreedyMixin:
         baseline_costs=None,
         meaningful_change_threshold=0.0,
         beyond_thresholds=None,
+        unreachable_cost=None,
     ):
-        ranking = _get_ranking_by_objective(objective=objectives)
+        ranking = _get_ranking_by_objective(
+            objective=objectives, unreachable_cost=unreachable_cost
+        )
 
         # Greedy grows the solution one site at a time, but every size-i
         # combination is also filtered to contain ALL required sites -- so
@@ -431,6 +448,7 @@ class GreedyMixin:
                         baseline_costs=baseline_costs,
                         meaningful_change_threshold=meaningful_change_threshold,
                         beyond_thresholds=beyond_thresholds,
+                        unreachable_cost=unreachable_cost,
                     ).return_solution_metrics(
                         full_secondary_metrics=full_secondary_metrics
                     )
@@ -449,7 +467,9 @@ class GreedyMixin:
             # guarantee the hybrid objectives promise actually holds for
             # whatever is returned.
             if max_value_cutoff is not None and i == p:
-                outputs_df = outputs_df[outputs_df["max"] <= max_value_cutoff]
+                outputs_df = outputs_df[
+                    outputs_df["max_for_ranking"] <= max_value_cutoff
+                ]
                 if len(outputs_df) == 0:
                     raise ValueError(
                         f"Greedy search found no combination of {p} sites "
@@ -520,6 +540,7 @@ class GreedyMixin:
             baseline_costs=baseline_costs,
             meaningful_change_threshold=meaningful_change_threshold,
             beyond_thresholds=beyond_thresholds,
+            unreachable_cost=unreachable_cost,
         ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
         return [best_solution_metrics]
@@ -546,13 +567,16 @@ class GraspMixin:
         baseline_costs=None,
         meaningful_change_threshold=0.0,
         beyond_thresholds=None,
+        unreachable_cost=None,
     ):
         """
         GRASP (Greedy Randomised Adaptive Search Procedure) for finding multiple
         near-optimal facility location solutions.
         """
         rng = random.Random(random_seed)
-        ranking = _get_ranking_by_objective(objective=objectives)
+        ranking = _get_ranking_by_objective(
+            objective=objectives, unreachable_cost=unreachable_cost
+        )
         all_site_indices = list(range(self.total_n_sites))
 
         # Brute force and greedy enforce required_sites_col through
@@ -613,6 +637,7 @@ class GraspMixin:
                 baseline_costs=baseline_costs,
                 meaningful_change_threshold=meaningful_change_threshold,
                 beyond_thresholds=beyond_thresholds,
+                unreachable_cost=unreachable_cost,
             ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
         pbar = None
@@ -900,7 +925,7 @@ class GraspMixin:
                 candidate_metrics = _get_cached_metrics(
                     tuple(sorted(current_solution))
                 )
-                if candidate_metrics["max"] > max_value_cutoff:
+                if candidate_metrics["max_for_ranking"] > max_value_cutoff:
                     continue
 
             # ---------------------------------------------------------------

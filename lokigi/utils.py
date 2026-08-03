@@ -493,17 +493,36 @@ def _safe_evaluate(text_string, solution):
         return text_string
 
 
-def _get_ranking_by_objective(objective):
+def _get_ranking_by_objective(objective, unreachable_cost=None):
+    """
+    The `solution_df` column search/pruning ranks combinations on, for a
+    given objective.
+
+    `unreachable_cost` resolves to the `_for_ranking` variant of that
+    column (`weighted_average_for_ranking`, etc.) whenever it is not
+    `None` -- computed by `EvaluatedCombination._compute_travel_metrics`
+    with every unreachable (NaN) travel cost substituted by
+    `unreachable_cost`, so a combination that stranded demand is never
+    silently rewarded by those rows simply dropping out of a reachable-
+    only average. 'mclp' never needs this: its coverage-proportion ranking
+    already treats an unreachable pair as "not covered" (correctly bad),
+    with no equivalent silent-reward failure mode, so it is left on its
+    plain column regardless of `unreachable_cost`.
+    """
     if objective in ["p_median", "hybrid_p_median"]:
-        return "weighted_average"
+        base = "weighted_average"
     elif objective in ["simple_p_median", "hybrid_simple_p_median"]:
-        return "unweighted_average"
+        base = "unweighted_average"
     elif objective in ["p_center"]:
-        return "max"
+        base = "max"
     elif objective in ["mclp"]:
         # Demand-weighted since v0.7.0, matching the textbook Maximal Covering
         # Location Problem. The column name is unchanged; its meaning is not.
         return "proportion_within_coverage_threshold"
+    else:
+        return None
+
+    return f"{base}_for_ranking" if unreachable_cost is not None else base
 
 
 def _population_impact_metrics(

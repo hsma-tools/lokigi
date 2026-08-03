@@ -161,6 +161,7 @@ class EvaluatedCombination:
         baseline_costs=None,
         meaningful_change_threshold=0.0,
         beyond_thresholds=None,
+        unreachable_cost=None,
     ):
         self.solution_type = solution_type
         self.site_names = site_names
@@ -168,6 +169,7 @@ class EvaluatedCombination:
         self.evaluated_combination_df = evaluated_combination_df
         self.site_problem = site_problem
         self._meaningful_change_threshold = meaningful_change_threshold
+        self._unreachable_cost = unreachable_cost
 
         if beyond_thresholds is None:
             self.beyond_thresholds = ()
@@ -469,11 +471,19 @@ class EvaluatedCombination:
             "within_threshold",
             active_weights,
             unit=getattr(self.site_problem, "_travel_matrix_unit", None),
+            unreachable_cost=unreachable_cost,
         )
         self.weighted_average = primary_metrics["weighted_average"]
         self.unweighted_average = primary_metrics["unweighted_average"]
         self.percentile_90th = primary_metrics["percentile_90th"]
         self.max = primary_metrics["max"]
+        self.weighted_average_for_ranking = primary_metrics[
+            "weighted_average_for_ranking"
+        ]
+        self.unweighted_average_for_ranking = primary_metrics[
+            "unweighted_average_for_ranking"
+        ]
+        self.max_for_ranking = primary_metrics["max_for_ranking"]
         self.regions_unreachable = primary_metrics["regions_unreachable"]
         self.demand_unreachable = primary_metrics["demand_unreachable"]
         self.proportion_demand_unreachable = primary_metrics[
@@ -659,7 +669,13 @@ class EvaluatedCombination:
         return covered_demand / total_demand, covered_demand, covered_regions
 
     def _compute_travel_metrics(
-        self, cost_col, within_col, active_weights, coverage_demand=None, unit=None
+        self,
+        cost_col,
+        within_col,
+        active_weights,
+        coverage_demand=None,
+        unit=None,
+        unreachable_cost=None,
     ):
         """
         Compute weighted/unweighted travel-cost summary statistics and the
@@ -708,6 +724,20 @@ class EvaluatedCombination:
         into NaN too). How much was excluded is reported alongside them via
         `regions_unreachable`/`demand_unreachable`/
         `proportion_demand_unreachable`, rather than silently dropped.
+
+        `unreachable_cost`, if given, additionally produces
+        `weighted_average_for_ranking`/`unweighted_average_for_ranking`/
+        `max_for_ranking` -- the same three statistics, but with every
+        unreachable row's cost substituted by `unreachable_cost` rather
+        than excluded. These exist purely so `solve()` can rank/prune
+        combinations without silently rewarding one for stranding more
+        demand (the honest, reachable-only figures above would do exactly
+        that, since the excluded rows simply vanish from the average
+        rather than counting against it) -- they are not meant for
+        reporting or plotting, which should keep using the honest figures.
+        `None` (the default) makes all three identical to their honest
+        counterparts, so every caller that doesn't pass it gets
+        unchanged, unambiguous behaviour.
         """
         df = self.evaluated_combination_df
 
@@ -727,6 +757,18 @@ class EvaluatedCombination:
             unweighted_average = np.nan
             percentile_90th = np.nan
             max_cost = np.nan
+
+        if unreachable_cost is None:
+            weighted_average_for_ranking = weighted_average
+            unweighted_average_for_ranking = unweighted_average
+            max_for_ranking = max_cost
+        else:
+            costs_for_ranking = df[cost_col].fillna(unreachable_cost)
+            weighted_average_for_ranking = np.average(
+                costs_for_ranking, weights=active_weights
+            )
+            unweighted_average_for_ranking = np.average(costs_for_ranking)
+            max_for_ranking = np.max(costs_for_ranking)
 
         demand_series = (
             coverage_demand if coverage_demand is not None else self._coverage_demand_series()
@@ -1030,6 +1072,9 @@ class EvaluatedCombination:
             "unweighted_average": unweighted_average,
             "percentile_90th": percentile_90th,
             "max": max_cost,
+            "weighted_average_for_ranking": weighted_average_for_ranking,
+            "unweighted_average_for_ranking": unweighted_average_for_ranking,
+            "max_for_ranking": max_for_ranking,
             "regions_unreachable": regions_unreachable,
             "demand_unreachable": demand_unreachable,
             "proportion_demand_unreachable": proportion_demand_unreachable,
@@ -1156,6 +1201,21 @@ class EvaluatedCombination:
             above are computed over reachable regions only, rather than
             this headcount silently dragging them toward whatever value an
             unreachable pair happened to hold.
+
+        5d. Ranking-only travel cost ('weighted_average_for_ranking',
+            'unweighted_average_for_ranking', 'max_for_ranking'):
+            LOWER is better -- but NOT a reporting metric. Identical to
+            'weighted_average'/'unweighted_average'/'max' unless
+            `solve(unreachable_cost=...)` was used, in which case every
+            unreachable row is substituted with `unreachable_cost` instead
+            of excluded, matching what `solve()` actually ranked/pruned
+            combinations on. Kept alongside the honest figures rather than
+            replacing them so the two are always visibly distinguishable:
+            the reachable-only numbers describe what really happened,
+            these describe what the search optimised. Present regardless
+            of whether `unreachable_cost` was used -- identical to their
+            honest counterparts when it wasn't, so this column always
+            exists and needs no conditional handling.
 
         6. Secondary travel matrices (columns suffixed `__<label>`, e.g.
            'weighted_average__public_transport'):
@@ -1294,6 +1354,9 @@ class EvaluatedCombination:
             "unweighted_average": self.unweighted_average,
             "90th_percentile": self.percentile_90th,
             "max": self.max,
+            "weighted_average_for_ranking": self.weighted_average_for_ranking,
+            "unweighted_average_for_ranking": self.unweighted_average_for_ranking,
+            "max_for_ranking": self.max_for_ranking,
             "total_cost": self.total_cost,
             "proportion_within_coverage_threshold": self.proportion_within_coverage_threshold,
             "proportion_regions_within_coverage_threshold": self.proportion_regions_within_coverage_threshold,
@@ -1607,6 +1670,9 @@ _SOLUTION_COLUMN_GROUPS = [
             "regions_unreachable",
             "demand_unreachable",
             "proportion_demand_unreachable",
+            "weighted_average_for_ranking",
+            "unweighted_average_for_ranking",
+            "max_for_ranking",
         },
     ),
     (

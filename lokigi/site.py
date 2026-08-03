@@ -172,6 +172,7 @@ class SiteProblem(
         baseline_costs=None,
         meaningful_change_threshold=0.0,
         beyond_thresholds=None,
+        unreachable_cost=None,
     ):
         """
         Evaluate a specific set of facility sites against a single objective.
@@ -219,6 +220,16 @@ class SiteProblem(
             from `threshold_for_coverage`: "covered" (good) and "beyond"
             (bad) cross the threshold in opposite directions, and this
             parameter accepts more than one value at once.
+        unreachable_cost : float, optional
+            Forwarded to `EvaluatedCombination` -- see its parameter of the
+            same name. Produces `weighted_average_for_ranking`/
+            `unweighted_average_for_ranking`/`max_for_ranking` on the
+            returned combination, identical to their honest counterparts
+            unless this is set. Most callers should use `solve(
+            unreachable_cost=...)` rather than passing this directly;
+            passing it here alone has no effect beyond that combination's
+            own reported numbers, since a direct call doesn't rank/prune
+            against other combinations at all.
 
         Returns
         -------
@@ -555,6 +566,7 @@ class SiteProblem(
             baseline_costs=baseline_costs,
             meaningful_change_threshold=meaningful_change_threshold,
             beyond_thresholds=beyond_thresholds,
+            unreachable_cost=unreachable_cost,
         )
 
     # MARK: evaluate_baseline()
@@ -691,6 +703,7 @@ class SiteProblem(
         baseline=None,
         meaningful_change_threshold=0.0,
         beyond_thresholds=None,
+        unreachable_cost=None,
     ):
         """
         Solve the site location problem using the specified objective and strategy.
@@ -860,6 +873,32 @@ class SiteProblem(
             does not). `None` (the default): off, `solution_df`'s column
             set is unchanged. See
             `EvaluatedCombination.return_solution_metrics`'s point 8.
+        unreachable_cost : float, optional
+            Required whenever the primary travel matrix was registered
+            with `add_travel_matrix(allow_missing=True)` and actually
+            contains a missing (NaN) travel cost, for every objective
+            except `"mclp"` -- see the `NotImplementedError` this raises
+            when it's needed but missing for the full explanation.
+
+            A finite cost substituted for every unreachable pair, used
+            ONLY to rank/prune combinations during search (and to enforce
+            `max_value_cutoff`) -- never in `solution_df`'s reported
+            `weighted_average`/`unweighted_average`/`90th_percentile`/
+            `max`, and never in any plot, both of which stay honest,
+            reachable-only figures throughout. The substituted view is
+            still available for inspection as
+            `weighted_average_for_ranking`/`unweighted_average_for_ranking`/
+            `max_for_ranking`. Choose a value clearly worse than any real
+            travel cost you'd consider acceptable (e.g. several times your
+            longest reasonable journey) -- too small a value under-
+            penalises stranding demand relative to a genuinely long but
+            reachable journey; the two are not the same failure.
+
+            `"mclp"` never needs this: its coverage-proportion ranking
+            already treats an unreachable pair as "not covered" --
+            correctly bad, with no equivalent silent-reward failure mode
+            -- so it accepts a matrix with missing values regardless of
+            whether `unreachable_cost` is set.
 
         Returns
         -------
@@ -983,31 +1022,40 @@ class SiteProblem(
         # weighted_average etc. over reachable rows only, as that method
         # does, would silently reward a combination for stranding more
         # demand, since the excluded rows simply vanish from the average
-        # rather than counting against it. Search/optimisation over a
-        # matrix with missing values needs an explicit cost policy for
-        # unreachable pairs (planned, not yet implemented) -- until then,
-        # raise rather than optimise on a metric that quietly prefers
-        # abandoning demand.
-        primary_cost_cols = self.travel_matrix.columns.drop(
-            self._travel_matrix_source_col
-        )
-        if self.travel_matrix[primary_cost_cols].isna().any().any():
-            raise NotImplementedError(
-                "solve() does not yet support a primary travel matrix "
-                "registered with allow_missing=True when it actually "
-                "contains missing (NaN) values -- optimising/ranking over "
-                "partially-unreachable demand isn't safe without an "
-                "explicit policy for how much an unreachable pair should "
-                "cost (planned for a future release). For now, either fill "
-                "the missing values before calling add_travel_matrix(), or "
-                "evaluate individual combinations via "
-                "evaluate_single_solution_single_objective(), whose "
-                "metrics already correctly treat a missing travel cost as "
-                "\"no reachable site\" rather than propagating NaN "
-                "everywhere. Secondary travel matrices (add_secondary_"
-                "travel_matrix()) are unaffected -- they never drive "
-                "optimisation, only reporting."
+        # rather than counting against it. unreachable_cost fixes that by
+        # substituting a caller-chosen cost for every unreachable pair,
+        # used only for ranking/pruning (see _get_ranking_by_objective) --
+        # required for every objective except mclp, whose coverage-
+        # proportion ranking already treats "unreachable" as "not
+        # covered" (correctly bad) with no equivalent silent-reward risk.
+        if objective != "mclp" and unreachable_cost is None:
+            primary_cost_cols = self.travel_matrix.columns.drop(
+                self._travel_matrix_source_col
             )
+            if self.travel_matrix[primary_cost_cols].isna().any().any():
+                raise NotImplementedError(
+                    f"solve() requires unreachable_cost=<a number> for the "
+                    f"'{objective}' objective when the primary travel "
+                    "matrix (registered with allow_missing=True) actually "
+                    "contains missing (NaN) values -- optimising/ranking "
+                    "over partially-unreachable demand isn't safe without "
+                    "an explicit cost for what an unreachable pair should "
+                    "count as, or a combination that strands more demand "
+                    "would be silently preferred simply because the "
+                    "excluded rows vanish from its average rather than "
+                    "counting against it. unreachable_cost is used only to "
+                    "rank/prune combinations during search -- it never "
+                    "appears in solution_df's reported weighted_average/"
+                    "unweighted_average/90th_percentile/max (those stay "
+                    "honest, reachable-only figures) or in any plot. "
+                    "Alternatively, evaluate individual combinations via "
+                    "evaluate_single_solution_single_objective(), whose "
+                    "reported metrics already correctly treat a missing "
+                    "travel cost as \"no reachable site\" without needing "
+                    "unreachable_cost at all. Secondary travel matrices "
+                    "(add_secondary_travel_matrix()) are unaffected -- "
+                    "they never drive optimisation, only reporting."
+                )
 
         # If demand data not present,a ssume equal demand
         if self.demand_data is None:
@@ -1173,6 +1221,7 @@ class SiteProblem(
                 baseline_costs=baseline_costs,
                 meaningful_change_threshold=meaningful_change_threshold,
                 beyond_thresholds=beyond_thresholds,
+                unreachable_cost=unreachable_cost,
             )
         else:
             raise ValueError(f"Unknown objective '{objective}'.")
@@ -1266,6 +1315,7 @@ class SiteProblem(
         baseline_costs=None,
         meaningful_change_threshold=0.0,
         beyond_thresholds=None,
+        unreachable_cost=None,
     ):
         """
         Internal dispatcher for solving location-allocation problems.
@@ -1352,7 +1402,9 @@ class SiteProblem(
                 "Unsupported objective passed to _solve_pmedian_pcenter_mclp_problem. Please contact a developer."
             )
 
-        ranking = _get_ranking_by_objective(objective=objective)
+        ranking = _get_ranking_by_objective(
+            objective=objective, unreachable_cost=unreachable_cost
+        )
 
         if objective in ["hybrid_p_median", "hybrid_simple_p_median"]:
             max_value_cutoff = max_value_cutoff
@@ -1378,6 +1430,7 @@ class SiteProblem(
                 baseline_costs=baseline_costs,
                 meaningful_change_threshold=meaningful_change_threshold,
                 beyond_thresholds=beyond_thresholds,
+                unreachable_cost=unreachable_cost,
             )
 
         if search_strategy == "greedy":
@@ -1394,6 +1447,7 @@ class SiteProblem(
                 baseline_costs=baseline_costs,
                 meaningful_change_threshold=meaningful_change_threshold,
                 beyond_thresholds=beyond_thresholds,
+                unreachable_cost=unreachable_cost,
             )
 
         if search_strategy == "grasp":
@@ -1418,6 +1472,7 @@ class SiteProblem(
                 baseline_costs=baseline_costs,
                 beyond_thresholds=beyond_thresholds,
                 meaningful_change_threshold=meaningful_change_threshold,
+                unreachable_cost=unreachable_cost,
             )
 
         # An empty result set would otherwise crash further down with a

@@ -168,9 +168,12 @@ def test_solve_without_baseline_is_purely_additive(devon_problem):
     within_coverage_threshold / regions_within_coverage_threshold),
     unselected_site_names (always present), and additional_site_names
     (devon_problem registers required_sites_col="Existing", so this is
-    always present too), and the always-on unreachable headcounts
+    always present too), the always-on unreachable headcounts
     (regions_unreachable/demand_unreachable/proportion_demand_unreachable
-    and their _by_equity_group variants) -- no stray baseline- or
+    and their _by_equity_group variants), and the always-on ranking-view
+    travel costs (weighted_average_for_ranking/unweighted_average_for_
+    ranking/max_for_ranking, identical to their honest counterparts here
+    since no unreachable_cost was used) -- no stray baseline- or
     beyond_thresholds-only columns leaking in."""
     solved = devon_problem.solve(p=5, threshold_for_coverage=30, show_progress=False)
     expected_columns = {
@@ -184,6 +187,9 @@ def test_solve_without_baseline_is_purely_additive(devon_problem):
         "unweighted_average",
         "90th_percentile",
         "max",
+        "weighted_average_for_ranking",
+        "unweighted_average_for_ranking",
+        "max_for_ranking",
         "total_cost",
         "proportion_within_coverage_threshold",
         "proportion_regions_within_coverage_threshold",

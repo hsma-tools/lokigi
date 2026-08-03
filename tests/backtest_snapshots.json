@@ -352,6 +352,18 @@
       false
     ],
     [
+      "weighted_average_for_ranking",
+      false
+    ],
+    [
+      "unweighted_average_for_ranking",
+      false
+    ],
+    [
+      "max_for_ranking",
+      false
+    ],
+    [
       "total_cost",
       false
     ],
