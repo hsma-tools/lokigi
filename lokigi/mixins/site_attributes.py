@@ -1,4 +1,4 @@
-from lokigi.plot_utils import _attach_deferred_fit_bounds
+from lokigi.plot_utils import _add_plot_caption, _attach_deferred_fit_bounds
 from lokigi.utils import (
     _validate_columns,
     _load_spatial_or_tabular_data,
@@ -741,6 +741,7 @@ class SiteAttributeMixin:
         add_basemap=True,
         tiles="CartoDB positron",
         title=None,
+        caption=None,
         ax=None,
         figsize=None,
         **kwargs,
@@ -791,6 +792,13 @@ class SiteAttributeMixin:
             download entirely.
         title : str, optional
             Axes title. Ignored on interactive maps.
+        caption : str or None, default None
+            `None` prints a short "how to read this" explanation of the
+            marker colour/size below the chart; pass `""` to suppress it
+            or a custom string to replace it, matching the existing
+            `caption` convention on `plot_accessibility()` /
+            `plot_pareto_summary()` / `plot_site_reallocation_matrix()` /
+            `plot_population_impact_histogram()`. Static branch only.
         ax : matplotlib.axes.Axes, optional
             Existing axes to plot onto. Ignored if `interactive=True`.
         figsize : tuple, optional
@@ -867,7 +875,9 @@ class SiteAttributeMixin:
             return _attach_deferred_fit_bounds(m)
 
         if ax is None:
-            _, ax = plt.subplots(figsize=figsize)
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.get_figure()
 
         site_gdf.plot(
             column="utilisation_ratio",
@@ -926,6 +936,13 @@ class SiteAttributeMixin:
                     "Continuing without a basemap.",
                     stacklevel=2,
                 )
+
+        default_caption = (
+            "Markers are coloured (and sized) by each site's current "
+            "real-world utilisation ratio -- today's baseline, independent "
+            "of any solve() or catchment/demand modelling."
+        )
+        _add_plot_caption(fig, caption, default_caption)
 
         return ax
 

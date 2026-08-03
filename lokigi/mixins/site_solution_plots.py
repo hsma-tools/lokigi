@@ -22,9 +22,13 @@ from lokigi.utils import (
     _sort_solutions_by_metric,
     _order_bins_most_to_least_disadvantaged,
     _unreachable_metrics_fragment,
+    _min_max_normalize,
 )
+from lokigi.plot_utils import _add_plot_caption, _attach_deferred_fit_bounds
 import warnings
 from requests.exceptions import RequestException
+import textwrap
+from adjustText import adjust_text
 
 #: Fill colour for a region with no feasible journey to any selected site
 #: (`add_travel_matrix(allow_missing=True)`) on a choropleth -- distinct
@@ -216,16 +220,23 @@ class NonMapPlotsMixin:
         ----------
         by, rank_on, solution_rank, site_names, site_indices, matrix, demand
             Passed straight through to `site_allocation_summary()`.
-        metric : {"proportion", "average_travel_cost"}, default "proportion"
+        metric : {"proportion", "allocated_demand", "n_regions", "average_travel_cost"}, default "proportion"
             Which `site_allocation_summary()` column to plot. "proportion"
             shows the share of demand (or of regions) closest to each site.
-            "average_travel_cost" shows the average travel cost incurred by
-            each site's group instead -- e.g. to see how much further
-            people would have to travel if a site were closed. This is the
-            comparison inspired by Gill Baker's work using average travel
-            distance per patient to show that centralising services would
-            roughly double typical travel distance (see
-            `site_allocation_summary` for the full story).
+            "allocated_demand" shows the raw headcount allocated to each
+            site instead of its share -- requires demand data (see Raises);
+            use "n_regions" to count regions instead when no demand is
+            registered. Note `by=` has no effect on "allocated_demand" or
+            "n_regions": both are already an absolute count, not a share,
+            so there is nothing for "regions" vs "demand" to switch between
+            (that distinction only applies to "proportion" and
+            "average_travel_cost"). "average_travel_cost" shows the average
+            travel cost incurred by each site's group instead -- e.g. to
+            see how much further people would have to travel if a site
+            were closed. This is the comparison inspired by Gill Baker's
+            work using average travel distance per patient to show that
+            centralising services would roughly double typical travel
+            distance (see `site_allocation_summary` for the full story).
         interactive : bool, default=True
             If True, generates an interactive Plotly bar chart. If False,
             generates a static Matplotlib bar chart.
@@ -265,10 +276,21 @@ class NonMapPlotsMixin:
         number -- a "0" label there would misleadingly read as "instant to
         reach" rather than "not applicable".
         """
-        if metric not in ("proportion", "average_travel_cost"):
+        valid_metrics = ("proportion", "allocated_demand", "n_regions", "average_travel_cost")
+        if metric not in valid_metrics:
             raise ValueError(
-                f"metric must be 'proportion' or 'average_travel_cost', got {metric!r}."
+                f"metric must be one of {valid_metrics}, got {metric!r}."
             )
+
+        if metric == "allocated_demand":
+            demand_col = getattr(self.site_problem, "_demand_data_demand_col", None)
+            if demand is None and demand_col is None:
+                raise ValueError(
+                    "metric='allocated_demand' requires demand data. No "
+                    "demand column is registered on this problem -- call "
+                    "add_demand(), or use metric='n_regions' to count "
+                    "regions instead."
+                )
 
         _, _, _, unit, suffix = self._resolve_travel_columns(matrix)
 
@@ -325,6 +347,29 @@ class NonMapPlotsMixin:
             x_label = (
                 f"Proportion of {by_label}" if x_axis_label == "default" else x_axis_label
             )
+        elif metric == "allocated_demand":
+            # Never NaN -- a zero-allocation site is a real 0 count.
+            plot_values = summary["allocated_demand"]
+            bar_text = [f"{v:,.0f}" for v in summary["allocated_demand"]]
+            if title == "default":
+                title = "Total demand allocated to each site"
+                unreachable_fragment = _unreachable_metrics_fragment(
+                    regions_unreachable
+                )
+                if unreachable_fragment:
+                    title += f" ({unreachable_fragment}, excluded)"
+            x_label = "Demand allocated" if x_axis_label == "default" else x_axis_label
+        elif metric == "n_regions":
+            plot_values = summary["n_regions"]
+            bar_text = [f"{v:,.0f}" for v in summary["n_regions"]]
+            if title == "default":
+                title = "Number of regions closest to each site"
+                unreachable_fragment = _unreachable_metrics_fragment(
+                    regions_unreachable
+                )
+                if unreachable_fragment:
+                    title += f" ({unreachable_fragment}, excluded)"
+            x_label = "Number of regions" if x_axis_label == "default" else x_axis_label
         else:
             # A zero-allocation site is NaN in average_travel_cost (there is
             # nothing to average), which most plotting backends render as a
@@ -392,6 +437,271 @@ class NonMapPlotsMixin:
 
         return fig
 
+    def plot_site_capacity_summary(
+        self,
+        metric="allocated_utilisation_ratio",
+        capacity_df=None,
+        capacity_col=None,
+        demand_to_capacity_rate=1.0,
+        rank_on=None,
+        solution_rank=1,
+        site_names=None,
+        site_indices=None,
+        matrix=None,
+        demand=None,
+        interactive=True,
+        sort=True,
+        under_capacity_colour="#4C72B0",
+        over_capacity_colour="#C44E52",
+        missing_colour="lightgrey",
+        show_reference_line=True,
+        title="default",
+        x_axis_label="default",
+        y_axis_label="default",
+        caption=None,
+        interactive_width=800,
+        interactive_height=600,
+        static_width=10,
+        static_height=6,
+        ax=None,
+    ):
+        """
+        Bar chart of `site_capacity_summary()` for one chosen solution.
+
+        Parameters
+        ----------
+        metric : {"allocated_utilisation_ratio", "incremental_headroom_ratio"}, default "allocated_utilisation_ratio"
+            Which `site_capacity_summary()` ratio to plot.
+            "allocated_utilisation_ratio" assumes the allocated demand
+            *replaces* today's activity entirely -- the whole-network
+            reallocation `solve()` actually models.
+            "incremental_headroom_ratio" assumes it lands *on top of*
+            today's activity instead, and raises if no baseline load data
+            (`current_load_col`/`utilisation_col`) was registered. These
+            two answer genuinely different questions -- see
+            `site_capacity_summary`'s Notes before picking one.
+        capacity_df : pandas.DataFrame, optional
+            A precomputed result from `site_capacity_summary()`. If given,
+            `capacity_col`, `demand_to_capacity_rate`, and the solution
+            selection arguments below are ignored entirely -- the frame is
+            used exactly as supplied, matching
+            `plot_accessibility(region_frame=...)`.
+        capacity_col, demand_to_capacity_rate, rank_on, solution_rank,
+        site_names, site_indices, matrix, demand
+            Passed straight through to `site_capacity_summary()` when
+            `capacity_df` is not supplied.
+        interactive : bool, default True
+            If True, generates an interactive Plotly bar chart. If False,
+            generates a static Matplotlib bar chart.
+        sort : bool, default True
+            If True, bars are ordered ascending by `metric`. NaN values
+            (no capacity registered for that site) sort last. If False,
+            sites keep canonical site-index order.
+        under_capacity_colour, over_capacity_colour : str
+            Colours for bars at or below, and above, the reference value
+            (`1.0` for `allocated_utilisation_ratio`; `0.0` for
+            `incremental_headroom_ratio`, where negative means already
+            over capacity today). Colour here is deliberately semantic
+            (over/under), not categorical by site as in
+            `plot_site_allocation_summary` -- the finding this chart exists
+            to show is whether a site fits, not which site is which, so
+            `site_color_map` is not offered.
+        missing_colour : str, default "lightgrey"
+            Colour for a site with no capacity registered (`NaN` ratio).
+        show_reference_line : bool, default True
+            If True, draws a vertical line at the reference value (see
+            `under_capacity_colour` above) labelled "at capacity".
+        caption : str or None, default None
+            `None` prints a short "how to read this" explanation of the
+            reference line and, for `metric="incremental_headroom_ratio"`,
+            that this treats allocated demand as landing on top of today's
+            activity. Pass `""` to suppress it, or a custom string to
+            replace it. Static branch only (matches `_add_plot_caption`'s
+            existing convention on `plot_accessibility()` etc.).
+        ax : matplotlib.axes.Axes, optional
+            Existing axes to draw the static chart onto instead of
+            creating a new figure, e.g. to embed this as one panel of a
+            larger layout. Ignored if `interactive=True`. When given, the
+            caller owns the figure's lifecycle: unlike the default
+            (self-contained) case, this method does not call
+            `plt.tight_layout()` or close the figure afterwards. `caption`
+            (if not suppressed) is still placed relative to the *whole*
+            figure `ax` belongs to, not just this panel -- pass
+            `caption=""` if that would land awkwardly among the other
+            panels of a shared figure.
+
+        Returns
+        -------
+        plotly.graph_objects.Figure or matplotlib.figure.Figure
+
+        Raises
+        ------
+        ValueError
+            If `metric` is invalid, or if `metric="incremental_headroom_ratio"`
+            but no baseline load data was registered.
+
+        Notes
+        -----
+        A site with `NaN` capacity is drawn as a zero-length bar labelled
+        "N/A", coloured `missing_colour` -- not `0`, which would misleadingly
+        read as "empty". A site with an infinite ratio (zero registered
+        capacity but nonzero allocated load) is drawn at a finite length
+        (just past the largest finite bar) so the axis stays usable, but
+        labelled with the infinity symbol -- the bar's length is a drawing
+        convenience only, not a real value.
+        """
+        valid_metrics = ("allocated_utilisation_ratio", "incremental_headroom_ratio")
+        if metric not in valid_metrics:
+            raise ValueError(f"metric must be one of {valid_metrics}, got {metric!r}.")
+
+        _, _, _, _, suffix = self._resolve_travel_columns(matrix)
+        selected_solution = _select_solution(
+            self.solution_df,
+            rank_on=rank_on,
+            solution_rank=solution_rank,
+            site_names=site_names,
+            site_indices=site_indices,
+        )
+        regions_unreachable = selected_solution[f"regions_unreachable{suffix}"].values[
+            0
+        ]
+
+        if capacity_df is None:
+            capacity_df = self.site_capacity_summary(
+                capacity_col=capacity_col,
+                demand_to_capacity_rate=demand_to_capacity_rate,
+                rank_on=rank_on,
+                solution_rank=solution_rank,
+                site_names=site_names,
+                site_indices=site_indices,
+                matrix=matrix,
+                demand=demand,
+            )
+
+        if metric == "incremental_headroom_ratio" and metric not in capacity_df.columns:
+            raise ValueError(
+                "metric='incremental_headroom_ratio' requires baseline load "
+                "data. Call add_sites(..., current_load_col=...) or "
+                "add_sites(..., utilisation_col=...) so headroom can be "
+                "derived."
+            )
+
+        summary = capacity_df.reset_index()
+
+        if sort:
+            summary = summary.sort_values(metric, ascending=True, na_position="last").reset_index(
+                drop=True
+            )
+
+        reference_value = 1.0 if metric == "allocated_utilisation_ratio" else 0.0
+        raw_values = summary[metric]
+        finite_values = raw_values[np.isfinite(raw_values)]
+        max_finite = finite_values.max() if len(finite_values) else None
+
+        colors = []
+        bar_text = []
+        plot_values = []
+        for v in raw_values:
+            if pd.isna(v):
+                colors.append(missing_colour)
+                bar_text.append("N/A")
+                plot_values.append(0.0)
+            elif np.isinf(v):
+                colors.append(over_capacity_colour)
+                bar_text.append("∞ (zero capacity)")
+                sanitized = max_finite * 1.05 if max_finite and max_finite > 0 else 1.5
+                plot_values.append(sanitized)
+            else:
+                colors.append(
+                    over_capacity_colour if v > reference_value else under_capacity_colour
+                )
+                bar_text.append(f"{v:.0%}")
+                plot_values.append(v)
+
+        rate_fragment = (
+            f" (at {demand_to_capacity_rate:g} capacity units per unit of demand)"
+            if demand_to_capacity_rate != 1.0
+            else ""
+        )
+        metric_label = (
+            "Allocated utilisation ratio"
+            if metric == "allocated_utilisation_ratio"
+            else "Incremental headroom ratio"
+        )
+        if title == "default":
+            title = "Allocated demand vs capacity" + rate_fragment
+            unreachable_fragment = _unreachable_metrics_fragment(regions_unreachable)
+            if unreachable_fragment:
+                title += f" ({unreachable_fragment}, excluded)"
+        x_label = metric_label if x_axis_label == "default" else x_axis_label
+        y_label = "Site" if y_axis_label == "default" else y_axis_label
+
+        if interactive:
+            fig = px.bar(
+                summary.assign(_plot_value=plot_values),
+                x="_plot_value",
+                y="site",
+                orientation="h",
+                title=title,
+                labels={"_plot_value": x_label, "site": y_label},
+            )
+            fig.update_traces(marker_color=colors, text=bar_text, textposition="outside")
+            fig.update_layout(width=interactive_width, height=interactive_height)
+            fig.update_yaxes(autorange="reversed")
+            if show_reference_line:
+                fig.add_vline(
+                    x=reference_value,
+                    line_dash="dash",
+                    line_color="grey",
+                    annotation_text="at capacity",
+                )
+        else:
+            owns_figure = ax is None
+            if owns_figure:
+                fig, ax = plt.subplots(figsize=(static_width, static_height))
+            else:
+                fig = ax.get_figure()
+
+            bars = ax.barh(summary["site"], plot_values, color=colors)
+            ax.bar_label(bars, labels=bar_text)
+            if title is not None:
+                ax.set_title(title)
+            ax.set_xlabel(x_label)
+            ax.set_ylabel(y_label)
+            if show_reference_line:
+                ax.axvline(reference_value, linestyle="--", color="grey", linewidth=1)
+                ax.text(
+                    reference_value,
+                    -0.6,
+                    "at capacity",
+                    color="grey",
+                    fontsize=8,
+                    ha="center",
+                )
+            ax.invert_yaxis()
+
+            default_caption = (
+                "The dashed line marks capacity exactly met. Bars past it are "
+                "over capacity."
+            )
+            if metric == "incremental_headroom_ratio":
+                default_caption += (
+                    " This treats allocated demand as landing on top of "
+                    "today's activity, not replacing it."
+                )
+            _add_plot_caption(fig, caption, default_caption)
+
+            # Only manage the figure's lifecycle when this method created it
+            # itself -- a caller-supplied ax means the figure is one panel
+            # of a larger layout still being assembled, and tight_layout()/
+            # closing it here would fight the caller's own layout and
+            # display handling.
+            if owns_figure:
+                plt.tight_layout()
+                plt.close(fig)
+
+        return fig
+
 
 ##################################
 # MARK: Maps
@@ -414,6 +724,257 @@ class MapsMixin:
 
         cmap_obj = plt.get_cmap(cmap)
         return {site: cmap_obj(i % cmap_obj.N) for i, site in enumerate(ordered)}
+
+    def plot_allocated_utilisation(
+        self,
+        capacity_df=None,
+        capacity_col=None,
+        demand_to_capacity_rate=1.0,
+        rank_on=None,
+        solution_rank=1,
+        site_names=None,
+        site_indices=None,
+        matrix=None,
+        demand=None,
+        interactive=False,
+        cmap="RdYlGn_r",
+        missing_site_colour="lightgrey",
+        marker_size_range=(40, 220),
+        show_labels=False,
+        add_basemap=True,
+        tiles="CartoDB positron",
+        title=None,
+        caption=None,
+        ax=None,
+        figsize=None,
+        **kwargs,
+    ):
+        """
+        Map each selected site's `allocated_utilisation_ratio` from
+        `site_capacity_summary()`.
+
+        Site markers are coloured (and, on a static map, sized) by how
+        full each site is under this solution's allocation, so pressure
+        points are visible geographically rather than only in a table or
+        bar chart. Unlike `plot_site_utilisation()` (today's real-world
+        baseline, independent of any solve), this is solve-derived: only
+        sites selected by the chosen solution are drawn, matching
+        `site_capacity_summary()`'s own scope.
+
+        Parameters
+        ----------
+        capacity_df : pandas.DataFrame, optional
+            A precomputed result from `site_capacity_summary()`. If given,
+            `capacity_col`/`demand_to_capacity_rate`/the selection
+            arguments below are ignored, matching
+            `plot_site_utilisation(utilisation_df=...)`.
+        capacity_col, demand_to_capacity_rate, rank_on, solution_rank,
+        site_names, site_indices, matrix, demand
+            Passed straight through to `site_capacity_summary()` when
+            `capacity_df` is not supplied.
+        interactive : bool, default False
+            If True, returns an interactive Folium map via `.explore()`.
+            Otherwise returns a static matplotlib Axes.
+        cmap : str, default "RdYlGn_r"
+            Colormap for site markers. The reversed variant, matching
+            `plot_site_utilisation`'s own default and for the same reason:
+            a high ratio here is bad (near/at/over capacity), so red must
+            map to the high end.
+        missing_site_colour : str, default "lightgrey"
+            Colour (and static marker size, at the smallest of
+            `marker_size_range`) for a selected site with no capacity
+            registered (`NaN` ratio).
+        marker_size_range : tuple of (float, float), default (40, 220)
+            Smallest and largest static marker size, linearly scaled by
+            `allocated_utilisation_ratio`. Ignored on interactive maps.
+        show_labels : bool, default False
+            If True, adds text labels for each site (see `plot_sites`).
+        add_basemap : bool, default True
+            If True, adds a background web map.
+        title : str, optional
+            Axes title. Ignored on interactive maps.
+        caption : str or None, default None
+            `None` prints a short "how to read this" explanation; pass
+            `""` to suppress it or a custom string to replace it. Static
+            branch only, via `_add_plot_caption`.
+        ax : matplotlib.axes.Axes, optional
+        figsize : tuple, optional
+        **kwargs : dict
+            Additional keyword arguments passed to the site plotting call
+            (`GeoDataFrame.plot`/`.explore`).
+
+        Returns
+        -------
+        matplotlib.axes.Axes or folium.Map
+
+        Raises
+        ------
+        ValueError
+            If `candidate_sites` has no real geometry (i.e. `add_sites()`
+            was never given a GeoDataFrame or lat/long columns).
+
+        Notes
+        -----
+        Only sites selected by the chosen solution are drawn -- an
+        unselected candidate site would otherwise have to be shown grey,
+        but grey already means "no capacity registered" on this map, and
+        conflating "not chosen" with "chosen but not measured" would be
+        actively misleading. `plot_best_combination()` is the map for
+        "which sites were chosen"; this one assumes that question is
+        already answered.
+
+        A site with an infinite ratio (zero registered capacity, nonzero
+        allocated load) would otherwise flatten every other marker to a
+        uniform size/colour (an infinite range swallows every finite
+        value), so it is substituted with the largest finite ratio times
+        1.05 for sizing/colouring purposes only -- the tooltip/popup still
+        shows the true (infinite) value.
+        """
+        candidate_sites = self.site_problem.candidate_sites
+        if not isinstance(candidate_sites, geopandas.GeoDataFrame):
+            raise ValueError(
+                "plot_allocated_utilisation() requires real site geometry -- "
+                "add_sites() must have been given a GeoDataFrame or "
+                "lat/long columns, not a bare site list inferred from the "
+                "travel matrix's column names."
+            )
+
+        if capacity_df is None:
+            capacity_df = self.site_capacity_summary(
+                capacity_col=capacity_col,
+                demand_to_capacity_rate=demand_to_capacity_rate,
+                rank_on=rank_on,
+                solution_rank=solution_rank,
+                site_names=site_names,
+                site_indices=site_indices,
+                matrix=matrix,
+                demand=demand,
+            )
+
+        candidate_id_col = self.site_problem._candidate_sites_candidate_id_col
+        site_gdf = candidate_sites.merge(
+            capacity_df.reset_index(),
+            left_on=candidate_id_col,
+            right_on="site",
+            suffixes=("", "_y"),
+        )
+        site_gdf = site_gdf.drop(site_gdf.filter(regex="_y$").columns, axis=1)
+
+        raw_ratio = site_gdf["allocated_utilisation_ratio"]
+        finite_ratio = raw_ratio[np.isfinite(raw_ratio)]
+        max_finite = finite_ratio.max() if len(finite_ratio) else None
+        sanitized_fill = max_finite * 1.05 if max_finite and max_finite > 0 else 1.5
+        display_ratio = raw_ratio.replace([np.inf], sanitized_fill)
+        site_gdf["_display_ratio"] = display_ratio
+
+        min_size, max_size = marker_size_range
+        site_gdf["_marker_size"] = (
+            min_size
+            + _min_max_normalize(display_ratio, constant_fill=1.0) * (max_size - min_size)
+        ).fillna(min_size)
+
+        tooltip_cols = [
+            c
+            for c in (
+                candidate_id_col,
+                "allocated_demand",
+                "allocated_load",
+                "capacity",
+                "allocated_utilisation_ratio",
+                "current_load",
+                "baseline_utilisation_ratio",
+                "headroom",
+                "incremental_headroom_ratio",
+                "residual_headroom",
+            )
+            if c in site_gdf.columns
+        ]
+
+        if interactive:
+            m = site_gdf.explore(
+                column="_display_ratio",
+                cmap=cmap,
+                tooltip=tooltip_cols,
+                popup=True,
+                tiles=tiles if add_basemap else None,
+                marker_kwds=dict(radius=8),
+                missing_kwds=dict(color=missing_site_colour),
+                **kwargs,
+            )
+            return _attach_deferred_fit_bounds(m)
+
+        if ax is None:
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.get_figure()
+
+        site_gdf.plot(
+            column="_display_ratio",
+            cmap=cmap,
+            markersize=site_gdf["_marker_size"],
+            edgecolor="black",
+            linewidth=0.5,
+            ax=ax,
+            legend=True,
+            legend_kwds={"label": "Allocated utilisation ratio", "shrink": 0.6},
+            missing_kwds=dict(color=missing_site_colour, label="No capacity data"),
+            **kwargs,
+        )
+
+        if show_labels:
+            texts = []
+            for x, y, label in zip(
+                site_gdf.geometry.x,
+                site_gdf.geometry.y,
+                site_gdf[candidate_id_col],
+            ):
+                wrapped_label = textwrap.fill(label, 15).title()
+                texts.append(ax.text(x, y, wrapped_label))
+            adjust_text(texts, force_explode=(0.05, 0.05), ax=ax)
+
+        # geopandas' missing_kwds `label` only surfaces in a discrete
+        # `scheme=` legend, not the continuous colorbar used here, so the
+        # grey "no capacity data" markers would otherwise have no legend
+        # entry explaining them.
+        if site_gdf["_display_ratio"].isna().any():
+            ax.legend(
+                handles=[
+                    Line2D(
+                        [0],
+                        [0],
+                        marker="o",
+                        color="none",
+                        markerfacecolor=missing_site_colour,
+                        markeredgecolor="black",
+                        markersize=8,
+                        label="No capacity data",
+                    )
+                ],
+                loc="lower left",
+            )
+
+        if title is not None:
+            ax.set_title(title)
+
+        if add_basemap:
+            try:
+                cx.add_basemap(ax, crs=site_gdf.crs.to_string(), timeout=30)
+            except RequestException as e:
+                warnings.warn(
+                    f"Unable to download background map tiles ({type(e).__name__}). "
+                    "Continuing without a basemap.",
+                    stacklevel=2,
+                )
+
+        default_caption = (
+            "Markers are coloured (and sized) by each site's allocated "
+            "demand relative to its capacity under this solution -- not "
+            "today's real-world utilisation (see plot_site_utilisation() "
+            "for that). Only sites selected by this solution are shown."
+        )
+        _add_plot_caption(fig, caption, default_caption)
+
+        return ax
 
     def _plot_single_solution_map(
         self,

@@ -226,6 +226,27 @@ def test_per_capita_scales_accessibility_but_not_site_frame(sfca_problem):
     pd.testing.assert_frame_equal(scaled_site_frame, site_frame)
 
 
+@pytest.mark.parametrize("bad_per_capita", [0, -1.0])
+def test_non_positive_per_capita_raises(sfca_problem, bad_per_capita):
+    with pytest.raises(ValueError, match="per_capita"):
+        sfca_problem.two_step_floating_catchment(
+            supply_col="supply",
+            catchment_size=15,
+            site_names=["Site_1", "Site_2"],
+            per_capita=bad_per_capita,
+        )
+
+
+def test_non_numeric_per_capita_raises(sfca_problem):
+    with pytest.raises(ValueError, match="per_capita"):
+        sfca_problem.two_step_floating_catchment(
+            supply_col="supply",
+            catchment_size=15,
+            site_names=["Site_1", "Site_2"],
+            per_capita="fast",
+        )
+
+
 def test_matrix_argument_uses_secondary_costs(sfca_problem_with_secondary_matrix):
     """On the `public_transport` secondary matrix, every region reaches
     only Site_2 (cost 5 < 15), unlike the primary matrix where reachability
@@ -358,7 +379,13 @@ def test_null_supply_raises():
 
 def test_negative_supply_raises():
     problem = _sfca_problem_with_supply_values([10, -5])
-    with pytest.raises(ValueError, match="Site_2"):
+    # Also pins "supply quantity" specifically, not just the site name --
+    # this method's validation is shared with site_capacity_summary()'s via
+    # a common resolver (_resolve_site_numeric_column), parametrised by a
+    # quantity_label ("supply quantity" here, "capacity" there); a
+    # regression that mixed the two labels up would still match on
+    # "Site_2" alone.
+    with pytest.raises(ValueError, match="not a valid supply quantity.*Site_2"):
         problem.two_step_floating_catchment(supply_col="supply", catchment_size=15)
 
 

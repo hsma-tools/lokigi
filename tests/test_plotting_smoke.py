@@ -223,6 +223,25 @@ SOLUTION_PLOT_CALLS = {
     "plot_site_allocation_summary__average_travel_cost": (
         lambda s: s.plot_site_allocation_summary(metric="average_travel_cost")
     ),
+    "plot_site_allocation_summary__allocated_demand": (
+        lambda s: s.plot_site_allocation_summary(metric="allocated_demand")
+    ),
+    "plot_site_allocation_summary__n_regions": (
+        lambda s: s.plot_site_allocation_summary(metric="n_regions")
+    ),
+    "plot_site_capacity_summary": lambda s: s.plot_site_capacity_summary(),
+    "plot_site_capacity_summary__static": (
+        lambda s: s.plot_site_capacity_summary(interactive=False)
+    ),
+    "plot_site_capacity_summary__incremental_headroom_ratio": (
+        lambda s: s.plot_site_capacity_summary(metric="incremental_headroom_ratio")
+    ),
+    "plot_allocated_utilisation": lambda s: s.plot_allocated_utilisation(
+        add_basemap=False
+    ),
+    "plot_allocated_utilisation__interactive": (
+        lambda s: s.plot_allocated_utilisation(interactive=True, add_basemap=False)
+    ),
     "plot_accessibility": lambda s: s.plot_accessibility(
         supply_col="supply", catchment_size=15, add_basemap=False
     ),

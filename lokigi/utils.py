@@ -964,6 +964,103 @@ def _validate_capacity_constraint(self):
         )
 
 
+def _resolve_site_numeric_column(
+    candidate_sites,
+    candidate_id_col,
+    col,
+    site_names,
+    param_name,
+    quantity_label,
+    allow_missing=False,
+):
+    """
+    Validate and return a numeric per-site column from `candidate_sites`,
+    indexed by `site_names` in the order given.
+
+    Shared by `SFCAMixin._resolve_supply` (2SFCA's `supply_col`, always
+    `allow_missing=False` -- a missing supply value would silently corrupt
+    every region's accessibility score) and `SiteSolutionSet.
+    site_capacity_summary()` (`capacity_col`, `allow_missing=True` -- a
+    missing capacity is row-local, and `candidate_sites` legitimately mixes
+    already-operating sites with not-yet-built proposals that have no
+    capacity figure yet).
+
+    Parameters
+    ----------
+    candidate_sites : pandas.DataFrame
+    candidate_id_col : str
+    col : str
+        The column to resolve, e.g. a `supply_col` or `capacity_col` value.
+    site_names : list of str
+        Sites to resolve the column for, in this order.
+    param_name : str
+        The caller's parameter name for `col`, e.g. "supply_col" or
+        "capacity_col" -- used verbatim in every raised message.
+    quantity_label : str
+        A short noun phrase for what the column represents, e.g. "supply
+        quantity" or "capacity" -- used in the negative-value message.
+    allow_missing : bool, default False
+        If False (2SFCA's behaviour), a NaN value anywhere in the resolved
+        column raises. If True, NaN values are returned as-is; the caller
+        is responsible for handling them (typically: propagating to NaN in
+        a derived ratio, and warning).
+
+    Returns
+    -------
+    pandas.Series
+        Indexed by `site_names`, in that order.
+
+    Raises
+    ------
+    ValueError
+        If `col` is not a column of `candidate_sites`, or if any resolved
+        value is negative, or (when `allow_missing=False`) if any resolved
+        value is NaN.
+    KeyError
+        If any of `site_names` is not in `candidate_sites`.
+    TypeError
+        If the column is not numeric.
+    """
+    if col not in candidate_sites.columns:
+        raise ValueError(
+            f"{param_name}={col!r} not found in candidate_sites. "
+            f"Available columns: {list(candidate_sites.columns)}."
+        )
+
+    indexed = candidate_sites.set_index(candidate_id_col)[col]
+
+    missing = [s for s in site_names if s not in indexed.index]
+    if missing:
+        raise KeyError(f"Sites not found in candidate_sites: {missing}.")
+
+    resolved = indexed.loc[site_names]
+
+    if not pd.api.types.is_numeric_dtype(resolved):
+        raise TypeError(
+            f"{param_name}={col!r} must contain numeric values. "
+            "Hint: try pd.to_numeric() on this column before calling "
+            "add_sites()."
+        )
+
+    if not allow_missing:
+        null_sites = resolved[resolved.isna()].index.tolist()
+        if null_sites:
+            raise ValueError(
+                f"The following sites are missing a value in "
+                f"{param_name}={col!r}: {null_sites}."
+            )
+
+    negative_sites = resolved[resolved < 0].index.tolist()
+    if negative_sites:
+        raise ValueError(
+            f"The following sites have a negative value in "
+            f"{param_name}={col!r}, which is not a valid {quantity_label}: "
+            f"{negative_sites}."
+        )
+
+    return resolved
+
+
 def _wrap_label(text, width):
     if width is None or not isinstance(text, str):
         return text

@@ -11,6 +11,7 @@ from lokigi.utils import (
     _split_bins_into_tertiles,
     _format_threshold,
     _get_required_site_indices,
+    _resolve_site_numeric_column,
 )
 
 from lokigi.mixins.site_solution_plots import (
@@ -2521,7 +2522,7 @@ Groups whose columns are genuinely absent from
             of the primary matrix's.
         demand : str, optional
             Label of a secondary demand scenario registered via
-            `add_secondary_demand()`. Computes `total_demand` and (for
+            `add_secondary_demand()`. Computes `allocated_demand` and (for
             `by="demand"`) `proportion` / `average_travel_cost` under that
             scenario's demand instead of the primary demand data. Combines
             freely with `matrix=`.
@@ -2531,7 +2532,7 @@ Groups whose columns are genuinely absent from
         pandas.DataFrame
             One row per site in the chosen solution, indexed by site name
             ("site") in canonical site-index order. Columns: `n_regions`,
-            `total_demand` (omitted when no demand data is registered),
+            `allocated_demand` (omitted when no demand data is registered),
             `proportion` (sums to 1.0 across the frame, UNLESS the
             solution has unreachable demand -- see Notes), and
             `average_travel_cost` (in the travel matrix's registered unit
@@ -2572,7 +2573,7 @@ Groups whose columns are genuinely absent from
         (`add_travel_matrix(allow_missing=True)`) has a missing
         (`selected_site` is not a value) rather than a real site, so it
         cannot appear in any site's row -- it is excluded from
-        `n_regions`/`total_demand`/`proportion` entirely rather than
+        `n_regions`/`allocated_demand`/`proportion` entirely rather than
         attributed to whichever site happens to be nearest-but-
         unreachable. `proportion` then sums to less than `1.0` by exactly
         that share; the solution's own `regions_unreachable`/`demand_
@@ -2643,16 +2644,16 @@ Groups whose columns are genuinely absent from
         result.index.name = "site"
 
         if has_demand:
-            total_demand = per_region[demand_col].astype(float).sum()
+            overall_demand = per_region[demand_col].astype(float).sum()
             demand_by_site = (
                 per_region.groupby(selected_site_col)[demand_col]
                 .sum()
                 .reindex(selected_sites, fill_value=0.0)
             )
-            result["total_demand"] = demand_by_site
+            result["allocated_demand"] = demand_by_site
 
         if by == "demand":
-            result["proportion"] = result["total_demand"] / total_demand
+            result["proportion"] = result["allocated_demand"] / overall_demand
 
             # sum(cost * demand) / sum(demand) per site, mirroring how the
             # solution-level `weighted_average` is computed. Grouping and
@@ -2675,6 +2676,295 @@ Groups whose columns are genuinely absent from
                 .mean()
                 .reindex(selected_sites)
             )
+
+        return result
+
+    def site_capacity_summary(
+        self,
+        capacity_col=None,
+        demand_to_capacity_rate=1.0,
+        rank_on=None,
+        solution_rank=1,
+        site_names=None,
+        site_indices=None,
+        matrix=None,
+        demand=None,
+    ):
+        """
+        Per-site comparison of a chosen solution's allocated demand against
+        registered capacity: does each selected site have room for the
+        demand it is closest to?
+
+        Builds directly on `site_allocation_summary(by="demand")` -- this
+        is "does the allocation fit?", where that method answers "who gets
+        allocated where?". This is a diagnostic only: it does not feed back
+        into `solve()`, which still has no capacitated search strategy
+        (`capacitated=True` raises `NotImplementedError`).
+
+        Parameters
+        ----------
+        capacity_col : str, optional
+            Column in `candidate_sites` giving each site's capacity, in
+            whatever unit the caller's capacity is measured in (e.g.
+            appointments/week). Defaults to the `capacity_col` registered
+            via `add_sites()`; passing one here overrides it for this call
+            only, so the same solution can be scored under a different
+            capacity definition, mirroring `two_step_floating_catchment`'s
+            call-time `supply_col`. Raises if neither is available.
+        demand_to_capacity_rate : float, default 1.0
+            Converts allocated demand into capacity units, e.g. `5.2`
+            appointments consumed per unit of demand per year. Demand (e.g.
+            population) and capacity (e.g. appointment slots) are usually
+            in different units, so a raw demand-over-capacity ratio is
+            meaningless without this. Must be a positive real number --
+            this is deliberately a single scalar applied uniformly to every
+            site and region; it cannot yet vary by region (e.g. by age
+            structure or deprivation), which would systematically
+            understate load in demographics with higher real usage rates.
+        rank_on : str, optional
+        solution_rank : int, default 1
+        site_names : list, optional
+        site_indices : list, optional
+            Solution selection, as in `site_allocation_summary`. Priority
+            is site_indices > site_names > rank_on/solution_rank.
+        matrix : str, optional
+            Label of a secondary travel matrix registered via
+            `add_secondary_travel_matrix()`. Passed through to
+            `site_allocation_summary()`; capacity itself is a property of
+            the site, not the matrix, so it is unaffected.
+        demand : str, optional
+            Label of a secondary demand scenario registered via
+            `add_secondary_demand()`. Passed through to
+            `site_allocation_summary()`.
+
+        Returns
+        -------
+        pandas.DataFrame
+            One row per site in the chosen solution, indexed by site name
+            ("site") in canonical site-index order (not sorted -- use
+            e.g. `.sort_values("allocated_utilisation_ratio",
+            ascending=False)` to rank sites by pressure). Columns:
+
+            - `n_regions`, `allocated_demand` -- as in
+              `site_allocation_summary()`.
+            - `allocated_load` -- `allocated_demand *
+              demand_to_capacity_rate`, in capacity units.
+            - `capacity` -- the resolved `capacity_col`, echoed back.
+            - `allocated_utilisation_ratio` -- `allocated_load / capacity`.
+              `1.0` means exactly full; values above `1.0` are genuinely
+              over capacity and are not clipped.
+
+            Present only if `current_load_col` or `utilisation_col` was
+            registered via `add_sites()`:
+
+            - `current_load` -- present iff `current_load_col` was
+              registered; the raw registered value, echoed back.
+            - `baseline_utilisation_ratio` -- present iff `utilisation_col`
+              was registered; the raw registered ratio, echoed back.
+            - `headroom` -- `capacity - current_load` on the raw-counts
+              path, or `capacity * (1 - baseline_utilisation_ratio)` on the
+              precomputed-ratio path. Present whenever either input above
+              is present: unlike `site_utilisation_summary()`, capacity is
+              mandatory here, so the ratio path can always derive it.
+            - `incremental_headroom_ratio` -- `allocated_load / headroom`.
+              Not clipped; a negative value means the site is already over
+              capacity today, so no allocation is absorbable at all -- see
+              `residual_headroom` for a more readable version of that case.
+            - `residual_headroom` -- `headroom - allocated_load`. Negative
+              means a shortfall in capacity units.
+
+        Raises
+        ------
+        ValueError
+            If no `capacity_col` is available (neither passed nor
+            registered), if the resolved capacity column is not found, is
+            non-numeric, or has a negative value for a selected site, if
+            `demand_to_capacity_rate` is not a positive real number, or if
+            no demand data is registered.
+        KeyError
+            If a selected site is missing from `candidate_sites`.
+
+        Notes
+        -----
+        **`allocated_utilisation_ratio` and `incremental_headroom_ratio`
+        encode contradictory assumptions about what the allocated demand
+        represents, and only one is usually right for a given study.**
+        `allocated_utilisation_ratio` assumes the allocated demand
+        *replaces* today's activity entirely -- the whole-network
+        reallocation that `solve()` actually models, where every region is
+        served by its closest selected site. `incremental_headroom_ratio`
+        assumes the allocated demand lands *on top of* today's activity --
+        e.g. a new service line delivered from existing sites, where the
+        modelled cohort is additional to current caseload. Which one
+        applies depends on what the study is asking, not on whether
+        `current_load_col`/`utilisation_col` happened to be registered --
+        so read the Notes above before trusting either number, and don't
+        assume the mere presence of `incremental_headroom_ratio` means it
+        is the metric to use.
+
+        A zero-allocation site (see `site_allocation_summary`'s Notes)
+        gets an explicit row with `allocated_demand=0`, `allocated_load=0`
+        and `allocated_utilisation_ratio=0.0` -- genuinely measured and
+        idle, not "not measured".
+
+        Capacity of `0` with a nonzero allocation gives `inf`, not a
+        clipped or coerced value -- infinitely over capacity is the
+        honest answer. Capacity of `0` with zero allocation gives `NaN`
+        (0/0), a known ambiguity between "no capacity" and "undefined".
+        NaN capacity for a site (only reachable when `capacity_col` allows
+        missing values, unlike `add_sites(capacity_col=...)` which does
+        not) NaN's every ratio for that site and raises a `UserWarning`
+        naming it, rather than silently reading as `0.0` ("measured, and
+        empty").
+
+        Unreachable demand locations (`add_travel_matrix(allow_missing=
+        True)`) are excluded from `site_allocation_summary()`'s allocation
+        entirely, so `allocated_demand` -- and therefore every ratio here
+        -- *understates* true load for every site, with no visible sum-
+        to-less-than-1.0 tell the way `proportion` has. A `UserWarning` is
+        raised whenever the selected solution has `regions_unreachable >
+        0`, naming the count, so this doesn't pass silently.
+
+        If a call-time `capacity_col` differs from the one registered via
+        `add_sites()`, `headroom` is computed from the call-time capacity
+        on both the raw-counts and precomputed-ratio paths, so it can
+        differ from `site_utilisation_summary()`'s own `headroom` for the
+        same site.
+        """
+        if not isinstance(demand_to_capacity_rate, (int, float)) or isinstance(
+            demand_to_capacity_rate, bool
+        ):
+            raise ValueError(
+                "demand_to_capacity_rate must be a positive number "
+                "(capacity units consumed per unit of demand), got "
+                f"{demand_to_capacity_rate!r}."
+            )
+        if demand_to_capacity_rate <= 0:
+            raise ValueError(
+                "demand_to_capacity_rate must be a positive number "
+                "(capacity units consumed per unit of demand), got "
+                f"{demand_to_capacity_rate}. A rate of 0 would report every "
+                "site as empty regardless of allocated demand."
+            )
+
+        resolved_capacity_col = (
+            capacity_col
+            if capacity_col is not None
+            else self.site_problem._candidate_sites_capacity_col
+        )
+        if resolved_capacity_col is None:
+            raise ValueError(
+                "site_capacity_summary() requires a capacity column. Either "
+                "pass capacity_col='<your column>' at call time, or "
+                "register one via add_sites(..., capacity_col=...)."
+            )
+
+        demand_col = getattr(self.site_problem, "_demand_data_demand_col", None)
+        if demand is None:
+            has_demand = demand_col is not None
+        else:
+            registered_demand_labels = getattr(
+                self.site_problem, "secondary_demand_matrices", {}
+            )
+            has_demand = demand in registered_demand_labels
+        if not has_demand:
+            raise ValueError(
+                "site_capacity_summary() requires demand data -- there is "
+                "nothing to compare against capacity. Call add_demand() "
+                "first, or register a secondary demand scenario via "
+                "add_secondary_demand()."
+            )
+
+        _, _, _, _, suffix = self._resolve_travel_columns(matrix)
+        selected_solution = _select_solution(
+            self.solution_df,
+            rank_on=rank_on,
+            solution_rank=solution_rank,
+            site_names=site_names,
+            site_indices=site_indices,
+        )
+        regions_unreachable = selected_solution[f"regions_unreachable{suffix}"].values[
+            0
+        ]
+        if regions_unreachable > 0:
+            warnings.warn(
+                f"site_capacity_summary: {regions_unreachable} region(s) in "
+                "this solution have no feasible journey to any selected "
+                "site and are excluded from allocated_demand entirely. "
+                "Every ratio below therefore UNDERSTATES true load -- "
+                "unlike site_allocation_summary()'s 'proportion', there is "
+                "no visible sum-to-less-than-1.0 tell for this.",
+                stacklevel=2,
+            )
+
+        allocation = self.site_allocation_summary(
+            by="demand",
+            rank_on=rank_on,
+            solution_rank=solution_rank,
+            site_names=site_names,
+            site_indices=site_indices,
+            matrix=matrix,
+            demand=demand,
+        )
+
+        selected_sites = list(allocation.index)
+        capacity = _resolve_site_numeric_column(
+            self.site_problem.candidate_sites,
+            self.site_problem._candidate_sites_candidate_id_col,
+            resolved_capacity_col,
+            selected_sites,
+            param_name="capacity_col",
+            quantity_label="capacity",
+            allow_missing=True,
+        ).reindex(selected_sites)
+
+        missing_capacity_sites = capacity[capacity.isna()].index.tolist()
+        if missing_capacity_sites:
+            warnings.warn(
+                "site_capacity_summary: no capacity registered in "
+                f"capacity_col={resolved_capacity_col!r} for site(s): "
+                f"{missing_capacity_sites}. Their allocated_utilisation_ratio "
+                "is NaN (not measured), not 0.0.",
+                stacklevel=2,
+            )
+
+        result = pd.DataFrame(index=allocation.index)
+        result.index.name = "site"
+        result["n_regions"] = allocation["n_regions"]
+        result["allocated_demand"] = allocation["allocated_demand"]
+        result["allocated_load"] = (
+            result["allocated_demand"] * demand_to_capacity_rate
+        )
+        result["capacity"] = capacity
+        result["allocated_utilisation_ratio"] = (
+            result["allocated_load"] / result["capacity"]
+        )
+
+        candidate_sites = self.site_problem.candidate_sites
+        candidate_id_col = self.site_problem._candidate_sites_candidate_id_col
+        has_current_load = self.site_problem._candidate_sites_current_load_col is not None
+        has_baseline_ratio = self.site_problem._candidate_sites_utilisation_col is not None
+
+        if has_current_load or has_baseline_ratio:
+            selected = candidate_sites.set_index(candidate_id_col).loc[selected_sites]
+
+            if has_current_load:
+                result["current_load"] = selected[
+                    self.site_problem._candidate_sites_current_load_col
+                ].to_numpy()
+                result["headroom"] = result["capacity"] - result["current_load"]
+            else:
+                result["baseline_utilisation_ratio"] = selected[
+                    self.site_problem._candidate_sites_utilisation_col
+                ].to_numpy()
+                result["headroom"] = result["capacity"] * (
+                    1 - result["baseline_utilisation_ratio"]
+                )
+
+            result["incremental_headroom_ratio"] = (
+                result["allocated_load"] / result["headroom"]
+            )
+            result["residual_headroom"] = result["headroom"] - result["allocated_load"]
 
         return result
 

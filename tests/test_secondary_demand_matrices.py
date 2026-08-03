@@ -434,12 +434,12 @@ def test_site_allocation_summary_demand_kwarg_matches_hand_computed_values(
     default_summary = result.site_allocation_summary(by="demand")
     future_summary = result.site_allocation_summary(by="demand", demand="future_demand")
 
-    assert default_summary.loc["Site_B", "total_demand"] == 450
+    assert default_summary.loc["Site_B", "allocated_demand"] == 450
     assert default_summary.loc["Site_B", "average_travel_cost"] == pytest.approx(
         PRIMARY_WEIGHTED_AVERAGE["Site_B"]
     )
 
-    assert future_summary.loc["Site_B", "total_demand"] == 400
+    assert future_summary.loc["Site_B", "allocated_demand"] == 400
     assert future_summary.loc["Site_B", "average_travel_cost"] == pytest.approx(
         FUTURE_WEIGHTED_AVERAGE["Site_B"]
     )

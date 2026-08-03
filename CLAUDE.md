@@ -59,3 +59,8 @@
 - One top-level bullet per feature/fix, nested (4-space) sub-bullets for specifics.
 - Versions with breaking changes open with `### ⚠️ Breaking changes` (scannable one-liners) then `### Notes` for full bullets — see v0.7.0. Otherwise a plain flat list.
 - Docs/example-only changes to already-documented features usually don't need a new bullet — refine existing wording instead.
+
+# Plots
+
+- Non-interactive plots should support an ax argument (to support downstream use in subplots, dashboards, etc.)
+- Interactive plots made with plotly should prefer using the graph objects backend over the express backend.

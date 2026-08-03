@@ -9,7 +9,7 @@ import pandas as pd
 from requests.exceptions import RequestException
 
 from lokigi.plot_utils import _add_plot_caption, _attach_deferred_fit_bounds
-from lokigi.utils import _min_max_normalize
+from lokigi.utils import _min_max_normalize, _resolve_site_numeric_column
 
 
 class SFCAMixin:
@@ -25,43 +25,15 @@ class SFCAMixin:
 
     @staticmethod
     def _resolve_supply(candidate_sites, candidate_id_col, supply_col, site_names):
-        if supply_col not in candidate_sites.columns:
-            raise ValueError(
-                f"supply_col={supply_col!r} not found in candidate_sites. "
-                f"Available columns: {list(candidate_sites.columns)}."
-            )
-
-        indexed = candidate_sites.set_index(candidate_id_col)[supply_col]
-
-        missing = [s for s in site_names if s not in indexed.index]
-        if missing:
-            raise KeyError(f"Sites not found in candidate_sites: {missing}.")
-
-        supply = indexed.loc[site_names]
-
-        if not pd.api.types.is_numeric_dtype(supply):
-            raise TypeError(
-                f"supply_col={supply_col!r} must contain numeric values. "
-                "Hint: try pd.to_numeric() on this column before calling "
-                "add_sites()."
-            )
-
-        null_sites = supply[supply.isna()].index.tolist()
-        if null_sites:
-            raise ValueError(
-                f"The following sites are missing a value in "
-                f"supply_col={supply_col!r}: {null_sites}."
-            )
-
-        negative_sites = supply[supply < 0].index.tolist()
-        if negative_sites:
-            raise ValueError(
-                f"The following sites have a negative value in "
-                f"supply_col={supply_col!r}, which is not a valid supply "
-                f"quantity: {negative_sites}."
-            )
-
-        return supply
+        return _resolve_site_numeric_column(
+            candidate_sites,
+            candidate_id_col,
+            supply_col,
+            site_names,
+            param_name="supply_col",
+            quantity_label="supply quantity",
+            allow_missing=False,
+        )
 
     @staticmethod
     def _resolve_catchment_weights(cost_frame, catchment_size, distance_decay):
@@ -442,7 +414,8 @@ class SFCAMixin:
         per_capita : float, default 1
             Multiplier applied to the `accessibility` column, e.g. 1_000
             to express supply per 1,000 head instead of raw supply units
-            per head. Does not affect `site_frame`.
+            per head. Does not affect `site_frame`. Must be a positive
+            number.
         return_site_ratios : bool, default False
             If True, also return the step-1 per-site table -- useful for
             finding which site is driving an implausible regional score.
@@ -461,12 +434,13 @@ class SFCAMixin:
         Raises
         ------
         ValueError
-            If both `site_names` and `site_indices` are given, if neither
-            or both of `catchment_size`/`distance_decay` are given, if no
-            demand data is registered, if `supply_col` is missing or
-            contains a null/negative value for a scored site, if `matrix`
-            is not a registered secondary travel matrix label, if `demand`
-            is not a registered secondary demand scenario label, or if
+            If both `site_names` and `site_indices` are given, if
+            `per_capita` is not a positive number, if neither or both of
+            `catchment_size`/`distance_decay` are given, if no demand data
+            is registered, if `supply_col` is missing or contains a
+            null/negative value for a scored site, if `matrix` is not a
+            registered secondary travel matrix label, if `demand` is not a
+            registered secondary demand scenario label, or if
             `distance_decay` fails its own validation (see above).
         TypeError
             If `supply_col` is not numeric.
@@ -497,6 +471,17 @@ class SFCAMixin:
             raise ValueError(
                 "Please provide at most one of 'site_names' or "
                 "'site_indices', not both."
+            )
+
+        if not isinstance(per_capita, (int, float)) or isinstance(per_capita, bool):
+            raise ValueError(
+                f"per_capita must be a positive number, got {per_capita!r}."
+            )
+        if per_capita <= 0:
+            raise ValueError(
+                f"per_capita must be a positive number, got {per_capita}. A "
+                "value of 0 would zero out every region's accessibility "
+                "score regardless of supply or demand."
             )
 
         if self._demand_data_demand_col is None:
