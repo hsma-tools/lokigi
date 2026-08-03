@@ -18,6 +18,9 @@ def test_core_columns_always_present_no_jargon_or_problem_df(loaded_problem):
         "Rank",
         "Sites in this option",
         "Sites not in this option",
+        "Sites added (vs rank 1)",
+        "Sites removed (vs rank 1)",
+        "Sites changed (vs rank 1)",
         "Average travel time (mins)",
         "Longest journey (mins)",
     ]

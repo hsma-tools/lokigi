@@ -1884,7 +1884,133 @@ Groups whose columns are genuinely absent from
         else:
             return round(df, rounding).head(n_best)
 
-    def show_solutions_summary(self, n_best=None):
+    def _resolve_site_diff(self, df, diff_against):
+        """
+        Per-row site-name diff against a chosen reference, for telling
+        apart near-identical top-N rows that only differ by one or two
+        sites out of many -- unlike `sites_closed_vs_baseline`/
+        `sites_added_vs_baseline`, this doesn't require `solve(baseline=
+        ...)`; it diffs rows against EACH OTHER (or a fixed reference
+        site set), which is the only option available when there's no
+        external baseline to compare against at all.
+
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            `solution_df` (or a `.head(n_best)` slice of it).
+        diff_against : {"default", "rank_1", "previous_rank", "required_sites"}
+            "default" resolves to "required_sites" if at least one site is
+            flagged via `add_sites(required_sites_col=...)`, else
+            "rank_1" -- required sites are the closest thing to a "we
+            already have these, what's new" reference when one is
+            configured, and the top-ranked solution is the next most
+            natural default otherwise. "rank_1" diffs every row against
+            the `solution_rank == 1` row's site_names. "previous_rank"
+            diffs every row against the row immediately above it once
+            sorted by `solution_rank` (the first row has nothing above
+            it, so its diff is empty/zero, not `NaN` -- `previous_rank`
+            answers "what changed one rank down", and there IS no rank
+            below rank 1). "required_sites" diffs every row against the
+            required-sites set directly, raising if none are configured
+            (silently falling back would be surprising for an explicit
+            request, unlike "default"'s silent fallback).
+
+        Returns
+        -------
+        dict or None
+            `{"added": pandas.Series, "removed": pandas.Series, "changed":
+            pandas.Series, "label": str}` -- `added`/`removed` are
+            comma-joined site-name strings, `changed` is the size of the
+            symmetric difference (`len(added) + len(removed)`), and
+            `label` names the reference for use in column headers (e.g.
+            "rank 1"). `None` if `df` has no `solution_rank` column at
+            all (a single directly-evaluated solution has nothing to
+            diff against).
+
+        Raises
+        ------
+        ValueError
+            If `diff_against` isn't one of the values above, or if
+            `diff_against="required_sites"` was explicitly requested but
+            no required sites are configured.
+        """
+        valid = {"default", "rank_1", "previous_rank", "required_sites"}
+        if diff_against not in valid:
+            raise ValueError(
+                f"diff_against must be one of {sorted(valid)}, got {diff_against!r}."
+            )
+
+        if "solution_rank" not in df.columns:
+            return None
+
+        required_indices = _get_required_site_indices(self.site_problem)
+
+        if diff_against == "default":
+            diff_against = "required_sites" if required_indices else "rank_1"
+
+        if diff_against == "required_sites":
+            if not required_indices:
+                raise ValueError(
+                    "diff_against='required_sites' requires at least one site "
+                    "flagged via add_sites(required_sites_col=...) -- none are "
+                    "configured on this problem. Pass diff_against='rank_1' or "
+                    "'previous_rank' instead, or leave diff_against='default' "
+                    "to fall back to 'rank_1' automatically."
+                )
+            candidate_sites = self.site_problem.candidate_sites
+            id_col = self.site_problem._candidate_sites_candidate_id_col
+            reference_names = set(
+                candidate_sites.loc[
+                    candidate_sites["canonical_site_index"].isin(required_indices),
+                    id_col,
+                ]
+            )
+            added = df["site_names"].apply(lambda names: sorted(set(names) - reference_names))
+            removed = df["site_names"].apply(lambda names: sorted(reference_names - set(names)))
+            label = "required sites"
+
+        elif diff_against == "rank_1":
+            rank_1_names = set(
+                self.solution_df.loc[
+                    self.solution_df["solution_rank"] == 1, "site_names"
+                ].iloc[0]
+            )
+            added = df["site_names"].apply(lambda names: sorted(set(names) - rank_1_names))
+            removed = df["site_names"].apply(lambda names: sorted(rank_1_names - set(names)))
+            label = "rank 1"
+
+        else:  # previous_rank
+            ordered = df.sort_values("solution_rank", kind="stable")
+            previous_names = ordered["site_names"].shift(1)
+            added = pd.Series(
+                [
+                    sorted(set(current) - set(previous))
+                    if isinstance(previous, list)
+                    else []
+                    for current, previous in zip(ordered["site_names"], previous_names)
+                ],
+                index=ordered.index,
+            ).reindex(df.index)
+            removed = pd.Series(
+                [
+                    sorted(set(previous) - set(current))
+                    if isinstance(previous, list)
+                    else []
+                    for current, previous in zip(ordered["site_names"], previous_names)
+                ],
+                index=ordered.index,
+            ).reindex(df.index)
+            label = "previous rank"
+
+        changed = added.apply(len) + removed.apply(len)
+        return {
+            "added": added.apply(lambda names: ", ".join(names)),
+            "removed": removed.apply(lambda names: ", ".join(names)),
+            "changed": changed,
+            "label": label,
+        }
+
+    def show_solutions_summary(self, n_best=None, diff_against="default"):
         """
         Return a stakeholder-facing view of the solution table: a handful
         of plain-English columns with units in the header, in place of
@@ -1910,6 +2036,15 @@ Groups whose columns are genuinely absent from
         `Sites in this option` repeating the same 4 required names alongside
         it in every row.
 
+        `Sites added (vs <reference>)`/`Sites removed (vs <reference>)`/
+        `Sites changed (vs <reference>)` (a per-row site-name diff against
+        `diff_against`, see below) are added whenever there's more than one
+        solution to tell apart (i.e. `solution_rank` exists) -- this is
+        what makes several near-identical top-N rows (e.g. a brute-force
+        search that only ever swaps one or two sites out of many)
+        distinguishable at a glance without scanning two long, truncated
+        `Sites in this option` strings against each other by eye.
+
         Coverage columns (`People within <threshold> mins`, `% within
         <threshold> mins`) are only added if `threshold_for_coverage` was
         set on this solve. `Sites closed` and `Sites added` (`sites_closed_
@@ -1930,6 +2065,24 @@ Groups whose columns are genuinely absent from
         n_best : int, optional
             Number of top-ranked solutions to include. If None, every row
             in `solution_df` is included.
+        diff_against : {"default", "rank_1", "previous_rank", "required_sites"}, default "default"
+            What each row's site-name diff columns are computed against.
+            "default" resolves to "required_sites" if at least one site is
+            flagged via `add_sites(required_sites_col=...)` (the closest
+            thing to "what's new beyond what we already have"), else falls
+            back to "rank_1" silently. "rank_1" diffs every row against
+            the top-ranked solution's site_names -- a single, stable
+            reference point for comparing any row directly to the best
+            one. "previous_rank" diffs every row against the row one rank
+            better than it -- reads as "what changes if you loosen the
+            criteria one more notch", though unlike "rank_1" the
+            reference itself moves every row, so two non-adjacent ranks
+            can't be compared directly from this column alone.
+            "required_sites" diffs directly against the required-sites
+            set, raising `ValueError` if none are configured (an explicit
+            request for a reference that doesn't exist, unlike
+            "default"'s silent fallback). See `_resolve_site_diff` for the
+            full definition.
 
         Returns
         -------
@@ -1972,6 +2125,14 @@ Groups whose columns are genuinely absent from
         summary["Sites not in this option"] = df["unselected_site_names"].apply(
             lambda names: ", ".join(names)
         )
+
+        site_diff = self._resolve_site_diff(df, diff_against)
+        if site_diff is not None:
+            label = site_diff["label"]
+            summary[f"Sites added (vs {label})"] = site_diff["added"]
+            summary[f"Sites removed (vs {label})"] = site_diff["removed"]
+            summary[f"Sites changed (vs {label})"] = site_diff["changed"]
+
         summary["Average travel time (mins)"] = df["weighted_average"].round(1)
         summary["Longest journey (mins)"] = df["max"].round(1)
 

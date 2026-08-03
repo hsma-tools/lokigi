@@ -16,6 +16,29 @@ from lokigi.utils import _colours_and_styles, _is_maximise_metric, _get_ordinal_
 from lokigi.multiobjective import ParetoMetric
 
 
+def _format_site_diff_suffix(added, removed):
+    """
+    Compact "+X, Y; -Z" representation of a site-name diff, for a legend
+    label or subplot title where `show_solutions_summary()`'s full "Sites
+    added"/"Sites removed" columns would be too verbose. `added`/
+    `removed` are the comma-joined strings `_resolve_site_diff()` returns
+    per row; an empty string in either means nothing changed in that
+    direction (or, for the reference row itself under `diff_against=
+    "rank_1"`, nothing changed at all).
+
+    The two clauses are joined with "; ", not ", " -- with commas
+    throughout, "+Site_A, Site_C, -Site_B, Site_D" reads as four
+    separately-signed items rather than two added and two removed; the
+    semicolon marks where the added list ends and the removed one begins.
+    """
+    parts = []
+    if added:
+        parts.append(f"+{added}")
+    if removed:
+        parts.append(f"-{removed}")
+    return "; ".join(parts)
+
+
 ##################################
 # MARK: Pareto
 ##################################
@@ -451,6 +474,7 @@ class ParetoMixin:
         self,
         id_col: str = "solution_rank",
         name_col: str | None = None,
+        diff_against: str | None = None,
         height: float = 5,
         width_multiplier: float = 2,
         theme: str = "whitegrid",
@@ -494,6 +518,19 @@ class ParetoMixin:
             closest_to_target axis with its signed distance from target
             (e.g. "+0.09"). Turn off for a cleaner chart once you've got
             more than a handful of options and the labels start to crowd.
+        diff_against: str or None, default None
+            If given, appends a compact "+added, -removed" site-name diff
+            to each Pareto-optimal line's legend label -- the same
+            per-row diff `show_solutions_summary(diff_against=...)`
+            computes, see `_resolve_site_diff` for the exact values
+            accepted ("default", "rank_1", "previous_rank",
+            "required_sites") and what each one means. `None` (the
+            default) leaves labels as `name_col`/`id_col` only, matching
+            prior behaviour. Since this is computed over just the
+            Pareto-optimal `front` rows, "previous_rank" diffs each
+            option against the next-best Pareto-optimal option, not
+            against a dominated solution that happens to sit between them
+            in rank.
         title / caption: shown above/below the chart. Sensible stakeholder-
             facing defaults are used if not provided; pass "" to suppress
             either entirely.
@@ -501,6 +538,7 @@ class ParetoMixin:
         sns.set_style(theme)
         front = self.solution_df[self.solution_df["is_pareto_optimal"]].copy()
         rest = self.solution_df[~self.solution_df["is_pareto_optimal"]].copy()
+        site_diff = self._resolve_site_diff(front, diff_against) if diff_against else None
 
         if ax is None:
             fig, ax = plt.subplots(
@@ -563,6 +601,12 @@ class ParetoMixin:
         }
         for (colour, linestyle, marker), (_, row) in zip(styles, front.iterrows()):
             label = str(row[name_col]) if name_col else f"Option {row[id_col]}"
+            if site_diff is not None:
+                suffix = _format_site_diff_suffix(
+                    site_diff["added"].loc[row.name], site_diff["removed"].loc[row.name]
+                )
+                if suffix:
+                    label = f"{label} ({suffix})"
             y_vals = normed_df.loc[row.name, [m.column for m in self.pareto_metrics]]
             ax.plot(
                 x_positions,
@@ -695,6 +739,7 @@ class ParetoMixin:
         id_col: str = "solution_rank",
         name_col: str | None = None,
         show_site_names: bool = True,
+        diff_against: str | None = None,
         ncols: int = 1,
         height_per_row: float = 4.0,
         width_multiplier: float = 2.2,
@@ -728,6 +773,17 @@ class ParetoMixin:
             "all" ranks a solution's metric against every enumerated solution
             (dominated + Pareto-optimal). "pareto_front" ranks it only against the
             other non-dominated solutions shown in this plot.
+        diff_against : str or None, default None
+            If given, adds a "Diff (vs <reference>): +added, -removed"
+            line to each facet's title -- the same per-row site-name diff
+            `show_solutions_summary(diff_against=...)` computes, see
+            `_resolve_site_diff` for the exact values accepted ("default",
+            "rank_1", "previous_rank", "required_sites"). `None` (the
+            default) omits it, matching prior behaviour. Computed over
+            just the Pareto-optimal `front` rows, so "previous_rank"
+            diffs each facet against the next-best Pareto-optimal option,
+            not a dominated solution that happens to sit between them in
+            rank.
         """
         if rank_scope not in ("all", "pareto_front"):
             raise ValueError(
@@ -736,6 +792,7 @@ class ParetoMixin:
         sns.set_style(theme)
         front = self.solution_df[self.solution_df["is_pareto_optimal"]].copy()
         rest = self.solution_df[~self.solution_df["is_pareto_optimal"]].copy()
+        site_diff = self._resolve_site_diff(front, diff_against) if diff_against else None
 
         n_front = len(front)
         if n_front == 0:
@@ -992,6 +1049,14 @@ class ParetoMixin:
             # Now add additional info to the title, not in bold
             if sites_str:
                 title_lines.append(f"Included: {sites_str}")
+
+            if site_diff is not None:
+                diff_suffix = _format_site_diff_suffix(
+                    site_diff["added"].loc[idx], site_diff["removed"].loc[idx]
+                )
+                if diff_suffix:
+                    diff_line = f"Diff (vs {site_diff['label']}): {diff_suffix}"
+                    title_lines.append(textwrap.fill(diff_line, width=effective_wrap_at))
 
             meta_parts = []
             if strengths:
