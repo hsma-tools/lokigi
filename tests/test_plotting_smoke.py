@@ -363,7 +363,7 @@ def test_check_solution_equity_matplotlib_labels(unit_labelled_solution):
         interactive=False, return_plot=True
     )
     axis = fig.axes[0]
-    assert axis.get_xlabel() == "IMD Decile"
+    assert axis.get_xlabel() == "IMD Decile (most to least disadvantaged)"
     assert axis.get_ylabel() == "Average travel time (miles)"
 
 
@@ -371,8 +371,61 @@ def test_check_solution_equity_interactive_labels(unit_labelled_solution):
     fig = unit_labelled_solution.check_solution_equity(
         interactive=True, return_plot=True
     )
-    assert fig.layout.xaxis.title.text == "IMD Decile"
+    assert fig.layout.xaxis.title.text == "IMD Decile (most to least disadvantaged)"
     assert fig.layout.yaxis.title.text == "Average travel time (miles)"
+
+
+@pytest.fixture
+def disadvantaged_high_solution(loaded_problem):
+    """loaded_problem (Site_A/B/C, LSOA_1/2/3) with IMD deciles 1/5/10 on
+    LSOA_1/2/3 respectively and disadvantaged_end="high" -- i.e. decile 10
+    (not decile 1) is the most disadvantaged. unit_labelled_solution above
+    uses disadvantaged_end="low", where ascending raw-bin order already
+    happens to match most-to-least-disadvantaged order, so it can't tell
+    a genuine reorder apart from an accidentally-correct default. This
+    fixture can."""
+    equity_df = pd.DataFrame(
+        {"location_id": ["LSOA_1", "LSOA_2", "LSOA_3"], "imd_decile": [1, 5, 10]}
+    )
+    loaded_problem.add_equity_data(
+        equity_df,
+        equity_col="imd_decile",
+        common_col="location_id",
+        label="IMD Decile",
+        disadvantaged_end="high",
+    )
+    return loaded_problem.solve(p=2, search_strategy="brute-force", show_progress=False)
+
+
+def test_check_solution_equity_matplotlib_bars_reordered_for_disadvantaged_end_high(
+    disadvantaged_high_solution,
+):
+    fig = disadvantaged_high_solution.check_solution_equity(
+        interactive=False, return_plot=True
+    )
+    axis = fig.axes[0]
+    assert [t.get_text() for t in axis.get_xticklabels()] == ["10", "5", "1"]
+
+
+def test_check_solution_equity_plot_does_not_mutate_dataframe_return_order(
+    disadvantaged_high_solution,
+):
+    """The non-plot DataFrame return is deliberately left in its original
+    ascending order -- only the chart's bar order changes -- so calling
+    check_solution_equity(return_plot=True) must not have side-mutated the
+    order a subsequent return_plot=False call sees."""
+    disadvantaged_high_solution.check_solution_equity(interactive=False, return_plot=True)
+    table = disadvantaged_high_solution.check_solution_equity(return_plot=False)
+    assert list(table["imd_decile"]) == [1, 5, 10]
+
+
+def test_check_solution_equity_interactive_bars_reordered_for_disadvantaged_end_high(
+    disadvantaged_high_solution,
+):
+    fig = disadvantaged_high_solution.check_solution_equity(
+        interactive=True, return_plot=True
+    )
+    assert list(fig.layout.xaxis.categoryarray) == ["10", "5", "1"]
 
 
 def test_plot_combination_by_equity_labels(unit_labelled_solution):

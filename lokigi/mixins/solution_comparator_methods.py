@@ -7,6 +7,7 @@ from lokigi.utils import (
     _select_solution,
     _population_impact_metrics,
     _split_bins_into_tertiles,
+    _order_bins_most_to_least_disadvantaged,
 )
 
 
@@ -828,19 +829,9 @@ class SolutionComparatorMethodsMixin:
             self.set_b.site_problem, "_equity_data_disadvantaged_end", None
         )
         unique_bins = sorted(rows.keys())
-        lower, middle, upper = _split_bins_into_tertiles(unique_bins, disadvantaged_end)
-        if lower is not None:
-            ordered_bins = lower + middle + upper
-        elif disadvantaged_end == "high":
-            # Fewer than 3 distinct bands -- no tertile split to reuse, but
-            # the most-to-least-disadvantaged ordering promised above still
-            # applies. Without this, disadvantaged_end="high" silently fell
-            # back to plain ascending raw-bin order (least-disadvantaged
-            # first) for exactly the same reason the old tertile code was
-            # wrong before its own disadvantaged_end fix.
-            ordered_bins = list(reversed(unique_bins))
-        else:
-            ordered_bins = unique_bins
+        ordered_bins = _order_bins_most_to_least_disadvantaged(
+            unique_bins, disadvantaged_end
+        )
 
         result = pd.DataFrame.from_dict(rows, orient="index")
         return result.loc[ordered_bins].rename_axis(equity_col)

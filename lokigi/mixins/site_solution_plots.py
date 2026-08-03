@@ -20,6 +20,7 @@ from lokigi.utils import (
     _select_solution,
     _get_ordinal_suffix,
     _sort_solutions_by_metric,
+    _order_bins_most_to_least_disadvantaged,
 )
 import warnings
 from requests.exceptions import RequestException
@@ -1968,8 +1969,16 @@ class EquityPlotsMixin:
         -------
         pandas.DataFrame or plotly.graph_objs._figure.Figure or matplotlib.figure.Figure
             If ``return_plot=False``, returns a DataFrame with mean ``min_cost`` per
-            equity group. Otherwise, returns a Plotly or Matplotlib figure depending
-            on the ``interactive`` flag.
+            equity group, in ascending raw-band order. Otherwise, returns a Plotly
+            or Matplotlib figure depending on the ``interactive`` flag -- the
+            plotted bars are reordered most- to least-disadvantaged per
+            ``add_equity_data(disadvantaged_end=...)`` (ties within a tertile
+            keep ascending band order, matching
+            ``population_impact_by_equity_group()``'s own ordering), and the
+            equity axis is labelled "(most to least disadvantaged)" so the
+            direction is never left for the reader to guess. The un-plotted
+            DataFrame is intentionally left in its original ascending order --
+            only the chart's bar order/label changes.
 
         Notes
         -----
@@ -2006,6 +2015,18 @@ class EquityPlotsMixin:
         if not return_plot:
             return summary_equity_df
         else:
+            equity_col = self.site_problem._equity_data_equity_col
+            disadvantaged_end = getattr(
+                self.site_problem, "_equity_data_disadvantaged_end", None
+            )
+            ordered_bins = _order_bins_most_to_least_disadvantaged(
+                sorted(summary_equity_df[equity_col]), disadvantaged_end
+            )
+            summary_equity_df = (
+                summary_equity_df.set_index(equity_col).loc[ordered_bins].reset_index()
+            )
+            equity_axis_label = f"{equity_axis_label} (most to least disadvantaged)"
+
             if title == "default":
                 if show_site_names:
                     sites_str = ", ".join(str(name) for name in plotting_row.site_names)
@@ -2023,14 +2044,21 @@ class EquityPlotsMixin:
                 import plotly.express as px
 
                 axis_labels = {
-                    self.site_problem._equity_data_equity_col: equity_axis_label,
+                    equity_col: equity_axis_label,
                     "min_cost": cost_axis_label,
                 }
+                # category_orders forces both a categorical x-axis and the
+                # most-to-least-disadvantaged row order above -- band
+                # values are numeric (e.g. IMD decile), and Plotly Express
+                # otherwise defaults numeric x columns to a continuous axis
+                # sorted by value, silently undoing the reordering.
+                category_orders = {equity_col: [str(b) for b in ordered_bins]}
+                summary_equity_df = summary_equity_df.astype({equity_col: str})
 
                 if colour_mode == "gradient":
                     fig = px.bar(
                         summary_equity_df,
-                        x=self.site_problem._equity_data_equity_col,
+                        x=equity_col,
                         y="min_cost",
                         color="min_cost",
                         color_continuous_scale=[
@@ -2039,6 +2067,7 @@ class EquityPlotsMixin:
                         ],  # soft green → soft red
                         title=title,
                         labels=axis_labels,
+                        category_orders=category_orders,
                     )
 
                 elif colour_mode == "above_below_avg":
@@ -2049,7 +2078,7 @@ class EquityPlotsMixin:
 
                     fig = px.bar(
                         summary_equity_df,
-                        x=self.site_problem._equity_data_equity_col,
+                        x=equity_col,
                         y="min_cost",
                         color="_above_avg",
                         color_discrete_map={
@@ -2058,15 +2087,17 @@ class EquityPlotsMixin:
                         },
                         title=title,
                         labels=axis_labels,
+                        category_orders=category_orders,
                     )
 
                 else:
                     fig = px.bar(
                         summary_equity_df,
-                        x=self.site_problem._equity_data_equity_col,
+                        x=equity_col,
                         y="min_cost",
                         title=title,
                         labels=axis_labels,
+                        category_orders=category_orders,
                     )
 
                 if show_average:
@@ -2086,7 +2117,8 @@ class EquityPlotsMixin:
                 else:
                     fig = ax.figure
 
-                x_vals = summary_equity_df[self.site_problem._equity_data_equity_col]
+                band_labels = [str(b) for b in summary_equity_df[equity_col]]
+                x_positions = np.arange(len(band_labels))
                 y_vals = summary_equity_df["min_cost"]
 
                 if colour_mode == "gradient":
@@ -2101,7 +2133,12 @@ class EquityPlotsMixin:
                 else:
                     colors = None
 
-                ax.bar(x_vals, y_vals, color=colors)
+                # Positional x (not the raw band values) -- band values are
+                # numeric (e.g. IMD decile), and matplotlib places a bar at
+                # its literal numeric x-coordinate regardless of row order,
+                # so plotting directly against those values would silently
+                # undo the most-to-least-disadvantaged reordering above.
+                ax.bar(x_positions, y_vals, color=colors)
 
                 ax.set_title(title)
                 ax.set_xlabel(equity_axis_label)
@@ -2115,7 +2152,8 @@ class EquityPlotsMixin:
                     )
                     ax.legend()
 
-                ax.set_xticks(x_vals)
+                ax.set_xticks(x_positions)
+                ax.set_xticklabels(band_labels)
                 ax.tick_params(axis="x", rotation=0)
                 plt.tight_layout()
 

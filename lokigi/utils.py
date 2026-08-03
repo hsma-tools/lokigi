@@ -688,6 +688,38 @@ def _split_bins_into_tertiles(unique_bins, disadvantaged_end=None):
     return list(chunks[0]), list(chunks[1]), list(chunks[2])
 
 
+def _order_bins_most_to_least_disadvantaged(unique_bins, disadvantaged_end):
+    """
+    Order `unique_bins` (already `sorted()`) most- to least-disadvantaged
+    per `add_equity_data(disadvantaged_end=...)`, individually rather than
+    bucketed into thirds -- built on `_split_bins_into_tertiles()`'s own
+    ordering so the two never drift apart.
+
+    Falls back to a plain reversal when there are too few distinct bands
+    to split into tertiles at all (`_split_bins_into_tertiles` then returns
+    `(None, None, None)`) but `disadvantaged_end="high"` -- without this,
+    that case would silently fall back to ascending raw-bin order (least-
+    disadvantaged first), which is exactly backwards.
+
+    Parameters
+    ----------
+    unique_bins : sequence
+        Sorted, distinct equity-band values (e.g. IMD deciles 1-10).
+    disadvantaged_end : {"low", "high", None}, optional
+
+    Returns
+    -------
+    list
+        `unique_bins`, reordered most- to least-disadvantaged.
+    """
+    lower, middle, upper = _split_bins_into_tertiles(unique_bins, disadvantaged_end)
+    if lower is not None:
+        return lower + middle + upper
+    if disadvantaged_end == "high":
+        return list(reversed(unique_bins))
+    return list(unique_bins)
+
+
 def _is_maximise_metric(col):
     """
     True for solution metrics where a HIGHER value is better.
