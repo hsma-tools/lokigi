@@ -1104,11 +1104,48 @@ def test_plot_population_impact_histogram_invalid_kind_raises(population_impact_
         population_impact_comparator.plot_population_impact_histogram(kind="bogus")
 
 
-def test_plot_population_impact_histogram_kde_default_ylabel_mentions_density(
+def test_plot_population_impact_histogram_kde_default_ylabel_is_plain_english(
+    population_impact_comparator,
+):
+    """"Density" means nothing to a non-technical reader -- the default
+    kind="kde" label should read as a plain-English share, not a stats term."""
+    fig, axis = population_impact_comparator.plot_population_impact_histogram()
+    assert axis.get_ylabel() == "Relative share of people"
+    assert "density" not in axis.get_ylabel().lower()
+
+
+def test_plot_population_impact_histogram_kde_default_caption_explains_curve(
     population_impact_comparator,
 ):
     fig, axis = population_impact_comparator.plot_population_impact_histogram()
-    assert "Density" in axis.get_ylabel()
+    assert len(fig.texts) == 1
+    caption = fig.texts[0].get_text().replace("\n", " ")
+    assert "not a literal headcount" in caption
+    assert 'kind="hist"' in caption
+
+
+def test_plot_population_impact_histogram_hist_has_no_default_caption(
+    population_impact_comparator,
+):
+    """A histogram's bar heights are already literal counts -- no caption
+    needed to explain them, unlike the kde curve."""
+    fig, axis = population_impact_comparator.plot_population_impact_histogram(kind="hist")
+    assert len(fig.texts) == 0
+
+
+def test_plot_population_impact_histogram_caption_can_be_suppressed(
+    population_impact_comparator,
+):
+    fig, axis = population_impact_comparator.plot_population_impact_histogram(caption="")
+    assert len(fig.texts) == 0
+
+
+def test_plot_population_impact_histogram_custom_caption(population_impact_comparator):
+    fig, axis = population_impact_comparator.plot_population_impact_histogram(
+        caption="Custom explanation."
+    )
+    assert len(fig.texts) == 1
+    assert "Custom explanation." in fig.texts[0].get_text()
 
 
 # --- SolutionComparator.plot_population_impact_by_equity_group --------------

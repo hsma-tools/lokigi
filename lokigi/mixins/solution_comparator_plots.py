@@ -349,6 +349,7 @@ class SolutionComparatorPlotsMixin:
         alpha=0.55,
         figsize=(9, 5),
         title="default",
+        caption=None,
         ax=None,
     ):
         """
@@ -412,6 +413,13 @@ class SolutionComparatorPlotsMixin:
             Figure size, ignored if `ax` is given.
         title : str, default "default"
             Plot title. If "default", an automatic title is generated.
+        caption : str, optional
+            Explanatory text shown below the chart, wrapped to fit. If
+            `None` (the default) and `kind="kde"`, a caption explaining
+            that curve height is a relative share rather than a literal
+            headcount is generated -- a plain histogram's bar heights need
+            no such explanation, so `kind="hist"` adds none by default.
+            Pass `""` to suppress it, or a custom string to replace it.
         ax : matplotlib.axes.Axes, optional
             An existing Axes to draw into instead of creating a new
             figure -- e.g. to embed this in a larger layout.
@@ -500,7 +508,7 @@ class SolutionComparatorPlotsMixin:
                     clip=(0, None),
                     ax=axis,
                 )
-            y_label = f"Density ({'people' if has_demand else 'region'}-weighted)"
+            y_label = f"Relative share of {'people' if has_demand else 'regions'}"
 
         axis.axvline(weighted_average_a, color=color_a, linestyle="--", linewidth=2)
         axis.axvline(weighted_average_b, color=color_b, linestyle="--", linewidth=2)
@@ -540,6 +548,28 @@ class SolutionComparatorPlotsMixin:
             title = "Travel cost distribution: before vs after"
         if title:
             axis.set_title(title)
+
+        if caption is None and kind == "kde":
+            cohort = "people" if has_demand else "regions"
+            caption = (
+                f"How to read this: curve height is the relative share of "
+                f"{cohort} at each travel time, not a literal headcount -- a "
+                "taller peak means more concentrated here, not more affected "
+                "overall. Pass kind=\"hist\" for literal counts instead."
+            )
+        if caption:
+            wrapped = "\n".join(textwrap.wrap(caption, width=90))
+            fig.text(
+                0.01,
+                -0.02,
+                wrapped,
+                ha="left",
+                va="top",
+                fontsize=8.5,
+                color="dimgray",
+                wrap=True,
+                transform=fig.transFigure,
+            )
 
         return fig, axis
 
