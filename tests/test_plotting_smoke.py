@@ -539,6 +539,68 @@ def test_plot_region_geometry_layer_no_title_by_default(plottable_problem):
     assert ax.get_title() == ""
 
 
+# --- plot_region_geometry_layer: plot_region_of_interest_only (plain branch)
+#
+# The plain branch (neither plot_demand nor plot_equity) has its own
+# region-of-interest filtering, separate from the plot_equity branch above.
+# plottable_problem's demand covers every region 1:1, so it can't show
+# filtering actually removing anything -- this fixture adds one extra
+# region to the geometry layer with no corresponding demand row.
+
+
+@pytest.fixture
+def plottable_problem_with_extra_region(plottable_problem):
+    extra = geopandas.GeoDataFrame(
+        {
+            "location_id": ["LSOA_extra"],
+            "geometry": [
+                Polygon(
+                    [
+                        (ORIGIN_X + 3 * CELL, ORIGIN_Y),
+                        (ORIGIN_X + 4 * CELL, ORIGIN_Y),
+                        (ORIGIN_X + 4 * CELL, ORIGIN_Y + CELL),
+                        (ORIGIN_X + 3 * CELL, ORIGIN_Y + CELL),
+                    ]
+                )
+            ],
+        },
+        crs=plottable_problem.region_geometry_layer.crs,
+    )
+    plottable_problem.region_geometry_layer = pd.concat(
+        [plottable_problem.region_geometry_layer, extra], ignore_index=True
+    )
+    return plottable_problem
+
+
+def test_plot_region_geometry_layer_plain_plot_region_of_interest_only_filters(
+    plottable_problem_with_extra_region,
+):
+    ax = plottable_problem_with_extra_region.plot_region_geometry_layer(
+        add_basemap=False, plot_region_of_interest_only=True
+    )
+    assert len(ax.collections[0].get_paths()) == 9
+
+
+def test_plot_region_geometry_layer_plain_plot_includes_all_regions_by_default(
+    plottable_problem_with_extra_region,
+):
+    ax = plottable_problem_with_extra_region.plot_region_geometry_layer(
+        add_basemap=False
+    )
+    assert len(ax.collections[0].get_paths()) == 10
+
+
+def test_plot_region_geometry_layer_plain_plot_region_of_interest_only_does_not_raise(
+    plottable_problem,
+):
+    """plot_region_of_interest_only=True previously raised UnboundLocalError
+    in the plain branch (it referenced `plotting_df` before assigning it)."""
+    ax = plottable_problem.plot_region_geometry_layer(
+        add_basemap=False, plot_region_of_interest_only=True
+    )
+    assert len(ax.collections[0].get_paths()) == 9
+
+
 # --- the basemap stubbing is load-bearing, not decorative -----------------
 
 

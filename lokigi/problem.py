@@ -595,7 +595,7 @@ class _Problem:
 
                 self._setup_equal_demand_df()
 
-            plotting_df = plotting_df.merge(
+            plotting_df = self.region_geometry_layer.merge(
                 self.demand_data[[self._demand_data_id_col]],
                 left_on=self._region_geometry_layer_common_col,
                 right_on=self._demand_data_id_col,
@@ -605,12 +605,12 @@ class _Problem:
             plotting_df = self.region_geometry_layer
 
         if interactive:
-            m = self.region_geometry_layer.explore(
+            m = plotting_df.explore(
                 tiles=tiles, edgecolor=edgecolor, linewidth=linewidth, **kwargs
             )
             return m
         else:
-            ax = self.region_geometry_layer.plot(**kwargs)
+            ax = plotting_df.plot(**kwargs)
 
             if title:
                 ax.set_title(title)
