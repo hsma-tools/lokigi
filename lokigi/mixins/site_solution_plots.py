@@ -21,9 +21,16 @@ from lokigi.utils import (
     _get_ordinal_suffix,
     _sort_solutions_by_metric,
     _order_bins_most_to_least_disadvantaged,
+    _unreachable_metrics_fragment,
 )
 import warnings
 from requests.exceptions import RequestException
+
+#: Fill colour for a region with no feasible journey to any selected site
+#: (`add_travel_matrix(allow_missing=True)`) on a choropleth -- distinct
+#: from every sequential/categorical colormap this module uses by default,
+#: so it reads as "excluded", not as an extreme value on the scale.
+_UNREACHABLE_REGION_COLOUR = "lightgrey"
 
 
 ##################################
@@ -263,7 +270,18 @@ class NonMapPlotsMixin:
                 f"metric must be 'proportion' or 'average_travel_cost', got {metric!r}."
             )
 
-        _, _, _, unit, _ = self._resolve_travel_columns(matrix)
+        _, _, _, unit, suffix = self._resolve_travel_columns(matrix)
+
+        selected_solution = _select_solution(
+            self.solution_df,
+            rank_on=rank_on,
+            solution_rank=solution_rank,
+            site_names=site_names,
+            site_indices=site_indices,
+        )
+        regions_unreachable = selected_solution[f"regions_unreachable{suffix}"].values[
+            0
+        ]
 
         summary = self.site_allocation_summary(
             by=by,
@@ -299,6 +317,11 @@ class NonMapPlotsMixin:
             bar_text = [f"{v:.1%}" for v in summary["proportion"]]
             if title == "default":
                 title = f"Share of {by_label} closest to each site"
+                unreachable_fragment = _unreachable_metrics_fragment(
+                    regions_unreachable
+                )
+                if unreachable_fragment:
+                    title += f" ({unreachable_fragment}, excluded)"
             x_label = (
                 f"Proportion of {by_label}" if x_axis_label == "default" else x_axis_label
             )
@@ -315,6 +338,11 @@ class NonMapPlotsMixin:
             ]
             if title == "default":
                 title = f"Average {by_label}-weighted travel cost by closest site"
+                unreachable_fragment = _unreachable_metrics_fragment(
+                    regions_unreachable
+                )
+                if unreachable_fragment:
+                    title += f" ({unreachable_fragment}, excluded)"
             x_label = (
                 f"Average travel cost ({unit})"
                 if x_axis_label == "default"
@@ -467,8 +495,16 @@ class MapsMixin:
         # Plot regions based on selected mode
         if plot_site_allocation:
             if site_color_map is not None:
-                # Use consistent global color mapping
-                colors_mapped = nearest_site_travel_gdf[site_col].map(site_color_map)
+                # Use consistent global color mapping. `.map()` leaves an
+                # unreachable region's colour as NaN (no key in
+                # site_color_map for a missing selected_site) -- geopandas'
+                # `color=` (as opposed to `column=`) doesn't support
+                # `missing_kwds`, so it would otherwise draw with `alpha`
+                # applied to nothing, leaving a silent hole in the map
+                # rather than a visibly-explained one.
+                colors_mapped = nearest_site_travel_gdf[site_col].map(
+                    site_color_map
+                ).fillna(_UNREACHABLE_REGION_COLOUR)
                 ax = nearest_site_travel_gdf.plot(
                     color=colors_mapped,
                     legend=False,
@@ -488,6 +524,7 @@ class MapsMixin:
                     linewidth=0.5,
                     ax=ax,
                     legend_kwds=legend_kwargs if legend_kwargs and add_legend else {},
+                    missing_kwds=dict(color=_UNREACHABLE_REGION_COLOUR),
                 )
 
         elif plot_regions_not_meeting_threshold:
@@ -532,7 +569,12 @@ class MapsMixin:
                 ax.legend(handles=patches, title="Coverage Status", loc=legend_loc)
 
         else:
-            # Plot min_cost (or the secondary matrix's own min cost)
+            # Plot min_cost (or the secondary matrix's own min cost). NaN
+            # (no feasible journey, see add_travel_matrix(allow_missing=
+            # True)) is drawn as a distinct flat colour via missing_kwds,
+            # rather than left unfilled -- geopandas draws nothing at all
+            # for a missing value by default, an invisible hole in the map
+            # indistinguishable from "outside the study area".
             unit_parenthetical = f" ({unit})" if unit else ""
             ax = nearest_site_travel_gdf.plot(
                 cost_col,
@@ -549,6 +591,7 @@ class MapsMixin:
                 }
                 if add_legend
                 else {},
+                missing_kwds=dict(color=_UNREACHABLE_REGION_COLOUR),
             )
 
         # Plot candidate sites if applicable. Deliberately not
@@ -990,6 +1033,12 @@ class MapsMixin:
                         f"{matrix_unit}"
                     )
 
+                unreachable_fragment = _unreachable_metrics_fragment(
+                    solution[f"regions_unreachable{suffix}"].values[0]
+                )
+                if unreachable_fragment:
+                    metrics += f" \n{unreachable_fragment}"
+
                 title = plt.title(
                     f"{title_prefix} \n{metrics}", fontsize=title_fontsize
                 )
@@ -1202,9 +1251,17 @@ class MapsMixin:
 
         if not plot_site_allocation and not plot_regions_not_meeting_threshold:
             # Calculate global color scale for min_cost (or the secondary
-            # matrix's own min cost)
-            global_vmin = min(df[cost_col].min() for df in sorted_df["problem_df"])
-            global_vmax = max(df[cost_col].max() for df in sorted_df["problem_df"])
+            # matrix's own min cost). Concatenated first so pandas' own
+            # NaN-skipping min/max run once over the combined values --
+            # Python's builtin min()/max() over a list of per-solution
+            # `.min()`/`.max()` results is NaN-order-dependent whenever any
+            # solution is entirely unreachable (all-NaN cost_col), since
+            # NaN comparisons are always False.
+            combined_costs = pd.concat(
+                [df[cost_col] for df in sorted_df["problem_df"]]
+            )
+            global_vmin = combined_costs.min()
+            global_vmax = combined_costs.max()
 
         elif plot_site_allocation:
             # Create consistent color mapping for sites
@@ -1255,23 +1312,29 @@ class MapsMixin:
             # Add subplot titles
             if subplot_title is not None:
                 if subplot_title == "default":
+                    unreachable_fragment = _unreachable_metrics_fragment(
+                        solution[f"regions_unreachable{suffix}"].values[0]
+                    )
+                    unreachable_suffix = (
+                        f" \n{unreachable_fragment}" if unreachable_fragment else ""
+                    )
                     if self.objectives == "mclp":
                         threshold_val = self._resolve_coverage_threshold(
                             matrix, solution["coverage_threshold"].values[0]
                         )
                         ax.set_title(
-                            f"Demand covered within threshold of {threshold_val} {matrix_unit}: {solution[f'proportion_within_coverage_threshold{suffix}'].values[0]:.1%} \nUnweighted Average: {solution[f'unweighted_average{suffix}'].values[0]:.1f} {matrix_unit} \nMaximum: {solution[f'max{suffix}'].values[0]:.1f} {matrix_unit}"
+                            f"Demand covered within threshold of {threshold_val} {matrix_unit}: {solution[f'proportion_within_coverage_threshold{suffix}'].values[0]:.1%} \nUnweighted Average: {solution[f'unweighted_average{suffix}'].values[0]:.1f} {matrix_unit} \nMaximum: {solution[f'max{suffix}'].values[0]:.1f} {matrix_unit}{unreachable_suffix}"
                         )
                     elif self.objectives in [
                         "simple_p_median",
                         "hybrid_simple_p_median",
                     ]:
                         ax.set_title(
-                            f"Unweighted Average: {solution[f'unweighted_average{suffix}'].values[0]:.1f} {matrix_unit} \nMaximum: {solution[f'max{suffix}'].values[0]:.1f} {matrix_unit}"
+                            f"Unweighted Average: {solution[f'unweighted_average{suffix}'].values[0]:.1f} {matrix_unit} \nMaximum: {solution[f'max{suffix}'].values[0]:.1f} {matrix_unit}{unreachable_suffix}"
                         )
                     else:
                         ax.set_title(
-                            f"Weighted Average: {solution[f'weighted_average{suffix}'].values[0]:.1f} {matrix_unit} \nMaximum: {solution[f'max{suffix}'].values[0]:.1f} {matrix_unit}"
+                            f"Weighted Average: {solution[f'weighted_average{suffix}'].values[0]:.1f} {matrix_unit} \nMaximum: {solution[f'max{suffix}'].values[0]:.1f} {matrix_unit}{unreachable_suffix}"
                         )
                 else:
                     ax.set_title(_safe_evaluate(subplot_title, solution=solution))
@@ -1594,6 +1657,12 @@ class MapsMixin:
                             f"Max: {solution[f'max{config_suffix}'].values[0]:.1f}"
                         )
 
+                    unreachable_fragment = _unreachable_metrics_fragment(
+                        solution[f"regions_unreachable{config_suffix}"].values[0]
+                    )
+                    if unreachable_fragment:
+                        metrics += f" | {unreachable_fragment}"
+
                     axes[i].set_title(
                         f"{title_prefix}\n{metrics}", fontsize=subplot_title_fontsize
                     )
@@ -1702,6 +1771,7 @@ class DistributionPlotsMixin:
         unweighted_average_col = f"unweighted_average{suffix}"
         percentile_90th_col = f"90th_percentile{suffix}"
         max_col = f"max{suffix}"
+        regions_unreachable_col = f"regions_unreachable{suffix}"
 
         if rank_on is not None:
             solutions_sorted = _sort_solutions_by_metric(
@@ -1747,12 +1817,18 @@ class DistributionPlotsMixin:
             df["unweighted_average"] = row[unweighted_average_col]
             df["max"] = row[max_col]
             df["90th_percentile"] = row[percentile_90th_col]
+            df["regions_unreachable"] = row[regions_unreachable_col]
             if compare_to_best:
                 df["min_cost_diff"] = df[cost_col] - best_df[cost_col].values
             dfs.append(df)
 
         dfs = pd.concat(dfs)
 
+        # A demand location with no feasible journey (`add_travel_matrix(
+        # allow_missing=True)`) has a NaN cost_col value -- plotly's
+        # histogram silently excludes it from the bars/density with no
+        # indication anything was left out, so the excluded count is
+        # named explicitly in the label instead.
         dfs["label"] = (
             "Sites: "
             + dfs["site_names"]
@@ -1764,6 +1840,11 @@ class DistributionPlotsMixin:
             + dfs["90th_percentile"].round(2).astype(str)
             + " | Max: "
             + dfs["max"].round(2).astype(str)
+            + np.where(
+                dfs["regions_unreachable"] > 0,
+                " | Unreachable: " + dfs["regions_unreachable"].astype(int).astype(str),
+                "",
+            )
         )
 
         fig = px.histogram(
@@ -2364,7 +2445,11 @@ class EquityPlotsMixin:
                 alpha=0.7,
             )
 
-            # Main layer
+            # Main layer. missing_kwds: a region with no feasible journey
+            # (add_travel_matrix(allow_missing=True)) is NaN in cost_col --
+            # geopandas draws nothing at all for it by default, an
+            # invisible hole in the panel rather than a visibly-explained
+            # one.
             subset.plot(
                 column=cost_col,
                 cmap=cmap,
@@ -2373,14 +2458,19 @@ class EquityPlotsMixin:
                 ax=ax,
                 vmin=vmin,
                 vmax=vmax,
+                missing_kwds=dict(color=_UNREACHABLE_REGION_COLOUR),
                 **kwargs,
             )
 
             n_regions = len(subset)
             n_people = subset[demand_col].sum()
-            ax.set_title(
-                f"{equity_axis_label}: {label}\n({n_regions:,} regions, {n_people:,.0f} people)"
+            title = f"{equity_axis_label}: {label}\n({n_regions:,} regions, {n_people:,.0f} people)"
+            unreachable_fragment = _unreachable_metrics_fragment(
+                int(subset[cost_col].isna().sum())
             )
+            if unreachable_fragment:
+                title += f"\n{unreachable_fragment}"
+            ax.set_title(title)
 
             try:
                 cx.add_basemap(

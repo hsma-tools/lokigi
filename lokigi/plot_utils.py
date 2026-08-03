@@ -1,4 +1,9 @@
-from lokigi.utils import _safe_evaluate, _select_solution, _get_ordinal_suffix
+from lokigi.utils import (
+    _safe_evaluate,
+    _select_solution,
+    _get_ordinal_suffix,
+    _unreachable_metrics_fragment,
+)
 import json
 import textwrap
 import matplotlib.pyplot as plt
@@ -416,6 +421,12 @@ def plot_solution_sets_comparison(
                         f"Weighted Avg: {solution['weighted_average'].values[0]:.1f} | "
                         f"Max: {solution['max'].values[0]:.1f}"
                     )
+
+                unreachable_fragment = _unreachable_metrics_fragment(
+                    solution["regions_unreachable"].values[0]
+                )
+                if unreachable_fragment:
+                    metrics += f" | {unreachable_fragment}"
 
                 axes[i].set_title(
                     f"{title_prefix}\n{metrics}", fontsize=subplot_title_fontsize

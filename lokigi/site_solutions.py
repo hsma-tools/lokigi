@@ -2532,7 +2532,8 @@ Groups whose columns are genuinely absent from
             One row per site in the chosen solution, indexed by site name
             ("site") in canonical site-index order. Columns: `n_regions`,
             `total_demand` (omitted when no demand data is registered),
-            `proportion` (sums to 1.0 across the frame), and
+            `proportion` (sums to 1.0 across the frame, UNLESS the
+            solution has unreachable demand -- see Notes), and
             `average_travel_cost` (in the travel matrix's registered unit
             -- e.g. minutes, or miles if the matrix was built from
             distances rather than times).
@@ -2566,6 +2567,18 @@ Groups whose columns are genuinely absent from
         would roughly double typical travel distance for patients, while
         adding a third site offered only limited benefit over the existing
         two.
+
+        A demand location with no feasible journey to any selected site
+        (`add_travel_matrix(allow_missing=True)`) has a missing
+        (`selected_site` is not a value) rather than a real site, so it
+        cannot appear in any site's row -- it is excluded from
+        `n_regions`/`total_demand`/`proportion` entirely rather than
+        attributed to whichever site happens to be nearest-but-
+        unreachable. `proportion` then sums to less than `1.0` by exactly
+        that share; the solution's own `regions_unreachable`/`demand_
+        unreachable`/`proportion_demand_unreachable` (`return_solution_
+        metrics()`) account for what's missing. `0` for every problem
+        that never opts into `allow_missing`.
         """
         if by not in ("demand", "regions"):
             raise ValueError(f"by must be 'demand' or 'regions', got {by!r}.")

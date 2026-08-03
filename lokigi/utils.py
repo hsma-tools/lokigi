@@ -1104,6 +1104,33 @@ def _get_ordinal_suffix(n):
         return {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
 
 
+def _unreachable_metrics_fragment(regions_unreachable):
+    """
+    "N regions unreachable" (singular-aware), or "" when `regions_
+    unreachable` is 0 -- for appending to a plot title/label wherever the
+    honest, reachable-only travel-cost metrics (weighted_average, max,
+    ...) are already being reported alongside it. Without this, a demand
+    location with no feasible journey (`add_travel_matrix(allow_missing=
+    True)`) simply disappears from a plot's summary text with no
+    indication anything was excluded.
+
+    Parameters
+    ----------
+    regions_unreachable : int
+        `solution_df`'s `regions_unreachable` value (or its `__<label>`
+        secondary-matrix variant) for the solution being plotted.
+
+    Returns
+    -------
+    str
+    """
+    n = int(regions_unreachable)
+    if n == 0:
+        return ""
+    region_word = "region" if n == 1 else "regions"
+    return f"{n} {region_word} unreachable"
+
+
 def _reject_removed_basemap_alias(kwargs, method_name):
     """
     Raise a clear error if the removed `show_basemap` argument is passed.
