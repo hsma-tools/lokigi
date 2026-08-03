@@ -143,10 +143,13 @@ class SiteProblemEDAMixin:
             or current_hash != ctx._region_geometry_hash
             or force_recalculation
         ):
+            # use_index=True matches the upcoming libpysal default and the existing
+            # KNN.from_dataframe behaviour, so all three methods label neighbours
+            # by the dataframe index rather than positionally
             if neighbourhood_method == "queen":
-                w = weights.Queen.from_dataframe(df)
+                w = weights.Queen.from_dataframe(df, use_index=True)
             elif neighbourhood_method == "rook":
-                w = weights.Rook.from_dataframe(df)
+                w = weights.Rook.from_dataframe(df, use_index=True)
             elif neighbourhood_method == "k-nearest":
                 if k is None:
                     raise ValueError(
@@ -372,6 +375,19 @@ class SiteProblemHotspotCalculationMixin:
         )
 
         # 4. Local Moran's I Core Math Engine
+        #
+        # esda is pinned <3 in pyproject.toml because of this call: esda 3
+        # changes the default alternative hypothesis for conditional
+        # randomisation from directed to two-sided, roughly doubling p_sim and
+        # so silently reclassifying regions near the significance threshold as
+        # "Not Significant". esda 2.9 offers no parameter to pin either
+        # behaviour (Moran_Local doesn't accept alternative= yet), so the
+        # version pin is the only available lever. To raise the pin: pass
+        # alternative="directed" here to keep current results, or adopt
+        # "two-sided" (statistically preferred upstream) as a **BREAKING**
+        # change with a HISTORY.md entry; either way, assert on the hotspot
+        # counts of tests/test_plotting_smoke.py's 3x3-grid fixture before and
+        # after to show which one you got.
         lisa = esda.moran.Moran_Local(result[df_col], w)
 
         result["local_moran_i"] = lisa.Is
