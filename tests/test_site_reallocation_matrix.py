@@ -239,3 +239,75 @@ def test_opened_site_column_sorts_last_even_though_it_is_canonically_first(
     assert result.loc["Site_3", "Site_3"] == pytest.approx(300.0)
     assert result.loc["Site_2", "Site_2"] == pytest.approx(0.0)
     assert result.loc["Site_3", "Site_1"] == pytest.approx(0.0)
+
+
+# --- changed_only -----------------------------------------------------------
+
+
+def test_changed_only_drops_unchanged_rows_and_columns_on_closure(loaded_problem):
+    """Closing Site_C: Site_A and Site_B each keep 100% of their own
+    patients (unchanged as a row), and Site_A's column receives nothing
+    extra (unchanged as a column). Site_B's column DOES receive Site_C's
+    reallocated demand, so it's kept even though Site_B's own row is
+    dropped -- rows and columns are independent decisions, not "drop this
+    site everywhere"."""
+    baseline = loaded_problem.evaluate_baseline(
+        site_names=["Site_A", "Site_B", "Site_C"]
+    )
+    closed = loaded_problem.evaluate_baseline(site_names=["Site_A", "Site_B"])
+    comparator = SolutionComparator(baseline, closed, labels=("Before", "After"))
+
+    full = comparator.site_reallocation_matrix()
+    assert list(full.index) == ["Site_A", "Site_B", "Site_C"]
+    assert list(full.columns) == ["Site_A", "Site_B"]
+
+    result = comparator.site_reallocation_matrix(changed_only=True)
+    assert list(result.index) == ["Site_C"]
+    assert list(result.columns) == ["Site_B"]
+    assert result.loc["Site_C", "Site_B"] == pytest.approx(150.0)
+
+
+def test_changed_only_drops_unchanged_rows_and_columns_on_addition(loaded_problem):
+    """The exact reverse: re-opening Site_C, Site_A is fully unaffected
+    (dropped both as row and column). Site_B's row is kept (some of its
+    own patients moved to the new Site_C) even though Site_B's column is
+    dropped (it received nothing new)."""
+    two_site = loaded_problem.evaluate_baseline(site_names=["Site_A", "Site_B"])
+    three_site = loaded_problem.evaluate_baseline(
+        site_names=["Site_A", "Site_B", "Site_C"]
+    )
+    comparator = SolutionComparator(two_site, three_site, labels=("Before", "After"))
+
+    result = comparator.site_reallocation_matrix(changed_only=True)
+    assert list(result.index) == ["Site_B"]
+    assert list(result.columns) == ["Site_C"]
+    assert result.loc["Site_B", "Site_C"] == pytest.approx(150.0)
+
+
+def test_changed_only_defaults_to_false(loaded_problem):
+    baseline = loaded_problem.evaluate_baseline(
+        site_names=["Site_A", "Site_B", "Site_C"]
+    )
+    closed = loaded_problem.evaluate_baseline(site_names=["Site_A", "Site_B"])
+    comparator = SolutionComparator(baseline, closed, labels=("Before", "After"))
+
+    default_result = comparator.site_reallocation_matrix()
+    explicit_false = comparator.site_reallocation_matrix(changed_only=False)
+    assert list(default_result.index) == list(explicit_false.index)
+    assert list(default_result.columns) == list(explicit_false.columns)
+
+
+def test_changed_only_empty_when_nothing_changed(loaded_problem):
+    """Comparing a network against an identical copy of itself: every
+    site is unchanged both as a row and a column, so changed_only=True
+    returns an empty (but not erroring) DataFrame."""
+    baseline = loaded_problem.evaluate_baseline(
+        site_names=["Site_A", "Site_B", "Site_C"]
+    )
+    same_again = loaded_problem.evaluate_baseline(
+        site_names=["Site_A", "Site_B", "Site_C"]
+    )
+    comparator = SolutionComparator(baseline, same_again, labels=("Before", "After"))
+
+    result = comparator.site_reallocation_matrix(changed_only=True)
+    assert result.shape == (0, 0)

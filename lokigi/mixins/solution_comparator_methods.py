@@ -128,7 +128,13 @@ class SolutionComparatorMethodsMixin:
         return comparison
 
     def site_reallocation_matrix(
-        self, matrix=None, demand=None, config_a=None, config_b=None, by="demand"
+        self,
+        matrix=None,
+        demand=None,
+        config_a=None,
+        config_b=None,
+        by="demand",
+        changed_only=False,
     ):
         """
         Cross-tabulate each demand location's closest site under `set_a`
@@ -166,6 +172,13 @@ class SolutionComparatorMethodsMixin:
             each (from-site, to-site) pair; "regions" counts demand
             locations instead, ignoring demand weighting entirely --
             the only option available when no demand data is registered.
+        changed_only : bool, default False
+            If True, drop every row/column whose site didn't actually
+            experience any reallocation -- see `Notes` for the precise
+            rule. Rows and columns are dropped independently, so a site
+            that kept 100% of its own patients but also picked up new
+            ones from elsewhere still keeps its column (something new
+            arrived) even though its row is dropped (nothing left).
 
         Returns
         -------
@@ -200,17 +213,28 @@ class SolutionComparatorMethodsMixin:
 
         Notes
         -----
-        To see only what the review persona actually asked for -- "closed
-        sites down the left, the sites they moved to across the top" --
-        slice the result to just the rows/columns that differ between the
-        two solutions, e.g. using the already-available
-        `sites_closed_vs_baseline`/`sites_added_vs_baseline` columns:
-        ``result.loc[closed_sites]`` for "where did each closed site's
-        demand go?", or ``result[added_sites]`` for "which sites did each
-        added site draw demand from?". The full matrix is returned rather
-        than pre-filtered so that reallocation between two sites that are
-        BOTH still open after the change (e.g. a new site partially
-        stealing an existing site's catchment) isn't hidden either.
+        `changed_only`'s precise rule: a row is dropped only if its site
+        is also a column (i.e. it persists into `set_b`) AND every one of
+        its cells outside that same-named column is 0 -- meaning none of
+        that site's own demand went anywhere else. A closed site (no
+        matching column at all) is never dropped, since its departure is
+        exactly the event this method exists to show. Columns are
+        dropped by the mirror-image rule (site persists from `set_a` AND
+        received nothing from any other row); a newly opened site (no
+        matching row) is never dropped either. This means a site that
+        kept 100% of its own patients but ALSO gained new ones from
+        elsewhere loses its row (nothing left) while keeping its column
+        (something arrived) -- rows and columns are independent, not a
+        single "this site is boring, drop it entirely" decision.
+
+        To instead see only what the review persona literally asked for
+        -- "closed sites down the left, the sites they moved to across
+        the top" -- slice the (`changed_only=False`) result yourself
+        using the already-available `sites_closed_vs_baseline`/
+        `sites_added_vs_baseline` columns: ``result.loc[closed_sites]``
+        for "where did each closed site's demand go?", or
+        ``result[added_sites]`` for "which sites did each added site draw
+        demand from?".
         """
         if by not in ("demand", "regions"):
             raise ValueError(f"by must be 'demand' or 'regions', got {by!r}.")
@@ -294,6 +318,22 @@ class SolutionComparatorMethodsMixin:
         result = crosstab.reindex(index=row_order, columns=col_order, fill_value=0.0)
         result.index.name = self.labels[0]
         result.columns.name = self.labels[1]
+
+        if changed_only:
+            def _row_unchanged(site):
+                return site in result.columns and (
+                    result.loc[site].drop(site).sum() == 0
+                )
+
+            def _col_unchanged(site):
+                return site in result.index and (
+                    result[site].drop(site).sum() == 0
+                )
+
+            keep_rows = [s for s in result.index if not _row_unchanged(s)]
+            keep_cols = [s for s in result.columns if not _col_unchanged(s)]
+            result = result.loc[keep_rows, keep_cols]
+
         return result
 
     def _population_impact_frame(self, matrix, demand, config_a, config_b):

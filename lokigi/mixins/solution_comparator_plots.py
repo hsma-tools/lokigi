@@ -223,6 +223,7 @@ class SolutionComparatorPlotsMixin:
         config_a=None,
         config_b=None,
         by="demand",
+        changed_only=False,
         cmap="Blues",
         annot=True,
         fmt=",.0f",
@@ -246,8 +247,11 @@ class SolutionComparatorPlotsMixin:
 
         Parameters
         ----------
-        matrix, demand, config_a, config_b, by
+        matrix, demand, config_a, config_b, by, changed_only
             Passed straight through to `site_reallocation_matrix()`.
+            `changed_only=True` drops every row/column that saw no
+            reallocation at all, useful once the full matrix is too big
+            (many unaffected sites) to scan comfortably as a heatmap.
         cmap : str, default "Blues"
             Colormap for the heatmap. Sequential rather than diverging --
             unlike `plot_population_impact_map()`'s travel-cost change,
@@ -276,7 +280,12 @@ class SolutionComparatorPlotsMixin:
         (matplotlib.figure.Figure, matplotlib.axes.Axes)
         """
         reallocation = self.site_reallocation_matrix(
-            matrix=matrix, demand=demand, config_a=config_a, config_b=config_b, by=by
+            matrix=matrix,
+            demand=demand,
+            config_a=config_a,
+            config_b=config_b,
+            by=by,
+            changed_only=changed_only,
         )
 
         if ax is None:

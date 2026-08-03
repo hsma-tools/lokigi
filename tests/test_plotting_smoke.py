@@ -848,6 +848,27 @@ def test_plot_site_reallocation_matrix_custom_caption(population_impact_comparat
     assert "Custom explanation." in fig.texts[0].get_text()
 
 
+def test_plot_site_reallocation_matrix_changed_only_runs_and_renders(
+    population_impact_comparator,
+):
+    fig, ax = population_impact_comparator.plot_site_reallocation_matrix(
+        changed_only=True
+    )
+    assert fig is not None
+    fig.canvas.draw()
+
+
+def test_plot_site_reallocation_matrix_changed_only_matches_dataframe_method(
+    population_impact_comparator,
+):
+    expected = population_impact_comparator.site_reallocation_matrix(changed_only=True)
+    fig, ax = population_impact_comparator.plot_site_reallocation_matrix(
+        changed_only=True
+    )
+    ytick_labels = [t.get_text() for t in ax.get_yticklabels()]
+    assert ytick_labels == list(expected.index)
+
+
 def test_plot_population_impact_histogram_runs_and_renders(population_impact_comparator):
     fig, axis = population_impact_comparator.plot_population_impact_histogram()
     assert fig is not None
