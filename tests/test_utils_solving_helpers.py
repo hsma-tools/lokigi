@@ -120,7 +120,7 @@ def solution_df():
 
 def test_select_solution_by_site_indices_takes_priority(solution_df):
     result = _select_solution(
-        solution_df, rank_on="weighted_average", solution_rank=1, site_indices=[2, 1]
+        solution_df, sort_by="weighted_average", solution_rank=1, site_indices=[2, 1]
     )
     assert result.iloc[0]["site_names"] == ["B", "C"]
 
@@ -130,10 +130,10 @@ def test_select_solution_by_site_names_when_no_indices_given(solution_df):
     assert result.iloc[0]["site_indices"] == [0, 2]
 
 
-def test_select_solution_by_rank_on_and_solution_rank(solution_df):
-    """rank_on='weighted_average' should sort ascending first (5.0 is lowest,
+def test_select_solution_by_sort_by_and_solution_rank(solution_df):
+    """sort_by='weighted_average' should sort ascending first (5.0 is lowest,
     so solution_rank=1 after re-sorting is the row with weighted_average 5.0)."""
-    result = _select_solution(solution_df, rank_on="weighted_average", solution_rank=1)
+    result = _select_solution(solution_df, sort_by="weighted_average", solution_rank=1)
     assert result.iloc[0]["weighted_average"] == 5.0
 
 

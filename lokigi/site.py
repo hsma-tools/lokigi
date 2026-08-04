@@ -788,6 +788,23 @@ class SiteProblem(
             per equity band, or is NaN because its precondition wasn't met
             (e.g. `inter_tertile_ratio` without `add_equity_data()`) fails
             immediately rather than after a full solve.
+
+            With `search_strategy="greedy"`, prefer ranking on a metric that
+            responds smoothly as sites are added one at a time --
+            `weighted_average`/`unweighted_average` (sums that improve with
+            almost every added site) or a coverage proportion behave well.
+            A metric defined by a single worst-case region (`max`,
+            `max_increase`) can plateau across many candidate sites at each
+            greedy step -- e.g. on a 105-combination closure problem,
+            `max_increase` took only 14 distinct values -- so greedy has
+            little gradient to follow and effectively breaks ties
+            arbitrarily among sites that look identical at that step. This
+            is worse the larger the candidate pool relative to `p`, since
+            more candidates are competing for the same few distinct scores.
+            `search_strategy="brute-force"` or `"grasp"` don't have this
+            problem, since brute-force checks every combination exactly and
+            GRASP's diversity mechanism doesn't rely on a smooth per-step
+            gradient the way greedy's single best-next-site choice does.
         capacitated : bool, default False
             Whether to enforce site capacity constraints.
             *Note: Currently not implemented.*

@@ -655,7 +655,7 @@ class AccessibilityPlotMixin:
             method's docstring (`catchment_size`/`distance_decay` are
             mutually exclusive there too). On a `SiteSolutionSet`, this
             always scores `solution_rank=1` -- to plot a specific
-            `rank_on`/`solution_rank` solution, call
+            `sort_by`/`solution_rank` solution, call
             `two_step_floating_catchment(..., return_site_ratios=True)`
             yourself and pass the results in as `region_frame`/`site_frame`.
         interactive : bool, default False

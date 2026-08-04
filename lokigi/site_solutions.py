@@ -1828,7 +1828,7 @@ class SiteSolutionSet(
     Notes
     -----
     Solutions are typically pre-sorted before being passed to this class
-    (e.g., by objective value and tie-breakers). The optional ``rank_on``
+    (e.g., by objective value and tie-breakers). The optional ``sort_by``
     argument in methods allows overriding this ordering dynamically.
 
     The structure of ``solution_df`` is assumed to be consistent with the
@@ -2104,7 +2104,7 @@ Groups whose columns are genuinely absent from
         inplace : bool, default False
             If True (and `expand_dict_columns=True`), the expansion is also
             written back to `self.solution_df`, so it persists for
-            subsequent calls, plotting, `rank_on`, etc. Has no effect unless
+            subsequent calls, plotting, `sort_by`, etc. Has no effect unless
             `expand_dict_columns=True`, in which case a `UserWarning` is
             raised instead, since passing `inplace=True` alone does nothing
             and likely indicates the caller meant to also pass
@@ -2442,13 +2442,13 @@ Groups whose columns are genuinely absent from
 
         return summary.fillna(0)
 
-    def return_best_combination_details(self, rank_on=None, top_n=1):
+    def return_best_combination_details(self, sort_by=None, top_n=1):
         """
         Return details of the top-ranked solution(s).
 
         Parameters
         ----------
-        rank_on : str, optional
+        sort_by : str, optional
             Column name to rank the solutions by before selecting the top
             entries. If None, the existing order of ``solution_df``, which is
             based on the objective selected, is used.
@@ -2467,22 +2467,22 @@ Groups whose columns are genuinely absent from
         best: coverage proportions are ranked highest-first, and every other
         reported metric is a travel cost and is ranked lowest-first.
         """
-        if rank_on is not None:
+        if sort_by is not None:
             return (
-                _sort_solutions_by_metric(self.solution_df, rank_on)
+                _sort_solutions_by_metric(self.solution_df, sort_by)
                 .head(top_n)
                 .reset_index()
             )
         else:
             return self.solution_df.head(top_n).reset_index()
 
-    def return_best_combination_site_indices(self, rank_on=None):
+    def return_best_combination_site_indices(self, sort_by=None):
         """
         Return the site indices for the best-performing solution.
 
         Parameters
         ----------
-        rank_on : str, optional
+        sort_by : str, optional
             Column name to rank the solutions by. If provided, the solution
             with the BEST value in this column is selected -- the highest for
             coverage proportions, the lowest for travel-cost metrics.
@@ -2496,20 +2496,20 @@ Groups whose columns are genuinely absent from
             Typically a list or array of site indices.
 
         """
-        if rank_on is not None:
-            return _sort_solutions_by_metric(self.solution_df, rank_on)[
+        if sort_by is not None:
+            return _sort_solutions_by_metric(self.solution_df, sort_by)[
                 "site_indices"
             ].iloc[0]
         else:
             return self.solution_df["site_indices"].iloc[0]
 
-    def return_best_combination_site_names(self, rank_on=None):
+    def return_best_combination_site_names(self, sort_by=None):
         """
         Return the site names for the best-performing solution.
 
         Parameters
         ----------
-        rank_on : str, optional
+        sort_by : str, optional
             Column name to rank the solutions by. If provided, the solution
             with the BEST value in this column is selected -- the highest for
             coverage proportions, the lowest for travel-cost metrics.
@@ -2523,8 +2523,8 @@ Groups whose columns are genuinely absent from
             Typically a list or array of site names.
 
         """
-        if rank_on is not None:
-            return _sort_solutions_by_metric(self.solution_df, rank_on)[
+        if sort_by is not None:
+            return _sort_solutions_by_metric(self.solution_df, sort_by)[
                 "site_names"
             ].iloc[0]
         else:
@@ -2533,7 +2533,7 @@ Groups whose columns are genuinely absent from
     def site_allocation_summary(
         self,
         by="demand",
-        rank_on=None,
+        sort_by=None,
         solution_rank=1,
         site_names=None,
         site_indices=None,
@@ -2566,12 +2566,12 @@ Groups whose columns are genuinely absent from
             metrics (see `EvaluatedCombination.return_solution_metrics`):
             unqualified means demand-weighted. The two coincide when demand
             is uniform, including when `add_demand()` was never called.
-        rank_on : str, optional
+        sort_by : str, optional
         solution_rank : int, default 1
         site_names : list, optional
         site_indices : list, optional
             Solution selection, as in `plot_best_combination`. Priority is
-            site_indices > site_names > rank_on/solution_rank.
+            site_indices > site_names > sort_by/solution_rank.
         matrix : str, optional
             Label of a secondary travel matrix registered via
             `add_secondary_travel_matrix()`. Summarises allocation, and
@@ -2646,7 +2646,7 @@ Groups whose columns are genuinely absent from
 
         solution = _select_solution(
             self.solution_df,
-            rank_on=rank_on,
+            sort_by=sort_by,
             solution_rank=solution_rank,
             site_names=site_names,
             site_indices=site_indices,
@@ -2741,7 +2741,7 @@ Groups whose columns are genuinely absent from
         self,
         capacity_col=None,
         demand_to_capacity_rate=1.0,
-        rank_on=None,
+        sort_by=None,
         solution_rank=1,
         site_names=None,
         site_indices=None,
@@ -2779,12 +2779,12 @@ Groups whose columns are genuinely absent from
             site and region; it cannot yet vary by region (e.g. by age
             structure or deprivation), which would systematically
             understate load in demographics with higher real usage rates.
-        rank_on : str, optional
+        sort_by : str, optional
         solution_rank : int, default 1
         site_names : list, optional
         site_indices : list, optional
             Solution selection, as in `site_allocation_summary`. Priority
-            is site_indices > site_names > rank_on/solution_rank.
+            is site_indices > site_names > sort_by/solution_rank.
         matrix : str, optional
             Label of a secondary travel matrix registered via
             `add_secondary_travel_matrix()`. Passed through to
@@ -2936,7 +2936,7 @@ Groups whose columns are genuinely absent from
         _, _, _, _, suffix = self._resolve_travel_columns(matrix)
         selected_solution = _select_solution(
             self.solution_df,
-            rank_on=rank_on,
+            sort_by=sort_by,
             solution_rank=solution_rank,
             site_names=site_names,
             site_indices=site_indices,
@@ -2957,7 +2957,7 @@ Groups whose columns are genuinely absent from
 
         allocation = self.site_allocation_summary(
             by="demand",
-            rank_on=rank_on,
+            sort_by=sort_by,
             solution_rank=solution_rank,
             site_names=site_names,
             site_indices=site_indices,
@@ -3031,7 +3031,7 @@ Groups whose columns are genuinely absent from
         supply_col,
         catchment_size=None,
         distance_decay=None,
-        rank_on=None,
+        sort_by=None,
         solution_rank=1,
         site_names=None,
         site_indices=None,
@@ -3065,12 +3065,12 @@ Groups whose columns are genuinely absent from
         distance_decay : list of (float, float) or dict, optional
             Enhanced 2SFCA step-decay bands or a continuous decay kernel,
             forwarded as-is. See `SiteProblem.two_step_floating_catchment`.
-        rank_on : str, optional
+        sort_by : str, optional
         solution_rank : int, default 1
         site_names : list, optional
         site_indices : list, optional
             Solution selection, as in `site_allocation_summary`. Priority
-            is site_indices > site_names > rank_on/solution_rank.
+            is site_indices > site_names > sort_by/solution_rank.
         matrix : str, optional
             Label of a secondary travel matrix registered via
             `add_secondary_travel_matrix()`. Scores accessibility under
@@ -3105,7 +3105,7 @@ Groups whose columns are genuinely absent from
         """
         solution = _select_solution(
             self.solution_df,
-            rank_on=rank_on,
+            sort_by=sort_by,
             solution_rank=solution_rank,
             site_names=site_names,
             site_indices=site_indices,

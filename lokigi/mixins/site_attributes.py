@@ -1153,7 +1153,7 @@ class SiteAttributeMixin:
         `min_cost__public_transport`, `weighted_average__public_transport`)
         into every solution `solve()` produces, so it can be used directly in
         plots, `Metric(column=...)`, and post-hoc ranking
-        (`rank_on="max__public_transport"`) -- without needing to `.copy()`
+        (`sort_by="max__public_transport"`) -- without needing to `.copy()`
         the problem and solve it twice.
 
         Post-hoc ranking reorders whatever `solve()` already returned, so it
@@ -1416,10 +1416,11 @@ class SiteAttributeMixin:
         `proportion_within_coverage_threshold__<label>` metric columns --
         the two metrics that actually change with demand -- into every
         solution `solve()` produces, so it can be used directly in plots,
-        `Metric(column=...)`, ranking (`rank_on=
-        "weighted_average__future_demand"`, either post-hoc or passed to
-        `solve()` to search on it directly), or blended into the
-        optimisation objective via `weights={"future_demand": ...}`.
+        `Metric(column=...)`, ranking (`sort_by=
+        "weighted_average__future_demand"` post-hoc, or
+        `solve(rank_on="weighted_average__future_demand")` to search on it
+        directly), or blended into the optimisation objective via
+        `weights={"future_demand": ...}`.
 
         By default a secondary demand scenario only re-weights the primary
         travel matrix. Pass `also_weight_matrices` to additionally compute

@@ -864,7 +864,7 @@ def _is_maximise_metric(col):
     `demand_unchanged`/`regions_unchanged` are directionless (neither a
     higher nor lower count is inherently "better") and are treated as
     lower-is-better here purely by omission; they are not meaningful
-    `rank_on` targets either way.
+    `rank_on`/`sort_by` targets either way.
 
     Parameters
     ----------
@@ -915,12 +915,12 @@ def _add_rank_score_column(df, scorer, output_col=_RANK_SCORE_COL):
     return df, output_col
 
 
-def _sort_solutions_by_metric(solution_df, rank_on):
+def _sort_solutions_by_metric(solution_df, sort_by):
     """
-    Sort a solutions dataframe so the BEST solution for `rank_on` is first.
+    Sort a solutions dataframe so the BEST solution for `sort_by` is first.
 
-    Every `rank_on` call site used to sort with a bare
-    `solution_df.sort_values(rank_on)`, i.e. always ascending. That is right
+    Every `sort_by` call site used to sort with a bare
+    `solution_df.sort_values(sort_by)`, i.e. always ascending. That is right
     for the travel-cost metrics but backwards for the coverage proportions,
     where higher is better -- so asking for the best solution by coverage
     returned the worst-covering one. Direction is resolved per column by
@@ -929,8 +929,8 @@ def _sort_solutions_by_metric(solution_df, rank_on):
     Parameters
     ----------
     solution_df : pandas.DataFrame
-        A solutions dataframe (or any frame containing `rank_on`).
-    rank_on : str or sequence of str
+        A solutions dataframe (or any frame containing `sort_by`).
+    sort_by : str or sequence of str
         Name of the metric column to rank by, or several for a primary
         metric plus tie-breakers. Direction is resolved per column, so a
         coverage metric can be tie-broken by a travel cost and each is still
@@ -943,7 +943,7 @@ def _sort_solutions_by_metric(solution_df, rank_on):
 
     Notes
     -----
-    `kind="mergesort"` is a stable sort, so solutions tied on `rank_on` keep
+    `kind="mergesort"` is a stable sort, so solutions tied on `sort_by` keep
     the relative order they already had rather than being reshuffled
     arbitrarily. Ties are routine here -- on the sample Brighton problem
     `max` takes only 5 distinct values across 15 candidate combinations --
@@ -956,7 +956,7 @@ def _sort_solutions_by_metric(solution_df, rank_on):
     unconditionally is therefore belt-and-braces for the multi-column case,
     and load-bearing for the single-column one.
     """
-    columns = [rank_on] if isinstance(rank_on, str) else list(rank_on)
+    columns = [sort_by] if isinstance(sort_by, str) else list(sort_by)
     return solution_df.sort_values(
         columns,
         ascending=[not _is_maximise_metric(col) for col in columns],
@@ -1271,12 +1271,12 @@ def _add_rank_column(df, score_col, tiebreaker_col, ascending=True):
 
 
 def _select_solution(
-    solution_df, rank_on=None, solution_rank=1, site_names=None, site_indices=None
+    solution_df, sort_by=None, solution_rank=1, site_names=None, site_indices=None
 ):
     """
     Select a single solution from solution_df based on provided criteria.
 
-    Priority: site_indices > site_names > rank_on/solution_rank
+    Priority: site_indices > site_names > sort_by/solution_rank
 
     Returns
     -------
@@ -1309,8 +1309,8 @@ def _select_solution(
         return filtered.head(1).reset_index()
 
     # Priority 3: rank-based selection
-    if rank_on is not None:
-        sorted_df = _sort_solutions_by_metric(solution_df, rank_on)
+    if sort_by is not None:
+        sorted_df = _sort_solutions_by_metric(solution_df, sort_by)
     else:
         sorted_df = solution_df
 

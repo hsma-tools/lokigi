@@ -984,7 +984,7 @@
       12.666667
     ]
   ],
-  "test_backtest_rank_on_ordering_brighton_mclp": [
+  "test_backtest_sort_by_ordering_brighton_mclp": [
     [
       "proportion_within_coverage_threshold",
       [
@@ -1491,7 +1491,7 @@
       ]
     ]
   ],
-  "test_backtest_rank_on_ordering_with_secondary_matrix": [
+  "test_backtest_sort_by_ordering_with_secondary_matrix": [
     [
       "proportion_within_coverage_threshold__public_transport",
       [

@@ -289,8 +289,8 @@ def _direction_fingerprint(result):
     ]
 
 
-def _rank_on_fingerprint(result, rank_on_cols):
-    """Snapshot of the order `rank_on` actually puts solutions in, driven
+def _sort_by_fingerprint(result, sort_by_cols):
+    """Snapshot of the order `sort_by` actually puts solutions in, driven
     through the public accessor rather than the sort helper directly.
 
     For each ranking column: the distinct metric values in ranked order,
@@ -306,9 +306,9 @@ def _rank_on_fingerprint(result, rank_on_cols):
     platforms and make this test flaky for reasons unrelated to direction.
     """
     entries = []
-    for col in rank_on_cols:
+    for col in sort_by_cols:
         ordered = result.return_best_combination_details(
-            rank_on=col, top_n=len(result.solution_df)
+            sort_by=col, top_n=len(result.solution_df)
         )
         levels = []
         for value, group in ordered.groupby(col, sort=False, dropna=False):
@@ -319,8 +319,8 @@ def _rank_on_fingerprint(result, rank_on_cols):
     return entries
 
 
-def test_backtest_rank_on_ordering_brighton_mclp(brighton_problem, assert_backtest):
-    """Pins `rank_on` ordering on real data for a coverage metric, its
+def test_backtest_sort_by_ordering_brighton_mclp(brighton_problem, assert_backtest):
+    """Pins `sort_by` ordering on real data for a coverage metric, its
     regions counterpart, and two travel costs as controls -- the costs must
     stay ascending while the coverage metrics run highest-first.
 
@@ -336,9 +336,9 @@ def test_backtest_rank_on_ordering_brighton_mclp(brighton_problem, assert_backte
         threshold_for_coverage=8,
     )
     assert_backtest(
-        _rank_on_fingerprint(
+        _sort_by_fingerprint(
             result,
-            rank_on_cols=(
+            sort_by_cols=(
                 "proportion_within_coverage_threshold",
                 "proportion_regions_within_coverage_threshold",
                 "max",
@@ -348,7 +348,7 @@ def test_backtest_rank_on_ordering_brighton_mclp(brighton_problem, assert_backte
     )
 
 
-def test_backtest_rank_on_ordering_with_secondary_matrix(
+def test_backtest_sort_by_ordering_with_secondary_matrix(
     loaded_problem_with_equity_and_secondary_matrix, assert_backtest
 ):
     """The same contract for `__<label>` secondary-matrix columns, which are
@@ -361,9 +361,9 @@ def test_backtest_rank_on_ordering_with_secondary_matrix(
         threshold_for_coverage=15,
     )
     assert_backtest(
-        _rank_on_fingerprint(
+        _sort_by_fingerprint(
             result,
-            rank_on_cols=(
+            sort_by_cols=(
                 "proportion_within_coverage_threshold__public_transport",
                 "proportion_regions_within_coverage_threshold__public_transport",
                 "max__public_transport",

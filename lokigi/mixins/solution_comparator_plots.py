@@ -63,8 +63,8 @@ class SolutionComparatorPlotsMixin:
 
         # Compare ranked solutions
         fig, axes = comparator.plot_comparison(
-            config_1={'solution_rank': 2, 'rank_on': 'weighted_average'},
-            config_2={'solution_rank': 2, 'rank_on': 'weighted_average'},
+            config_1={'solution_rank': 2, 'sort_by': 'weighted_average'},
+            config_2={'solution_rank': 2, 'sort_by': 'weighted_average'},
             title='2nd Best Solutions Comparison'
         )
         """

@@ -46,7 +46,7 @@ class NonMapPlotsMixin:
         y_axis="weighted_average",
         n_best=10,
         interactive=True,
-        rank_on=None,
+        sort_by=None,
         title="default",
         x_axis_label="default",
         y_axis_label="default",
@@ -75,7 +75,7 @@ class NonMapPlotsMixin:
         interactive : bool, default=True
             If True, generates an interactive Plotly bar chart. If False,
             generates a static Matplotlib bar chart.
-        rank_on : str, optional
+        sort_by : str, optional
             Column name used to rank solutions. If provided, the best
             solutions by this metric are selected -- highest-first for
             coverage proportions, lowest-first for travel costs.
@@ -102,11 +102,11 @@ class NonMapPlotsMixin:
         When ``interactive=False``, a Matplotlib figure is created and returned.
 
         The method assumes that lower values of the ranking metric correspond
-        to better solutions when ``rank_on`` is specified.
+        to better solutions when ``sort_by`` is specified.
         """
 
-        if rank_on is not None:
-            df = _sort_solutions_by_metric(self.solution_df, rank_on)
+        if sort_by is not None:
+            df = _sort_solutions_by_metric(self.solution_df, sort_by)
         else:
             df = self.solution_df
         if n_best is not None:
@@ -135,8 +135,8 @@ class NonMapPlotsMixin:
         if interactive:
             df = df.copy()
 
-            if rank_on is not None:
-                title = f"Top {n_best} Solutions by {rank_on.replace('_', ' ').title()}"
+            if sort_by is not None:
+                title = f"Top {n_best} Solutions by {sort_by.replace('_', ' ').title()}"
             else:
                 title = f"Top {n_best} Solutions: {self.objectives.replace('_', ' ').title()}"
 
@@ -168,9 +168,9 @@ class NonMapPlotsMixin:
             )
 
             if title == "default":
-                if rank_on is not None:
+                if sort_by is not None:
                     ax.set_title(
-                        f"Top {n_best} Solutions by {rank_on.replace('_', ' ').title()}"
+                        f"Top {n_best} Solutions by {sort_by.replace('_', ' ').title()}"
                     )
                 else:
                     ax.set_title(
@@ -195,7 +195,7 @@ class NonMapPlotsMixin:
         self,
         by="demand",
         metric="proportion",
-        rank_on=None,
+        sort_by=None,
         solution_rank=1,
         site_names=None,
         site_indices=None,
@@ -218,7 +218,7 @@ class NonMapPlotsMixin:
 
         Parameters
         ----------
-        by, rank_on, solution_rank, site_names, site_indices, matrix, demand
+        by, sort_by, solution_rank, site_names, site_indices, matrix, demand
             Passed straight through to `site_allocation_summary()`.
         metric : {"proportion", "allocated_demand", "n_regions", "average_travel_cost"}, default "proportion"
             Which `site_allocation_summary()` column to plot. "proportion"
@@ -296,7 +296,7 @@ class NonMapPlotsMixin:
 
         selected_solution = _select_solution(
             self.solution_df,
-            rank_on=rank_on,
+            sort_by=sort_by,
             solution_rank=solution_rank,
             site_names=site_names,
             site_indices=site_indices,
@@ -307,7 +307,7 @@ class NonMapPlotsMixin:
 
         summary = self.site_allocation_summary(
             by=by,
-            rank_on=rank_on,
+            sort_by=sort_by,
             solution_rank=solution_rank,
             site_names=site_names,
             site_indices=site_indices,
@@ -443,7 +443,7 @@ class NonMapPlotsMixin:
         capacity_df=None,
         capacity_col=None,
         demand_to_capacity_rate=1.0,
-        rank_on=None,
+        sort_by=None,
         solution_rank=1,
         site_names=None,
         site_indices=None,
@@ -486,7 +486,7 @@ class NonMapPlotsMixin:
             selection arguments below are ignored entirely -- the frame is
             used exactly as supplied, matching
             `plot_accessibility(region_frame=...)`.
-        capacity_col, demand_to_capacity_rate, rank_on, solution_rank,
+        capacity_col, demand_to_capacity_rate, sort_by, solution_rank,
         site_names, site_indices, matrix, demand
             Passed straight through to `site_capacity_summary()` when
             `capacity_df` is not supplied.
@@ -557,7 +557,7 @@ class NonMapPlotsMixin:
         _, _, _, _, suffix = self._resolve_travel_columns(matrix)
         selected_solution = _select_solution(
             self.solution_df,
-            rank_on=rank_on,
+            sort_by=sort_by,
             solution_rank=solution_rank,
             site_names=site_names,
             site_indices=site_indices,
@@ -570,7 +570,7 @@ class NonMapPlotsMixin:
             capacity_df = self.site_capacity_summary(
                 capacity_col=capacity_col,
                 demand_to_capacity_rate=demand_to_capacity_rate,
-                rank_on=rank_on,
+                sort_by=sort_by,
                 solution_rank=solution_rank,
                 site_names=site_names,
                 site_indices=site_indices,
@@ -730,7 +730,7 @@ class MapsMixin:
         capacity_df=None,
         capacity_col=None,
         demand_to_capacity_rate=1.0,
-        rank_on=None,
+        sort_by=None,
         solution_rank=1,
         site_names=None,
         site_indices=None,
@@ -768,7 +768,7 @@ class MapsMixin:
             `capacity_col`/`demand_to_capacity_rate`/the selection
             arguments below are ignored, matching
             `plot_site_utilisation(utilisation_df=...)`.
-        capacity_col, demand_to_capacity_rate, rank_on, solution_rank,
+        capacity_col, demand_to_capacity_rate, sort_by, solution_rank,
         site_names, site_indices, matrix, demand
             Passed straight through to `site_capacity_summary()` when
             `capacity_df` is not supplied.
@@ -843,7 +843,7 @@ class MapsMixin:
             capacity_df = self.site_capacity_summary(
                 capacity_col=capacity_col,
                 demand_to_capacity_rate=demand_to_capacity_rate,
-                rank_on=rank_on,
+                sort_by=sort_by,
                 solution_rank=solution_rank,
                 site_names=site_names,
                 site_indices=site_indices,
@@ -1303,7 +1303,7 @@ class MapsMixin:
     def plot_best_combination(
         self,
         ax=None,
-        rank_on=None,
+        sort_by=None,
         solution_rank=1,
         site_names=None,
         site_indices=None,
@@ -1337,7 +1337,7 @@ class MapsMixin:
 
         Parameters
         ----------
-        rank_on : str, optional
+        sort_by : str, optional
             Column name used to rank solutions. If provided, solutions are ranked
             best-first by this column -- highest for coverage proportions, lowest
             for travel costs. Ignored if site_names or site_indices is provided.
@@ -1346,11 +1346,11 @@ class MapsMixin:
             Ignored if site_names or site_indices is provided.
         site_names : list of str, optional
             Specific site names to plot. If provided, filters solution_df to the
-            row containing this exact combination of sites. Overrides rank_on and
+            row containing this exact combination of sites. Overrides sort_by and
             solution_rank.
         site_indices : list of int or np.ndarray, optional
             Specific site indices to plot. If provided, filters solution_df to the
-            row containing this exact combination. Overrides rank_on, solution_rank,
+            row containing this exact combination. Overrides sort_by, solution_rank,
             and site_names.
         title : str or None, default="default"
             Title for the plot. If "default", an automatic title is generated
@@ -1448,9 +1448,9 @@ class MapsMixin:
                 "Please run add_region_geometry_layer() first."
             )
 
-        if rank_on is not None:
+        if sort_by is not None:
             solution = (
-                _sort_solutions_by_metric(self.solution_df, rank_on)
+                _sort_solutions_by_metric(self.solution_df, sort_by)
                 .head(1)
                 .reset_index()
             )
@@ -1460,7 +1460,7 @@ class MapsMixin:
         # Solution selection logic
         solution = _select_solution(
             self.solution_df,
-            rank_on=rank_on,
+            sort_by=sort_by,
             solution_rank=solution_rank,
             site_names=site_names,
             site_indices=site_indices,
@@ -1621,7 +1621,7 @@ class MapsMixin:
     def plot_n_best_combinations(
         self,
         n_best=10,
-        rank_on=None,
+        sort_by=None,
         title=None,
         subplot_title="default",
         show_all_locations=True,
@@ -1655,7 +1655,7 @@ class MapsMixin:
         n_best : int, default=10
             Number of top solutions to plot. If greater than the number of
             available solutions, all solutions are plotted.
-        rank_on : str, optional
+        sort_by : str, optional
             Column name used to rank solutions. If provided, the best
             ``n_best`` solutions by this metric are selected -- highest-first
             for coverage proportions, lowest-first for travel costs.
@@ -1793,9 +1793,9 @@ class MapsMixin:
             axs = [axs]  # Single subplot case
 
         # Sort and select top solutions
-        if rank_on is not None:
+        if sort_by is not None:
             sorted_df = (
-                _sort_solutions_by_metric(self.solution_df, rank_on)
+                _sort_solutions_by_metric(self.solution_df, sort_by)
                 .reset_index()
                 .head(n_best)
             )
@@ -2031,7 +2031,7 @@ class MapsMixin:
             - 'solution_rank': int
             - 'site_names': list of str
             - 'site_indices': list of int or np.ndarray
-            - 'rank_on': str
+            - 'sort_by': str
             - 'title': str (subplot title)
             - Any other plot_best_combination() parameters
         figsize : tuple, default=(16, 8)
@@ -2065,9 +2065,9 @@ class MapsMixin:
 
         # Three-way comparison with custom ranking
         fig, axes = solver.plot_solution_comparison([
-            {'solution_rank': 1, 'rank_on': 'weighted_average'},
-            {'solution_rank': 1, 'rank_on': 'max'},
-            {'solution_rank': 1, 'rank_on': 'proportion_within_coverage_threshold'}
+            {'solution_rank': 1, 'sort_by': 'weighted_average'},
+            {'solution_rank': 1, 'sort_by': 'max'},
+            {'solution_rank': 1, 'sort_by': 'proportion_within_coverage_threshold'}
         ], figsize=(24, 8))
         """
         n_plots = len(solutions_config)
@@ -2090,7 +2090,7 @@ class MapsMixin:
             # Get the solution based on config
             solution = _select_solution(
                 self.solution_df,
-                rank_on=config.get("rank_on"),
+                sort_by=config.get("sort_by"),
                 solution_rank=config.get("solution_rank", 1),
                 site_names=config.get("site_names"),
                 site_indices=config.get("site_indices"),
@@ -2272,7 +2272,7 @@ class DistributionPlotsMixin:
         self,
         top_n=1,
         bottom_n=None,
-        rank_on=None,
+        sort_by=None,
         secondary_ranking="max",
         title="default",
         height=None,
@@ -2292,19 +2292,19 @@ class DistributionPlotsMixin:
         Parameters
         ----------
         top_n : int, optional, default=1
-            Number of top-ranked solutions to include. If ``rank_on`` is provided,
+            Number of top-ranked solutions to include. If ``sort_by`` is provided,
             solutions are sorted before selection; otherwise, the existing order,
             which is based on the objective chosen for solving, is used.
         bottom_n : int, optional
             Number of bottom-ranked solutions to include. If provided, these are
             appended to the selected top solutions.
-        rank_on : str, optional
+        sort_by : str, optional
             Column name used to rank solutions, best-first (highest for coverage
             proportions, lowest for travel costs), with ``secondary_ranking`` as
             a tie-breaker. Each column's direction is resolved independently.
             If None, no additional sorting is applied.
         secondary_ranking : str, default="max"
-            Secondary column used for tie-breaking when sorting by ``rank_on``.
+            Secondary column used for tie-breaking when sorting by ``sort_by``.
         title : str, default="default"
             Title for the plot. If "default", an automatic title is generated
             based on ranking and objectives.
@@ -2356,9 +2356,9 @@ class DistributionPlotsMixin:
         max_col = f"max{suffix}"
         regions_unreachable_col = f"regions_unreachable{suffix}"
 
-        if rank_on is not None:
+        if sort_by is not None:
             solutions_sorted = _sort_solutions_by_metric(
-                self.solution_df, [rank_on, secondary_ranking]
+                self.solution_df, [sort_by, secondary_ranking]
             ).reset_index(drop=True)
         else:
             solutions_sorted = self.solution_df.reset_index(drop=True)
@@ -2556,9 +2556,9 @@ class DistributionPlotsMixin:
             else:
                 title_str = ""
 
-            if rank_on is not None:
+            if sort_by is not None:
                 fig.update_layout(
-                    title=f"Distribution of Travel Times ({title_str} Solutions by {rank_on.replace('_', ' ').title()})"
+                    title=f"Distribution of Travel Times ({title_str} Solutions by {sort_by.replace('_', ' ').title()})"
                 )
             else:
                 fig.update_layout(
@@ -2586,7 +2586,7 @@ class EquityPlotsMixin:
         title="default",
         show_average=True,
         plot_solution_metric_as_line="weighted_average",
-        rank_on=None,
+        sort_by=None,
         ax=None,
         colour_mode: Optional[Literal["gradient", "above_below_avg"]] = None,
         show_site_names=False,
@@ -2611,7 +2611,7 @@ class EquityPlotsMixin:
         show_average : bool, default=True
             If True, display the overall average of ``min_cost`` as a horizontal
             dotted line on the plot.
-        rank_on : str or None, optional
+        sort_by : str or None, optional
             Column name used to rank solutions before selecting the specified
             ``solution_rank``. If None, the existing order is used.
         interactive : bool, default=True
@@ -2660,8 +2660,8 @@ class EquityPlotsMixin:
             or self.site_problem._equity_data_equity_col
         )
 
-        if rank_on is not None:
-            plotting_row = _sort_solutions_by_metric(self.solution_df, rank_on).iloc[
+        if sort_by is not None:
+            plotting_row = _sort_solutions_by_metric(self.solution_df, sort_by).iloc[
                 solution_rank - 1
             ]
         else:
@@ -2826,7 +2826,7 @@ class EquityPlotsMixin:
     def plot_top_n_solution_equity(
         self,
         n=4,
-        rank_on=None,
+        sort_by=None,
         show_average=True,
         plot_solution_metric_as_line="weighted_average",
         colour_mode: Optional[Literal["gradient", "above_below_avg"]] = None,
@@ -2847,7 +2847,7 @@ class EquityPlotsMixin:
         ----------
         n : int, default=4
             Number of top-ranked solutions to plot.
-        rank_on : str or None, optional
+        sort_by : str or None, optional
             Column name used to rank solutions before selecting the top ``n``.
             If None, the existing order is used.
         show_average : bool, default=True
@@ -2890,7 +2890,7 @@ class EquityPlotsMixin:
             self.check_solution_equity(
                 solution_rank=i + 1,
                 return_plot=True,
-                rank_on=rank_on,
+                sort_by=sort_by,
                 interactive=False,
                 show_average=show_average,
                 plot_solution_metric_as_line=plot_solution_metric_as_line,
@@ -2914,7 +2914,7 @@ class EquityPlotsMixin:
     def plot_combination_by_equity(
         self,
         solution_rank=1,
-        rank_on=None,
+        sort_by=None,
         ncols=3,
         cmap="Blues",
         share_colorbar=True,
@@ -2980,8 +2980,8 @@ class EquityPlotsMixin:
         axes = axes.flatten()
 
         # ---- Select solution row ----
-        if rank_on is not None:
-            plotting_row = _sort_solutions_by_metric(self.solution_df, rank_on).iloc[
+        if sort_by is not None:
+            plotting_row = _sort_solutions_by_metric(self.solution_df, sort_by).iloc[
                 solution_rank - 1
             ]
         else:

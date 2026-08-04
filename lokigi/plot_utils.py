@@ -170,7 +170,7 @@ def plot_solution_sets_comparison(
         - 'solution_rank': int
         - 'site_names': list of str
         - 'site_indices': list of int or np.ndarray
-        - 'rank_on': str
+        - 'sort_by': str
         - 'title': str (subplot title)
         - Any other plot_best_combination() parameters
     figsize : tuple, default=(16, 8)
@@ -254,7 +254,7 @@ def plot_solution_sets_comparison(
         plot_kwargs = {**shared_plot_kwargs, **config}
         solution = _select_solution(
             solution_set.solution_df,
-            rank_on=config.get("rank_on"),
+            sort_by=config.get("sort_by"),
             solution_rank=config.get("solution_rank", 1),
             site_names=config.get("site_names"),
             site_indices=config.get("site_indices"),

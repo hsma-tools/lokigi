@@ -3,7 +3,7 @@
 Dict-valued columns (`weighted_by_equity_group`, `coverage_by_equity_group`,
 etc., and their `__<label>` secondary-matrix equivalents when
 `full_secondary_metrics=True`) are awkward to consume directly -- e.g. they
-can't be plotted or fed to `rank_on`/`Metric`. `expand_dict_columns`
+can't be plotted or fed to `sort_by`/`rank_on`/`Metric`. `expand_dict_columns`
 flattens each one into `<column>__<key>` columns; `inplace` controls whether
 that flattening is written back to `solution_df` or only returned.
 
