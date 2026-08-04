@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.38">
+<meta name="generator" content="quarto-1.10.18">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -12,10 +12,13 @@
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
 */
-code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
-div.columns{display: flex; gap: min(4vw, 1.5em);}
-div.column{flex: auto; overflow-x: auto;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
 div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 ul.task-list{list-style: none;}
 ul.task-list li input[type="checkbox"] {
@@ -74,12 +77,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-b85bc7c33db8c58e0ec93c3465666fed.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-0d210a0509ecf4a0ffc439124ba9b804.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-0b786126e8e87865814929786bd75bd9.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-e9116e874763087f90fa188e1bb6cd75.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-32996061cbfd2997963ec587d192a074.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -353,7 +356,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    also_weight_matrices<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Register an additional demand scenario (e.g.&nbsp;projected future demand alongside a primary current-demand dataset).</p>
-<p>Unlike <code>add_demand()</code>, a secondary demand scenario never drives the optimisation objective – the primary demand set via <code>add_demand()</code> (or the equal-demand fallback) always drives site selection and search/pruning. Instead, each registered secondary demand scenario contributes its own <code>weighted_average__&lt;label&gt;</code> and <code>proportion_within_coverage_threshold__&lt;label&gt;</code> metric columns – the two metrics that actually change with demand – into every solution <code>solve()</code> produces, so it can be used directly in plots, <code>ParetoMetric(column=...)</code>, post-hoc ranking (<code>rank_on="weighted_average__future_demand"</code>), or blended into the optimisation objective via <code>weights={"future_demand": ...}</code>.</p>
+<p>Unlike <code>add_demand()</code>, a secondary demand scenario never drives the optimisation objective – the primary demand set via <code>add_demand()</code> (or the equal-demand fallback) always drives site selection and search/pruning. Instead, each registered secondary demand scenario contributes its own <code>weighted_average__&lt;label&gt;</code> and <code>proportion_within_coverage_threshold__&lt;label&gt;</code> metric columns – the two metrics that actually change with demand – into every solution <code>solve()</code> produces, so it can be used directly in plots, <code>Metric(column=...)</code>, ranking (<code>sort_by= "weighted_average__future_demand"</code> post-hoc, or <code>solve(rank_on="weighted_average__future_demand")</code> to search on it directly), or blended into the optimisation objective via <code>weights={"future_demand": ...}</code>.</p>
 <p>By default a secondary demand scenario only re-weights the primary travel matrix. Pass <code>also_weight_matrices</code> to additionally compute <code>weighted_average__&lt;travel_label&gt;__&lt;label&gt;</code> / <code>proportion_within_coverage_threshold__&lt;travel_label&gt;__&lt;label&gt;</code> against one or more registered secondary travel matrices – this is opt-in because the combination of secondary travel and secondary demand matrices grows the output multiplicatively.</p>
 <p>You may call this method multiple times with different <code>label</code>s to register as many demand scenarios as needed. Each one adds approximately the cost of one extra weighted-average/coverage pass over the primary matrix (plus one per named <code>also_weight_matrices</code> entry), so <code>solve()</code> time scales close to linearly with the number of secondary demand scenarios registered.</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">

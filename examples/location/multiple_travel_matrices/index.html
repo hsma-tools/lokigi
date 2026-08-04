@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.38">
+<meta name="generator" content="quarto-1.10.18">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -12,10 +12,13 @@
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
 */
-code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
-div.columns{display: flex; gap: min(4vw, 1.5em);}
-div.column{flex: auto; overflow-x: auto;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
 div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 ul.task-list{list-style: none;}
 ul.task-list li input[type="checkbox"] {
@@ -74,12 +77,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../../../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-dark-b85bc7c33db8c58e0ec93c3465666fed.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../../site_libs/bootstrap/bootstrap-0d210a0509ecf4a0ffc439124ba9b804.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../../../site_libs/bootstrap/bootstrap-dark-0b786126e8e87865814929786bd75bd9.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../../../site_libs/bootstrap/bootstrap-e9116e874763087f90fa188e1bb6cd75.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../../site_libs/bootstrap/bootstrap-dark-32996061cbfd2997963ec587d192a074.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -363,6 +366,10 @@ require(['plotly'], function(Plotly) {
   <li><a href="#plotting-a-secondary-matrix-directly" id="toc-plotting-a-secondary-matrix-directly" class="nav-link" data-scroll-target="#plotting-a-secondary-matrix-directly">Plotting a secondary matrix directly</a></li>
   <li><a href="#maps" id="toc-maps" class="nav-link" data-scroll-target="#maps">Maps</a></li>
   <li><a href="#ranking-on-a-secondary-matrix" id="toc-ranking-on-a-secondary-matrix" class="nav-link" data-scroll-target="#ranking-on-a-secondary-matrix">Ranking on a secondary matrix</a></li>
+  <li><a href="#handling-genuinely-unreachable-journeys" id="toc-handling-genuinely-unreachable-journeys" class="nav-link" data-scroll-target="#handling-genuinely-unreachable-journeys">Handling genuinely unreachable journeys</a>
+  <ul class="collapse">
+  <li><a href="#the-fix-allow_missing-and-treat_as_missing" id="toc-the-fix-allow_missing-and-treat_as_missing" class="nav-link" data-scroll-target="#the-fix-allow_missing-and-treat_as_missing">The fix: <code>allow_missing</code> and <code>treat_as_missing</code></a></li>
+  </ul></li>
   <li><a href="#which-approach-should-i-use" id="toc-which-approach-should-i-use" class="nav-link" data-scroll-target="#which-approach-should-i-use">Which approach should I use?</a></li>
   </ul>
 </nav>
@@ -393,12 +400,12 @@ require(['plotly'], function(Plotly) {
 <p>Sometimes we want to weigh up more than one travel mode at once – for example, how a set of sites performs for car travel <em>and</em> for public transport, in a single ranked list of candidate solutions.</p>
 <p><a href="../../../examples/location/comparing_solutions/index.html">The ‘comparing solutions’ example</a> shows how to do this by solving the same problem twice (once per mode, via <code>problem.copy()</code>) and then reconciling the two independently-ranked <code>SiteSolutionSet</code>s with <code>SolutionComparator</code>. That approach is the right one when the two modes genuinely need separate optimisations – but the two solution sets are ranked over different orderings, and <code>SolutionComparator.find_balanced_solution()</code> can only reconcile them heuristically, by scoring how much their selected sites overlap.</p>
 <p>This example instead registers public transport as a <strong>secondary travel matrix</strong> on a single problem. The primary matrix (car) still drives which combinations of sites get searched and pruned, but every solution <code>solve()</code> returns also carries public transport metrics alongside the car ones – so we get one ranked list, with both modes’ numbers side by side, ready to trade off directly with a Pareto front.</p>
-<div id="b8a18235" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-20T16:04:40.961642Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-20T16:04:40.961431Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-20T16:04:43.431247Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-20T16:04:43.430552Z&quot;}}" data-execution_count="1">
+<div id="b8a18235" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:44:37.628186Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:44:37.628045Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:44:40.225531Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:44:40.224616Z&quot;}}" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.site <span class="im">import</span> SiteProblem</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.multiobjective <span class="im">import</span> ParetoMetric</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.multiobjective <span class="im">import</span> Metric</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>As with the comparing solutions example, we’ll use the Devon minor injury unit sites, but this time we only need a single <code>SiteProblem</code> – we don’t need to <code>.copy()</code> it per mode.</p>
-<div id="a701fcd5" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-20T16:04:43.432903Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-20T16:04:43.432592Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-20T16:04:50.028398Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-20T16:04:50.027543Z&quot;}}" data-execution_count="2">
+<div id="a701fcd5" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:44:40.228779Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:44:40.228470Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:44:44.316336Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:44:44.315746Z&quot;}}" data-execution_count="2">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>problem <span class="op">=</span> SiteProblem()</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>problem.add_sites(</span>
@@ -412,7 +419,7 @@ require(['plotly'], function(Plotly) {
 <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Now we add our <strong>primary</strong> travel matrix – car – exactly as usual, via <code>add_travel_matrix()</code>. This is the matrix that <code>solve()</code> will optimise against.</p>
-<div id="2c1369ea" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-20T16:04:50.030198Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-20T16:04:50.029944Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-20T16:04:50.034571Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-20T16:04:50.034017Z&quot;}}" data-execution_count="3">
+<div id="2c1369ea" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:44:44.318484Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:44:44.318269Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:44:44.324429Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:44:44.323865Z&quot;}}" data-execution_count="3">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>problem.add_travel_matrix(</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    travel_matrix_df<span class="op">=</span><span class="st">"../../../sample_data/devon_miu_travel_matrix.csv"</span>,</span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    source_col<span class="op">=</span><span class="st">"from_id"</span>,</span>
@@ -421,7 +428,7 @@ require(['plotly'], function(Plotly) {
 </div>
 <p>Then we register public transport as a <strong>secondary</strong> travel matrix via <code>add_secondary_travel_matrix()</code>. It takes the same <code>travel_matrix_df</code>/<code>source_col</code>/unit arguments as <code>add_travel_matrix()</code>, plus a required <code>label</code> (used to name every metric column this matrix contributes) and an optional per-matrix <code>threshold_for_coverage</code> – public transport journeys are typically slower, so we’ll use a more generous 60-minute threshold here, independent of whatever threshold we pass to <code>solve()</code> for the primary (car) matrix.</p>
 <p>You can register as many secondary matrices as you like this way – each one just needs its own unique <code>label</code>.</p>
-<div id="acf35d62" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-20T16:04:50.036053Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-20T16:04:50.035842Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-20T16:04:50.040515Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-20T16:04:50.039482Z&quot;}}" data-execution_count="4">
+<div id="acf35d62" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:44:44.326034Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:44:44.325915Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:44:44.339827Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:44:44.339252Z&quot;}}" data-execution_count="4">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>problem.add_secondary_travel_matrix(</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    travel_matrix_df<span class="op">=</span><span class="st">"../../../sample_data/devon_miu_travel_matrix_public_transport_extended.csv"</span>,</span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    source_col<span class="op">=</span><span class="st">"from_id"</span>,</span>
@@ -431,31 +438,37 @@ require(['plotly'], function(Plotly) {
 <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Now we solve <strong>once</strong>. The <code>threshold_for_coverage=20</code> here only applies to the primary (car) matrix, since public transport already has its own threshold of 60 minutes set at registration time above.</p>
-<div id="7a6c5a70" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-20T16:04:50.042083Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-20T16:04:50.041851Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-20T16:04:57.369254Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-20T16:04:57.368783Z&quot;}}" data-execution_count="5">
+<div id="7a6c5a70" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:44:44.341637Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:44:44.341510Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:44:54.584684Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:44:54.583899Z&quot;}}" data-execution_count="5">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>solution <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">4</span>, threshold_for_coverage<span class="op">=</span><span class="dv">20</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stderr">
-<pre><code>/__w/lokigi/lokigi/lokigi/site.py:757: UserWarning:
+<pre><code>/__w/lokigi/lokigi/lokigi/site.py:1177: UserWarning:
 
 No demand data was provided. Demand from all regions has been assumed to be equal.If you wish to override this, run .add_demand() to add your site dataframe before running .solve() again.You can use the .show_demand_format() to see the expected format beforehand.
 </code></pre>
 </div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"71d0918eb9294589ac62d086f62081ef","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+{"model_id":"213f3133431e4f769eabfc2e099f16a6","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
 </script>
 </div>
 </div>
 <p>Let’s look at the column names now available. Alongside the usual car-based metrics (<code>weighted_average</code>, <code>max</code>, <code>proportion_within_coverage_threshold</code>, …), every one of those core metrics now also has a <code>public_transport</code>-suffixed sibling.</p>
-<div id="93de806e" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-20T16:04:57.371173Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-20T16:04:57.370929Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-20T16:04:57.373961Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-20T16:04:57.373418Z&quot;}}" data-execution_count="6">
+<div id="93de806e" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:44:54.586461Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:44:54.586243Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:44:54.589421Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:44:54.588795Z&quot;}}" data-execution_count="6">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>solution.show_solutions_colnames()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Index(['solution_rank', 'site_names', 'site_indices', 'coverage_threshold',
-       'weighted_average', 'unweighted_average', '90th_percentile', 'max',
-       'total_cost', 'proportion_within_coverage_threshold',
+<pre><code>Index(['solution_rank', 'site_names', 'site_indices', 'unselected_site_names',
+       'coverage_threshold', 'weighted_average', 'unweighted_average',
+       '90th_percentile', 'max', 'weighted_average_for_ranking',
+       'unweighted_average_for_ranking', 'max_for_ranking', 'total_cost',
+       'proportion_within_coverage_threshold',
        'proportion_regions_within_coverage_threshold',
-       'weighted_by_equity_group', 'unweighted_by_equity_group',
-       'coverage_by_equity_group', 'coverage_regions_by_equity_group',
-       'max_cost_by_equity_group', 'gap_absolute_weighted',
+       'demand_within_coverage_threshold', 'regions_within_coverage_threshold',
+       'regions_unreachable', 'demand_unreachable',
+       'proportion_demand_unreachable', 'weighted_by_equity_group',
+       'unweighted_by_equity_group', 'coverage_by_equity_group',
+       'coverage_regions_by_equity_group', 'max_cost_by_equity_group',
+       'regions_unreachable_by_equity_group',
+       'demand_unreachable_by_equity_group', 'gap_absolute_weighted',
        'gap_relative_weighted', 'avg_lower_third_bins',
        'avg_middle_third_bins', 'avg_upper_third_bins', 'inter_tertile_ratio',
        'gap_absolute_description', 'gap_relative_description',
@@ -465,6 +478,11 @@ No demand data was provided. Demand from all regions has been assumed to be equa
        '90th_percentile__public_transport', 'max__public_transport',
        'proportion_within_coverage_threshold__public_transport',
        'proportion_regions_within_coverage_threshold__public_transport',
+       'demand_within_coverage_threshold__public_transport',
+       'regions_within_coverage_threshold__public_transport',
+       'regions_unreachable__public_transport',
+       'demand_unreachable__public_transport',
+       'proportion_demand_unreachable__public_transport',
        'gap_absolute_weighted__public_transport',
        'gap_relative_weighted__public_transport',
        'avg_lower_third_bins__public_transport',
@@ -474,7 +492,7 @@ No demand data was provided. Demand from all regions has been assumed to be equa
       dtype='str')</code></pre>
 </div>
 </div>
-<div id="9b1efa07" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-20T16:04:57.375198Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-20T16:04:57.375004Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-20T16:04:57.398979Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-20T16:04:57.398517Z&quot;}}" data-execution_count="7">
+<div id="9b1efa07" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:44:54.590881Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:44:54.590734Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:44:54.608123Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:44:54.607213Z&quot;}}" data-execution_count="7">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>solution.show_solutions().head()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="7">
 <div>
@@ -487,18 +505,18 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <th data-quarto-table-cell-role="th">solution_rank</th>
 <th data-quarto-table-cell-role="th">site_names</th>
 <th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">unselected_site_names</th>
 <th data-quarto-table-cell-role="th">coverage_threshold</th>
 <th data-quarto-table-cell-role="th">weighted_average</th>
 <th data-quarto-table-cell-role="th">unweighted_average</th>
 <th data-quarto-table-cell-role="th">90th_percentile</th>
 <th data-quarto-table-cell-role="th">max</th>
-<th data-quarto-table-cell-role="th">total_cost</th>
-<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average_for_ranking</th>
 <th data-quarto-table-cell-role="th">...</th>
-<th data-quarto-table-cell-role="th">90th_percentile__public_transport</th>
-<th data-quarto-table-cell-role="th">max__public_transport</th>
-<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold__public_transport</th>
-<th data-quarto-table-cell-role="th">proportion_regions_within_coverage_threshold__public_transport</th>
+<th data-quarto-table-cell-role="th">regions_within_coverage_threshold__public_transport</th>
+<th data-quarto-table-cell-role="th">regions_unreachable__public_transport</th>
+<th data-quarto-table-cell-role="th">demand_unreachable__public_transport</th>
+<th data-quarto-table-cell-role="th">proportion_demand_unreachable__public_transport</th>
 <th data-quarto-table-cell-role="th">gap_absolute_weighted__public_transport</th>
 <th data-quarto-table-cell-role="th">gap_relative_weighted__public_transport</th>
 <th data-quarto-table-cell-role="th">avg_lower_third_bins__public_transport</th>
@@ -513,18 +531,18 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <td>1</td>
 <td>[North Devon District Hospital, Totnes Communi...</td>
 <td>[0, 6, 7, 11]</td>
+<td>[Honiton Hospital, Tiverton &amp; District Hospita...</td>
 <td>20</td>
 <td>20.23</td>
 <td>20.23</td>
 <td>33.0</td>
 <td>64.0</td>
-<td>NaN</td>
-<td>0.51</td>
+<td>20.23</td>
 <td>...</td>
-<td>125.0</td>
-<td>294.0</td>
-<td>0.41</td>
-<td>0.41</td>
+<td>292</td>
+<td>0</td>
+<td>0.0</td>
+<td>0.0</td>
 <td>None</td>
 <td>None</td>
 <td>None</td>
@@ -537,18 +555,18 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <td>2</td>
 <td>[North Devon District Hospital, Newton Abbot C...</td>
 <td>[0, 5, 7, 11]</td>
+<td>[Honiton Hospital, Tiverton &amp; District Hospita...</td>
 <td>20</td>
 <td>20.68</td>
 <td>20.68</td>
 <td>34.4</td>
 <td>64.0</td>
-<td>NaN</td>
-<td>0.51</td>
+<td>20.68</td>
 <td>...</td>
-<td>131.4</td>
-<td>294.0</td>
-<td>0.41</td>
-<td>0.41</td>
+<td>289</td>
+<td>0</td>
+<td>0.0</td>
+<td>0.0</td>
 <td>None</td>
 <td>None</td>
 <td>None</td>
@@ -561,18 +579,18 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <td>3</td>
 <td>[Totnes Community Hospital, NHS Walk in Centre...</td>
 <td>[6, 7, 11, 13]</td>
+<td>[North Devon District Hospital, Honiton Hospit...</td>
 <td>20</td>
 <td>20.91</td>
 <td>20.91</td>
 <td>34.0</td>
 <td>68.0</td>
-<td>NaN</td>
-<td>0.48</td>
+<td>20.91</td>
 <td>...</td>
-<td>135.4</td>
-<td>329.0</td>
-<td>0.38</td>
-<td>0.38</td>
+<td>270</td>
+<td>0</td>
+<td>0.0</td>
+<td>0.0</td>
 <td>None</td>
 <td>None</td>
 <td>None</td>
@@ -585,18 +603,18 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <td>4</td>
 <td>[North Devon District Hospital, Totnes Communi...</td>
 <td>[0, 6, 7, 10]</td>
+<td>[Honiton Hospital, Tiverton &amp; District Hospita...</td>
 <td>20</td>
 <td>21.10</td>
 <td>21.10</td>
 <td>34.0</td>
 <td>64.0</td>
-<td>NaN</td>
-<td>0.47</td>
+<td>21.10</td>
 <td>...</td>
-<td>127.0</td>
-<td>294.0</td>
-<td>0.40</td>
-<td>0.40</td>
+<td>285</td>
+<td>0</td>
+<td>0.0</td>
+<td>0.0</td>
 <td>None</td>
 <td>None</td>
 <td>None</td>
@@ -609,18 +627,18 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <td>5</td>
 <td>[Totnes Community Hospital, NHS Walk in Centre...</td>
 <td>[6, 7, 11, 12]</td>
+<td>[North Devon District Hospital, Honiton Hospit...</td>
 <td>20</td>
 <td>21.16</td>
 <td>21.16</td>
 <td>37.4</td>
 <td>70.0</td>
-<td>NaN</td>
-<td>0.50</td>
+<td>21.16</td>
 <td>...</td>
-<td>135.4</td>
-<td>308.0</td>
-<td>0.39</td>
-<td>0.39</td>
+<td>279</td>
+<td>0</td>
+<td>0.0</td>
+<td>0.0</td>
 <td>None</td>
 <td>None</td>
 <td>None</td>
@@ -631,14 +649,14 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 </tbody>
 </table>
 
-<p>5 rows × 38 columns</p>
+<p>5 rows × 54 columns</p>
 </div>
 </div>
 </div>
 <section id="exploring-the-trade-off-with-a-pareto-front" class="level2">
 <h2 class="anchored" data-anchor-id="exploring-the-trade-off-with-a-pareto-front">Exploring the trade-off with a Pareto front</h2>
 <p>Because both modes’ metrics live on the same ranked list, we can trade them off directly with the same Pareto tooling used for e.g.&nbsp;cost vs equity in <a href="../../../examples/location/multiobjective_optimisation_pareto/index.html">the Pareto fronts example</a> – there’s nothing secondary-matrix-specific about <code>compute_pareto_front()</code> or <code>plot_simple_pareto_front_pairs()</code>, they just consume whichever <code>solution_df</code> columns you point them at.</p>
-<div id="24d94e63" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-20T16:04:57.400542Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-20T16:04:57.400337Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-20T16:04:57.546707Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-20T16:04:57.546035Z&quot;}}" data-execution_count="8">
+<div id="24d94e63" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:44:54.610180Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:44:54.609928Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:44:54.921175Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:44:54.920582Z&quot;}}" data-execution_count="8">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>solution.plot_simple_pareto_front_pairs(</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    x_axis<span class="op">=</span><span class="st">"weighted_average"</span>,</span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    y_axis<span class="op">=</span><span class="st">"weighted_average__public_transport"</span>,</span>
@@ -651,16 +669,16 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 </div>
 </div>
 </div>
-<p>We can bring in more metrics at once with <code>ParetoMetric</code> – here, car weighted average travel time, public transport weighted average travel time, and public transport coverage.</p>
-<div id="5a62d8ee" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-20T16:04:57.548475Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-20T16:04:57.548290Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-20T16:04:57.819862Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-20T16:04:57.819306Z&quot;}}" data-execution_count="9">
+<p>We can bring in more metrics at once with <code>Metric</code> – here, car weighted average travel time, public transport weighted average travel time, and public transport coverage.</p>
+<div id="5a62d8ee" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:44:54.922886Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:44:54.922700Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:44:55.184758Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:44:55.184207Z&quot;}}" data-execution_count="9">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>metrics <span class="op">=</span> [</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    ParetoMetric(column<span class="op">=</span><span class="st">"weighted_average"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    Metric(column<span class="op">=</span><span class="st">"weighted_average"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
 <span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>                 label<span class="op">=</span><span class="st">"car weighted average travel time"</span>, unit<span class="op">=</span><span class="st">"minutes"</span>),</span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    ParetoMetric(column<span class="op">=</span><span class="st">"weighted_average__public_transport"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    Metric(column<span class="op">=</span><span class="st">"weighted_average__public_transport"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
 <span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>                 label<span class="op">=</span><span class="st">"public transport weighted average travel time"</span>, unit<span class="op">=</span><span class="st">"minutes"</span>),</span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    ParetoMetric(column<span class="op">=</span><span class="st">"proportion_within_coverage_threshold__public_transport"</span>, direction<span class="op">=</span><span class="st">"higher_better"</span>,</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    Metric(column<span class="op">=</span><span class="st">"proportion_within_coverage_threshold__public_transport"</span>, direction<span class="op">=</span><span class="st">"higher_better"</span>,</span>
 <span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>                 label<span class="op">=</span><span class="st">"public transport coverage"</span>),</span>
-<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>    ParetoMetric(column<span class="op">=</span><span class="st">"max__public_transport"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>    Metric(column<span class="op">=</span><span class="st">"max__public_transport"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
 <span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>                 label<span class="op">=</span><span class="st">"public transport max travel time"</span>, unit<span class="op">=</span><span class="st">"minutes"</span>),</span>
 <span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>    ]</span>
 <span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a></span>
@@ -753,7 +771,7 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 </div>
 </div>
 </div>
-<div id="28e7f8b2" class="cell" data-execution_count="10">
+<div id="28e7f8b2" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:44:55.186669Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:44:55.186508Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:44:56.673139Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:44:56.672399Z&quot;}}" data-execution_count="10">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>solution.plot_pareto_summary(width_multiplier<span class="op">=</span><span class="dv">3</span>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
@@ -763,7 +781,7 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 </div>
 </div>
 </div>
-<div id="2c18e385" class="cell" data-execution_count="11">
+<div id="2c18e385" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:44:56.675438Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:44:56.675291Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:45:11.572938Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:45:11.571877Z&quot;}}" data-execution_count="11">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>solution.plot_pareto_facets()<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
@@ -777,12 +795,12 @@ No demand data was provided. Demand from all regions has been assumed to be equa
 <section id="plotting-a-secondary-matrix-directly" class="level2">
 <h2 class="anchored" data-anchor-id="plotting-a-secondary-matrix-directly">Plotting a secondary matrix directly</h2>
 <p>Every travel-related plot accepts a <code>matrix=</code> keyword to switch from the primary (car) matrix to a registered secondary one. For example, here’s the public transport travel time distribution for the best car-ranked solution, instead of its car travel times:</p>
-<div id="3638593e" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-20T16:04:57.821621Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-20T16:04:57.821415Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-20T16:04:59.249037Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-20T16:04:59.248095Z&quot;}}" data-execution_count="12">
+<div id="3638593e" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:45:11.581624Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:45:11.581379Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:45:14.234718Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:45:14.233788Z&quot;}}" data-execution_count="12">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>solution.plot_travel_time_distribution(matrix<span class="op">=</span><span class="st">"public_transport"</span>, top_n<span class="op">=</span><span class="dv">1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
-<div>                            <div id="34c73e52-e5ea-4177-8e3f-3c024379ab02" class="plotly-graph-div" style="height:300px; width:100%;"></div>            <script type="text/javascript">                require(["plotly"], function(Plotly) {                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("34c73e52-e5ea-4177-8e3f-3c024379ab02")) {                    Plotly.newPlot(                        "34c73e52-e5ea-4177-8e3f-3c024379ab02",                        [{"alignmentgroup":"True","bingroup":"x","histnorm":"probability density","hovertemplate":"label=Sites: North Devon District Hospital, Totnes Community Hospital, NHS Walk in Centre (Exeter), Derriford Hospital (UTC) | Weighted Avg: 73.07 | Unweighted Avg: 73.07 | P90: 125.0 | Max: 294.0\u003cbr\u003emin_cost__public_transport=%{x}\u003cbr\u003eprobability density=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"","marker":{"color":"lightsteelblue","pattern":{"shape":""}},"name":"","nbinsx":30,"offsetgroup":"","orientation":"v","showlegend":false,"x":[137.0,223.0,294.0,116.0,115.0,118.0,122.0,113.0,121.0,113.0,118.0,125.0,165.0,145.0,114.0,127.0,137.0,137.0,137.0,137.0,245.0,51.0,37.0,71.0,39.0,131.0,131.0,131.0,142.0,177.0,104.0,108.0,81.0,101.0,94.0,120.0,136.0,103.0,122.0,116.0,123.0,125.0,121.0,92.0,84.0,71.0,79.0,78.0,83.0,80.0,61.0,109.0,76.0,45.0,46.0,68.0,83.0,76.0,73.0,81.0,71.0,63.0,59.0,58.0,101.0,108.0,101.0,101.0,82.0,79.0,73.0,80.0,78.0,62.0,63.0,71.0,63.0,72.0,85.0,86.0,77.0,26.0,19.0,34.0,24.0,29.0,23.0,31.0,22.0,14.0,20.0,32.0,26.0,35.0,23.0,12.0,15.0,12.0,11.0,8.0,32.0,37.0,28.0,32.0,24.0,14.0,21.0,15.0,12.0,18.0,19.0,24.0,21.0,28.0,27.0,12.0,10.0,12.0,13.0,16.0,12.0,22.0,20.0,17.0,22.0,22.0,15.0,19.0,19.0,28.0,27.0,29.0,27.0,32.0,39.0,28.0,27.0,26.0,22.0,25.0,20.0,26.0,27.0,27.0,27.0,34.0,32.0,37.0,20.0,25.0,27.0,31.0,36.0,40.0,44.0,182.0,172.0,130.0,174.0,81.0,81.0,82.0,85.0,113.0,148.0,137.0,68.0,72.0,71.0,73.0,65.0,64.0,69.0,64.0,98.0,74.0,73.0,76.0,66.0,59.0,55.0,49.0,75.0,68.0,99.0,58.0,135.0,116.0,126.0,91.0,47.0,92.0,140.0,73.0,40.0,48.0,42.0,44.0,86.0,85.0,88.0,91.0,99.0,101.0,99.0,113.0,81.0,82.0,80.0,84.0,69.0,101.0,109.0,60.0,75.0,72.0,64.0,51.0,79.0,42.0,76.0,25.0,17.0,22.0,21.0,25.0,30.0,40.0,28.0,31.0,45.0,38.0,43.0,52.0,42.0,46.0,39.0,37.0,32.0,53.0,60.0,57.0,86.0,49.0,50.0,50.0,50.0,58.0,163.0,162.0,127.0,129.0,126.0,131.0,135.0,146.0,22.0,27.0,21.0,33.0,24.0,27.0,34.0,31.0,30.0,29.0,42.0,39.0,33.0,47.0,49.0,59.0,53.0,46.0,29.0,36.0,24.0,30.0,30.0,39.0,48.0,35.0,42.0,51.0,35.0,29.0,36.0,29.0,33.0,22.0,28.0,35.0,23.0,52.0,59.0,48.0,46.0,55.0,47.0,49.0,50.0,38.0,49.0,37.0,36.0,39.0,36.0,40.0,35.0,39.0,44.0,43.0,45.0,42.0,47.0,45.0,49.0,43.0,44.0,38.0,46.0,46.0,50.0,48.0,59.0,67.0,70.0,61.0,66.0,71.0,28.0,22.0,29.0,36.0,24.0,31.0,38.0,31.0,31.0,35.0,70.0,74.0,73.0,83.0,67.0,64.0,67.0,52.0,59.0,49.0,44.0,45.0,42.0,41.0,51.0,50.0,49.0,48.0,45.0,52.0,71.0,74.0,62.0,71.0,73.0,30.0,26.0,31.0,28.0,37.0,42.0,42.0,50.0,41.0,41.0,33.0,44.0,48.0,41.0,44.0,40.0,46.0,50.0,48.0,35.0,34.0,43.0,43.0,36.0,36.0,30.0,44.0,46.0,46.0,49.0,44.0,49.0,50.0,54.0,47.0,45.0,64.0,69.0,71.0,61.0,67.0,54.0,60.0,60.0,78.0,72.0,72.0,75.0,76.0,74.0,61.0,69.0,35.0,65.0,33.0,102.0,99.0,84.0,62.0,59.0,49.0,10.0,21.0,35.0,7.0,13.0,93.0,77.0,51.0,98.0,64.0,62.0,71.0,66.0,80.0,81.0,79.0,84.0,82.0,30.0,93.0,86.0,82.0,87.0,176.0,110.0,114.0,85.0,173.0,98.0,134.0,77.0,79.0,72.0,73.0,158.0,100.0,173.0,93.0,102.0,137.0,64.0,69.0,70.0,152.0,42.0,86.0,41.0,58.0,53.0,133.0,117.0,239.0,156.0,91.0,89.0,78.0,76.0,81.0,80.0,82.0,92.0,79.0,84.0,78.0,98.0,88.0,94.0,92.0,91.0,83.0,121.0,112.0,111.0,109.0,102.0,114.0,78.0,65.0,78.0,81.0,79.0,80.0,106.0,100.0,106.0,110.0,119.0,107.0,81.0,115.0,140.0,62.0,67.0,76.0,73.0,93.0,58.0,65.0,89.0,88.0,65.0,58.0,67.0,66.0,59.0,66.0,80.0,88.0,88.0,83.0,86.0,79.0,74.0,80.0,62.0,53.0,108.0,81.0,84.0,82.0,62.0,106.0,52.0,51.0,92.0,91.0,95.0,94.0,96.0,91.0,90.0,91.0,81.0,70.0,74.0,75.0,93.0,90.0,78.0,87.0,85.0,88.0,82.0,80.0,90.0,89.0,81.0,84.0,90.0,87.0,90.0,80.0,78.0,77.0,81.0,75.0,79.0,77.0,79.0,83.0,71.0,68.0,62.0,71.0,60.0,79.0,55.0,59.0,53.0,57.0,47.0,57.0,60.0,59.0,54.0,47.0,41.0,54.0,58.0,48.0,49.0,45.0,43.0,56.0,50.0,48.0,52.0,58.0,57.0,66.0,59.0,77.0,63.0,75.0,85.0,77.0,73.0,76.0,86.0,78.0,78.0,83.0,85.0,77.0,85.0,79.0,76.0,80.0,85.0,85.0,82.0,76.0,73.0,108.0,92.0,88.0,91.0,86.0,85.0,92.0,77.0,94.0,83.0,79.0,87.0,84.0,97.0,87.0,94.0,97.0,124.0,97.0,141.0,123.0,124.0,125.0,127.0,229.0,135.0,243.0,135.0,262.0,159.0,159.0,211.0,234.0,262.0,201.0,194.0,146.0,170.0,174.0,221.0,131.0,99.0,96.0,148.0,97.0,117.0,123.0,132.0,92.0,181.0,196.0,133.0,183.0,67.0,77.0,69.0,74.0,75.0,81.0,64.0,73.0,98.0,53.0,56.0,111.0,111.0,90.0,79.0],"xaxis":"x","yaxis":"y","type":"histogram"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmapgl":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmapgl"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"geo":{"bgcolor":"white","lakecolor":"white","landcolor":"white","showlakes":true,"showland":true,"subunitcolor":"#C8D4E3"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"light"},"margin":{"b":0,"l":0,"r":0,"t":30},"paper_bgcolor":"white","plot_bgcolor":"white","polar":{"angularaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""},"bgcolor":"white","radialaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"yaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"zaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"ternary":{"aaxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"baxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"bgcolor":"white","caxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""}},"title":{"x":0.05},"xaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2}}},"xaxis":{"anchor":"y","domain":[0.0,0.98],"title":{"text":"min_cost__public_transport"}},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"probability density"}},"annotations":[{"font":{"size":11},"showarrow":false,"text":"Sites: North Devon District Hospital, Totnes Community Hospital, NHS Walk in Centre (Exeter), Derriford Hospital (UTC) | Weighted Avg: 73.07 | Unweighted Avg: 73.07 | P90: 125.0 | Max: 294.0","textangle":0,"x":0.0,"xanchor":"left","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"color":"darkolivegreen"},"showarrow":false,"text":"Weighted\u003cbr\u003eAverage","x":73.07496463932108,"xanchor":"right","xref":"x","y":1,"yanchor":"top","yref":"y domain","yshift":5},{"font":{"color":"darkcyan"},"showarrow":false,"text":"Unweighted\u003cbr\u003eAverage","x":73.07496463932108,"xanchor":"left","xref":"x","y":1,"yanchor":"top","yref":"y domain","yshift":-10},{"font":{"color":"darkorange"},"showarrow":false,"text":"P90","x":125.0,"xanchor":"left","xref":"x","y":1,"yanchor":"top","yref":"y domain","yshift":-15},{"font":{"color":"tomato"},"showarrow":false,"text":"Max","x":294.0,"xanchor":"left","xref":"x","y":1,"yanchor":"top","yref":"y domain","yshift":-20}],"legend":{"tracegroupgap":0},"barmode":"relative","shapes":[{"line":{"color":"darkolivegreen","dash":"dash"},"type":"line","x0":73.07496463932108,"x1":73.07496463932108,"xref":"x","y0":0,"y1":1,"yref":"y domain"},{"line":{"color":"darkcyan","dash":"dashdot"},"type":"line","x0":73.07496463932108,"x1":73.07496463932108,"xref":"x","y0":0,"y1":1,"yref":"y domain"},{"line":{"color":"darkorange","dash":"dot"},"type":"line","x0":125.0,"x1":125.0,"xref":"x","y0":0,"y1":1,"yref":"y domain"},{"line":{"color":"tomato","dash":"solid"},"type":"line","x0":294.0,"x1":294.0,"xref":"x","y0":0,"y1":1,"yref":"y domain"}],"title":{"text":"Distribution of Travel Times (Top 1 Solutions: P Median)"},"height":300},                        {"responsive": true}                    ).then(function(){
+<div>                            <div id="52768b98-6dbf-4f11-9d93-f939eaf2005f" class="plotly-graph-div" style="height:300px; width:100%;"></div>            <script type="text/javascript">                require(["plotly"], function(Plotly) {                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("52768b98-6dbf-4f11-9d93-f939eaf2005f")) {                    Plotly.newPlot(                        "52768b98-6dbf-4f11-9d93-f939eaf2005f",                        [{"alignmentgroup":"True","bingroup":"x","histnorm":"probability density","hovertemplate":"label=Sites: North Devon District Hospital, Totnes Community Hospital, NHS Walk in Centre (Exeter), Derriford Hospital (UTC) | Weighted Avg: 73.07 | Unweighted Avg: 73.07 | P90: 125.0 | Max: 294.0\u003cbr\u003emin_cost__public_transport=%{x}\u003cbr\u003eprobability density=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"","marker":{"color":"lightsteelblue","pattern":{"shape":""}},"name":"","nbinsx":30,"offsetgroup":"","orientation":"v","showlegend":false,"x":[137.0,223.0,294.0,116.0,115.0,118.0,122.0,113.0,121.0,113.0,118.0,125.0,165.0,145.0,114.0,127.0,137.0,137.0,137.0,137.0,245.0,51.0,37.0,71.0,39.0,131.0,131.0,131.0,142.0,177.0,104.0,108.0,81.0,101.0,94.0,120.0,136.0,103.0,122.0,116.0,123.0,125.0,121.0,92.0,84.0,71.0,79.0,78.0,83.0,80.0,61.0,109.0,76.0,45.0,46.0,68.0,83.0,76.0,73.0,81.0,71.0,63.0,59.0,58.0,101.0,108.0,101.0,101.0,82.0,79.0,73.0,80.0,78.0,62.0,63.0,71.0,63.0,72.0,85.0,86.0,77.0,26.0,19.0,34.0,24.0,29.0,23.0,31.0,22.0,14.0,20.0,32.0,26.0,35.0,23.0,12.0,15.0,12.0,11.0,8.0,32.0,37.0,28.0,32.0,24.0,14.0,21.0,15.0,12.0,18.0,19.0,24.0,21.0,28.0,27.0,12.0,10.0,12.0,13.0,16.0,12.0,22.0,20.0,17.0,22.0,22.0,15.0,19.0,19.0,28.0,27.0,29.0,27.0,32.0,39.0,28.0,27.0,26.0,22.0,25.0,20.0,26.0,27.0,27.0,27.0,34.0,32.0,37.0,20.0,25.0,27.0,31.0,36.0,40.0,44.0,182.0,172.0,130.0,174.0,81.0,81.0,82.0,85.0,113.0,148.0,137.0,68.0,72.0,71.0,73.0,65.0,64.0,69.0,64.0,98.0,74.0,73.0,76.0,66.0,59.0,55.0,49.0,75.0,68.0,99.0,58.0,135.0,116.0,126.0,91.0,47.0,92.0,140.0,73.0,40.0,48.0,42.0,44.0,86.0,85.0,88.0,91.0,99.0,101.0,99.0,113.0,81.0,82.0,80.0,84.0,69.0,101.0,109.0,60.0,75.0,72.0,64.0,51.0,79.0,42.0,76.0,25.0,17.0,22.0,21.0,25.0,30.0,40.0,28.0,31.0,45.0,38.0,43.0,52.0,42.0,46.0,39.0,37.0,32.0,53.0,60.0,57.0,86.0,49.0,50.0,50.0,50.0,58.0,163.0,162.0,127.0,129.0,126.0,131.0,135.0,146.0,22.0,27.0,21.0,33.0,24.0,27.0,34.0,31.0,30.0,29.0,42.0,39.0,33.0,47.0,49.0,59.0,53.0,46.0,29.0,36.0,24.0,30.0,30.0,39.0,48.0,35.0,42.0,51.0,35.0,29.0,36.0,29.0,33.0,22.0,28.0,35.0,23.0,52.0,59.0,48.0,46.0,55.0,47.0,49.0,50.0,38.0,49.0,37.0,36.0,39.0,36.0,40.0,35.0,39.0,44.0,43.0,45.0,42.0,47.0,45.0,49.0,43.0,44.0,38.0,46.0,46.0,50.0,48.0,59.0,67.0,70.0,61.0,66.0,71.0,28.0,22.0,29.0,36.0,24.0,31.0,38.0,31.0,31.0,35.0,70.0,74.0,73.0,83.0,67.0,64.0,67.0,52.0,59.0,49.0,44.0,45.0,42.0,41.0,51.0,50.0,49.0,48.0,45.0,52.0,71.0,74.0,62.0,71.0,73.0,30.0,26.0,31.0,28.0,37.0,42.0,42.0,50.0,41.0,41.0,33.0,44.0,48.0,41.0,44.0,40.0,46.0,50.0,48.0,35.0,34.0,43.0,43.0,36.0,36.0,30.0,44.0,46.0,46.0,49.0,44.0,49.0,50.0,54.0,47.0,45.0,64.0,69.0,71.0,61.0,67.0,54.0,60.0,60.0,78.0,72.0,72.0,75.0,76.0,74.0,61.0,69.0,35.0,65.0,33.0,102.0,99.0,84.0,62.0,59.0,49.0,10.0,21.0,35.0,7.0,13.0,93.0,77.0,51.0,98.0,64.0,62.0,71.0,66.0,80.0,81.0,79.0,84.0,82.0,30.0,93.0,86.0,82.0,87.0,176.0,110.0,114.0,85.0,173.0,98.0,134.0,77.0,79.0,72.0,73.0,158.0,100.0,173.0,93.0,102.0,137.0,64.0,69.0,70.0,152.0,42.0,86.0,41.0,58.0,53.0,133.0,117.0,239.0,156.0,91.0,89.0,78.0,76.0,81.0,80.0,82.0,92.0,79.0,84.0,78.0,98.0,88.0,94.0,92.0,91.0,83.0,121.0,112.0,111.0,109.0,102.0,114.0,78.0,65.0,78.0,81.0,79.0,80.0,106.0,100.0,106.0,110.0,119.0,107.0,81.0,115.0,140.0,62.0,67.0,76.0,73.0,93.0,58.0,65.0,89.0,88.0,65.0,58.0,67.0,66.0,59.0,66.0,80.0,88.0,88.0,83.0,86.0,79.0,74.0,80.0,62.0,53.0,108.0,81.0,84.0,82.0,62.0,106.0,52.0,51.0,92.0,91.0,95.0,94.0,96.0,91.0,90.0,91.0,81.0,70.0,74.0,75.0,93.0,90.0,78.0,87.0,85.0,88.0,82.0,80.0,90.0,89.0,81.0,84.0,90.0,87.0,90.0,80.0,78.0,77.0,81.0,75.0,79.0,77.0,79.0,83.0,71.0,68.0,62.0,71.0,60.0,79.0,55.0,59.0,53.0,57.0,47.0,57.0,60.0,59.0,54.0,47.0,41.0,54.0,58.0,48.0,49.0,45.0,43.0,56.0,50.0,48.0,52.0,58.0,57.0,66.0,59.0,77.0,63.0,75.0,85.0,77.0,73.0,76.0,86.0,78.0,78.0,83.0,85.0,77.0,85.0,79.0,76.0,80.0,85.0,85.0,82.0,76.0,73.0,108.0,92.0,88.0,91.0,86.0,85.0,92.0,77.0,94.0,83.0,79.0,87.0,84.0,97.0,87.0,94.0,97.0,124.0,97.0,141.0,123.0,124.0,125.0,127.0,229.0,135.0,243.0,135.0,262.0,159.0,159.0,211.0,234.0,262.0,201.0,194.0,146.0,170.0,174.0,221.0,131.0,99.0,96.0,148.0,97.0,117.0,123.0,132.0,92.0,181.0,196.0,133.0,183.0,67.0,77.0,69.0,74.0,75.0,81.0,64.0,73.0,98.0,53.0,56.0,111.0,111.0,90.0,79.0],"xaxis":"x","yaxis":"y","type":"histogram"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmapgl":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmapgl"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"geo":{"bgcolor":"white","lakecolor":"white","landcolor":"white","showlakes":true,"showland":true,"subunitcolor":"#C8D4E3"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"light"},"margin":{"b":0,"l":0,"r":0,"t":30},"paper_bgcolor":"white","plot_bgcolor":"white","polar":{"angularaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""},"bgcolor":"white","radialaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"yaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"zaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"ternary":{"aaxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"baxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"bgcolor":"white","caxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""}},"title":{"x":0.05},"xaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2}}},"xaxis":{"anchor":"y","domain":[0.0,0.98],"title":{"text":"min_cost__public_transport"}},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"probability density"}},"annotations":[{"font":{"size":11},"showarrow":false,"text":"Sites: North Devon District Hospital, Totnes Community Hospital, NHS Walk in Centre (Exeter), Derriford Hospital (UTC) | Weighted Avg: 73.07 | Unweighted Avg: 73.07 | P90: 125.0 | Max: 294.0","textangle":0,"x":0.0,"xanchor":"left","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"color":"darkolivegreen"},"showarrow":false,"text":"Weighted\u003cbr\u003eAverage","x":73.07496463932108,"xanchor":"right","xref":"x","y":1,"yanchor":"top","yref":"y domain","yshift":5},{"font":{"color":"darkcyan"},"showarrow":false,"text":"Unweighted\u003cbr\u003eAverage","x":73.07496463932108,"xanchor":"left","xref":"x","y":1,"yanchor":"top","yref":"y domain","yshift":-10},{"font":{"color":"darkorange"},"showarrow":false,"text":"P90","x":125.0,"xanchor":"left","xref":"x","y":1,"yanchor":"top","yref":"y domain","yshift":-15},{"font":{"color":"tomato"},"showarrow":false,"text":"Max","x":294.0,"xanchor":"left","xref":"x","y":1,"yanchor":"top","yref":"y domain","yshift":-20}],"legend":{"tracegroupgap":0},"barmode":"relative","shapes":[{"line":{"color":"darkolivegreen","dash":"dash"},"type":"line","x0":73.07496463932108,"x1":73.07496463932108,"xref":"x","y0":0,"y1":1,"yref":"y domain"},{"line":{"color":"darkcyan","dash":"dashdot"},"type":"line","x0":73.07496463932108,"x1":73.07496463932108,"xref":"x","y0":0,"y1":1,"yref":"y domain"},{"line":{"color":"darkorange","dash":"dot"},"type":"line","x0":125.0,"x1":125.0,"xref":"x","y0":0,"y1":1,"yref":"y domain"},{"line":{"color":"tomato","dash":"solid"},"type":"line","x0":294.0,"x1":294.0,"xref":"x","y0":0,"y1":1,"yref":"y domain"}],"title":{"text":"Distribution of Travel Times (Top 1 Solutions: P Median)"},"height":300},                        {"responsive": true}                    ).then(function(){
                             
-var gd = document.getElementById('34c73e52-e5ea-4177-8e3f-3c024379ab02');
+var gd = document.getElementById('52768b98-6dbf-4f11-9d93-f939eaf2005f');
 var x = new MutationObserver(function (mutations, observer) {{
         var display = window.getComputedStyle(gd).display;
         if (!display || display === 'none') {{
@@ -814,23 +832,23 @@ if (outputEl) {{
 <p>This ability to specify the matrix also applies to map plots.</p>
 <p>If we do not pass a matrix argument, it will default to the primary travel matrix.</p>
 <p><strong>Car</strong></p>
-<div id="47c54993" class="cell" data-execution_count="13">
+<div id="47c54993" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:45:14.237708Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:45:14.237489Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:45:17.856179Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:45:17.855069Z&quot;}}" data-execution_count="13">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>solution.plot_best_combination()<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/cell-14-output-1.png" width="589" height="519" class="figure-img"></p>
+<p><img src="index_files/figure-html/cell-14-output-1.png" width="607" height="519" class="figure-img"></p>
 </figure>
 </div>
 </div>
 </div>
 <p><strong>Public Transport</strong></p>
-<div id="e2b792e8" class="cell" data-execution_count="14">
+<div id="e2b792e8" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:45:17.859454Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:45:17.859100Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:45:19.417429Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:45:19.415361Z&quot;}}" data-execution_count="14">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>solution.plot_best_combination(matrix<span class="op">=</span><span class="st">"public_transport"</span>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/cell-15-output-1.png" width="597" height="519" class="figure-img"></p>
+<p><img src="index_files/figure-html/cell-15-output-1.png" width="615" height="519" class="figure-img"></p>
 </figure>
 </div>
 </div>
@@ -838,9 +856,9 @@ if (outputEl) {{
 </section>
 <section id="ranking-on-a-secondary-matrix" class="level2">
 <h2 class="anchored" data-anchor-id="ranking-on-a-secondary-matrix">Ranking on a secondary matrix</h2>
-<p>Because <code>weighted_average__public_transport</code> is just another <code>solution_df</code> column, it can be used anywhere a column name is accepted – including <code>rank_on</code>, to re-sort the <em>existing</em> set of solutions by public transport performance instead of car performance.</p>
-<div id="ab92421f" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-20T16:04:59.250391Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-20T16:04:59.250221Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-20T16:04:59.255138Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-20T16:04:59.254535Z&quot;}}" data-execution_count="15">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>solution.return_best_combination_site_names(rank_on<span class="op">=</span><span class="st">"weighted_average__public_transport"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Because <code>weighted_average__public_transport</code> is just another <code>solution_df</code> column, it can be used anywhere a column name is accepted – including <code>sort_by</code>, to re-sort the <em>existing</em> set of solutions by public transport performance instead of car performance.</p>
+<div id="ab92421f" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:45:19.420043Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:45:19.419782Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:45:19.427277Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:45:19.426142Z&quot;}}" data-execution_count="15">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>solution.return_best_combination_site_names(sort_by<span class="op">=</span><span class="st">"weighted_average__public_transport"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="15">
 <pre><code>['North Devon District Hospital',
  'Totnes Community Hospital',
@@ -848,7 +866,149 @@ if (outputEl) {{
  'Derriford Hospital (UTC)']</code></pre>
 </div>
 </div>
-<p><strong>A caveat worth knowing about:</strong> <code>rank_on</code> only re-sorts the candidates that <code>solve()</code> already searched and kept. If you ran <code>solve(..., brute_force_keep_best_n=...)</code>, discarded combinations were pruned using <em>car</em> performance alone – so a <code>public_transport</code>-ranked result over what survives is not necessarily the true best combination for public transport. When you’re planning to explore secondary-matrix trade-offs, it’s safest to solve with every combination retained (the default, or <code>brute_force_keep_best_n=None</code>), exactly as we’ve done in this example.</p>
+<p><strong>A caveat worth knowing about:</strong> <code>sort_by</code> only re-sorts the candidates that <code>solve()</code> already searched and kept. If you ran <code>solve(..., brute_force_keep_best_n=...)</code>, discarded combinations were pruned using <em>car</em> performance alone – so a <code>public_transport</code>-ranked result over what survives is not necessarily the true best combination for public transport. When you’re planning to explore secondary-matrix trade-offs, it’s safest to solve with every combination retained (the default, or <code>brute_force_keep_best_n=None</code>), exactly as we’ve done in this example.</p>
+</section>
+<section id="handling-genuinely-unreachable-journeys" class="level2">
+<h2 class="anchored" data-anchor-id="handling-genuinely-unreachable-journeys">Handling genuinely unreachable journeys</h2>
+<p>Look again at the public transport matrix registered above – some of its values are <code>9999</code>:</p>
+<div id="5d1c81ab" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:45:19.429588Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:45:19.429377Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:45:19.437872Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:45:19.436882Z&quot;}}" data-execution_count="16">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>problem.show_secondary_travel_matrix(<span class="st">"public_transport"</span>).drop(columns<span class="op">=</span><span class="st">"from_id"</span>).<span class="bu">max</span>().sort_values(ascending<span class="op">=</span><span class="va">False</span>).head()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="16">
+<pre><code>Honiton Hospital                          9999.0
+South Hams Hospital (Kingsbridge)         9999.0
+Ilfracombe &amp; District Tyrrell Hospital     543.0
+Totnes Community Hospital                  536.0
+North Devon District Hospital              515.0
+dtype: float64</code></pre>
+</div>
+</div>
+<p><code>9999</code> here is a sentinel: whoever generated this matrix used it to mean “no public transport route found” for a handful of origin-destination pairs, rather than leaving those cells empty – a common workaround, since <code>add_secondary_travel_matrix()</code> used to reject missing values outright. The problem is that <code>9999</code> isn’t actually excluded from anything downstream – it’s just a very large, very wrong number that every average, maximum, and map colour scale treats as a real 12+ hour journey.</p>
+<p>Watch what it does to a single-site solution built around South Hams Hospital, the site with the most <code>9999</code>s:</p>
+<div id="1e4abb89" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:45:19.440416Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:45:19.440217Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:45:19.464669Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:45:19.463279Z&quot;}}" data-execution_count="17">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>corrupted <span class="op">=</span> problem.evaluate_baseline(</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>    site_names<span class="op">=</span>[<span class="st">"South Hams Hospital (Kingsbridge)"</span>], threshold_for_coverage<span class="op">=</span><span class="dv">20</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>corrupted.solution_df[[<span class="st">"weighted_average__public_transport"</span>, <span class="st">"max__public_transport"</span>]]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="17">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">weighted_average__public_transport</th>
+<th data-quarto-table-cell-role="th">max__public_transport</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>732.165488</td>
+<td>9999.0</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>A demand-weighted average public transport journey of over 12 hours, and a reported maximum of exactly <code>9999</code> – neither is a real travel time; both are the sentinel leaking into metrics that are supposed to describe actual journeys.</p>
+<section id="the-fix-allow_missing-and-treat_as_missing" class="level3">
+<h3 class="anchored" data-anchor-id="the-fix-allow_missing-and-treat_as_missing">The fix: <code>allow_missing</code> and <code>treat_as_missing</code></h3>
+<p><code>add_secondary_travel_matrix()</code> (and <code>add_travel_matrix()</code> for a primary matrix) accepts <code>allow_missing=True</code> to register a matrix that genuinely has no feasible journey for some pairs, and <code>treat_as_missing=&lt;value&gt;</code> to convert an existing sentinel like <code>9999</code> to a proper missing value first. Missing values are then treated as “no feasible journey” throughout – excluded from every average/maximum, and rendered as a distinct grey region on maps, rather than either crashing or silently corrupting the numbers.</p>
+<p>Since a label can only be registered once per problem, we register a fresh <code>SiteProblem</code> with the corrected registration (the sites/region-layer/car-matrix setup is identical to the top of this notebook):</p>
+<div id="33674d3e" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:45:19.467095Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:45:19.466873Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:45:22.552641Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:45:22.551830Z&quot;}}" data-execution_count="18">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>problem_honest <span class="op">=</span> SiteProblem()</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>problem_honest.add_sites(</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"../../../sample_data/devon_mius.geojson"</span>,</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>    candidate_id_col<span class="op">=</span><span class="st">"Facility_Name"</span></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>problem_honest.add_region_geometry_layer(</span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">"https://github.com/hsma-programme/h6_3c_interactive_plots_travel/raw/main/h6_3c_interactive_plots_travel/example_code/LSOA_2011_Boundaries_Super_Generalised_Clipped_BSC_EW_V4.geojson"</span>,</span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>    common_col<span class="op">=</span><span class="st">"LSOA11NM"</span></span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a>problem_honest.add_travel_matrix(</span>
+<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a>    travel_matrix_df<span class="op">=</span><span class="st">"../../../sample_data/devon_miu_travel_matrix.csv"</span>,</span>
+<span id="cb22-15"><a href="#cb22-15" aria-hidden="true" tabindex="-1"></a>    source_col<span class="op">=</span><span class="st">"from_id"</span>,</span>
+<span id="cb22-16"><a href="#cb22-16" aria-hidden="true" tabindex="-1"></a>    unit<span class="op">=</span><span class="st">"minutes"</span>,</span>
+<span id="cb22-17"><a href="#cb22-17" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb22-18"><a href="#cb22-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-19"><a href="#cb22-19" aria-hidden="true" tabindex="-1"></a>problem_honest.add_secondary_travel_matrix(</span>
+<span id="cb22-20"><a href="#cb22-20" aria-hidden="true" tabindex="-1"></a>    travel_matrix_df<span class="op">=</span><span class="st">"../../../sample_data/devon_miu_travel_matrix_public_transport_extended.csv"</span>,</span>
+<span id="cb22-21"><a href="#cb22-21" aria-hidden="true" tabindex="-1"></a>    source_col<span class="op">=</span><span class="st">"from_id"</span>,</span>
+<span id="cb22-22"><a href="#cb22-22" aria-hidden="true" tabindex="-1"></a>    label<span class="op">=</span><span class="st">"public_transport"</span>,</span>
+<span id="cb22-23"><a href="#cb22-23" aria-hidden="true" tabindex="-1"></a>    unit<span class="op">=</span><span class="st">"minutes"</span>,</span>
+<span id="cb22-24"><a href="#cb22-24" aria-hidden="true" tabindex="-1"></a>    threshold_for_coverage<span class="op">=</span><span class="dv">60</span>,</span>
+<span id="cb22-25"><a href="#cb22-25" aria-hidden="true" tabindex="-1"></a>    allow_missing<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb22-26"><a href="#cb22-26" aria-hidden="true" tabindex="-1"></a>    treat_as_missing<span class="op">=</span><span class="dv">9999</span>,</span>
+<span id="cb22-27"><a href="#cb22-27" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Evaluating the same single-site solution now gives an honest average – computed only over regions that can actually reach the site by public transport – alongside an explicit count of how many, and how much demand, couldn’t:</p>
+<div id="1bb516e4" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:45:22.556300Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:45:22.556054Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:45:22.583564Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:45:22.582448Z&quot;}}" data-execution_count="19">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>honest <span class="op">=</span> problem_honest.evaluate_baseline(</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>    site_names<span class="op">=</span>[<span class="st">"South Hams Hospital (Kingsbridge)"</span>], threshold_for_coverage<span class="op">=</span><span class="dv">20</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>honest.solution_df[[</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"weighted_average__public_transport"</span>,</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"max__public_transport"</span>,</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">"regions_unreachable__public_transport"</span>,</span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">"demand_unreachable__public_transport"</span>,</span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">"proportion_demand_unreachable__public_transport"</span>,</span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>    ]]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>/__w/lokigi/lokigi/lokigi/site.py:647: UserWarning:
+
+No demand data was provided. Demand from all regions has been assumed to be equal. If you wish to override this, run .add_demand() to add your demand dataframe before calling evaluate_baseline() again.
+</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="19">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">weighted_average__public_transport</th>
+<th data-quarto-table-cell-role="th">max__public_transport</th>
+<th data-quarto-table-cell-role="th">regions_unreachable__public_transport</th>
+<th data-quarto-table-cell-role="th">demand_unreachable__public_transport</th>
+<th data-quarto-table-cell-role="th">proportion_demand_unreachable__public_transport</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>191.137725</td>
+<td>399.0</td>
+<td>39</td>
+<td>39.0</td>
+<td>0.055163</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>191 minutes and a maximum of 399 – both real, honest journey times – plus an explicit “39 of 707 regions (5.5% of assumed-equal demand) have no public transport route at all” that used to be invisible, baked silently into a nonsensical 732-minute average.</p>
+<p>The map reflects the same honesty: unreachable regions are shaded a distinct grey rather than left an unexplained hole, and the title states the count directly.</p>
+<div id="814e8123" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:45:22.585957Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:45:22.585734Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:45:23.512818Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:45:23.511785Z&quot;}}" data-execution_count="20">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>honest.plot_best_combination(matrix<span class="op">=</span><span class="st">"public_transport"</span>, show_all_locations<span class="op">=</span><span class="va">False</span>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-21-output-1.png" width="615" height="536" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>When would you actually use this?</strong> Public transport (or walking/cycling) matrices are usually generated with a permissive search radius/time limit to keep generation fast – see <a href="../../../examples/travel_time_matrices/obtaining_travel_time_matrices_limits/index.html">obtaining travel time matrices</a> – which means some pairs genuinely have no route within that limit. <code>allow_missing</code>/<code>treat_as_missing</code> let you register that matrix as-is instead of widening the search (slow) or inventing a sentinel (corrupting). If the <em>primary</em> matrix (the one <code>solve()</code> optimises against, car in this example) has missing values, <code>solve()</code> additionally requires <code>unreachable_cost=&lt;a number&gt;</code> – a cost assumed for unreachable pairs <em>only</em> when ranking/pruning combinations, never in the reported metrics above – since otherwise a combination could be silently rewarded for stranding demand behind an unreachable pair. Secondary matrices, as used here, never drive optimisation, so no such policy is needed.</p>
+</section>
 </section>
 <section id="which-approach-should-i-use" class="level2">
 <h2 class="anchored" data-anchor-id="which-approach-should-i-use">Which approach should I use?</h2>
@@ -862,7 +1022,7 @@ if (outputEl) {{
 
 <a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
 <script type="application/vnd.jupyter.widget-state+json">
-{"state":{"4069383f26fc4a0bb69a1b833a7500dd":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_db5d67c1214c42dab59590bf6cbc869d","max":1365,"min":0,"orientation":"horizontal","style":"IPY_MODEL_c2aed1f6765d49b986e104c476de5fa7","tabbable":null,"tooltip":null,"value":1365}},"5393215d2927493f84db129eebb76f53":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"6272c751fda142a2bad4237b0c1aeef2":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_e68fef5e663c4d9e97aed26b44e809e8","placeholder":"​","style":"IPY_MODEL_ae51d825e2584ecf9664f03e9652b683","tabbable":null,"tooltip":null,"value":" 1365/1365 [00:11&lt;00:00, 123.96it/s]"}},"71d0918eb9294589ac62d086f62081ef":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_8e7efa676bf2465c888322d874e9a769","IPY_MODEL_4069383f26fc4a0bb69a1b833a7500dd","IPY_MODEL_6272c751fda142a2bad4237b0c1aeef2"],"layout":"IPY_MODEL_5393215d2927493f84db129eebb76f53","tabbable":null,"tooltip":null}},"8e7efa676bf2465c888322d874e9a769":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_d1c96bca6b1544cd85e07620313f4f06","placeholder":"​","style":"IPY_MODEL_913da4869e7c4ae4a0362ead054e09bd","tabbable":null,"tooltip":null,"value":"100%"}},"913da4869e7c4ae4a0362ead054e09bd":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"ae51d825e2584ecf9664f03e9652b683":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"c2aed1f6765d49b986e104c476de5fa7":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"d1c96bca6b1544cd85e07620313f4f06":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"db5d67c1214c42dab59590bf6cbc869d":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"e68fef5e663c4d9e97aed26b44e809e8":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}}},"version_major":2,"version_minor":0}
+{"state":{"14b40a84675c4fa488f72e4d22b88797":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"204436dd8e8f4205993a152253b91109":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"213f3133431e4f769eabfc2e099f16a6":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_2e6ad29380f34a7980bac783e129765c","IPY_MODEL_b0532a2d726a49568fd71e82caef333d","IPY_MODEL_4924a27a8a0242fababbe45665fbefec"],"layout":"IPY_MODEL_e4ea5a47057e43d9bec865fa2a04ef81","tabbable":null,"tooltip":null}},"2e6ad29380f34a7980bac783e129765c":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_75fe583c1a554cf184c1b8562357cc2b","placeholder":"​","style":"IPY_MODEL_204436dd8e8f4205993a152253b91109","tabbable":null,"tooltip":null,"value":"100%"}},"4924a27a8a0242fababbe45665fbefec":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_bab32a574bdb4267866a30e27912e030","placeholder":"​","style":"IPY_MODEL_14b40a84675c4fa488f72e4d22b88797","tabbable":null,"tooltip":null,"value":" 1365/1365 [00:13&lt;00:00, 103.08it/s]"}},"75fe583c1a554cf184c1b8562357cc2b":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"b0532a2d726a49568fd71e82caef333d":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_d6d9f0fa7a0648b9858150e70ce3b481","max":1365,"min":0,"orientation":"horizontal","style":"IPY_MODEL_eb66cd6f67ff42898f18901adad690e1","tabbable":null,"tooltip":null,"value":1365}},"bab32a574bdb4267866a30e27912e030":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"d6d9f0fa7a0648b9858150e70ce3b481":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"e4ea5a47057e43d9bec865fa2a04ef81":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"eb66cd6f67ff42898f18901adad690e1":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}}},"version_major":2,"version_minor":0}
 </script>
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {

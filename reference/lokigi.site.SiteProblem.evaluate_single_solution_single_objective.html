@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.38">
+<meta name="generator" content="quarto-1.10.18">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -12,10 +12,13 @@
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
 */
-code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
-div.columns{display: flex; gap: min(4vw, 1.5em);}
-div.column{flex: auto; overflow-x: auto;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
 div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 ul.task-list{list-style: none;}
 ul.task-list li input[type="checkbox"] {
@@ -74,12 +77,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-b85bc7c33db8c58e0ec93c3465666fed.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-0d210a0509ecf4a0ffc439124ba9b804.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-0b786126e8e87865814929786bd75bd9.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-e9116e874763087f90fa188e1bb6cd75.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-32996061cbfd2997963ec587d192a074.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -351,17 +354,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    site_indices<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    capacitated<span class="op">=</span><span class="va">False</span>,</span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    threshold_for_coverage<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    baseline_costs<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    meaningful_change_threshold<span class="op">=</span><span class="fl">0.0</span>,</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    beyond_thresholds<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    unreachable_cost<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Evaluate a specific set of facility sites against a single objective.</p>
 <p>This method calculates the performance of a given facility configuration (a ‘solution’). It determines which demand points are assigned to which sites based on minimum travel cost and calculates coverage metrics if a threshold is provided.</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 6%">
-<col style="width: 3%">
-<col style="width: 86%">
-<col style="width: 3%">
+<col style="width: 5%">
+<col style="width: 4%">
+<col style="width: 87%">
+<col style="width: 2%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -400,6 +407,30 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>threshold_for_coverage</td>
 <td>float or int</td>
 <td>A distance or time value. Demand points with a minimum travel cost lower than this value are flagged as ‘covered’. The resulting <code>proportion_within_coverage_threshold</code> metric is weighted by the demand registered via <code>add_demand()</code>; the unweighted share of regions is reported alongside it as <code>proportion_regions_within_coverage_threshold</code>.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td>baseline_costs</td>
+<td>dict[str, pandas.Series]</td>
+<td>Internal/advanced: forwarded to <code>EvaluatedCombination</code> to compute population-impact-vs-baseline metrics. Most callers should use <code>evaluate_baseline()</code> and <code>SolutionComparator.population_impact_summary()</code>, or <code>solve(baseline=...)</code>, rather than passing this directly.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td>meaningful_change_threshold</td>
+<td>float</td>
+<td>Only used when <code>baseline_costs</code> is given – see <code>lokigi.utils._population_impact_metrics</code>.</td>
+<td><code>0.0</code></td>
+</tr>
+<tr class="even">
+<td>beyond_thresholds</td>
+<td>float or sequence of float</td>
+<td>One or more “left behind” travel-cost thresholds – forwarded to <code>EvaluatedCombination</code>, see its <code>beyond_thresholds</code> parameter for the resulting <code>demand_beyond_threshold_&lt;t&gt;</code> / <code>regions_beyond_threshold_&lt;t&gt;</code> columns. Deliberately distinct from <code>threshold_for_coverage</code>: “covered” (good) and “beyond” (bad) cross the threshold in opposite directions, and this parameter accepts more than one value at once.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td>unreachable_cost</td>
+<td>float</td>
+<td>Forwarded to <code>EvaluatedCombination</code> – see its parameter of the same name. Produces <code>weighted_average_for_ranking</code>/ <code>unweighted_average_for_ranking</code>/<code>max_for_ranking</code> on the returned combination, identical to their honest counterparts unless this is set. Most callers should use <code>solve( unreachable_cost=...)</code> rather than passing this directly; passing it here alone has no effect beyond that combination’s own reported numbers, since a direct call doesn’t rank/prune against other combinations at all.</td>
 <td><code>None</code></td>
 </tr>
 </tbody>

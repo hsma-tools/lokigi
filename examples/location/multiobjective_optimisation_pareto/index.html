@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.38">
+<meta name="generator" content="quarto-1.10.18">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -12,10 +12,13 @@
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
 */
-code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
-div.columns{display: flex; gap: min(4vw, 1.5em);}
-div.column{flex: auto; overflow-x: auto;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
 div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 ul.task-list{list-style: none;}
 ul.task-list li input[type="checkbox"] {
@@ -74,12 +77,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../../../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-dark-b85bc7c33db8c58e0ec93c3465666fed.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../../site_libs/bootstrap/bootstrap-0d210a0509ecf4a0ffc439124ba9b804.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../../../site_libs/bootstrap/bootstrap-dark-0b786126e8e87865814929786bd75bd9.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../../../site_libs/bootstrap/bootstrap-e9116e874763087f90fa188e1bb6cd75.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../../site_libs/bootstrap/bootstrap-dark-32996061cbfd2997963ec587d192a074.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -382,11 +385,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Hospital B is not dominated by hospital C, because hospital C was worse travel time despite better coverage.</p>
 <p>However, hospital D is worse in every respect than the other solutions; this is a <em>dominated</em> solution and so can be disregarded from our list.</p>
 <p>Let’s first remind ourselves of pareto fronts when just looking at two metrics at a time.</p>
-<div id="57f4afcf" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:11.085981Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:11.085819Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:14.439901Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:14.438957Z&quot;}}" data-execution_count="1">
+<div id="57f4afcf" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:34.439908Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:34.439785Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:36.908257Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:36.907541Z&quot;}}" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.site <span class="im">import</span> SiteProblem</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.multiobjective <span class="im">import</span> ParetoMetric</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.multiobjective <span class="im">import</span> Metric</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div id="f8e0e101" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:14.442705Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:14.442357Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:14.548681Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:14.547985Z&quot;}}" data-execution_count="2">
+<div id="f8e0e101" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:36.910172Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:36.909855Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:37.033922Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:37.033436Z&quot;}}" data-execution_count="2">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>problem <span class="op">=</span> SiteProblem()</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>problem.add_sites(</span>
@@ -424,15 +427,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <pre><code>Guessed CRS: EPSG:4326 (Values fall within longitude/latitude bounds)</code></pre>
 </div>
 </div>
-<div id="90cc9afd" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:14.551008Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:14.550786Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.030514Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.029610Z&quot;}}" data-execution_count="3">
+<div id="90cc9afd" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:37.035386Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:37.035208Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:38.798331Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:38.797864Z&quot;}}" data-execution_count="3">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>solution <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">6</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, threshold_for_coverage<span class="op">=</span><span class="dv">20</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"b327ee9560414059b2a09f43306a9404","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+{"model_id":"37c83d1cf2c1426cbb8d857a3d747251","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
 </script>
 </div>
 </div>
-<div id="3c693f29" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.032328Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.032126Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.105340Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.104638Z&quot;}}" data-execution_count="4">
+<div id="3c693f29" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:38.799731Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:38.799604Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:38.861085Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:38.860596Z&quot;}}" data-execution_count="4">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>solution.show_solutions()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="4">
 <div>
@@ -445,15 +448,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <th data-quarto-table-cell-role="th">solution_rank</th>
 <th data-quarto-table-cell-role="th">site_names</th>
 <th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">unselected_site_names</th>
 <th data-quarto-table-cell-role="th">coverage_threshold</th>
 <th data-quarto-table-cell-role="th">weighted_average</th>
 <th data-quarto-table-cell-role="th">unweighted_average</th>
 <th data-quarto-table-cell-role="th">90th_percentile</th>
 <th data-quarto-table-cell-role="th">max</th>
-<th data-quarto-table-cell-role="th">total_cost</th>
-<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average_for_ranking</th>
 <th data-quarto-table-cell-role="th">...</th>
-<th data-quarto-table-cell-role="th">gap_absolute_weighted</th>
 <th data-quarto-table-cell-role="th">gap_relative_weighted</th>
 <th data-quarto-table-cell-role="th">avg_lower_third_bins</th>
 <th data-quarto-table-cell-role="th">avg_middle_third_bins</th>
@@ -463,6 +465,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <th data-quarto-table-cell-role="th">gap_relative_description</th>
 <th data-quarto-table-cell-role="th">inter_tertile_description</th>
 <th data-quarto-table-cell-role="th">problem_df</th>
+<th data-quarto-table-cell-role="th">additional_site_names</th>
 </tr>
 </thead>
 <tbody>
@@ -471,120 +474,120 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>1</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 8, 12]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>20</td>
 <td>19.07</td>
 <td>18.81</td>
 <td>38.69</td>
 <td>61.18</td>
-<td>NaN</td>
-<td>0.62</td>
+<td>19.07</td>
 <td>...</td>
-<td>14.51</td>
 <td>2.48</td>
 <td>15.16</td>
 <td>21.78</td>
 <td>16.51</td>
 <td>0.92</td>
-<td>Spread of 14.5 units between best and worst gr...</td>
+<td>Spread of 14.5 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 148...</td>
 <td>Slightly Progressive (Most deprived travel 8% ...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Newton Abbott - Market Walk, Barnstaple - Arc...</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1</th>
 <td>2</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 5, 12]</td>
+<td>[Tiverton - Lowman Way, Crediton - Lords Meado...</td>
 <td>20</td>
 <td>19.09</td>
 <td>19.01</td>
 <td>34.43</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.58</td>
+<td>19.09</td>
 <td>...</td>
-<td>14.06</td>
 <td>2.43</td>
 <td>14.74</td>
 <td>22.09</td>
 <td>17.55</td>
 <td>0.84</td>
-<td>Spread of 14.1 units between best and worst gr...</td>
+<td>Spread of 14.1 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 143...</td>
 <td>Slightly Progressive (Most deprived travel 16%...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Okehampton - Exeter Road Industrial Estate, B...</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">2</th>
 <td>3</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 9, 12]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>20</td>
 <td>19.20</td>
 <td>18.99</td>
 <td>38.18</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.62</td>
+<td>19.20</td>
 <td>...</td>
-<td>14.34</td>
 <td>2.46</td>
 <td>15.34</td>
 <td>21.77</td>
 <td>17.01</td>
 <td>0.90</td>
-<td>Spread of 14.3 units between best and worst gr...</td>
+<td>Spread of 14.3 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 146...</td>
 <td>Slightly Progressive (Most deprived travel 10%...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Bovey Tracey - Blue Waters, Barnstaple - Arch...</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">3</th>
 <td>4</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 4, 12]</td>
+<td>[Okehampton - Exeter Road Industrial Estate, C...</td>
 <td>20</td>
 <td>19.20</td>
 <td>19.08</td>
 <td>38.11</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.60</td>
+<td>19.20</td>
 <td>...</td>
-<td>15.33</td>
 <td>2.56</td>
 <td>14.79</td>
 <td>22.07</td>
 <td>17.22</td>
 <td>0.86</td>
-<td>Spread of 15.3 units between best and worst gr...</td>
+<td>Spread of 15.3 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 156...</td>
 <td>Slightly Progressive (Most deprived travel 14%...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Tiverton - Lowman Way, Barnstaple - Archwood ...</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">4</th>
 <td>5</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 12, 17]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>20</td>
 <td>19.25</td>
 <td>18.98</td>
 <td>38.18</td>
 <td>61.18</td>
-<td>NaN</td>
-<td>0.59</td>
+<td>19.25</td>
 <td>...</td>
-<td>15.35</td>
 <td>2.76</td>
 <td>14.89</td>
 <td>21.84</td>
 <td>17.28</td>
 <td>0.86</td>
-<td>Spread of 15.4 units between best and worst gr...</td>
+<td>Spread of 15.4 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 176...</td>
 <td>Slightly Progressive (Most deprived travel 14%...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Barnstaple - Archwood Retail Park, Paignton -...</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">...</th>
@@ -615,149 +618,155 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>87</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 6, 16]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>20</td>
 <td>20.19</td>
 <td>20.18</td>
 <td>38.69</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.55</td>
+<td>20.19</td>
 <td>...</td>
-<td>14.31</td>
 <td>2.24</td>
 <td>15.72</td>
 <td>23.61</td>
 <td>17.96</td>
 <td>0.88</td>
-<td>Spread of 14.3 units between best and worst gr...</td>
+<td>Spread of 14.3 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 124...</td>
 <td>Slightly Progressive (Most deprived travel 12%...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Crediton - Lords Meadow, Holsworthy - Underlane]</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">87</th>
 <td>88</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 7, 11]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>20</td>
 <td>20.21</td>
 <td>20.12</td>
 <td>39.84</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.57</td>
+<td>20.21</td>
 <td>...</td>
-<td>14.82</td>
 <td>2.32</td>
 <td>16.08</td>
 <td>23.60</td>
 <td>17.14</td>
 <td>0.94</td>
-<td>Spread of 14.8 units between best and worst gr...</td>
+<td>Spread of 14.8 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 132...</td>
 <td>Slightly Progressive (Most deprived travel 6% ...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[South Molton - Pathfields, Exmouth - The Strand]</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">88</th>
 <td>89</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 15, 16]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>20</td>
 <td>20.22</td>
 <td>20.15</td>
 <td>38.48</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.56</td>
+<td>20.22</td>
 <td>...</td>
-<td>13.99</td>
 <td>2.21</td>
 <td>16.12</td>
 <td>23.44</td>
 <td>17.43</td>
 <td>0.92</td>
-<td>Spread of 14.0 units between best and worst gr...</td>
+<td>Spread of 14.0 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 121...</td>
 <td>Slightly Progressive (Most deprived travel 8% ...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Tavistock - Drake Road, Holsworthy - Underlane]</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">89</th>
 <td>90</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 11, 13]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>20</td>
 <td>20.24</td>
 <td>19.94</td>
 <td>39.84</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.58</td>
+<td>20.24</td>
 <td>...</td>
-<td>15.46</td>
 <td>2.50</td>
 <td>16.08</td>
 <td>23.27</td>
 <td>16.96</td>
 <td>0.95</td>
-<td>Spread of 15.5 units between best and worst gr...</td>
+<td>Spread of 15.5 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 150...</td>
 <td>Slightly Progressive (Most deprived travel 5% ...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Exmouth - The Strand, Ilfracombe - Wilder Road]</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">90</th>
 <td>91</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 11, 16]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>20</td>
 <td>20.37</td>
 <td>20.27</td>
 <td>39.84</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.56</td>
+<td>20.37</td>
 <td>...</td>
-<td>14.92</td>
 <td>2.29</td>
 <td>16.00</td>
 <td>23.94</td>
 <td>17.17</td>
 <td>0.93</td>
-<td>Spread of 14.9 units between best and worst gr...</td>
+<td>Spread of 14.9 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 129...</td>
 <td>Slightly Progressive (Most deprived travel 7% ...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Exmouth - The Strand, Holsworthy - Underlane]</td>
 </tr>
 </tbody>
 </table>
 
-<p>91 rows × 26 columns</p>
+<p>91 rows × 38 columns</p>
 </div>
 </div>
 </div>
 <p>Let’s recap all of the column names we have.</p>
-<div id="380ed85e" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.107718Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.107520Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.110798Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.110213Z&quot;}}" data-execution_count="5">
+<div id="380ed85e" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:38.862695Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:38.862561Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:38.865073Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:38.864675Z&quot;}}" data-execution_count="5">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>solution.show_solutions_colnames()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Index(['solution_rank', 'site_names', 'site_indices', 'coverage_threshold',
-       'weighted_average', 'unweighted_average', '90th_percentile', 'max',
-       'total_cost', 'proportion_within_coverage_threshold',
+<pre><code>Index(['solution_rank', 'site_names', 'site_indices', 'unselected_site_names',
+       'coverage_threshold', 'weighted_average', 'unweighted_average',
+       '90th_percentile', 'max', 'weighted_average_for_ranking',
+       'unweighted_average_for_ranking', 'max_for_ranking', 'total_cost',
+       'proportion_within_coverage_threshold',
        'proportion_regions_within_coverage_threshold',
-       'weighted_by_equity_group', 'unweighted_by_equity_group',
-       'coverage_by_equity_group', 'coverage_regions_by_equity_group',
-       'max_cost_by_equity_group', 'gap_absolute_weighted',
+       'demand_within_coverage_threshold', 'regions_within_coverage_threshold',
+       'regions_unreachable', 'demand_unreachable',
+       'proportion_demand_unreachable', 'weighted_by_equity_group',
+       'unweighted_by_equity_group', 'coverage_by_equity_group',
+       'coverage_regions_by_equity_group', 'max_cost_by_equity_group',
+       'regions_unreachable_by_equity_group',
+       'demand_unreachable_by_equity_group', 'gap_absolute_weighted',
        'gap_relative_weighted', 'avg_lower_third_bins',
        'avg_middle_third_bins', 'avg_upper_third_bins', 'inter_tertile_ratio',
        'gap_absolute_description', 'gap_relative_description',
-       'inter_tertile_description', 'problem_df'],
+       'inter_tertile_description', 'problem_df', 'additional_site_names'],
       dtype='str')</code></pre>
 </div>
 </div>
 <p>Let’s look at a couple of trade-offs.</p>
 <p>In the plot below, the line indicates the <strong>pareto front</strong> - the non-dominated solutions.</p>
-<div id="865c302a" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.112840Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.112637Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.248097Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.247202Z&quot;}}" data-execution_count="6">
+<div id="865c302a" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:38.866403Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:38.866236Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:38.977521Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:38.976959Z&quot;}}" data-execution_count="6">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>solution.plot_simple_pareto_front_pairs(x_axis<span class="op">=</span><span class="st">"weighted_average"</span>, y_axis<span class="op">=</span><span class="st">"max"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="6">
 <div>
@@ -775,7 +784,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul>
 <p>We can repeat this for another metric, like weighted average travel time against coverage.</p>
 <p>Here, we can see that there is one single best solution in the top left corner - a coverage of 0.62, with a weighted average travel time of 19.07. Therefore, no pareto front is plotted.</p>
-<div id="053a4b3e" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.250213Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.250010Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.367097Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.365839Z&quot;}}" data-execution_count="7">
+<div id="053a4b3e" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:38.979474Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:38.979209Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:39.075707Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:39.075092Z&quot;}}" data-execution_count="7">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>solution.plot_simple_pareto_front_pairs(</span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    x_axis<span class="op">=</span><span class="st">"weighted_average"</span>,</span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    y_axis<span class="op">=</span><span class="st">"proportion_within_coverage_threshold"</span>,</span>
@@ -791,21 +800,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>But often we will want to consider more metrics than just two.</p>
-<p>When this is the case, we can use lokigi’s ParetoMetric to define a list of metrics we wish to consider.</p>
-<div id="b76afcdb" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.368901Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.368712Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.372061Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.371404Z&quot;}}" data-execution_count="8">
+<p>When this is the case, we can use lokigi’s Metric to define a list of metrics we wish to consider.</p>
+<div id="b76afcdb" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:39.077358Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:39.077157Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:39.079971Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:39.079460Z&quot;}}" data-execution_count="8">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>metrics <span class="op">=</span> [</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>        ParetoMetric(column<span class="op">=</span><span class="st">"weighted_average"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>        Metric(column<span class="op">=</span><span class="st">"weighted_average"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>                     label<span class="op">=</span><span class="st">"weighted average travel time"</span>, unit<span class="op">=</span><span class="st">"minutes"</span>),</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>        ParetoMetric(column<span class="op">=</span><span class="st">"max"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>        Metric(column<span class="op">=</span><span class="st">"max"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
 <span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>                     label<span class="op">=</span><span class="st">"maximum travel time"</span>, unit<span class="op">=</span><span class="st">"minutes"</span>),</span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>        ParetoMetric(column<span class="op">=</span><span class="st">"proportion_within_coverage_threshold"</span>, direction<span class="op">=</span><span class="st">"higher_better"</span>,</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>        Metric(column<span class="op">=</span><span class="st">"proportion_within_coverage_threshold"</span>, direction<span class="op">=</span><span class="st">"higher_better"</span>,</span>
 <span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>                     label<span class="op">=</span><span class="st">"proportion within coverage threshold"</span>),</span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>        ParetoMetric(column<span class="op">=</span><span class="st">"inter_tertile_ratio"</span>, direction<span class="op">=</span><span class="st">"closest_to_target"</span>, target<span class="op">=</span><span class="fl">1.0</span>,</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>        Metric(column<span class="op">=</span><span class="st">"inter_tertile_ratio"</span>, direction<span class="op">=</span><span class="st">"closest_to_target"</span>, target<span class="op">=</span><span class="fl">1.0</span>,</span>
 <span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>                     label <span class="op">=</span> <span class="st">"ratio of weighted travel times in IMD 1-3 to IMD 7-10"</span>)</span>
 <span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>        ]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>We then pass these metrics in and can see that some new columns have been added to our solutions dataframe, identifying which solutions are considered ‘pareto optimal’ in any given cases.</p>
-<div id="53e2bed5" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.373966Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.373771Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.399841Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.398993Z&quot;}}" data-execution_count="9">
+<div id="53e2bed5" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:39.081312Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:39.081161Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:39.101854Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:39.101181Z&quot;}}" data-execution_count="9">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>solution.compute_pareto_front(</span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    metrics<span class="op">=</span>metrics</span>
 <span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>        )</span>
@@ -899,7 +908,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>The pareto_summary() method returns only solutions that are non-dominated.</p>
-<div id="c0aca816" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.401719Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.401529Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.410016Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.409057Z&quot;}}" data-execution_count="10">
+<div id="c0aca816" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:39.103517Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:39.103328Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:39.109581Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:39.109007Z&quot;}}" data-execution_count="10">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>solution.pareto_summary()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="10">
 <div>
@@ -996,7 +1005,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>By default, it only returns the metrics of interest, but we can opt to return all.</p>
-<div id="db49db50" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.412151Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.411932Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.471896Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.471335Z&quot;}}" data-execution_count="11">
+<div id="db49db50" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:39.110963Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:39.110783Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:39.169490Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:39.168796Z&quot;}}" data-execution_count="11">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>solution.pareto_summary(return_full_df<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="11">
 <div>
@@ -1009,15 +1018,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <th data-quarto-table-cell-role="th">solution_rank</th>
 <th data-quarto-table-cell-role="th">site_names</th>
 <th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">unselected_site_names</th>
 <th data-quarto-table-cell-role="th">coverage_threshold</th>
 <th data-quarto-table-cell-role="th">weighted_average</th>
 <th data-quarto-table-cell-role="th">unweighted_average</th>
 <th data-quarto-table-cell-role="th">90th_percentile</th>
 <th data-quarto-table-cell-role="th">max</th>
-<th data-quarto-table-cell-role="th">total_cost</th>
-<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average_for_ranking</th>
 <th data-quarto-table-cell-role="th">...</th>
-<th data-quarto-table-cell-role="th">avg_lower_third_bins</th>
 <th data-quarto-table-cell-role="th">avg_middle_third_bins</th>
 <th data-quarto-table-cell-role="th">avg_upper_third_bins</th>
 <th data-quarto-table-cell-role="th">inter_tertile_ratio</th>
@@ -1025,6 +1033,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <th data-quarto-table-cell-role="th">gap_relative_description</th>
 <th data-quarto-table-cell-role="th">inter_tertile_description</th>
 <th data-quarto-table-cell-role="th">problem_df</th>
+<th data-quarto-table-cell-role="th">additional_site_names</th>
 <th data-quarto-table-cell-role="th">is_pareto_optimal</th>
 <th data-quarto-table-cell-role="th">dominated_by</th>
 </tr>
@@ -1035,22 +1044,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>1</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 8, 12]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>20</td>
 <td>19.067738</td>
 <td>18.811545</td>
 <td>38.690000</td>
 <td>61.183334</td>
-<td>NaN</td>
-<td>0.620176</td>
+<td>19.067738</td>
 <td>...</td>
-<td>15.1550</td>
 <td>21.776667</td>
 <td>16.506667</td>
 <td>0.918114</td>
-<td>Spread of 14.5 units between best and worst gr...</td>
+<td>Spread of 14.5 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 148...</td>
 <td>Slightly Progressive (Most deprived travel 8% ...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Newton Abbott - Market Walk, Barnstaple - Arc...</td>
 <td>True</td>
 <td>[]</td>
 </tr>
@@ -1059,22 +1068,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>6</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 5, 8]</td>
+<td>[Tiverton - Lowman Way, Crediton - Lords Meado...</td>
 <td>20</td>
 <td>19.281145</td>
 <td>19.176315</td>
 <td>36.410000</td>
 <td>56.350000</td>
-<td>NaN</td>
-<td>0.595434</td>
+<td>19.281145</td>
 <td>...</td>
-<td>15.6875</td>
 <td>22.093333</td>
 <td>16.996667</td>
 <td>0.922975</td>
-<td>Spread of 12.0 units between best and worst gr...</td>
+<td>Spread of 12.0 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 104...</td>
 <td>Slightly Progressive (Most deprived travel 8% ...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Okehampton - Exeter Road Industrial Estate, N...</td>
 <td>True</td>
 <td>[]</td>
 </tr>
@@ -1083,22 +1092,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>9</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 4, 8]</td>
+<td>[Okehampton - Exeter Road Industrial Estate, C...</td>
 <td>20</td>
 <td>19.307562</td>
 <td>19.178669</td>
 <td>40.630000</td>
 <td>61.183334</td>
-<td>NaN</td>
-<td>0.616704</td>
+<td>19.307562</td>
 <td>...</td>
-<td>15.6325</td>
 <td>22.020000</td>
 <td>16.660000</td>
 <td>0.938325</td>
-<td>Spread of 13.2 units between best and worst gr...</td>
+<td>Spread of 13.2 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 114...</td>
 <td>Slightly Progressive (Most deprived travel 6% ...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Tiverton - Lowman Way, Newton Abbott - Market...</td>
 <td>True</td>
 <td>[]</td>
 </tr>
@@ -1107,22 +1116,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>14</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 5, 17]</td>
+<td>[Tiverton - Lowman Way, Crediton - Lords Meado...</td>
 <td>20</td>
 <td>19.454259</td>
 <td>19.327115</td>
 <td>35.893332</td>
 <td>55.633335</td>
-<td>NaN</td>
-<td>0.566852</td>
+<td>19.454259</td>
 <td>...</td>
-<td>15.4150</td>
 <td>22.123333</td>
 <td>17.766667</td>
 <td>0.867636</td>
-<td>Spread of 12.7 units between best and worst gr...</td>
+<td>Spread of 12.7 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 122...</td>
 <td>Slightly Progressive (Most deprived travel 13%...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Okehampton - Exeter Road Industrial Estate, P...</td>
 <td>True</td>
 <td>[]</td>
 </tr>
@@ -1131,22 +1140,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>16</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 5, 14]</td>
+<td>[Tiverton - Lowman Way, Crediton - Lords Meado...</td>
 <td>20</td>
 <td>19.494915</td>
 <td>19.554390</td>
 <td>34.653334</td>
 <td>55.633335</td>
-<td>NaN</td>
-<td>0.558261</td>
+<td>19.494915</td>
 <td>...</td>
-<td>16.3100</td>
 <td>21.250000</td>
 <td>18.036667</td>
 <td>0.904269</td>
-<td>Spread of 11.4 units between best and worst gr...</td>
+<td>Spread of 11.4 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 98%...</td>
 <td>Slightly Progressive (Most deprived travel 10%...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Okehampton - Exeter Road Industrial Estate, K...</td>
 <td>True</td>
 <td>[]</td>
 </tr>
@@ -1155,22 +1164,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>17</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 8, 15]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>20</td>
 <td>19.515019</td>
 <td>19.324166</td>
 <td>39.430001</td>
 <td>59.766666</td>
-<td>NaN</td>
-<td>0.601931</td>
+<td>19.515019</td>
 <td>...</td>
-<td>16.3225</td>
 <td>22.076667</td>
 <td>16.350000</td>
 <td>0.998318</td>
-<td>Spread of 12.4 units between best and worst gr...</td>
+<td>Spread of 12.4 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 107...</td>
 <td>Balanced (Macro travel times are broadly equal)</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Newton Abbott - Market Walk, Tavistock - Drak...</td>
 <td>True</td>
 <td>[]</td>
 </tr>
@@ -1179,22 +1188,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>28</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 8, 17]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>20</td>
 <td>19.626803</td>
 <td>19.301166</td>
 <td>41.746667</td>
 <td>61.183334</td>
-<td>NaN</td>
-<td>0.602836</td>
+<td>19.626803</td>
 <td>...</td>
-<td>15.9025</td>
 <td>22.173333</td>
 <td>16.730000</td>
 <td>0.950538</td>
-<td>Spread of 14.7 units between best and worst gr...</td>
+<td>Spread of 14.7 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 141...</td>
 <td>Balanced (Macro travel times are broadly equal)</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Newton Abbott - Market Walk, Paignton - Hyde ...</td>
 <td>True</td>
 <td>[]</td>
 </tr>
@@ -1203,22 +1212,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>58</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 8, 11]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>20</td>
 <td>19.870268</td>
 <td>19.635940</td>
 <td>42.073333</td>
 <td>61.183334</td>
-<td>NaN</td>
-<td>0.610648</td>
+<td>19.870268</td>
 <td>...</td>
-<td>16.4400</td>
 <td>22.710000</td>
 <td>16.090000</td>
 <td>1.021753</td>
-<td>Spread of 13.6 units between best and worst gr...</td>
+<td>Spread of 13.6 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 118...</td>
 <td>Balanced (Macro travel times are broadly equal)</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Newton Abbott - Market Walk, Exmouth - The St...</td>
 <td>True</td>
 <td>[]</td>
 </tr>
@@ -1227,34 +1236,34 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>73</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 9, 11]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>20</td>
 <td>20.001618</td>
 <td>19.811660</td>
 <td>41.273333</td>
 <td>61.533333</td>
-<td>NaN</td>
-<td>0.606685</td>
+<td>20.001618</td>
 <td>...</td>
-<td>16.6225</td>
 <td>22.703333</td>
 <td>16.593333</td>
 <td>1.001758</td>
-<td>Spread of 13.4 units between best and worst gr...</td>
+<td>Spread of 13.4 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 116...</td>
 <td>Balanced (Macro travel times are broadly equal)</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Bovey Tracey - Blue Waters, Exmouth - The Str...</td>
 <td>True</td>
 <td>[]</td>
 </tr>
 </tbody>
 </table>
 
-<p>9 rows × 28 columns</p>
+<p>9 rows × 40 columns</p>
 </div>
 </div>
 </div>
 <p>We can also look at the tradeoffs of each solution compared to the winner for weighted average.</p>
-<div id="24d84d57" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.474538Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.474324Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.480245Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.479415Z&quot;}}" data-execution_count="12">
+<div id="24d84d57" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:39.170999Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:39.170807Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:39.174722Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:39.174297Z&quot;}}" data-execution_count="12">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>solution.describe_tradeoffs()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="12">
 <pre><code>['Solution 6 vs solution 1: costs weighted average travel time by 0.21; improves maximum travel time by 4.83; costs proportion within coverage threshold by 0.02; improves ratio of weighted travel times in imd 1-3 to imd 7-10 by 0.00',
@@ -1268,7 +1277,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>We can opt for a more stakeholder-focussed output, which is returned as a list of markdown strings for easy inclusion in a Quarto report or Streamlit frontend.</p>
-<div id="b0c559a4" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.482142Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.481953Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.487634Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.486984Z&quot;}}" data-execution_count="13">
+<div id="b0c559a4" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:39.176002Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:39.175835Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:39.179728Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:39.179165Z&quot;}}" data-execution_count="13">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>solution.describe_tradeoffs_for_stakeholders()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="13">
 <pre><code>['We found 9 genuinely different options -- each one is the best choice on at least one measure, so no single option wins on everything. The trade-offs are between weighted average travel time, maximum travel time, proportion within coverage threshold, ratio of weighted travel times in imd 1-3 to imd 7-10.',
@@ -1289,7 +1298,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>This plots every non-dominated solution as a coloured line. Grey lines indicate other solutions to give context for the range of values of each metric.</p>
 <p>Metrics are scaled in such a way that values further up the axis will always be better, even if that means flipping the direction.</p>
 <p>For example, we have the shortest travel time (a smaller number) at the top, but the best coverage (a higher number) both appearing as the points at the top of the graph. So to interpret, we can just read it as values further up the y axis being better, and values further down being worse. This is also true for values that are aiming for a target - for example, for the IMD travel ratio, in this case we want it to be close to 1 (i.e.&nbsp;minimal difference between travel times across the upper and lower three deciles), so the values at the top are those that are closest to 1, and the values further down are those that are higher or lower than 1, with the direction being shown in the labels.</p>
-<div id="e7c56114" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.489384Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.489148Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:16.952526Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:16.951395Z&quot;}}" data-execution_count="14">
+<div id="e7c56114" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:39.181954Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:39.181808Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:39.546333Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:39.545406Z&quot;}}" data-execution_count="14">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>solution.plot_pareto_summary(width_multiplier<span class="op">=</span><span class="dv">3</span>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
@@ -1300,7 +1309,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>We can also use faceted plots to help investigate solutions in more detail. This can help us to understand the tradeoffs in more detail.</p>
-<div id="90a6134a" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:16.954874Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:16.954532Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:18.924131Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:18.923317Z&quot;}}" data-execution_count="15">
+<div id="90a6134a" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:39.548372Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:39.548043Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:41.094526Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:41.093967Z&quot;}}" data-execution_count="15">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>solution.plot_pareto_facets()<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
@@ -1310,47 +1319,68 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
-</section>
-<section id="adjusting-metrics" class="level2">
-<h2 class="anchored" data-anchor-id="adjusting-metrics">Adjusting metrics</h2>
-<p>Let’s imagine that rather than wanting to make the inter_tertile ratio as equal as possible, we instead want to prioritise access in the most deprived areas. We simply change the direction to lower_better.</p>
-<div id="66fb8b27" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:18.930732Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:18.930412Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:18.933779Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:18.933270Z&quot;}}" data-execution_count="16">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>metrics <span class="op">=</span> [</span>
-<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>        ParetoMetric(column<span class="op">=</span><span class="st">"weighted_average"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
-<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>                     label<span class="op">=</span><span class="st">"weighted average travel time"</span>, unit<span class="op">=</span><span class="st">"minutes"</span>),</span>
-<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>        ParetoMetric(column<span class="op">=</span><span class="st">"max"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
-<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>                     label<span class="op">=</span><span class="st">"maximum travel time"</span>, unit<span class="op">=</span><span class="st">"minutes"</span>),</span>
-<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>        ParetoMetric(column<span class="op">=</span><span class="st">"proportion_within_coverage_threshold"</span>, direction<span class="op">=</span><span class="st">"higher_better"</span>,</span>
-<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>                     label<span class="op">=</span><span class="st">"proportion within coverage threshold"</span>),</span>
-<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>        ParetoMetric(column<span class="op">=</span><span class="st">"inter_tertile_ratio"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
-<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>                     label <span class="op">=</span> <span class="st">"ratio of weighted travel times in IMD 1-3 to IMD 7-10"</span>),</span>
-<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>        <span class="co"># ParetoMetric(column="avg_lower_third_bins", direction="lower_better",</span></span>
-<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>        <span class="co">#              label = "Weighted travel times in IMD 1-3")</span></span>
-<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>        ]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</div>
-<p>Then we can just recompute our pareto front, which will overwrite the relevant flags in the solution dataframe.</p>
-<div id="03832a29" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:18.935892Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:18.935617Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:18.955426Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:18.954602Z&quot;}}" data-execution_count="17">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>solution.compute_pareto_front(</span>
-<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>    metrics<span class="op">=</span>metrics</span>
-<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>        )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</div>
-<p>Then we can recreate any required plots.</p>
-<div id="f0adcf8d" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:18.958025Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:18.957730Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:21.370443Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:21.369455Z&quot;}}" data-execution_count="18">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>solution.plot_pareto_facets()<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Both of the plots above label each option only as “Option 1”, “Option 2”, etc. <code>diff_against</code> adds a compact site-name diff to those labels, so it’s immediately clear what actually changes between trade-off options rather than just how they score. This problem has <code>Existing</code> sites flagged via <code>required_sites_col</code>, so <code>diff_against="default"</code> compares each option against those – “what’s new beyond what we already have”.</p>
+<div id="ac888472" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:41.100044Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:41.099839Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:41.480947Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:41.480379Z&quot;}}" data-execution_count="16">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>solution.plot_pareto_summary(width_multiplier<span class="op">=</span><span class="dv">3</span>, diff_against<span class="op">=</span><span class="st">"default"</span>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/cell-19-output-1.png" width="830" height="4189" class="figure-img"></p>
+<p><img src="index_files/figure-html/cell-17-output-1.png" width="1156" height="572" class="figure-img"></p>
 </figure>
 </div>
 </div>
 </div>
-<div id="0758ef4b" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T09:55:21.376431Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T09:55:21.376209Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T09:55:21.387494Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T09:55:21.386688Z&quot;}}" data-execution_count="19">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>solution.pareto_summary(return_full_df<span class="op">=</span><span class="va">True</span>)[[</span>
-<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"solution_rank"</span>, <span class="st">"inter_tertile_ratio"</span>, <span class="st">"inter_tertile_ratio"</span>,</span>
-<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"avg_lower_third_bins"</span>, <span class="st">"avg_upper_third_bins"</span></span>
-<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>    ]].<span class="bu">round</span>(<span class="dv">2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-display" data-execution_count="19">
+<div id="8b859473" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:41.482418Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:41.482295Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:43.112255Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:43.111631Z&quot;}}" data-execution_count="17">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>solution.plot_pareto_facets(diff_against<span class="op">=</span><span class="st">"default"</span>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-18-output-1.png" width="830" height="3426" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="adjusting-metrics" class="level2">
+<h2 class="anchored" data-anchor-id="adjusting-metrics">Adjusting metrics</h2>
+<p>Let’s imagine that rather than wanting to make the inter_tertile ratio as equal as possible, we instead want to prioritise access in the most deprived areas. We simply change the direction to lower_better.</p>
+<div id="66fb8b27" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:43.116913Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:43.116662Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:43.119766Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:43.119222Z&quot;}}" data-execution_count="18">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>metrics <span class="op">=</span> [</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>        Metric(column<span class="op">=</span><span class="st">"weighted_average"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>                     label<span class="op">=</span><span class="st">"weighted average travel time"</span>, unit<span class="op">=</span><span class="st">"minutes"</span>),</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>        Metric(column<span class="op">=</span><span class="st">"max"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>                     label<span class="op">=</span><span class="st">"maximum travel time"</span>, unit<span class="op">=</span><span class="st">"minutes"</span>),</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>        Metric(column<span class="op">=</span><span class="st">"proportion_within_coverage_threshold"</span>, direction<span class="op">=</span><span class="st">"higher_better"</span>,</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>                     label<span class="op">=</span><span class="st">"proportion within coverage threshold"</span>),</span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>        Metric(column<span class="op">=</span><span class="st">"inter_tertile_ratio"</span>, direction<span class="op">=</span><span class="st">"lower_better"</span>,</span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>                     label <span class="op">=</span> <span class="st">"ratio of weighted travel times in IMD 1-3 to IMD 7-10"</span>),</span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Metric(column="avg_lower_third_bins", direction="lower_better",</span></span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>        <span class="co">#              label = "Weighted travel times in IMD 1-3")</span></span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a>        ]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Then we can just recompute our pareto front, which will overwrite the relevant flags in the solution dataframe.</p>
+<div id="03832a29" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:43.121146Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:43.120965Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:43.136731Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:43.136213Z&quot;}}" data-execution_count="19">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>solution.compute_pareto_front(</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>    metrics<span class="op">=</span>metrics</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>        )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Then we can recreate any required plots.</p>
+<div id="f0adcf8d" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:43.138161Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:43.137998Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:44.940082Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:44.939423Z&quot;}}" data-execution_count="20">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>solution.plot_pareto_facets()<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-21-output-1.png" width="830" height="4189" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<div id="0758ef4b" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T08:13:44.943974Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T08:13:44.943843Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T08:13:44.963705Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T08:13:44.963260Z&quot;}}" data-execution_count="21">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>solution.pareto_summary(return_full_df<span class="op">=</span><span class="va">True</span>)[[</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"solution_rank"</span>, <span class="st">"inter_tertile_ratio"</span>, <span class="st">"inter_tertile_ratio"</span>,</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"avg_lower_third_bins"</span>, <span class="st">"avg_upper_third_bins"</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>    ]].<span class="bu">round</span>(<span class="dv">2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="21">
 <div>
 
 
@@ -1466,7 +1496,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
 <script type="application/vnd.jupyter.widget-state+json">
-{"state":{"1e5ef542a93a4ac182fa30587b5f60c6":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"57426b1583e94d9ebc44e4a96e2b7593":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_aab782293a8d4e538964203ac08957de","placeholder":"​","style":"IPY_MODEL_6dcf5494ea3c4154b893cc6a28d9d96c","tabbable":null,"tooltip":null,"value":" 91/91 [00:01&lt;00:00, 50.00it/s]"}},"6dcf5494ea3c4154b893cc6a28d9d96c":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"aab782293a8d4e538964203ac08957de":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"b327ee9560414059b2a09f43306a9404":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_fb0473e56cab464895c1f8213cf1bbe0","IPY_MODEL_d1b4806b89b247649ba5ab58d0a8b7da","IPY_MODEL_57426b1583e94d9ebc44e4a96e2b7593"],"layout":"IPY_MODEL_db6af39fdc18438bb411f13bfc930e65","tabbable":null,"tooltip":null}},"d1b4806b89b247649ba5ab58d0a8b7da":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_f08beaaa265c44d280cf99e2677249c6","max":91,"min":0,"orientation":"horizontal","style":"IPY_MODEL_faded943dbc1420593cf4bb1f7bf8030","tabbable":null,"tooltip":null,"value":91}},"d3e11d4ea998447e9d85d718892e07b1":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"db6af39fdc18438bb411f13bfc930e65":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"f08beaaa265c44d280cf99e2677249c6":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"faded943dbc1420593cf4bb1f7bf8030":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"fb0473e56cab464895c1f8213cf1bbe0":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_1e5ef542a93a4ac182fa30587b5f60c6","placeholder":"​","style":"IPY_MODEL_d3e11d4ea998447e9d85d718892e07b1","tabbable":null,"tooltip":null,"value":"100%"}}},"version_major":2,"version_minor":0}
+{"state":{"1272c43aa49f41f385a973a765ac71c6":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_de609bb3830b473680c59a2c7b3f1dc4","placeholder":"​","style":"IPY_MODEL_fa9ccd67b6f347e8bac9b659c29cde48","tabbable":null,"tooltip":null,"value":" 91/91 [00:02&lt;00:00, 33.21it/s]"}},"1da6de066c6a45479df893ac98ea104b":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_3889a0397994453196b902003aa30d4b","placeholder":"​","style":"IPY_MODEL_bc05fd018a3648d6b21ace97ed6fe2e1","tabbable":null,"tooltip":null,"value":"100%"}},"37c83d1cf2c1426cbb8d857a3d747251":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_1da6de066c6a45479df893ac98ea104b","IPY_MODEL_4c8f8e37b6ad427a9b776daf1792d83c","IPY_MODEL_1272c43aa49f41f385a973a765ac71c6"],"layout":"IPY_MODEL_56747984cca64890b72acfef75a7f466","tabbable":null,"tooltip":null}},"3889a0397994453196b902003aa30d4b":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"4c8f8e37b6ad427a9b776daf1792d83c":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_5737c42326324ef28d7c0a41a6bb8eee","max":91,"min":0,"orientation":"horizontal","style":"IPY_MODEL_ab99c4642c224b42af504a0704891e81","tabbable":null,"tooltip":null,"value":91}},"56747984cca64890b72acfef75a7f466":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"5737c42326324ef28d7c0a41a6bb8eee":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"ab99c4642c224b42af504a0704891e81":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"bc05fd018a3648d6b21ace97ed6fe2e1":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"de609bb3830b473680c59a2c7b3f1dc4":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"fa9ccd67b6f347e8bac9b659c29cde48":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}}},"version_major":2,"version_minor":0}
 </script>
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {

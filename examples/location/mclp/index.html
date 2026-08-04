@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.38">
+<meta name="generator" content="quarto-1.10.18">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -12,10 +12,13 @@
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
 */
-code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
-div.columns{display: flex; gap: min(4vw, 1.5em);}
-div.column{flex: auto; overflow-x: auto;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
 div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 ul.task-list{list-style: none;}
 ul.task-list li input[type="checkbox"] {
@@ -74,12 +77,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../../../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-dark-b85bc7c33db8c58e0ec93c3465666fed.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../../site_libs/bootstrap/bootstrap-0d210a0509ecf4a0ffc439124ba9b804.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../../../site_libs/bootstrap/bootstrap-dark-0b786126e8e87865814929786bd75bd9.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../../../site_libs/bootstrap/bootstrap-e9116e874763087f90fa188e1bb6cd75.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../../site_libs/bootstrap/bootstrap-dark-32996061cbfd2997963ec587d192a074.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -443,7 +446,7 @@ Note
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"7e774261822743af9d01c6973abb4f26","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+{"model_id":"d73c4e77f4a44cbf8a6df57ffd94ee71","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
 </script>
 </div>
 </div>
@@ -474,13 +477,13 @@ Note
 <th data-quarto-table-cell-role="th">solution_rank</th>
 <th data-quarto-table-cell-role="th">site_names</th>
 <th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">unselected_site_names</th>
 <th data-quarto-table-cell-role="th">coverage_threshold</th>
 <th data-quarto-table-cell-role="th">weighted_average</th>
 <th data-quarto-table-cell-role="th">unweighted_average</th>
 <th data-quarto-table-cell-role="th">90th_percentile</th>
 <th data-quarto-table-cell-role="th">max</th>
-<th data-quarto-table-cell-role="th">total_cost</th>
-<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average_for_ranking</th>
 <th data-quarto-table-cell-role="th">...</th>
 <th data-quarto-table-cell-role="th">gap_absolute_weighted</th>
 <th data-quarto-table-cell-role="th">gap_relative_weighted</th>
@@ -500,13 +503,13 @@ Note
 <td>1</td>
 <td>[Tulip (Site 3), Daisy (Site 4), Daffodil (Sit...</td>
 <td>[2, 3, 4]</td>
+<td>[Dahlia (Site 1), Begonia (Site 2), Snowdrop (...</td>
 <td>10</td>
 <td>5.37</td>
 <td>5.45</td>
 <td>8.50</td>
 <td>16.69</td>
-<td>NaN</td>
-<td>0.96</td>
+<td>5.37</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -524,13 +527,13 @@ Note
 <td>2</td>
 <td>[Tulip (Site 3), Daisy (Site 4), Snowdrop (Sit...</td>
 <td>[2, 3, 5]</td>
+<td>[Dahlia (Site 1), Begonia (Site 2), Daffodil (...</td>
 <td>10</td>
 <td>5.38</td>
 <td>5.36</td>
 <td>8.06</td>
 <td>16.69</td>
-<td>NaN</td>
-<td>0.95</td>
+<td>5.38</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -548,13 +551,13 @@ Note
 <td>3</td>
 <td>[Begonia (Site 2), Tulip (Site 3), Daisy (Site...</td>
 <td>[1, 2, 3]</td>
+<td>[Dahlia (Site 1), Daffodil (Site 5), Snowdrop ...</td>
 <td>10</td>
 <td>5.54</td>
 <td>5.59</td>
 <td>9.00</td>
 <td>16.69</td>
-<td>NaN</td>
-<td>0.94</td>
+<td>5.54</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -572,13 +575,13 @@ Note
 <td>4</td>
 <td>[Dahlia (Site 1), Tulip (Site 3), Snowdrop (Si...</td>
 <td>[0, 2, 5]</td>
+<td>[Begonia (Site 2), Daisy (Site 4), Daffodil (S...</td>
 <td>10</td>
 <td>6.32</td>
 <td>6.21</td>
 <td>9.33</td>
 <td>16.69</td>
-<td>NaN</td>
-<td>0.94</td>
+<td>6.32</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -596,13 +599,13 @@ Note
 <td>5</td>
 <td>[Tulip (Site 3), Daffodil (Site 5), Snowdrop (...</td>
 <td>[2, 4, 5]</td>
+<td>[Dahlia (Site 1), Begonia (Site 2), Daisy (Sit...</td>
 <td>10</td>
 <td>6.42</td>
 <td>6.29</td>
 <td>9.26</td>
 <td>16.69</td>
-<td>NaN</td>
-<td>0.93</td>
+<td>6.42</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -620,13 +623,13 @@ Note
 <td>6</td>
 <td>[Dahlia (Site 1), Tulip (Site 3), Daisy (Site 4)]</td>
 <td>[0, 2, 3]</td>
+<td>[Begonia (Site 2), Daffodil (Site 5), Snowdrop...</td>
 <td>10</td>
 <td>5.53</td>
 <td>5.67</td>
 <td>9.36</td>
 <td>16.69</td>
-<td>NaN</td>
-<td>0.93</td>
+<td>5.53</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -644,13 +647,13 @@ Note
 <td>7</td>
 <td>[Begonia (Site 2), Tulip (Site 3), Snowdrop (S...</td>
 <td>[1, 2, 5]</td>
+<td>[Dahlia (Site 1), Daisy (Site 4), Daffodil (Si...</td>
 <td>10</td>
 <td>6.51</td>
 <td>6.31</td>
 <td>9.45</td>
 <td>16.69</td>
-<td>NaN</td>
-<td>0.92</td>
+<td>6.51</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -668,13 +671,13 @@ Note
 <td>8</td>
 <td>[Dahlia (Site 1), Tulip (Site 3), Daffodil (Si...</td>
 <td>[0, 2, 4]</td>
+<td>[Begonia (Site 2), Daisy (Site 4), Snowdrop (S...</td>
 <td>10</td>
 <td>6.35</td>
 <td>6.32</td>
 <td>9.70</td>
 <td>16.69</td>
-<td>NaN</td>
-<td>0.90</td>
+<td>6.35</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -692,13 +695,13 @@ Note
 <td>9</td>
 <td>[Dahlia (Site 1), Begonia (Site 2), Tulip (Sit...</td>
 <td>[0, 1, 2]</td>
+<td>[Daisy (Site 4), Daffodil (Site 5), Snowdrop (...</td>
 <td>10</td>
 <td>6.47</td>
 <td>6.39</td>
 <td>9.77</td>
 <td>16.69</td>
-<td>NaN</td>
-<td>0.89</td>
+<td>6.47</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -716,13 +719,13 @@ Note
 <td>10</td>
 <td>[Begonia (Site 2), Daisy (Site 4), Daffodil (S...</td>
 <td>[1, 3, 4]</td>
+<td>[Dahlia (Site 1), Tulip (Site 3), Snowdrop (Si...</td>
 <td>10</td>
 <td>6.92</td>
 <td>6.76</td>
 <td>11.32</td>
 <td>21.71</td>
-<td>NaN</td>
-<td>0.82</td>
+<td>6.92</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -740,13 +743,13 @@ Note
 <td>11</td>
 <td>[Begonia (Site 2), Daffodil (Site 5), Snowdrop...</td>
 <td>[1, 4, 5]</td>
+<td>[Dahlia (Site 1), Tulip (Site 3), Daisy (Site 4)]</td>
 <td>10</td>
 <td>8.03</td>
 <td>7.65</td>
 <td>11.67</td>
 <td>21.71</td>
-<td>NaN</td>
-<td>0.78</td>
+<td>8.03</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -764,13 +767,13 @@ Note
 <td>12</td>
 <td>[Begonia (Site 2), Daisy (Site 4), Snowdrop (S...</td>
 <td>[1, 3, 5]</td>
+<td>[Dahlia (Site 1), Tulip (Site 3), Daffodil (Si...</td>
 <td>10</td>
 <td>6.98</td>
 <td>6.64</td>
 <td>11.58</td>
 <td>22.86</td>
-<td>NaN</td>
-<td>0.78</td>
+<td>6.98</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -788,13 +791,13 @@ Note
 <td>13</td>
 <td>[Dahlia (Site 1), Begonia (Site 2), Daisy (Sit...</td>
 <td>[0, 1, 3]</td>
+<td>[Tulip (Site 3), Daffodil (Site 5), Snowdrop (...</td>
 <td>10</td>
 <td>7.13</td>
 <td>6.92</td>
 <td>11.93</td>
 <td>23.92</td>
-<td>NaN</td>
-<td>0.77</td>
+<td>7.13</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -812,13 +815,13 @@ Note
 <td>14</td>
 <td>[Dahlia (Site 1), Daisy (Site 4), Daffodil (Si...</td>
 <td>[0, 3, 4]</td>
+<td>[Begonia (Site 2), Tulip (Site 3), Snowdrop (S...</td>
 <td>10</td>
 <td>7.04</td>
 <td>6.81</td>
 <td>12.26</td>
 <td>21.71</td>
-<td>NaN</td>
-<td>0.76</td>
+<td>7.04</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -836,13 +839,13 @@ Note
 <td>15</td>
 <td>[Daisy (Site 4), Daffodil (Site 5), Snowdrop (...</td>
 <td>[3, 4, 5]</td>
+<td>[Dahlia (Site 1), Begonia (Site 2), Tulip (Sit...</td>
 <td>10</td>
 <td>7.06</td>
 <td>6.73</td>
 <td>12.26</td>
 <td>21.71</td>
-<td>NaN</td>
-<td>0.76</td>
+<td>7.06</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -860,13 +863,13 @@ Note
 <td>16</td>
 <td>[Dahlia (Site 1), Begonia (Site 2), Snowdrop (...</td>
 <td>[0, 1, 5]</td>
+<td>[Tulip (Site 3), Daisy (Site 4), Daffodil (Sit...</td>
 <td>10</td>
 <td>7.99</td>
 <td>7.54</td>
 <td>11.90</td>
 <td>22.86</td>
-<td>NaN</td>
-<td>0.76</td>
+<td>7.99</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -884,13 +887,13 @@ Note
 <td>17</td>
 <td>[Dahlia (Site 1), Begonia (Site 2), Daffodil (...</td>
 <td>[0, 1, 4]</td>
+<td>[Tulip (Site 3), Daisy (Site 4), Snowdrop (Sit...</td>
 <td>10</td>
 <td>7.95</td>
 <td>7.66</td>
 <td>11.67</td>
 <td>21.71</td>
-<td>NaN</td>
-<td>0.75</td>
+<td>7.95</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -908,13 +911,13 @@ Note
 <td>18</td>
 <td>[Dahlia (Site 1), Daffodil (Site 5), Snowdrop ...</td>
 <td>[0, 4, 5]</td>
+<td>[Begonia (Site 2), Tulip (Site 3), Daisy (Site...</td>
 <td>10</td>
 <td>8.16</td>
 <td>7.70</td>
 <td>12.65</td>
 <td>21.71</td>
-<td>NaN</td>
-<td>0.74</td>
+<td>8.16</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -932,13 +935,13 @@ Note
 <td>19</td>
 <td>[Begonia (Site 2), Tulip (Site 3), Daffodil (S...</td>
 <td>[1, 2, 4]</td>
+<td>[Dahlia (Site 1), Daisy (Site 4), Snowdrop (Si...</td>
 <td>10</td>
 <td>7.48</td>
 <td>7.46</td>
 <td>11.57</td>
 <td>16.69</td>
-<td>NaN</td>
-<td>0.71</td>
+<td>7.48</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -956,13 +959,13 @@ Note
 <td>20</td>
 <td>[Dahlia (Site 1), Daisy (Site 4), Snowdrop (Si...</td>
 <td>[0, 3, 5]</td>
+<td>[Begonia (Site 2), Tulip (Site 3), Daffodil (S...</td>
 <td>10</td>
 <td>8.08</td>
 <td>7.69</td>
 <td>13.72</td>
 <td>22.86</td>
-<td>NaN</td>
-<td>0.61</td>
+<td>8.08</td>
 <td>...</td>
 <td>None</td>
 <td>None</td>
@@ -978,7 +981,7 @@ Note
 </tbody>
 </table>
 
-<p>20 rows × 26 columns</p>
+<p>20 rows × 37 columns</p>
 </div>
 </div>
 </div>
@@ -1152,7 +1155,7 @@ Tip
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/cell-6-output-1.png" width="822" height="536" class="figure-img"></p>
+<p><img src="index_files/figure-html/cell-6-output-1.png" width="841" height="536" class="figure-img"></p>
 </figure>
 </div>
 </div>
@@ -1222,7 +1225,7 @@ Tip
 
 <a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
 <script type="application/vnd.jupyter.widget-state+json">
-{"state":{"0551ddf80ede4e72bb8e8d201dd3bfa3":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"1fa2f0aaa15f49aa8dd2be96c98d7661":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"6506f9a33b5e48f9a01b2488d44cfca7":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_1fa2f0aaa15f49aa8dd2be96c98d7661","placeholder":"​","style":"IPY_MODEL_6bfc5dfee42c408f9d278b9ed125e7d2","tabbable":null,"tooltip":null,"value":"100%"}},"6bfc5dfee42c408f9d278b9ed125e7d2":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"7e774261822743af9d01c6973abb4f26":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_6506f9a33b5e48f9a01b2488d44cfca7","IPY_MODEL_c7ae73946b3a4b4ca77311150a3787ea","IPY_MODEL_8b6210de45ac43e096e224a0371d00dc"],"layout":"IPY_MODEL_e1ed6d63d9604bf98c7860f38cfaf8f7","tabbable":null,"tooltip":null}},"8b6210de45ac43e096e224a0371d00dc":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_dd24aabd54bb48c480d9adb987d7069e","placeholder":"​","style":"IPY_MODEL_b839b0135fc64d93b9c6519b97717e7e","tabbable":null,"tooltip":null,"value":" 20/20 [00:00&lt;00:00, 184.28it/s]"}},"b839b0135fc64d93b9c6519b97717e7e":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"c7ae73946b3a4b4ca77311150a3787ea":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_c99d076bf5b44deabfc8841b627089ea","max":20,"min":0,"orientation":"horizontal","style":"IPY_MODEL_0551ddf80ede4e72bb8e8d201dd3bfa3","tabbable":null,"tooltip":null,"value":20}},"c99d076bf5b44deabfc8841b627089ea":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"dd24aabd54bb48c480d9adb987d7069e":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"e1ed6d63d9604bf98c7860f38cfaf8f7":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}}},"version_major":2,"version_minor":0}
+{"state":{"1caff62360844e31bbb6e5f8ef196705":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_6478ec8377004dbe942ab84be7d4a0db","max":20,"min":0,"orientation":"horizontal","style":"IPY_MODEL_52d24480f1c04cdba4f5edda22b23dd2","tabbable":null,"tooltip":null,"value":20}},"52d24480f1c04cdba4f5edda22b23dd2":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"6478ec8377004dbe942ab84be7d4a0db":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"74122b1cf0d04d15af5be525ec63fd39":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"8ba9a258e6624918b06f0d212d32f5cd":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_8fb11ff1f26f4150a7a3dddc02162796","placeholder":"​","style":"IPY_MODEL_9d6bd29744d741bf851353f8dd2ca2cc","tabbable":null,"tooltip":null,"value":"100%"}},"8fb11ff1f26f4150a7a3dddc02162796":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"95aa853691ea4375bda87287c23a55cf":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"9d6bd29744d741bf851353f8dd2ca2cc":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"9d9d873abdfa4023a8da29eda8675e2c":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_95aa853691ea4375bda87287c23a55cf","placeholder":"​","style":"IPY_MODEL_bb42862fce4d45e480a3301f6c0de113","tabbable":null,"tooltip":null,"value":" 20/20 [00:00&lt;00:00, 70.44it/s]"}},"bb42862fce4d45e480a3301f6c0de113":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"d73c4e77f4a44cbf8a6df57ffd94ee71":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_8ba9a258e6624918b06f0d212d32f5cd","IPY_MODEL_1caff62360844e31bbb6e5f8ef196705","IPY_MODEL_9d9d873abdfa4023a8da29eda8675e2c"],"layout":"IPY_MODEL_74122b1cf0d04d15af5be525ec63fd39","tabbable":null,"tooltip":null}}},"version_major":2,"version_minor":0}
 </script>
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {

@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.38">
+<meta name="generator" content="quarto-1.10.18">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -12,10 +12,13 @@
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
 */
-code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
-div.columns{display: flex; gap: min(4vw, 1.5em);}
-div.column{flex: auto; overflow-x: auto;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
 div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 ul.task-list{list-style: none;}
 ul.task-list li input[type="checkbox"] {
@@ -74,12 +77,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-b85bc7c33db8c58e0ec93c3465666fed.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-0d210a0509ecf4a0ffc439124ba9b804.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-0b786126e8e87865814929786bd75bd9.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-e9116e874763087f90fa188e1bb6cd75.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-32996061cbfd2997963ec587d192a074.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -353,18 +356,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    from_unit<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    to_unit<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    threshold_for_coverage<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    allow_missing<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    treat_as_missing<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Register an additional travel/cost matrix for a different mode or scenario (e.g.&nbsp;public transport alongside a primary car matrix).</p>
-<p>Unlike <code>add_travel_matrix()</code>, a secondary matrix is never used as the optimisation cost matrix – the primary matrix set via <code>add_travel_matrix()</code> always drives site selection and search/pruning. Instead, each registered secondary matrix contributes its own set of per-solution metric columns (suffixed <code>__&lt;label&gt;</code>, e.g. <code>min_cost__public_transport</code>, <code>weighted_average__public_transport</code>) into every solution <code>solve()</code> produces, so it can be used directly in plots, <code>ParetoMetric(column=...)</code>, and post-hoc ranking (<code>rank_on="max__public_transport"</code>) – without needing to <code>.copy()</code> the problem and solve it twice.</p>
-<p>Because ranking (<code>rank_on</code>) reorders whatever <code>solve()</code> already returned, it only reorders candidates that survived the <em>primary</em> matrix’s search and pruning. If <code>brute_force_keep_best_n</code> (or <code>_worst_n</code>) is set, candidates were discarded on primary-matrix performance before secondary metrics were ever considered – so a secondary ranking over what survives is not the true best solution for that mode. When secondary matrices are in play, prefer retaining every combination (no <code>brute_force_keep_best_n</code>/<code>_worst_n</code>) and using <code>compute_pareto_front()</code> to explore the trade-off properly.</p>
+<p>Unlike <code>add_travel_matrix()</code>, a secondary matrix is never used as the optimisation cost matrix – the primary matrix set via <code>add_travel_matrix()</code> always drives site selection and search/pruning. Instead, each registered secondary matrix contributes its own set of per-solution metric columns (suffixed <code>__&lt;label&gt;</code>, e.g. <code>min_cost__public_transport</code>, <code>weighted_average__public_transport</code>) into every solution <code>solve()</code> produces, so it can be used directly in plots, <code>Metric(column=...)</code>, and post-hoc ranking (<code>sort_by="max__public_transport"</code>) – without needing to <code>.copy()</code> the problem and solve it twice.</p>
+<p>Post-hoc ranking reorders whatever <code>solve()</code> already returned, so it only reorders candidates that survived the <em>primary</em> matrix’s search and pruning. If <code>brute_force_keep_best_n</code> (or <code>_worst_n</code>) is set, candidates were discarded on primary-matrix performance before secondary metrics were ever considered – so a secondary ranking over what survives is not the true best solution for that mode. To search on a secondary matrix rather than merely re-sort by it, pass the column to <code>solve(rank_on=...)</code>, which makes the pruning itself use that metric. Alternatively, retain every combination (no <code>brute_force_keep_best_n</code>/<code>_worst_n</code>) and use <code>compute_pareto_front()</code> to explore the trade-off across both matrices at once.</p>
 <p>You may call this method multiple times with different <code>label</code>s to register as many secondary matrices as needed. Each one adds approximately the per-candidate cost of evaluating the primary matrix, so <code>solve()</code> time scales close to linearly with the number of secondary matrices registered. Under <code>n_jobs &gt; 1</code>, every registered matrix’s aligned frame is pickled to each worker process alongside the problem, so peak memory also scales with matrix count.</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 7%">
-<col style="width: 15%">
-<col style="width: 73%">
+<col style="width: 5%">
+<col style="width: 11%">
+<col style="width: 79%">
 <col style="width: 3%">
 </colgroup>
 <thead>
@@ -424,6 +429,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>The coverage threshold to apply to this matrix specifically (e.g.&nbsp;60 minutes for public transport vs 20 for car). If not provided, falls back to the <code>threshold_for_coverage</code> passed to <code>solve()</code> / <code>evaluate_single_solution_single_objective()</code>.</td>
 <td><code>None</code></td>
 </tr>
+<tr class="odd">
+<td>allow_missing</td>
+<td>bool</td>
+<td>Whether to allow missing (NaN) travel costs – a demand location with no feasible journey to a given site. By default a missing value raises <code>KeyError</code> once <code>solve()</code> builds this matrix’s aligned frame (see Notes below); <code>allow_missing=True</code> treats it as genuinely unreachable instead, the same as <code>add_travel_matrix(allow_missing=True)</code>.</td>
+<td><code>False</code></td>
+</tr>
+<tr class="even">
+<td>treat_as_missing</td>
+<td>scalar or callable</td>
+<td>An existing missing-data sentinel already baked into <code>travel_matrix_df</code> (e.g.&nbsp;<code>9999</code>), converted to a proper missing value before anything else runs – see <code>add_travel_matrix(treat_as_missing=...)</code>.</td>
+<td><code>None</code></td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -477,7 +494,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="notes" class="level2 doc-section doc-section-notes">
 <h2 class="doc-section doc-section-notes anchored" data-anchor-id="notes">Notes</h2>
-<p>Secondary matrices must be complete: every demand location and every candidate site must have a non-missing value. This is validated when <code>solve()</code> builds the aligned per-solution frames (not here, since demand/sites may not yet be registered) – see <code>solve()</code> for the specific errors raised for missing rows, missing columns, or NaN cells.</p>
+<p>Secondary matrices must be complete: every demand location and every candidate site must have a row/column, and (unless <code>allow_missing= True</code>) a non-missing value. This is validated when <code>solve()</code> builds the aligned per-solution frames (not here, since demand/sites may not yet be registered) – see <code>solve()</code> for the specific errors raised for missing rows or missing columns.</p>
 
 
 </section>

@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.38">
+<meta name="generator" content="quarto-1.10.18">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -12,10 +12,13 @@
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
 */
-code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
-div.columns{display: flex; gap: min(4vw, 1.5em);}
-div.column{flex: auto; overflow-x: auto;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
 div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 ul.task-list{list-style: none;}
 ul.task-list li input[type="checkbox"] {
@@ -74,12 +77,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-b85bc7c33db8c58e0ec93c3465666fed.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-0d210a0509ecf4a0ffc439124ba9b804.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-0b786126e8e87865814929786bd75bd9.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-e9116e874763087f90fa188e1bb6cd75.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-32996061cbfd2997963ec587d192a074.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -375,8 +378,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/multiobjective.ParetoMetric.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">multiobjective.ParetoMetric</span></a>
+  <a href="../reference/multiobjective.Metric.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">multiobjective.Metric</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -635,78 +638,82 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Prints a menu of available optimization strategies for healthcare.</td>
 </tr>
 <tr class="even">
+<td><a href="../reference/lokigi.site.SiteProblem.evaluate_baseline.html#lokigi.site.SiteProblem.evaluate_baseline">evaluate_baseline</a></td>
+<td>Evaluate the current (“do-nothing”) network as a one-solution</td>
+</tr>
+<tr class="odd">
 <td><a href="../reference/lokigi.site.SiteProblem.evaluate_single_solution_single_objective.html#lokigi.site.SiteProblem.evaluate_single_solution_single_objective">evaluate_single_solution_single_objective</a></td>
 <td>Evaluate a specific set of facility sites against a single objective.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="../reference/lokigi.site.SiteProblem.get_hotspots.html#lokigi.site.SiteProblem.get_hotspots">get_hotspots</a></td>
 <td>Identify statistically significant hotspots and coldspots.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="../reference/lokigi.site.SiteProblem.plot_accessibility.html#lokigi.site.SiteProblem.plot_accessibility">plot_accessibility</a></td>
 <td>Map 2SFCA accessibility: a region choropleth of <code>accessibility</code>,</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="../reference/lokigi.site.SiteProblem.plot_hotspots.html#lokigi.site.SiteProblem.plot_hotspots">plot_hotspots</a></td>
 <td>Plot statistically significant hotspots and coldspots.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="../reference/lokigi.site.SiteProblem.plot_quadrant_map.html#lokigi.site.SiteProblem.plot_quadrant_map">plot_quadrant_map</a></td>
 <td>Plot the 2×2 attribute typology for a combined demand/deprivation analysis.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="../reference/lokigi.site.SiteProblem.plot_region_geometry_layer.html#lokigi.site.SiteProblem.plot_region_geometry_layer">plot_region_geometry_layer</a></td>
 <td>Visualize the regional geometry layer, optionally overlaid with demand data.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="../reference/lokigi.site.SiteProblem.plot_site_utilisation.html#lokigi.site.SiteProblem.plot_site_utilisation">plot_site_utilisation</a></td>
 <td>Map each candidate site’s current utilisation ratio.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="../reference/lokigi.site.SiteProblem.plot_sites.html#lokigi.site.SiteProblem.plot_sites">plot_sites</a></td>
 <td>Generate a visualization of the candidate facility sites.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="../reference/lokigi.site.SiteProblem.show_demand.html#lokigi.site.SiteProblem.show_demand">show_demand</a></td>
 <td>Returns a loaded demand dataframe</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="../reference/lokigi.site.SiteProblem.show_demand_format.html#lokigi.site.SiteProblem.show_demand_format">show_demand_format</a></td>
 <td>Prints the expected structure for the demand DataFrame.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="../reference/lokigi.site.SiteProblem.show_region_geometry_layer.html#lokigi.site.SiteProblem.show_region_geometry_layer">show_region_geometry_layer</a></td>
 <td>Returns a loaded region geometry geodataframe</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="../reference/lokigi.site.SiteProblem.show_secondary_demand.html#lokigi.site.SiteProblem.show_secondary_demand">show_secondary_demand</a></td>
 <td>Returns a registered secondary demand scenario dataframe.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="../reference/lokigi.site.SiteProblem.show_secondary_travel_matrix.html#lokigi.site.SiteProblem.show_secondary_travel_matrix">show_secondary_travel_matrix</a></td>
 <td>Returns a registered secondary travel/cost matrix dataframe.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="../reference/lokigi.site.SiteProblem.show_sites.html#lokigi.site.SiteProblem.show_sites">show_sites</a></td>
 <td>Returns a loaded candidate site geodataframe</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="../reference/lokigi.site.SiteProblem.show_travel_format.html#lokigi.site.SiteProblem.show_travel_format">show_travel_format</a></td>
 <td>Prints the expected structure for the travel/cost matrix DataFrame.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="../reference/lokigi.site.SiteProblem.show_travel_matrix.html#lokigi.site.SiteProblem.show_travel_matrix">show_travel_matrix</a></td>
 <td>Returns a loaded travel or cost matrix dataframe</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="../reference/lokigi.site.SiteProblem.site_utilisation_summary.html#lokigi.site.SiteProblem.site_utilisation_summary">site_utilisation_summary</a></td>
 <td>Summarise each candidate site’s real-world current utilisation.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="../reference/lokigi.site.SiteProblem.solve.html#lokigi.site.SiteProblem.solve">solve</a></td>
 <td>Solve the site location problem using the specified objective and strategy.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="../reference/lokigi.site.SiteProblem.two_step_floating_catchment.html#lokigi.site.SiteProblem.two_step_floating_catchment">two_step_floating_catchment</a></td>
 <td>Two-step floating catchment area (2SFCA) accessibility score.</td>
 </tr>

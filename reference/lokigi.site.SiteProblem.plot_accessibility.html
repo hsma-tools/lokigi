@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.38">
+<meta name="generator" content="quarto-1.10.18">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -12,10 +12,13 @@
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
 */
-code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
-div.columns{display: flex; gap: min(4vw, 1.5em);}
-div.column{flex: auto; overflow-x: auto;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
 div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 ul.task-list{list-style: none;}
 ul.task-list li input[type="checkbox"] {
@@ -74,12 +77,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-b85bc7c33db8c58e0ec93c3465666fed.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-0d210a0509ecf4a0ffc439124ba9b804.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-0b786126e8e87865814929786bd75bd9.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-e9116e874763087f90fa188e1bb6cd75.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-32996061cbfd2997963ec587d192a074.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -356,20 +359,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    per_capita<span class="op">=</span><span class="dv">1</span>,</span>
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    interactive<span class="op">=</span><span class="va">False</span>,</span>
 <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    cmap<span class="op">=</span><span class="st">'Blues'</span>,</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    site_cmap<span class="op">=</span><span class="st">'RdYlGn'</span>,</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    missing_site_colour<span class="op">=</span><span class="st">'lightgrey'</span>,</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    marker_size_range<span class="op">=</span>(<span class="dv">40</span>, <span class="dv">220</span>),</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    edgecolor<span class="op">=</span><span class="st">'black'</span>,</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    linewidth<span class="op">=</span><span class="fl">0.5</span>,</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    tiles<span class="op">=</span><span class="st">'CartoDB positron'</span>,</span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    add_basemap<span class="op">=</span><span class="va">True</span>,</span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    show_axis<span class="op">=</span><span class="va">False</span>,</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    ax<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>    figsize<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Map 2SFCA accessibility: a region choropleth of <code>accessibility</code>, overlaid with site markers coloured and sized by their step-1 supply-to-demand <code>ratio</code> – so a map reader can see both where access is poor and which site is driving it (an overloaded, low-ratio site drawn small and red) in one view.</p>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    show_site_ratio<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    site_colour<span class="op">=</span><span class="st">'black'</span>,</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    site_marker_size<span class="op">=</span><span class="dv">60</span>,</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    site_cmap<span class="op">=</span><span class="st">'RdYlGn'</span>,</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    missing_site_colour<span class="op">=</span><span class="st">'lightgrey'</span>,</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    marker_size_range<span class="op">=</span>(<span class="dv">40</span>, <span class="dv">220</span>),</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    edgecolor<span class="op">=</span><span class="st">'black'</span>,</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    linewidth<span class="op">=</span><span class="fl">0.5</span>,</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    tiles<span class="op">=</span><span class="st">'CartoDB positron'</span>,</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    add_basemap<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>    show_axis<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>    caption<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>    ax<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>    figsize<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Map 2SFCA accessibility: a region choropleth of <code>accessibility</code>, overlaid with site markers. By default the markers are plain, uniformly coloured/sized location dots – pass <code>show_site_ratio=True</code> to instead colour and size them by their step-1 supply-to-demand <code>ratio</code>, so a map reader can see both where access is poor and which site is driving it (an overloaded, low-ratio site drawn small and red) in one view. The ratio view is opt-in because it’s easy to misread as a raw capacity/ overutilisation metric, when it’s actually a relative figure specific to the chosen <code>catchment_size</code>/<code>distance_decay</code>.</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
 <table class="caption-top table">
@@ -433,13 +440,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="even">
 <td>matrix</td>
 <td></td>
-<td>Forwarded to <code>two_step_floating_catchment()</code> when <code>region_frame</code>/<code>site_frame</code> are not supplied; see that method’s docstring (<code>catchment_size</code>/<code>distance_decay</code> are mutually exclusive there too). On a <code>SiteSolutionSet</code>, this always scores <code>solution_rank=1</code> – to plot a specific <code>rank_on</code>/<code>solution_rank</code> solution, call <code>two_step_floating_catchment(..., return_site_ratios=True)</code> yourself and pass the results in as <code>region_frame</code>/<code>site_frame</code>.</td>
+<td>Forwarded to <code>two_step_floating_catchment()</code> when <code>region_frame</code>/<code>site_frame</code> are not supplied; see that method’s docstring (<code>catchment_size</code>/<code>distance_decay</code> are mutually exclusive there too). On a <code>SiteSolutionSet</code>, this always scores <code>solution_rank=1</code> – to plot a specific <code>sort_by</code>/<code>solution_rank</code> solution, call <code>two_step_floating_catchment(..., return_site_ratios=True)</code> yourself and pass the results in as <code>region_frame</code>/<code>site_frame</code>.</td>
 <td><code>None</code></td>
 </tr>
 <tr class="odd">
 <td>per_capita</td>
 <td></td>
-<td>Forwarded to <code>two_step_floating_catchment()</code> when <code>region_frame</code>/<code>site_frame</code> are not supplied; see that method’s docstring (<code>catchment_size</code>/<code>distance_decay</code> are mutually exclusive there too). On a <code>SiteSolutionSet</code>, this always scores <code>solution_rank=1</code> – to plot a specific <code>rank_on</code>/<code>solution_rank</code> solution, call <code>two_step_floating_catchment(..., return_site_ratios=True)</code> yourself and pass the results in as <code>region_frame</code>/<code>site_frame</code>.</td>
+<td>Forwarded to <code>two_step_floating_catchment()</code> when <code>region_frame</code>/<code>site_frame</code> are not supplied; see that method’s docstring (<code>catchment_size</code>/<code>distance_decay</code> are mutually exclusive there too). On a <code>SiteSolutionSet</code>, this always scores <code>solution_rank=1</code> – to plot a specific <code>sort_by</code>/<code>solution_rank</code> solution, call <code>two_step_floating_catchment(..., return_site_ratios=True)</code> yourself and pass the results in as <code>region_frame</code>/<code>site_frame</code>.</td>
 <td><code>None</code></td>
 </tr>
 <tr class="even">
@@ -455,33 +462,57 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>"Blues"</code></td>
 </tr>
 <tr class="even">
-<td>site_cmap</td>
-<td>str</td>
-<td>Colormap for site markers (<code>ratio</code>) – red for an overloaded, low-ratio site, green for a relatively uncontested one.</td>
-<td><code>"RdYlGn"</code></td>
+<td>show_site_ratio</td>
+<td>bool</td>
+<td>If False (the default), site markers are plain, uniformly coloured/sized location dots (<code>site_colour</code>/<code>site_marker_size</code> control their appearance). If True, markers are instead coloured and sized by their step-1 supply-to-demand <code>ratio</code> – see <code>site_cmap</code>/<code>missing_site_colour</code>/<code>marker_size_range</code>, which only apply in this mode.</td>
+<td><code>False</code></td>
 </tr>
 <tr class="odd">
-<td>missing_site_colour</td>
+<td>site_colour</td>
 <td>str</td>
-<td>Colour (and static marker size, at the smallest of <code>marker_size_range</code>) for a site with an undefined <code>ratio</code> – no demand fell within its catchment, so there is nothing to colour or size it by.</td>
-<td><code>"lightgrey"</code></td>
+<td>Marker colour for site markers when <code>show_site_ratio=False</code>.</td>
+<td><code>"black"</code></td>
 </tr>
 <tr class="even">
-<td>marker_size_range</td>
-<td>tuple of (float, float)</td>
-<td>Smallest and largest static marker size, linearly scaled by <code>ratio</code>. Ignored on interactive maps, where Folium markers are a fixed size.</td>
-<td><code>(40, 220)</code></td>
+<td>site_marker_size</td>
+<td>float</td>
+<td>Static marker size for site markers when <code>show_site_ratio=False</code>. Ignored on interactive maps, where Folium markers are a fixed size.</td>
+<td><code>60</code></td>
 </tr>
 <tr class="odd">
+<td>site_cmap</td>
+<td>str</td>
+<td>Colormap for site markers (<code>ratio</code>) when <code>show_site_ratio=True</code> – red for an overloaded, low-ratio site, green for a relatively uncontested one.</td>
+<td><code>"RdYlGn"</code></td>
+</tr>
+<tr class="even">
+<td>missing_site_colour</td>
+<td>str</td>
+<td>When <code>show_site_ratio=True</code>: colour (and static marker size, at the smallest of <code>marker_size_range</code>) for a site with an undefined <code>ratio</code> – no demand fell within its catchment, so there is nothing to colour or size it by.</td>
+<td><code>"lightgrey"</code></td>
+</tr>
+<tr class="odd">
+<td>marker_size_range</td>
+<td>tuple of (float, float)</td>
+<td>When <code>show_site_ratio=True</code>: smallest and largest static marker size, linearly scaled by <code>ratio</code>. Ignored on interactive maps, where Folium markers are a fixed size.</td>
+<td><code>(40, 220)</code></td>
+</tr>
+<tr class="even">
 <td>add_basemap</td>
 <td>bool</td>
 <td>If True, adds a background web map. Set False to skip the tile download entirely.</td>
 <td><code>True</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>title</td>
 <td>str</td>
 <td>Axes title. Ignored on interactive maps.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td>caption</td>
+<td>str</td>
+<td>Explanatory text shown below the chart, wrapped to fit. If <code>None</code> (the default), a stakeholder-facing caption explaining how to read the region shading – and, depending on <code>show_site_ratio</code>, either that the site markers are plain location dots or how to read their colour/size – is generated; pass <code>""</code> to suppress it, or a custom string to replace it. Ignored on interactive maps.</td>
 <td><code>None</code></td>
 </tr>
 <tr class="odd">

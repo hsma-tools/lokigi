@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.38">
+<meta name="generator" content="quarto-1.10.18">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -12,10 +12,13 @@
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
 */
-code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
-div.columns{display: flex; gap: min(4vw, 1.5em);}
-div.column{flex: auto; overflow-x: auto;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
 div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 ul.task-list{list-style: none;}
 ul.task-list li input[type="checkbox"] {
@@ -74,12 +77,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../../../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-dark-b85bc7c33db8c58e0ec93c3465666fed.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../../site_libs/bootstrap/bootstrap-0d210a0509ecf4a0ffc439124ba9b804.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../../../site_libs/bootstrap/bootstrap-dark-0b786126e8e87865814929786bd75bd9.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../../../site_libs/bootstrap/bootstrap-e9116e874763087f90fa188e1bb6cd75.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../../site_libs/bootstrap/bootstrap-dark-32996061cbfd2997963ec587d192a074.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -345,7 +348,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul>
   <li><a href="#setting-up-the-problem" id="toc-setting-up-the-problem" class="nav-link active" data-scroll-target="#setting-up-the-problem">Setting up the problem</a></li>
   <li><a href="#solving" id="toc-solving" class="nav-link" data-scroll-target="#solving">Solving</a></li>
-  <li><a href="#comparing-the-two-columns" id="toc-comparing-the-two-columns" class="nav-link" data-scroll-target="#comparing-the-two-columns">Comparing the two columns</a></li>
+  <li><a href="#comparing-the-two-columns" id="toc-comparing-the-two-columns" class="nav-link" data-scroll-target="#comparing-the-two-columns">Comparing the two columns</a>
+  <ul class="collapse">
+  <li><a href="#the-same-numbers-as-headcounts" id="toc-the-same-numbers-as-headcounts" class="nav-link" data-scroll-target="#the-same-numbers-as-headcounts">The same numbers, as headcounts</a></li>
+  </ul></li>
   <li><a href="#visualising-both" id="toc-visualising-both" class="nav-link" data-scroll-target="#visualising-both">Visualising both</a>
   <ul class="collapse">
   <li><a href="#best-solution-by-demand" id="toc-best-solution-by-demand" class="nav-link" data-scroll-target="#best-solution-by-demand">Best Solution by Demand</a></li>
@@ -388,7 +394,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="setting-up-the-problem" class="level2">
 <h2 class="anchored" data-anchor-id="setting-up-the-problem">Setting up the problem</h2>
 <p>Same sites, travel matrix, region geometry and demand data as the <a href="../../../examples/location/mclp/index.html">MCLP example</a> – but with a smaller <code>p</code> and tighter threshold, so the two coverage metrics have room to disagree.</p>
-<div id="c39367f3" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T10:13:09.712499Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T10:13:09.712358Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T10:13:14.066088Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T10:13:14.065321Z&quot;}}" data-execution_count="1">
+<div id="c39367f3" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:48:48.731664Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:48:48.731235Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:48:56.478565Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:48:56.477143Z&quot;}}" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.site <span class="im">import</span> SiteProblem</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>problem <span class="op">=</span> SiteProblem()</span>
@@ -420,7 +426,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="solving" class="level2">
 <h2 class="anchored" data-anchor-id="solving">Solving</h2>
 <p>We’ll solve for just 2 sites with an 8-minute threshold – a small enough problem that the two coverage metrics can disagree without either of them saturating near 100%.</p>
-<div id="be25f179" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T10:13:14.068068Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T10:13:14.067857Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T10:13:14.130792Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T10:13:14.130143Z&quot;}}" data-execution_count="2">
+<div id="be25f179" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:48:56.482100Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:48:56.481782Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:48:56.631831Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:48:56.630907Z&quot;}}" data-execution_count="2">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>solutions <span class="op">=</span> problem.solve(</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    objectives<span class="op">=</span><span class="st">"mclp"</span>,</span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    p<span class="op">=</span><span class="dv">2</span>,</span>
@@ -428,7 +434,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"a7b0709c7365470da5f90a86657a1c9b","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+{"model_id":"6a7177577d3742bfb165dcfb30c721f4","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
 </script>
 </div>
 </div>
@@ -436,7 +442,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="comparing-the-two-columns" class="level2">
 <h2 class="anchored" data-anchor-id="comparing-the-two-columns">Comparing the two columns</h2>
 <p><code>solve(objectives="mclp")</code> ranks solutions by <code>proportion_within_coverage_threshold</code> – the demand-weighted figure – so <code>show_solutions()</code> is already sorted by that column. Look at the top two rows alongside <code>proportion_regions_within_coverage_threshold</code>:</p>
-<div id="553b3f30" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T10:13:14.132201Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T10:13:14.132010Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T10:13:14.139511Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T10:13:14.138962Z&quot;}}" data-execution_count="3">
+<div id="553b3f30" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:48:56.634942Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:48:56.634692Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:48:56.649963Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:48:56.648888Z&quot;}}" data-execution_count="3">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>solutions.show_solutions(rounding<span class="op">=</span><span class="dv">3</span>)[[</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"site_names"</span>,</span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"proportion_within_coverage_threshold"</span>,</span>
@@ -478,26 +484,78 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
+<section id="the-same-numbers-as-headcounts" class="level3">
+<h3 class="anchored" data-anchor-id="the-same-numbers-as-headcounts">The same numbers, as headcounts</h3>
+<p>A percentage is compact, but “78.2% covered” doesn’t say how many people that actually is. <code>demand_within_coverage_threshold</code>/<code>regions_within_coverage_threshold</code> are the literal headcount/region-count behind the two proportions above – the same numerator <code>proportion_within_coverage_threshold</code> divides away, just kept.</p>
+<div id="36cb0496" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:48:56.652728Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:48:56.652486Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:48:56.662469Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:48:56.661573Z&quot;}}" data-execution_count="4">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>solutions.show_solutions(rounding<span class="op">=</span><span class="dv">1</span>)[[</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"site_names"</span>,</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"demand_within_coverage_threshold"</span>,</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"regions_within_coverage_threshold"</span>,</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    ]].head(<span class="dv">2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="4">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">site_names</th>
+<th data-quarto-table-cell-role="th">demand_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">regions_within_coverage_threshold</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>[Tulip (Site 3), Daisy (Site 4)]</td>
+<td>257751.0</td>
+<td>123</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>[Tulip (Site 3), Snowdrop (Site 6)]</td>
+<td>242829.0</td>
+<td>125</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p><code>SiteProblem.total_demand</code> is the stable denominator behind the demand-weighted headcount – useful for sanity-checking it independently.</p>
+<div id="10155695" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:48:56.665978Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:48:56.665718Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:48:56.671192Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:48:56.670165Z&quot;}}" data-execution_count="5">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>top <span class="op">=</span> solutions.solution_df.iloc[<span class="dv">0</span>]</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>implied <span class="op">=</span> top[<span class="st">"demand_within_coverage_threshold"</span>] <span class="op">/</span> problem.total_demand</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"demand_within_coverage_threshold / total_demand: </span><span class="sc">{</span>implied<span class="sc">:.4f}</span><span class="ss">"</span>)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"proportion_within_coverage_threshold:            </span><span class="sc">{</span>top[<span class="st">'proportion_within_coverage_threshold'</span>]<span class="sc">:.4f}</span><span class="ss">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>demand_within_coverage_threshold / total_demand: 0.7822
+proportion_within_coverage_threshold:            0.7822</code></pre>
+</div>
+</div>
 <p>The top-ranked solution covers <strong>more demand</strong> (78.2% vs 73.7%), but the <em>second</em>-ranked solution actually covers <strong>more regions</strong> (75.8% vs 74.5%).</p>
 <p>MCLP – correctly, per its textbook definition – picked the solution that serves more people, even though it serves slightly fewer places.</p>
-<p>We can pull out each “best” explicitly with <code>rank_on</code>, which is available on every <code>return_best_combination_*</code> method as well as the plotting methods:</p>
-<div id="1cbf43b7" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T10:13:14.140891Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T10:13:14.140714Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T10:13:14.144262Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T10:13:14.143843Z&quot;}}" data-execution_count="4">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>demand_best <span class="op">=</span> solutions.return_best_combination_site_names(</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    rank_on<span class="op">=</span><span class="st">"proportion_within_coverage_threshold"</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>demand_best</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-display" data-execution_count="4">
+<p>We can pull out each “best” explicitly with <code>sort_by</code>, which is available on every <code>return_best_combination_*</code> method as well as the plotting methods:</p>
+<div id="1cbf43b7" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:48:56.673671Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:48:56.673318Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:48:56.679697Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:48:56.678749Z&quot;}}" data-execution_count="6">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>demand_best <span class="op">=</span> solutions.return_best_combination_site_names(</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    sort_by<span class="op">=</span><span class="st">"proportion_within_coverage_threshold"</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>demand_best</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="6">
 <pre><code>['Tulip (Site 3)', 'Daisy (Site 4)']</code></pre>
 </div>
 </div>
-<div id="499a199a" class="cell" data-execution_count="5">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>regions_best <span class="op">=</span> solutions.return_best_combination_site_names(</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    rank_on<span class="op">=</span><span class="st">"proportion_regions_within_coverage_threshold"</span></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>regions_best</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-display" data-execution_count="5">
+<div id="499a199a" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:48:56.682105Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:48:56.681854Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:48:56.688134Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:48:56.687311Z&quot;}}" data-execution_count="7">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>regions_best <span class="op">=</span> solutions.return_best_combination_site_names(</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    sort_by<span class="op">=</span><span class="st">"proportion_regions_within_coverage_threshold"</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>regions_best</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="7">
 <pre><code>['Tulip (Site 3)', 'Snowdrop (Site 6)']</code></pre>
 </div>
 </div>
@@ -516,45 +574,46 @@ Note
 </div>
 </div>
 </section>
+</section>
 <section id="visualising-both" class="level2">
 <h2 class="anchored" data-anchor-id="visualising-both">Visualising both</h2>
-<p><code>plot_best_combination</code> accepts the same <code>rank_on</code> argument, so we can render each “best” combination.</p>
+<p><code>plot_best_combination</code> accepts the same <code>sort_by</code> argument, so we can render each “best” combination.</p>
 <section id="best-solution-by-demand" class="level3">
 <h3 class="anchored" data-anchor-id="best-solution-by-demand">Best Solution by Demand</h3>
-<div id="f68c3846" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T10:13:14.145842Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T10:13:14.145658Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T10:13:18.936099Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T10:13:18.935397Z&quot;}}" data-execution_count="6">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>solutions.plot_best_combination(</span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    rank_on<span class="op">=</span><span class="st">"proportion_within_coverage_threshold"</span>,</span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">"default"</span></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    )<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="f68c3846" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:48:56.691288Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:48:56.690815Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:48:58.407761Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:48:58.406187Z&quot;}}" data-execution_count="8">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>solutions.plot_best_combination(</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    sort_by<span class="op">=</span><span class="st">"proportion_within_coverage_threshold"</span>,</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">"default"</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    )<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/cell-7-output-1.png" width="822" height="536" class="figure-img"></p>
+<p><img src="index_files/figure-html/cell-9-output-1.png" width="841" height="536" class="figure-img"></p>
 </figure>
 </div>
 </div>
 </div>
-<div id="0ca79ced" class="cell" data-execution_count="7">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>solutions.plot_best_combination(</span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    rank_on<span class="op">=</span><span class="st">"proportion_within_coverage_threshold"</span>,</span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">"default"</span>,</span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    plot_regions_not_meeting_threshold<span class="op">=</span><span class="va">True</span></span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    )<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="0ca79ced" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:48:58.412168Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:48:58.411791Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:48:59.546260Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:48:59.544625Z&quot;}}" data-execution_count="9">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>solutions.plot_best_combination(</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    sort_by<span class="op">=</span><span class="st">"proportion_within_coverage_threshold"</span>,</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">"default"</span>,</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    plot_regions_not_meeting_threshold<span class="op">=</span><span class="va">True</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    )<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/cell-8-output-1.png" width="729" height="536" class="figure-img"></p>
+<p><img src="index_files/figure-html/cell-10-output-1.png" width="729" height="536" class="figure-img"></p>
 </figure>
 </div>
 </div>
 </div>
 <p>Here, while there are more regions not meeting the threshold and visually some very large areas of the map not meeting the threshold, we can see when comparing with the demand map that in general they are regions with low demand.</p>
-<div id="0c9433d5" class="cell" data-execution_count="8">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>problem.plot_region_geometry_layer(plot_demand<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="0c9433d5" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:48:59.551033Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:48:59.550730Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:49:00.000392Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:48:59.998641Z&quot;}}" data-execution_count="10">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>problem.plot_region_geometry_layer(plot_demand<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/cell-9-output-1.png" width="524" height="389" class="figure-img"></p>
+<p><img src="index_files/figure-html/cell-11-output-1.png" width="542" height="389" class="figure-img"></p>
 </figure>
 </div>
 </div>
@@ -562,40 +621,40 @@ Note
 </section>
 <section id="best-solution-by-regions" class="level3">
 <h3 class="anchored" data-anchor-id="best-solution-by-regions">Best Solution by Regions</h3>
-<div id="4c1e7777" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-07-22T10:13:18.938566Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-07-22T10:13:18.938402Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-07-22T10:13:19.498844Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-07-22T10:13:19.498060Z&quot;}}" data-execution_count="9">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>solutions.plot_best_combination(</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    rank_on<span class="op">=</span><span class="st">"proportion_regions_within_coverage_threshold"</span>,</span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">"default"</span></span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    )<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="4c1e7777" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:49:00.004126Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:49:00.003830Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:49:00.711900Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:49:00.710725Z&quot;}}" data-execution_count="11">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>solutions.plot_best_combination(</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>    sort_by<span class="op">=</span><span class="st">"proportion_regions_within_coverage_threshold"</span>,</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">"default"</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>    )<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/cell-10-output-1.png" width="822" height="538" class="figure-img"></p>
+<p><img src="index_files/figure-html/cell-12-output-1.png" width="841" height="538" class="figure-img"></p>
 </figure>
 </div>
 </div>
 </div>
-<div id="2a3dccab" class="cell" data-execution_count="10">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>solutions.plot_best_combination(</span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    rank_on<span class="op">=</span><span class="st">"proportion_regions_within_coverage_threshold"</span>,</span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">"default"</span>,</span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    plot_regions_not_meeting_threshold<span class="op">=</span><span class="va">True</span></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    )<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="2a3dccab" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:49:00.714497Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:49:00.714199Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:49:01.336570Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:49:01.335549Z&quot;}}" data-execution_count="12">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>solutions.plot_best_combination(</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>    sort_by<span class="op">=</span><span class="st">"proportion_regions_within_coverage_threshold"</span>,</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">"default"</span>,</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>    plot_regions_not_meeting_threshold<span class="op">=</span><span class="va">True</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>    )<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/cell-11-output-1.png" width="729" height="536" class="figure-img"></p>
+<p><img src="index_files/figure-html/cell-13-output-1.png" width="729" height="536" class="figure-img"></p>
 </figure>
 </div>
 </div>
 </div>
 <p>Comparing this with the demand-aware proportion map, visually there appears to be less red on this map, but there is a swathe of red near the coast that coincides with high demand.</p>
-<div id="d9e71334" class="cell" data-execution_count="11">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>problem.plot_region_geometry_layer(plot_demand<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="d9e71334" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-04T09:49:01.339615Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-04T09:49:01.339266Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-04T09:49:01.762677Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-04T09:49:01.760688Z&quot;}}" data-execution_count="13">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>problem.plot_region_geometry_layer(plot_demand<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/cell-12-output-1.png" width="524" height="389" class="figure-img"></p>
+<p><img src="index_files/figure-html/cell-14-output-1.png" width="542" height="389" class="figure-img"></p>
 </figure>
 </div>
 </div>
@@ -609,7 +668,8 @@ Note
 <li>Per-equity-band coverage splits the same way – <code>coverage_by_equity_group</code> is demand-weighted, <code>coverage_regions_by_equity_group</code> counts regions. See the <a href="../../../examples/location/equity/index.html">equity example</a>.</li>
 <li>Secondary travel matrices (<code>add_secondary_travel_matrix</code>) get both variants too, suffixed <code>__&lt;label&gt;</code> – see the <a href="../../../examples/location/multiple_travel_matrices/index.html">multiple travel matrices example</a>.</li>
 <li>Binary coverage can’t tell two equally-covered regions apart if one of them shares its nearest site with far more competing demand – see the <a href="../../../examples/location/accessibility_2sfca/index.html">2SFCA accessibility example</a> for a metric that can.</li>
-<li>Both columns are <code>NaN</code>, not <code>0.0</code>, if <code>threshold_for_coverage</code> was never set – “not measured” doesn’t get confused with “nothing covered”.</li>
+<li>Both columns are <code>NaN</code>, not <code>0.0</code>, if <code>threshold_for_coverage</code> was never set – “not measured” doesn’t get confused with “nothing covered”. The headcount columns follow the same rule.</li>
+<li>For the flip side of coverage – how many people are <em>beyond</em> one or more thresholds, rather than within one – see <code>beyond_thresholds</code> in the <a href="../../../examples/location/population_impact/index.html">population impact example</a>.</li>
 </ul>
 <p>As a rule of thumb: reach for the demand-weighted (unqualified) column unless you have a specific reason to treat every region as equally important regardless of population.</p>
 
@@ -618,7 +678,7 @@ Note
 
 <a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
 <script type="application/vnd.jupyter.widget-state+json">
-{"state":{"01e5221fa9c0445f9ee6292a7a4b0948":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"13e45f1cfc6f46c0974502e199c4cffe":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"4318608eb2844b489d6f5b0bb5b2cef1":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_13e45f1cfc6f46c0974502e199c4cffe","placeholder":"​","style":"IPY_MODEL_92970ac4f8e44347bdbce74f157f6294","tabbable":null,"tooltip":null,"value":" 15/15 [00:00&lt;00:00, 185.64it/s]"}},"7133d68e8a474850ba11e8f639b6cad6":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_aecc2ec324ab45fead19c824dfb22bad","placeholder":"​","style":"IPY_MODEL_a8c87fea3c5e434894d2a40374dee7e1","tabbable":null,"tooltip":null,"value":"100%"}},"7a294e59e9b542448ad662e799d48b3b":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_99a6189f188e4870aa670d174b0b3213","max":15,"min":0,"orientation":"horizontal","style":"IPY_MODEL_01e5221fa9c0445f9ee6292a7a4b0948","tabbable":null,"tooltip":null,"value":15}},"92970ac4f8e44347bdbce74f157f6294":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"99a6189f188e4870aa670d174b0b3213":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"a7b0709c7365470da5f90a86657a1c9b":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_7133d68e8a474850ba11e8f639b6cad6","IPY_MODEL_7a294e59e9b542448ad662e799d48b3b","IPY_MODEL_4318608eb2844b489d6f5b0bb5b2cef1"],"layout":"IPY_MODEL_a9c3371dd5e64f33b3cfd4b7c33b38e4","tabbable":null,"tooltip":null}},"a8c87fea3c5e434894d2a40374dee7e1":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"a9c3371dd5e64f33b3cfd4b7c33b38e4":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"aecc2ec324ab45fead19c824dfb22bad":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}}},"version_major":2,"version_minor":0}
+{"state":{"0aca1845833144f089ecbef932a30218":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_7bbb5be872a24de899f20648c739984f","max":15,"min":0,"orientation":"horizontal","style":"IPY_MODEL_857d50aba1d44495b407285926781bf1","tabbable":null,"tooltip":null,"value":15}},"2910b457677a48af8890e42c8d78f639":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"524b0555383f4c6f82cc078e956c97b8":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"6a7177577d3742bfb165dcfb30c721f4":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_e4d4c30fb6f949998618f694c377de7c","IPY_MODEL_0aca1845833144f089ecbef932a30218","IPY_MODEL_9ed8123d39174060a38303de008e00f7"],"layout":"IPY_MODEL_95f402e6d11248b99ca1cd4e92809eed","tabbable":null,"tooltip":null}},"7bbb5be872a24de899f20648c739984f":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"857d50aba1d44495b407285926781bf1":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"95f402e6d11248b99ca1cd4e92809eed":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"9ed8123d39174060a38303de008e00f7":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_f5653121f33546458d2499b3f3fa1dc2","placeholder":"​","style":"IPY_MODEL_b0b633278a994fc489c834a1b0ab9d14","tabbable":null,"tooltip":null,"value":" 15/15 [00:00&lt;00:00, 156.26it/s]"}},"b0b633278a994fc489c834a1b0ab9d14":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"e4d4c30fb6f949998618f694c377de7c":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_2910b457677a48af8890e42c8d78f639","placeholder":"​","style":"IPY_MODEL_524b0555383f4c6f82cc078e956c97b8","tabbable":null,"tooltip":null,"value":"100%"}},"f5653121f33546458d2499b3f3fa1dc2":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}}},"version_major":2,"version_minor":0}
 </script>
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {

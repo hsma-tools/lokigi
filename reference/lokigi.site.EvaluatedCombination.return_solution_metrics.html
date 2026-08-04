@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.38">
+<meta name="generator" content="quarto-1.10.18">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -12,10 +12,13 @@
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
 */
-code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
-div.columns{display: flex; gap: min(4vw, 1.5em);}
-div.column{flex: auto; overflow-x: auto;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
 div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 ul.task-list{list-style: none;}
 ul.task-list li input[type="checkbox"] {
@@ -74,12 +77,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-b85bc7c33db8c58e0ec93c3465666fed.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-0d210a0509ecf4a0ffc439124ba9b804.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-0b786126e8e87865814929786bd75bd9.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-e9116e874763087f90fa188e1bb6cd75.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-32996061cbfd2997963ec587d192a074.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -381,7 +384,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <ol start="2" type="1">
 <li><p>Absolute Equity Gap (‘gap_absolute_weighted’): CLOSER TO 0 is better. Measures the flat minute/distance difference between the best-served and worst-served equity bands. High numbers mean severe geographical disparity.</p></li>
 <li><p>Relative Equity Gap (‘gap_relative_weighted’): CLOSER TO 1.0 is better. If it’s 1.5, the worst-served group travels 1.5x longer than the best-served group.</p></li>
-<li><p>Inter-Tertile Ratio (‘inter_tertile_ratio’): Measures macro-equity assuming lower bins = higher deprivation (e.g., IMD 1-3). SORTING CRITERIA:</p>
+<li><p>Inter-Tertile Ratio (‘inter_tertile_ratio’): Measures macro-equity between the most- and least-disadvantaged equity-band tertiles, per <code>add_equity_data(disadvantaged_end=...)</code> – lower bins = more disadvantaged (e.g.&nbsp;IMD 1-3) when <code>disadvantaged_end="low"</code> or unset; the reverse when <code>"high"</code>. SORTING CRITERIA:</p>
 <ul>
 <li>ITR &gt; 1.0: Inequity. The most deprived third faces longer travel times than the least deprived third (e.g., 1.25 = 25% longer travel).</li>
 <li>ITR = 1.0: Perfect equality in macro travel times.</li>
@@ -390,8 +393,35 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><p>Coverage Metrics (‘proportion_within_coverage_threshold’, ‘coverage_by_equity_group’): HIGHER is better (Scale: 0.0 to 1.0). Represents accessibility. Look for solutions where coverage is both globally high and uniformly distributed across groups. Both are <code>NaN</code> if no <code>threshold_for_coverage</code> was given.</p>
 <p>NAMING RULE: an unqualified coverage metric is weighted by the demand registered via <code>add_demand()</code>, so it answers “what share of <em>people</em> are covered”. The <code>regions</code> variants (‘proportion_regions_within_coverage_threshold’, ‘coverage_regions_by_equity_group’) count every region equally and answer “what share of <em>places</em> are covered”. The two coincide when demand is uniform, including when <code>add_demand()</code> was never called.</p>
 <p>The demand-weighted figure is the one ‘mclp’ optimises, matching the textbook Maximal Covering Location Problem.</p></li>
+</ol>
+<p>5b. Absolute coverage headcounts (‘demand_within_coverage_threshold’, ‘regions_within_coverage_threshold’): HIGHER is better. The literal headcount/region-count behind the two coverage proportions above – e.g.&nbsp;“391,823 people” rather than “75.4%” – for reporting to audiences who find an absolute number more legible than a percentage. <code>NaN</code>/<code>0</code> under the same conditions as the proportions.</p>
+<p>5c. Unreachable headcounts (‘regions_unreachable’, ‘demand_unreachable’, ‘proportion_demand_unreachable’): LOWER is better. How many regions / how much demand had no feasible journey to any selected site at all – a missing (NaN) travel cost, only possible once a travel matrix was registered with <code>add_travel_matrix(allow_missing=True)</code>. <code>0</code>/<code>0.0</code> when every region reached at least one selected site (including every problem that never opted into <code>allow_missing</code>). Distinct from – and independent of – <code>threshold_for_coverage</code>: a region can be “beyond threshold” while still reachable, or unreachable with no threshold ever configured. <code>weighted_average</code>/<code>unweighted_average</code>/<code>90th_percentile</code>/<code>max</code> above are computed over reachable regions only, rather than this headcount silently dragging them toward whatever value an unreachable pair happened to hold.</p>
+<p>5d. Ranking-only travel cost (‘weighted_average_for_ranking’, ‘unweighted_average_for_ranking’, ‘max_for_ranking’): LOWER is better – but NOT a reporting metric. Identical to ‘weighted_average’/‘unweighted_average’/‘max’ unless <code>solve(unreachable_cost=...)</code> was used, in which case every unreachable row is substituted with <code>unreachable_cost</code> instead of excluded, matching what <code>solve()</code> actually ranked/pruned combinations on. Kept alongside the honest figures rather than replacing them so the two are always visibly distinguishable: the reachable-only numbers describe what really happened, these describe what the search optimised. Present regardless of whether <code>unreachable_cost</code> was used – identical to their honest counterparts when it wasn’t, so this column always exists and needs no conditional handling.</p>
+<ol start="6" type="1">
 <li><p>Secondary travel matrices (columns suffixed <code>__&lt;label&gt;</code>, e.g. ’weighted_average__public_transport’):</p>
-<p>Registered via <code>add_secondary_travel_matrix(label=...)</code>. Same metrics and sort direction as their unsuffixed counterparts above (1a/1b/5), computed against that matrix’s own travel costs instead of the primary matrix. By default, only the core scalar metrics (both coverage proportions included) plus the float-valued equity aggregations (gap_absolute_weighted, gap_relative_weighted, avg_*_third_bins, inter_tertile_ratio) are included per matrix, to keep this table from growing unboundedly with each registered matrix – pass <code>full_secondary_metrics=True</code> to also include the dict-valued equity breakdowns and description strings, matching what the primary matrix already returns. The underlying per-region <code>problem_df</code> always carries <code>min_cost__&lt;label&gt;</code> / <code>selected_site__&lt;label&gt;</code> / <code>within_threshold__&lt;label&gt;</code> regardless of this setting.</p></li>
+<p>Registered via <code>add_secondary_travel_matrix(label=...)</code>. Same metrics and sort direction as their unsuffixed counterparts above (1a/1b/5/5c), computed against that matrix’s own travel costs instead of the primary matrix. By default, only the core scalar metrics (both coverage proportions and the unreachable headcounts included) plus the float-valued equity aggregations (gap_absolute_weighted, gap_relative_weighted, avg_*_third_bins, inter_tertile_ratio) are included per matrix, to keep this table from growing unboundedly with each registered matrix – pass <code>full_secondary_metrics=True</code> to also include the dict-valued equity breakdowns and description strings, matching what the primary matrix already returns. The underlying per-region <code>problem_df</code> always carries <code>min_cost__&lt;label&gt;</code> / <code>selected_site__&lt;label&gt;</code> / <code>within_threshold__&lt;label&gt;</code> regardless of this setting.</p></li>
+<li><p>Population impact vs baseline (<code>demand_improved</code>, <code>demand_worsened</code>, <code>demand_unchanged</code>, <code>proportion_demand_ improved</code>, <code>proportion_demand_worsened</code>, <code>regions_improved</code>, <code>regions_worsened</code>, <code>regions_unchanged</code>, <code>mean_reduction_among_improved</code>, <code>mean_increase_among_worsened</code>, <code>max_reduction</code>, <code>max_increase</code>):</p>
+<p>Only present when a baseline was supplied (<code>solve(baseline=...)</code>, or a baseline was passed to <code>evaluate_single_solution_single_  objective()</code> directly) – absent otherwise, not <code>NaN</code>, so <code>solution_df</code>’s schema is unchanged for callers that never ask for a baseline. <code>demand_*</code>/<code>mean_*</code> are HIGHER-is-better for the <code>_improved</code>/<code>reduction</code> names (more people better off, or a bigger improvement) and LOWER-is-better for the <code>_worsened</code>/ <code>increase</code> names; <code>*_unchanged</code> is directionless. See <code>SolutionComparator.population_impact_summary()</code> for the equivalent baseline-vs-candidate comparison without solving via <code>solve(baseline=...)</code>. Secondary travel matrices and secondary demand scenarios get only the demand-weighted subset (<code>demand_improved__&lt;label&gt;</code>, <code>demand_worsened__&lt;label&gt;</code>, <code>demand_unchanged__&lt;label&gt;</code>, <code>mean_reduction_among_improved__  &lt;label&gt;</code>, <code>mean_increase_among_worsened__&lt;label&gt;</code>) by default; <code>full_secondary_metrics=True</code> also adds the region counts and max change (<code>regions_improved__&lt;label&gt;</code>, etc.) for secondary travel matrices. Demand scenarios never get the region-count/max variants (region membership doesn’t vary with demand), matching point 6’s “only what varies with demand” rule.</p>
+<p>When equity data is also registered, <code>demand_improved_by_equity_  group</code> / <code>demand_worsened_by_equity_group</code> (dict per band) are also added – e.g.&nbsp;“are the most deprived areas improving at a higher rate than the least deprived?”. Primary matrix only; not yet broken down for secondary travel matrices/demand scenarios.</p></li>
+</ol>
+<p>7b. Which sites actually changed (<code>sites_closed_vs_baseline</code>, <code>sites_added_vs_baseline</code>):</p>
+<pre><code>`sites_closed_vs_baseline` is the baseline's own site names
+absent from this solution's `site_names`; `sites_added_vs_
+baseline` is `site_names` absent from the baseline's. Answers
+"which sites changed?" directly, rather than requiring a caller
+to compute the set difference themselves -- useful when several
+solutions share nearly all the same sites and only differ in
+one or two, which a bare `site_names` column doesn't make
+obvious at a glance. Present under the same condition as the
+rest of this point (a baseline was supplied); absent, not empty
+lists, otherwise.</code></pre>
+<ol start="8" type="1">
+<li><p>“Left behind” headcounts (<code>demand_beyond_threshold_&lt;t&gt;</code>, <code>regions_beyond_threshold_&lt;t&gt;</code>, one pair per threshold <code>t</code> in <code>beyond_thresholds</code>, plus a <code>_by_equity_group</code> dict variant of each when equity data is registered):</p>
+<p>LOWER is better – the opposite direction from the coverage metrics in point 5, since these count people/regions a threshold crossing leaves <em>outside</em> rather than within. A distinct concept from <code>threshold_for_coverage</code>/‘coverage metrics’ even though both compare a travel cost against a cutoff: “covered” (good, one threshold) vs “beyond” (bad, any number of thresholds at once). Thresholds are independent, not cumulative – <code>demand_beyond_threshold_45</code> is not a subset of <code>demand_beyond_threshold_30</code>’s complement; each is a fresh count against its own cutoff. Only present when <code>beyond_thresholds</code> was supplied – absent, not <code>NaN</code>, otherwise. Secondary travel matrices get the demand-weighted headcount by default (<code>demand_beyond_threshold_&lt;t&gt;__&lt;label&gt;</code>); <code>full_secondary_metrics=True</code> also adds region counts and the equity breakdowns, matching point 6/7’s pattern. Secondary demand scenarios get only the demand-weighted headcount, never region counts or equity breakdowns, matching point 6’s “only what varies with demand” rule.</p></li>
+<li><p>Additional sites chosen beyond required (<code>additional_site_names</code>):</p>
+<p><code>site_names</code> with the required sites (flagged via <code>add_sites(required_sites_col=...)</code>) removed – e.g.&nbsp;for a “we have 4 sites and are opening 1 more” problem, this is just the new site, rather than all 5 names, which otherwise look identical across every solution that all correctly keep the same 4 required sites. Only present when at least one required site is configured; absent, not an empty list, otherwise.</p></li>
+<li><p>Sites not selected (<code>unselected_site_names</code>):</p>
+<p>Every registered candidate site absent from <code>site_names</code>, in canonical site-index order – the complement of <code>site_names</code> among ALL candidates, not just the required ones point 9 removes. Always present (unlike point 9), since it doesn’t depend on any optional registered data.</p></li>
 </ol>
 
 

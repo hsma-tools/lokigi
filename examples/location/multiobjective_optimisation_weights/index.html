@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.38">
+<meta name="generator" content="quarto-1.10.18">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -12,10 +12,13 @@
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
 */
-code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
-div.columns{display: flex; gap: min(4vw, 1.5em);}
-div.column{flex: auto; overflow-x: auto;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
 div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 ul.task-list{list-style: none;}
 ul.task-list li input[type="checkbox"] {
@@ -74,12 +77,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../../../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-dark-b85bc7c33db8c58e0ec93c3465666fed.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../../site_libs/bootstrap/bootstrap-0d210a0509ecf4a0ffc439124ba9b804.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../../../site_libs/bootstrap/bootstrap-dark-0b786126e8e87865814929786bd75bd9.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../../../site_libs/bootstrap/bootstrap-e9116e874763087f90fa188e1bb6cd75.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../../site_libs/bootstrap/bootstrap-dark-32996061cbfd2997963ec587d192a074.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -405,7 +408,7 @@ Note
 <p>Therefore you may wish to consider alternative approaches to multiobjective optimisation, such as those shown in the sections <a href="../../../examples/location/comparing_solutions/index.html">comparing two solutions</a> and <a href="../../../examples/location/multiobjective_optimisation_pareto/index.html">pareto optimisation</a>.</p>
 </div>
 </div>
-<div id="710f6284" class="cell" data-execution_count="1">
+<div id="710f6284" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-03T08:33:16.305740Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-03T08:33:16.305466Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-03T08:33:26.209895Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-03T08:33:26.206871Z&quot;}}" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lokigi.site <span class="im">import</span> SiteProblem</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>problem <span class="op">=</span> SiteProblem()</span>
@@ -445,38 +448,32 @@ Note
 <pre><code>Guessed CRS: EPSG:4326 (Values fall within longitude/latitude bounds)</code></pre>
 </div>
 </div>
-<div id="882e2bdc" class="cell" data-execution_count="2">
+<div id="882e2bdc" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-03T08:33:26.216186Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-03T08:33:26.215424Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-03T08:33:52.603253Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-03T08:33:52.601537Z&quot;}}" data-execution_count="2">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>problem.plot_region_geometry_layer(plot_equity<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/cell-3-output-1.png" width="487" height="402" class="figure-img"></p>
+<p><img src="index_files/figure-html/cell-3-output-1.png" width="506" height="402" class="figure-img"></p>
 </figure>
 </div>
 </div>
 </div>
-<div id="05e4b67a" class="cell" data-execution_count="3">
+<div id="05e4b67a" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-03T08:33:52.610485Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-03T08:33:52.607834Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-03T08:33:54.820776Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-03T08:33:54.819435Z&quot;}}" data-execution_count="3">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>problem.plot_region_geometry_layer(plot_demand<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/cell-4-output-1.png" width="504" height="394" class="figure-img"></p>
+<p><img src="index_files/figure-html/cell-4-output-1.png" width="523" height="394" class="figure-img"></p>
 </figure>
 </div>
 </div>
 </div>
-<div id="4628a874" class="cell" data-execution_count="4">
+<div id="4628a874" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-03T08:33:54.826157Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-03T08:33:54.825627Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-03T08:34:49.887976Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-03T08:34:49.885823Z&quot;}}" data-execution_count="4">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>problem.plot_sites()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>/tmp/ipykernel_1103/3888362976.py:1: UserWarning:
-
-Unable to download background map tiles (ReadTimeout). Continuing without a basemap.
-</code></pre>
-</div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/cell-5-output-2.png" width="376" height="411" class="figure-img"></p>
+<p><img src="index_files/figure-html/cell-5-output-1.png" width="377" height="411" class="figure-img"></p>
 </figure>
 </div>
 </div>
@@ -485,12 +482,12 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <h1>Weighting by demand, equity, or both</h1>
 <p>The default behaviour in lokigi, if no weights are stated for a standard (unsimplified) p-median problem</p>
 <p>As a reminder, an unsimplified p-median problem will solve for raw travel times rather than applying any weighting.</p>
-<div id="1ca43e04" class="cell" data-execution_count="5">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>solution_standard_demand_weighted_p_median <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">5</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, threshold_for_coverage<span class="op">=</span><span class="dv">30</span>)</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>solution_standard_demand_weighted_p_median.show_solutions(n_best<span class="op">=</span><span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="1ca43e04" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-03T08:34:49.895081Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-03T08:34:49.894458Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-03T08:34:51.579937Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-03T08:34:51.578225Z&quot;}}" data-execution_count="5">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>solution_standard_demand_weighted_p_median <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">5</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, threshold_for_coverage<span class="op">=</span><span class="dv">30</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>solution_standard_demand_weighted_p_median.show_solutions(n_best<span class="op">=</span><span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"fbd09edf34d3485bae019fde50567c9c","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+{"model_id":"63695a3e6100447b86ff2d6578c1e43f","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
 </script>
 </div>
 <div class="cell-output cell-output-display" data-execution_count="5">
@@ -504,15 +501,14 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <th data-quarto-table-cell-role="th">solution_rank</th>
 <th data-quarto-table-cell-role="th">site_names</th>
 <th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">unselected_site_names</th>
 <th data-quarto-table-cell-role="th">coverage_threshold</th>
 <th data-quarto-table-cell-role="th">weighted_average</th>
 <th data-quarto-table-cell-role="th">unweighted_average</th>
 <th data-quarto-table-cell-role="th">90th_percentile</th>
 <th data-quarto-table-cell-role="th">max</th>
-<th data-quarto-table-cell-role="th">total_cost</th>
-<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average_for_ranking</th>
 <th data-quarto-table-cell-role="th">...</th>
-<th data-quarto-table-cell-role="th">gap_absolute_weighted</th>
 <th data-quarto-table-cell-role="th">gap_relative_weighted</th>
 <th data-quarto-table-cell-role="th">avg_lower_third_bins</th>
 <th data-quarto-table-cell-role="th">avg_middle_third_bins</th>
@@ -522,6 +518,7 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <th data-quarto-table-cell-role="th">gap_relative_description</th>
 <th data-quarto-table-cell-role="th">inter_tertile_description</th>
 <th data-quarto-table-cell-role="th">problem_df</th>
+<th data-quarto-table-cell-role="th">additional_site_names</th>
 </tr>
 </thead>
 <tbody>
@@ -530,82 +527,82 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <td>1</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 12]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>30</td>
 <td>20.23</td>
 <td>20.03</td>
 <td>39.41</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.79</td>
+<td>20.23</td>
 <td>...</td>
-<td>16.21</td>
 <td>2.65</td>
 <td>15.86</td>
 <td>23.18</td>
 <td>17.60</td>
 <td>0.90</td>
-<td>Spread of 16.2 units between best and worst gr...</td>
+<td>Spread of 16.2 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 165...</td>
 <td>Slightly Progressive (Most deprived travel 10%...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Barnstaple - Archwood Retail Park]</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1</th>
 <td>2</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 5]</td>
+<td>[Tiverton - Lowman Way, Crediton - Lords Meado...</td>
 <td>30</td>
 <td>20.43</td>
 <td>20.37</td>
 <td>37.61</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.79</td>
+<td>20.43</td>
 <td>...</td>
-<td>13.59</td>
 <td>2.18</td>
 <td>16.40</td>
 <td>23.46</td>
 <td>18.08</td>
 <td>0.91</td>
-<td>Spread of 13.6 units between best and worst gr...</td>
+<td>Spread of 13.6 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 118...</td>
 <td>Slightly Progressive (Most deprived travel 9% ...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Okehampton - Exeter Road Industrial Estate]</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">2</th>
 <td>3</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 8]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>30</td>
 <td>20.44</td>
 <td>20.21</td>
 <td>42.07</td>
 <td>61.18</td>
-<td>NaN</td>
-<td>0.78</td>
+<td>20.44</td>
 <td>...</td>
-<td>14.17</td>
 <td>2.23</td>
 <td>16.86</td>
 <td>23.17</td>
 <td>17.04</td>
 <td>0.99</td>
-<td>Spread of 14.2 units between best and worst gr...</td>
+<td>Spread of 14.2 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 123...</td>
 <td>Balanced (Macro travel times are broadly equal)</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Newton Abbott - Market Walk]</td>
 </tr>
 </tbody>
 </table>
 
-<p>3 rows × 26 columns</p>
+<p>3 rows × 38 columns</p>
 </div>
 </div>
 </div>
-<div id="769a5d15" class="cell" data-execution_count="6">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>solution_standard_demand_weighted_p_median.show_solutions().sort_values(<span class="st">'inter_tertile_ratio'</span>).head(<span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="769a5d15" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-03T08:34:51.593775Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-03T08:34:51.593007Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-03T08:34:51.692161Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-03T08:34:51.690588Z&quot;}}" data-execution_count="6">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>solution_standard_demand_weighted_p_median.show_solutions().sort_values(<span class="st">'inter_tertile_ratio'</span>).head(<span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="6">
 <div>
 
@@ -617,15 +614,14 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <th data-quarto-table-cell-role="th">solution_rank</th>
 <th data-quarto-table-cell-role="th">site_names</th>
 <th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">unselected_site_names</th>
 <th data-quarto-table-cell-role="th">coverage_threshold</th>
 <th data-quarto-table-cell-role="th">weighted_average</th>
 <th data-quarto-table-cell-role="th">unweighted_average</th>
 <th data-quarto-table-cell-role="th">90th_percentile</th>
 <th data-quarto-table-cell-role="th">max</th>
-<th data-quarto-table-cell-role="th">total_cost</th>
-<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average_for_ranking</th>
 <th data-quarto-table-cell-role="th">...</th>
-<th data-quarto-table-cell-role="th">gap_absolute_weighted</th>
 <th data-quarto-table-cell-role="th">gap_relative_weighted</th>
 <th data-quarto-table-cell-role="th">avg_lower_third_bins</th>
 <th data-quarto-table-cell-role="th">avg_middle_third_bins</th>
@@ -635,6 +631,7 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <th data-quarto-table-cell-role="th">gap_relative_description</th>
 <th data-quarto-table-cell-role="th">inter_tertile_description</th>
 <th data-quarto-table-cell-role="th">problem_df</th>
+<th data-quarto-table-cell-role="th">additional_site_names</th>
 </tr>
 </thead>
 <tbody>
@@ -643,82 +640,82 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <td>1</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 12]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>30</td>
 <td>20.23</td>
 <td>20.03</td>
 <td>39.41</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.79</td>
+<td>20.23</td>
 <td>...</td>
-<td>16.21</td>
 <td>2.65</td>
 <td>15.86</td>
 <td>23.18</td>
 <td>17.60</td>
 <td>0.90</td>
-<td>Spread of 16.2 units between best and worst gr...</td>
+<td>Spread of 16.2 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 165...</td>
 <td>Slightly Progressive (Most deprived travel 10%...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Barnstaple - Archwood Retail Park]</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1</th>
 <td>2</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 5]</td>
+<td>[Tiverton - Lowman Way, Crediton - Lords Meado...</td>
 <td>30</td>
 <td>20.43</td>
 <td>20.37</td>
 <td>37.61</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.79</td>
+<td>20.43</td>
 <td>...</td>
-<td>13.59</td>
 <td>2.18</td>
 <td>16.40</td>
 <td>23.46</td>
 <td>18.08</td>
 <td>0.91</td>
-<td>Spread of 13.6 units between best and worst gr...</td>
+<td>Spread of 13.6 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 118...</td>
 <td>Slightly Progressive (Most deprived travel 9% ...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Okehampton - Exeter Road Industrial Estate]</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">12</th>
 <td>13</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 16]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>30</td>
 <td>20.94</td>
 <td>20.84</td>
 <td>39.84</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.77</td>
+<td>20.94</td>
 <td>...</td>
-<td>15.41</td>
 <td>2.34</td>
 <td>16.42</td>
 <td>24.40</td>
 <td>18.12</td>
 <td>0.91</td>
-<td>Spread of 15.4 units between best and worst gr...</td>
+<td>Spread of 15.4 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 134...</td>
 <td>Slightly Progressive (Most deprived travel 9% ...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Holsworthy - Underlane]</td>
 </tr>
 </tbody>
 </table>
 
-<p>3 rows × 26 columns</p>
+<p>3 rows × 38 columns</p>
 </div>
 </div>
 </div>
-<div id="c6a44728" class="cell" data-execution_count="7">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>solution_standard_demand_weighted_p_median.show_solutions().sort_values(<span class="st">'inter_tertile_ratio'</span>, ascending<span class="op">=</span><span class="va">False</span>).head(<span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="c6a44728" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-03T08:34:51.696565Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-03T08:34:51.695620Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-03T08:34:51.783380Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-03T08:34:51.781692Z&quot;}}" data-execution_count="7">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>solution_standard_demand_weighted_p_median.show_solutions().sort_values(<span class="st">'inter_tertile_ratio'</span>, ascending<span class="op">=</span><span class="va">False</span>).head(<span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="7">
 <div>
 
@@ -730,15 +727,14 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <th data-quarto-table-cell-role="th">solution_rank</th>
 <th data-quarto-table-cell-role="th">site_names</th>
 <th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">unselected_site_names</th>
 <th data-quarto-table-cell-role="th">coverage_threshold</th>
 <th data-quarto-table-cell-role="th">weighted_average</th>
 <th data-quarto-table-cell-role="th">unweighted_average</th>
 <th data-quarto-table-cell-role="th">90th_percentile</th>
 <th data-quarto-table-cell-role="th">max</th>
-<th data-quarto-table-cell-role="th">total_cost</th>
-<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average_for_ranking</th>
 <th data-quarto-table-cell-role="th">...</th>
-<th data-quarto-table-cell-role="th">gap_absolute_weighted</th>
 <th data-quarto-table-cell-role="th">gap_relative_weighted</th>
 <th data-quarto-table-cell-role="th">avg_lower_third_bins</th>
 <th data-quarto-table-cell-role="th">avg_middle_third_bins</th>
@@ -748,6 +744,7 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <th data-quarto-table-cell-role="th">gap_relative_description</th>
 <th data-quarto-table-cell-role="th">inter_tertile_description</th>
 <th data-quarto-table-cell-role="th">problem_df</th>
+<th data-quarto-table-cell-role="th">additional_site_names</th>
 </tr>
 </thead>
 <tbody>
@@ -756,89 +753,89 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <td>9</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 10]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>30</td>
 <td>20.72</td>
 <td>20.51</td>
 <td>39.44</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.78</td>
+<td>20.72</td>
 <td>...</td>
-<td>14.58</td>
 <td>2.26</td>
 <td>17.35</td>
 <td>23.21</td>
 <td>17.23</td>
 <td>1.01</td>
-<td>Spread of 14.6 units between best and worst gr...</td>
+<td>Spread of 14.6 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 126...</td>
 <td>Balanced (Macro travel times are broadly equal)</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Honiton - Devonshire Road]</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">13</th>
 <td>14</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 11]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>30</td>
 <td>21.03</td>
 <td>20.85</td>
 <td>42.40</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.75</td>
+<td>21.03</td>
 <td>...</td>
-<td>15.30</td>
 <td>2.33</td>
 <td>17.15</td>
 <td>24.11</td>
 <td>17.17</td>
 <td>1.00</td>
-<td>Spread of 15.3 units between best and worst gr...</td>
+<td>Spread of 15.3 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 133...</td>
 <td>Balanced (Macro travel times are broadly equal)</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Exmouth - The Strand]</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">2</th>
 <td>3</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 8]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>30</td>
 <td>20.44</td>
 <td>20.21</td>
 <td>42.07</td>
 <td>61.18</td>
-<td>NaN</td>
-<td>0.78</td>
+<td>20.44</td>
 <td>...</td>
-<td>14.17</td>
 <td>2.23</td>
 <td>16.86</td>
 <td>23.17</td>
 <td>17.04</td>
 <td>0.99</td>
-<td>Spread of 14.2 units between best and worst gr...</td>
+<td>Spread of 14.2 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 123...</td>
 <td>Balanced (Macro travel times are broadly equal)</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Newton Abbott - Market Walk]</td>
 </tr>
 </tbody>
 </table>
 
-<p>3 rows × 26 columns</p>
+<p>3 rows × 38 columns</p>
 </div>
 </div>
 </div>
 <section id="weighting-by-equity-instead" class="level2">
 <h2 class="anchored" data-anchor-id="weighting-by-equity-instead">Weighting by equity instead</h2>
 <p>We can instead weight by equity by passing in a dictionary of weights.</p>
-<div id="f6024d4c" class="cell" data-execution_count="8">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>solution_equity_weighted_p_median <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">5</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, weights<span class="op">=</span>{<span class="st">'equity'</span>: <span class="fl">1.0</span>}, threshold_for_coverage<span class="op">=</span><span class="dv">30</span>)</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>solution_equity_weighted_p_median.show_solutions(n_best<span class="op">=</span><span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="f6024d4c" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-03T08:34:51.788265Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-03T08:34:51.787871Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-03T08:34:52.869132Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-03T08:34:52.867170Z&quot;}}" data-execution_count="8">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>solution_equity_weighted_p_median <span class="op">=</span> problem.solve(p<span class="op">=</span><span class="dv">5</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, weights<span class="op">=</span>{<span class="st">'equity'</span>: <span class="fl">1.0</span>}, threshold_for_coverage<span class="op">=</span><span class="dv">30</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>solution_equity_weighted_p_median.show_solutions(n_best<span class="op">=</span><span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"a5221a5cfece4ffbbae93bea0e2712d4","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+{"model_id":"3608d68ff2b64e77b5bc40568a8aee90","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
 </script>
 </div>
 <div class="cell-output cell-output-display" data-execution_count="8">
@@ -852,15 +849,14 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <th data-quarto-table-cell-role="th">solution_rank</th>
 <th data-quarto-table-cell-role="th">site_names</th>
 <th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">unselected_site_names</th>
 <th data-quarto-table-cell-role="th">coverage_threshold</th>
 <th data-quarto-table-cell-role="th">weighted_average</th>
 <th data-quarto-table-cell-role="th">unweighted_average</th>
 <th data-quarto-table-cell-role="th">90th_percentile</th>
 <th data-quarto-table-cell-role="th">max</th>
-<th data-quarto-table-cell-role="th">total_cost</th>
-<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average_for_ranking</th>
 <th data-quarto-table-cell-role="th">...</th>
-<th data-quarto-table-cell-role="th">gap_absolute_weighted</th>
 <th data-quarto-table-cell-role="th">gap_relative_weighted</th>
 <th data-quarto-table-cell-role="th">avg_lower_third_bins</th>
 <th data-quarto-table-cell-role="th">avg_middle_third_bins</th>
@@ -870,6 +866,7 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <th data-quarto-table-cell-role="th">gap_relative_description</th>
 <th data-quarto-table-cell-role="th">inter_tertile_description</th>
 <th data-quarto-table-cell-role="th">problem_df</th>
+<th data-quarto-table-cell-role="th">additional_site_names</th>
 </tr>
 </thead>
 <tbody>
@@ -878,91 +875,91 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <td>1</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 12]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>30</td>
 <td>19.57</td>
 <td>20.03</td>
 <td>39.41</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.79</td>
+<td>19.57</td>
 <td>...</td>
-<td>15.30</td>
 <td>2.49</td>
 <td>15.90</td>
 <td>22.81</td>
 <td>17.81</td>
 <td>0.89</td>
-<td>Spread of 15.3 units between best and worst gr...</td>
+<td>Spread of 15.3 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 149...</td>
 <td>Slightly Progressive (Most deprived travel 11%...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Barnstaple - Archwood Retail Park]</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1</th>
 <td>2</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 5]</td>
+<td>[Tiverton - Lowman Way, Crediton - Lords Meado...</td>
 <td>30</td>
 <td>19.91</td>
 <td>20.37</td>
 <td>37.61</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.79</td>
+<td>19.91</td>
 <td>...</td>
-<td>12.79</td>
 <td>2.05</td>
 <td>16.65</td>
 <td>23.19</td>
 <td>18.33</td>
 <td>0.91</td>
-<td>Spread of 12.8 units between best and worst gr...</td>
+<td>Spread of 12.8 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 105...</td>
 <td>Slightly Progressive (Most deprived travel 9% ...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Okehampton - Exeter Road Industrial Estate]</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">2</th>
 <td>3</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 17]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>30</td>
 <td>19.99</td>
 <td>20.37</td>
 <td>41.91</td>
 <td>61.18</td>
-<td>NaN</td>
-<td>0.77</td>
+<td>19.99</td>
 <td>...</td>
-<td>14.15</td>
 <td>2.28</td>
 <td>16.61</td>
 <td>22.80</td>
 <td>18.00</td>
 <td>0.92</td>
-<td>Spread of 14.2 units between best and worst gr...</td>
+<td>Spread of 14.2 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 128...</td>
 <td>Slightly Progressive (Most deprived travel 8% ...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Paignton - Hyde Road]</td>
 </tr>
 </tbody>
 </table>
 
-<p>3 rows × 26 columns</p>
+<p>3 rows × 38 columns</p>
 </div>
 </div>
 </div>
 </section>
 <section id="weighting-by-both-demand-and-equity" class="level2">
 <h2 class="anchored" data-anchor-id="weighting-by-both-demand-and-equity">Weighting by both demand and equity</h2>
-<div id="a387e069" class="cell" data-execution_count="9">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>solution_equity_and_demand_weighted_p_median <span class="op">=</span> problem.solve(</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    p<span class="op">=</span><span class="dv">5</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, weights<span class="op">=</span>{<span class="st">'equity'</span>: <span class="fl">1.0</span>, <span class="st">'demand'</span>: <span class="fl">1.0</span>}, threshold_for_coverage<span class="op">=</span><span class="dv">30</span>,</span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>solution_equity_and_demand_weighted_p_median.show_solutions(n_best<span class="op">=</span><span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="a387e069" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-03T08:34:52.873832Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-03T08:34:52.873410Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-03T08:34:53.999143Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-03T08:34:53.997199Z&quot;}}" data-execution_count="9">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>solution_equity_and_demand_weighted_p_median <span class="op">=</span> problem.solve(</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    p<span class="op">=</span><span class="dv">5</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, weights<span class="op">=</span>{<span class="st">'equity'</span>: <span class="fl">1.0</span>, <span class="st">'demand'</span>: <span class="fl">1.0</span>}, threshold_for_coverage<span class="op">=</span><span class="dv">30</span>,</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>solution_equity_and_demand_weighted_p_median.show_solutions(n_best<span class="op">=</span><span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"b4feeccba3504bf9bfb2684784aa2542","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+{"model_id":"cf6c3833098f44bbb1fc7edfe56e6e57","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
 </script>
 </div>
 <div class="cell-output cell-output-display" data-execution_count="9">
@@ -976,15 +973,14 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <th data-quarto-table-cell-role="th">solution_rank</th>
 <th data-quarto-table-cell-role="th">site_names</th>
 <th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">unselected_site_names</th>
 <th data-quarto-table-cell-role="th">coverage_threshold</th>
 <th data-quarto-table-cell-role="th">weighted_average</th>
 <th data-quarto-table-cell-role="th">unweighted_average</th>
 <th data-quarto-table-cell-role="th">90th_percentile</th>
 <th data-quarto-table-cell-role="th">max</th>
-<th data-quarto-table-cell-role="th">total_cost</th>
-<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average_for_ranking</th>
 <th data-quarto-table-cell-role="th">...</th>
-<th data-quarto-table-cell-role="th">gap_absolute_weighted</th>
 <th data-quarto-table-cell-role="th">gap_relative_weighted</th>
 <th data-quarto-table-cell-role="th">avg_lower_third_bins</th>
 <th data-quarto-table-cell-role="th">avg_middle_third_bins</th>
@@ -994,6 +990,7 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <th data-quarto-table-cell-role="th">gap_relative_description</th>
 <th data-quarto-table-cell-role="th">inter_tertile_description</th>
 <th data-quarto-table-cell-role="th">problem_df</th>
+<th data-quarto-table-cell-role="th">additional_site_names</th>
 </tr>
 </thead>
 <tbody>
@@ -1002,77 +999,77 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <td>1</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 12]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>30</td>
 <td>19.84</td>
 <td>20.03</td>
 <td>39.41</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.79</td>
+<td>19.84</td>
 <td>...</td>
-<td>15.78</td>
 <td>2.56</td>
 <td>15.90</td>
 <td>23.08</td>
 <td>17.46</td>
 <td>0.91</td>
-<td>Spread of 15.8 units between best and worst gr...</td>
+<td>Spread of 15.8 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 156...</td>
 <td>Slightly Progressive (Most deprived travel 9% ...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Barnstaple - Archwood Retail Park]</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1</th>
 <td>2</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 5]</td>
+<td>[Tiverton - Lowman Way, Crediton - Lords Meado...</td>
 <td>30</td>
 <td>20.08</td>
 <td>20.37</td>
 <td>37.61</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.79</td>
+<td>20.08</td>
 <td>...</td>
-<td>13.17</td>
 <td>2.11</td>
 <td>16.55</td>
 <td>23.40</td>
 <td>17.94</td>
 <td>0.92</td>
-<td>Spread of 13.2 units between best and worst gr...</td>
+<td>Spread of 13.2 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 111...</td>
 <td>Slightly Progressive (Most deprived travel 8% ...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Okehampton - Exeter Road Industrial Estate]</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">2</th>
 <td>3</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 4]</td>
+<td>[Okehampton - Exeter Road Industrial Estate, C...</td>
 <td>30</td>
 <td>20.17</td>
 <td>20.39</td>
 <td>41.07</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.79</td>
+<td>20.17</td>
 <td>...</td>
-<td>14.35</td>
 <td>2.21</td>
 <td>16.47</td>
 <td>23.35</td>
 <td>17.61</td>
 <td>0.94</td>
-<td>Spread of 14.3 units between best and worst gr...</td>
+<td>Spread of 14.3 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 121...</td>
 <td>Slightly Progressive (Most deprived travel 6% ...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Tiverton - Lowman Way]</td>
 </tr>
 </tbody>
 </table>
 
-<p>3 rows × 26 columns</p>
+<p>3 rows × 38 columns</p>
 </div>
 </div>
 </div>
@@ -1081,23 +1078,23 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <section id="additional-datasets" class="level1">
 <h1>Additional datasets</h1>
 <p>Let’s now add an additional dataset. We’re going to add in demand for patients 50-84.</p>
-<div id="15d32193" class="cell" data-execution_count="10">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>problem.add_additional_data(</span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    df<span class="op">=</span><span class="st">"../../../sample_data/demand_MF_50_84.csv"</span>,</span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    column_of_interest<span class="op">=</span><span class="st">"MF50-84"</span>,</span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    common_col<span class="op">=</span><span class="st">"LSOA 2021 Name"</span>,</span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    label<span class="op">=</span><span class="st">"Demand 50-84"</span>,</span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    direction<span class="op">=</span><span class="st">"higher_better"</span></span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="15d32193" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-03T08:34:54.007171Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-03T08:34:54.005475Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-03T08:34:54.026670Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-03T08:34:54.024857Z&quot;}}" data-execution_count="10">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>problem.add_additional_data(</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    df<span class="op">=</span><span class="st">"../../../sample_data/demand_MF_50_84.csv"</span>,</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    column_of_interest<span class="op">=</span><span class="st">"MF50-84"</span>,</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    common_col<span class="op">=</span><span class="st">"LSOA 2021 Name"</span>,</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    label<span class="op">=</span><span class="st">"Demand 50-84"</span>,</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    direction<span class="op">=</span><span class="st">"higher_better"</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div id="94fecaec" class="cell" data-execution_count="11">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>solution_additional_dataset_weighted_p_median <span class="op">=</span> problem.solve(</span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    p<span class="op">=</span><span class="dv">5</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, weights<span class="op">=</span>{<span class="st">'equity'</span>: <span class="fl">0.1</span>, <span class="st">'demand'</span>: <span class="fl">0.1</span>, <span class="st">'Demand 50-84'</span>: <span class="fl">0.6</span>}, threshold_for_coverage<span class="op">=</span><span class="dv">30</span></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>solution_equity_and_demand_weighted_p_median.show_solutions(n_best<span class="op">=</span><span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="94fecaec" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-03T08:34:54.031691Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-03T08:34:54.031113Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-03T08:34:55.014997Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-03T08:34:55.012343Z&quot;}}" data-execution_count="11">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>solution_additional_dataset_weighted_p_median <span class="op">=</span> problem.solve(</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    p<span class="op">=</span><span class="dv">5</span>, objectives<span class="op">=</span><span class="st">"p_median"</span>, weights<span class="op">=</span>{<span class="st">'equity'</span>: <span class="fl">0.1</span>, <span class="st">'demand'</span>: <span class="fl">0.1</span>, <span class="st">'Demand 50-84'</span>: <span class="fl">0.6</span>}, threshold_for_coverage<span class="op">=</span><span class="dv">30</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>solution_equity_and_demand_weighted_p_median.show_solutions(n_best<span class="op">=</span><span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <script type="application/vnd.jupyter.widget-view+json">
-{"model_id":"3a51deec629a4220929b10a93d9bb8b4","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
+{"model_id":"3663e30a540f4fada72a6fa7c7fc49d6","version_major":2,"version_minor":0,"quarto_mimetype":"application/vnd.jupyter.widget-view+json"}
 </script>
 </div>
 <div class="cell-output cell-output-display" data-execution_count="11">
@@ -1111,15 +1108,14 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <th data-quarto-table-cell-role="th">solution_rank</th>
 <th data-quarto-table-cell-role="th">site_names</th>
 <th data-quarto-table-cell-role="th">site_indices</th>
+<th data-quarto-table-cell-role="th">unselected_site_names</th>
 <th data-quarto-table-cell-role="th">coverage_threshold</th>
 <th data-quarto-table-cell-role="th">weighted_average</th>
 <th data-quarto-table-cell-role="th">unweighted_average</th>
 <th data-quarto-table-cell-role="th">90th_percentile</th>
 <th data-quarto-table-cell-role="th">max</th>
-<th data-quarto-table-cell-role="th">total_cost</th>
-<th data-quarto-table-cell-role="th">proportion_within_coverage_threshold</th>
+<th data-quarto-table-cell-role="th">weighted_average_for_ranking</th>
 <th data-quarto-table-cell-role="th">...</th>
-<th data-quarto-table-cell-role="th">gap_absolute_weighted</th>
 <th data-quarto-table-cell-role="th">gap_relative_weighted</th>
 <th data-quarto-table-cell-role="th">avg_lower_third_bins</th>
 <th data-quarto-table-cell-role="th">avg_middle_third_bins</th>
@@ -1129,6 +1125,7 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <th data-quarto-table-cell-role="th">gap_relative_description</th>
 <th data-quarto-table-cell-role="th">inter_tertile_description</th>
 <th data-quarto-table-cell-role="th">problem_df</th>
+<th data-quarto-table-cell-role="th">additional_site_names</th>
 </tr>
 </thead>
 <tbody>
@@ -1137,82 +1134,82 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 <td>1</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 12]</td>
+<td>[Tiverton - Lowman Way, Okehampton - Exeter Ro...</td>
 <td>30</td>
 <td>19.84</td>
 <td>20.03</td>
 <td>39.41</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.79</td>
+<td>19.84</td>
 <td>...</td>
-<td>15.78</td>
 <td>2.56</td>
 <td>15.90</td>
 <td>23.08</td>
 <td>17.46</td>
 <td>0.91</td>
-<td>Spread of 15.8 units between best and worst gr...</td>
+<td>Spread of 15.8 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 156...</td>
 <td>Slightly Progressive (Most deprived travel 9% ...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Barnstaple - Archwood Retail Park]</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1</th>
 <td>2</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 5]</td>
+<td>[Tiverton - Lowman Way, Crediton - Lords Meado...</td>
 <td>30</td>
 <td>20.08</td>
 <td>20.37</td>
 <td>37.61</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.79</td>
+<td>20.08</td>
 <td>...</td>
-<td>13.17</td>
 <td>2.11</td>
 <td>16.55</td>
 <td>23.40</td>
 <td>17.94</td>
 <td>0.92</td>
-<td>Spread of 13.2 units between best and worst gr...</td>
+<td>Spread of 13.2 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 111...</td>
 <td>Slightly Progressive (Most deprived travel 8% ...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Okehampton - Exeter Road Industrial Estate]</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">2</th>
 <td>3</td>
 <td>[Bideford Community Hospital, NHS Nightingale ...</td>
 <td>[0, 1, 2, 3, 4]</td>
+<td>[Okehampton - Exeter Road Industrial Estate, C...</td>
 <td>30</td>
 <td>20.17</td>
 <td>20.39</td>
 <td>41.07</td>
 <td>61.53</td>
-<td>NaN</td>
-<td>0.79</td>
+<td>20.17</td>
 <td>...</td>
-<td>14.35</td>
 <td>2.21</td>
 <td>16.47</td>
 <td>23.35</td>
 <td>17.61</td>
 <td>0.94</td>
-<td>Spread of 14.3 units between best and worst gr...</td>
+<td>Spread of 14.3 minutes between best and worst ...</td>
 <td>Significant Disparity (Worst group travels 121...</td>
 <td>Slightly Progressive (Most deprived travel 6% ...</td>
 <td>LSOA 2021 Name&nbsp;&nbsp;Bideford Community Hospi...</td>
+<td>[Tiverton - Lowman Way]</td>
 </tr>
 </tbody>
 </table>
 
-<p>3 rows × 26 columns</p>
+<p>3 rows × 38 columns</p>
 </div>
 </div>
 </div>
-<div id="6ba534ed" class="cell" data-execution_count="12">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>solution_additional_dataset_weighted_p_median.show_solutions().iloc[<span class="dv">0</span>][<span class="st">'problem_df'</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="6ba534ed" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-08-03T08:34:55.020447Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-08-03T08:34:55.019524Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-08-03T08:34:55.053011Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-08-03T08:34:55.051063Z&quot;}}" data-execution_count="12">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>solution_additional_dataset_weighted_p_median.show_solutions().iloc[<span class="dv">0</span>][<span class="st">'problem_df'</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="12">
 <div>
 
@@ -1426,7 +1423,7 @@ Unable to download background map tiles (ReadTimeout). Continuing without a base
 
 <a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
 <script type="application/vnd.jupyter.widget-state+json">
-{"state":{"060e7054a52a45daa5bdec5143b1281e":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"06f14ddc65d24765a73e994ee148ccb3":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"1038f3b5618f4c079ff7ff35f0b6386c":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"149499abcd6b4cc982c1de7d1ec0663b":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"162aa7c93710491f8a6634e7660c375a":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"21999e1c510b429da2a22c8b196e562b":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"270b8d9f51c24c56af8e8577eac208ee":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"274f0d69e769443287dd0064fa8055de":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"2d418f8c9e8647c09441cdc36921aaea":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"3a51deec629a4220929b10a93d9bb8b4":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_9c3573c255dd4accb9fc1ee81380ef32","IPY_MODEL_edc9caa56d8244f79307610b229c5c7b","IPY_MODEL_e3b3e528d2ae4183bf51e3ae249fbae5"],"layout":"IPY_MODEL_ccf4db45dd7c4b3b83d0990d95954016","tabbable":null,"tooltip":null}},"3c7e4817126948aa950f403ae13fdc47":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_162aa7c93710491f8a6634e7660c375a","max":14,"min":0,"orientation":"horizontal","style":"IPY_MODEL_3dbb7121727f4894821b67bf06a072b2","tabbable":null,"tooltip":null,"value":14}},"3dbb7121727f4894821b67bf06a072b2":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"3e8533f6c9644a6fa90d2ba40be5dea3":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"3f4d7db0e4c045e1abe0248fa4269f1b":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"44fcbfe07ab7464db22322579a836a93":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_eac2a16465d64faca0ba215d82311bac","placeholder":"​","style":"IPY_MODEL_b6519b3aaf014ef0a7cee8f02923e716","tabbable":null,"tooltip":null,"value":" 14/14 [00:00&lt;00:00, 53.91it/s]"}},"52963b475ca44880a5f3337bf76515b0":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"5b7a4858ea9c415db65ab0768cf10ff7":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"66f4072b2592411099cf39595adc06fe":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"72ffdddbe79f40ce9a88cd3a09611a30":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_fb66b44cd4a6408781cfe8a41a11ed68","placeholder":"​","style":"IPY_MODEL_76b26a8073a1497cbf46221f2fb8aacb","tabbable":null,"tooltip":null,"value":"100%"}},"76b26a8073a1497cbf46221f2fb8aacb":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"798245be4f96413cb925aec2ae851895":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_3e8533f6c9644a6fa90d2ba40be5dea3","max":14,"min":0,"orientation":"horizontal","style":"IPY_MODEL_ed7300498d0046af8f490be25767ff9b","tabbable":null,"tooltip":null,"value":14}},"81453df5e05547519b9544d9491c3766":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"8d60684a6eb34902a6b4bc49efa77801":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"9487c42ea72a4001960a15014fc52c58":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_fb95bf13c8bf4b4d9d1bf92070dd3e24","max":14,"min":0,"orientation":"horizontal","style":"IPY_MODEL_cb149290df924d7f8e1095a5f1c1e93e","tabbable":null,"tooltip":null,"value":14}},"9c3573c255dd4accb9fc1ee81380ef32":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_06f14ddc65d24765a73e994ee148ccb3","placeholder":"​","style":"IPY_MODEL_1038f3b5618f4c079ff7ff35f0b6386c","tabbable":null,"tooltip":null,"value":"100%"}},"a5221a5cfece4ffbbae93bea0e2712d4":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_ec6a0e12f01f427598c152eb935e3793","IPY_MODEL_798245be4f96413cb925aec2ae851895","IPY_MODEL_44fcbfe07ab7464db22322579a836a93"],"layout":"IPY_MODEL_3f4d7db0e4c045e1abe0248fa4269f1b","tabbable":null,"tooltip":null}},"a860b876705b4dc4bf98b35f00b7385b":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_66f4072b2592411099cf39595adc06fe","placeholder":"​","style":"IPY_MODEL_b57813c1005f43cda9400355f3465250","tabbable":null,"tooltip":null,"value":" 14/14 [00:00&lt;00:00, 52.84it/s]"}},"ad6434e088b043dfa1f02d33c52b729c":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"af127a332f274f5da3ad432d3266c940":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_5b7a4858ea9c415db65ab0768cf10ff7","placeholder":"​","style":"IPY_MODEL_e6af1667842245869ae26a3484bb7fc9","tabbable":null,"tooltip":null,"value":"100%"}},"b4feeccba3504bf9bfb2684784aa2542":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_72ffdddbe79f40ce9a88cd3a09611a30","IPY_MODEL_3c7e4817126948aa950f403ae13fdc47","IPY_MODEL_a860b876705b4dc4bf98b35f00b7385b"],"layout":"IPY_MODEL_81453df5e05547519b9544d9491c3766","tabbable":null,"tooltip":null}},"b57813c1005f43cda9400355f3465250":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"b6519b3aaf014ef0a7cee8f02923e716":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"cb149290df924d7f8e1095a5f1c1e93e":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"ccf4db45dd7c4b3b83d0990d95954016":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"e3b3e528d2ae4183bf51e3ae249fbae5":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_270b8d9f51c24c56af8e8577eac208ee","placeholder":"​","style":"IPY_MODEL_2d418f8c9e8647c09441cdc36921aaea","tabbable":null,"tooltip":null,"value":" 14/14 [00:00&lt;00:00, 47.04it/s]"}},"e6af1667842245869ae26a3484bb7fc9":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"eac2a16465d64faca0ba215d82311bac":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"ec6a0e12f01f427598c152eb935e3793":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_8d60684a6eb34902a6b4bc49efa77801","placeholder":"​","style":"IPY_MODEL_ad6434e088b043dfa1f02d33c52b729c","tabbable":null,"tooltip":null,"value":"100%"}},"ed7300498d0046af8f490be25767ff9b":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"edc9caa56d8244f79307610b229c5c7b":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_274f0d69e769443287dd0064fa8055de","max":14,"min":0,"orientation":"horizontal","style":"IPY_MODEL_52963b475ca44880a5f3337bf76515b0","tabbable":null,"tooltip":null,"value":14}},"ef48af30fbc148a3ab3dc490a0c4bf8a":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_060e7054a52a45daa5bdec5143b1281e","placeholder":"​","style":"IPY_MODEL_21999e1c510b429da2a22c8b196e562b","tabbable":null,"tooltip":null,"value":" 14/14 [00:00&lt;00:00, 53.97it/s]"}},"fb66b44cd4a6408781cfe8a41a11ed68":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"fb95bf13c8bf4b4d9d1bf92070dd3e24":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"fbd09edf34d3485bae019fde50567c9c":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_af127a332f274f5da3ad432d3266c940","IPY_MODEL_9487c42ea72a4001960a15014fc52c58","IPY_MODEL_ef48af30fbc148a3ab3dc490a0c4bf8a"],"layout":"IPY_MODEL_149499abcd6b4cc982c1de7d1ec0663b","tabbable":null,"tooltip":null}}},"version_major":2,"version_minor":0}
+{"state":{"00aa85ee5dae46daa91bdacd27fbbfe7":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_8290c175d3584f418dbac68924c40c9b","placeholder":"​","style":"IPY_MODEL_4e6e9aaa7d0c43b09b83c30bd1815997","tabbable":null,"tooltip":null,"value":"100%"}},"043565f4fc58490598a8bc818afc9d31":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"05f6ede5d9874f62978fb4df072f0fcf":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"070e6b4c984b43d7b64b1353fad664f0":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"07c5861c30eb438e8832ef931971b29d":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_e28fdcf72d3847b49d792257f1d53e7a","placeholder":"​","style":"IPY_MODEL_b030b120a95446668f0f764e9da72630","tabbable":null,"tooltip":null,"value":" 14/14 [00:00&lt;00:00, 33.55it/s]"}},"0bf4d36d8b514cd8a467299cc66690e4":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"16ca1044e0bd4e76b437eca14154a207":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"1a6ceab417c94a75b698680f0a2b06cd":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"20a09fc24f1548c684f4219c17935024":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_73716f80cfcd4036bf2a253b7d11cc6e","placeholder":"​","style":"IPY_MODEL_4c6adc115b1a4ed0bcff2ecbbf2c6733","tabbable":null,"tooltip":null,"value":" 14/14 [00:00&lt;00:00, 33.35it/s]"}},"272ffe1eaeb54846a5768b06f49dd9c2":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_df12f5f72f9140d1abef370f0b0f8e79","max":14,"min":0,"orientation":"horizontal","style":"IPY_MODEL_1a6ceab417c94a75b698680f0a2b06cd","tabbable":null,"tooltip":null,"value":14}},"28fbc46c03624cd2a4efdecd824ae5b1":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"2a8aabca7901436a873c5fe4c5cbc359":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"3608d68ff2b64e77b5bc40568a8aee90":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_cc0855353c604c8c88339e42e2cdd20d","IPY_MODEL_3e48955cacd84eab944534fe2675474a","IPY_MODEL_c4894b9838bf47988d327b5049cc954f"],"layout":"IPY_MODEL_b26c69eb67484e7f86e150d6803168a7","tabbable":null,"tooltip":null}},"3663e30a540f4fada72a6fa7c7fc49d6":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_92f432c402e140e7a9f32bbc0b2d452c","IPY_MODEL_272ffe1eaeb54846a5768b06f49dd9c2","IPY_MODEL_db20b24f112a4755ad2e0ba71953ba44"],"layout":"IPY_MODEL_2a8aabca7901436a873c5fe4c5cbc359","tabbable":null,"tooltip":null}},"398c0ed015bf4d269c8aeebb3500b5a1":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_ca691eee0e4e4f5aab392e6210e9a74d","placeholder":"​","style":"IPY_MODEL_ecf34ff05fae4092acb2fc257298029f","tabbable":null,"tooltip":null,"value":"100%"}},"3e48955cacd84eab944534fe2675474a":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_8503463c3f5c4b2fad05ed3e7f6eb112","max":14,"min":0,"orientation":"horizontal","style":"IPY_MODEL_df99634258df4d08bcbb368d21b5f184","tabbable":null,"tooltip":null,"value":14}},"460ec3721d9246fd91464db7c379f434":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_e4b9cd15ea74484591c79f3db764e992","max":14,"min":0,"orientation":"horizontal","style":"IPY_MODEL_bfe62d1bfa41464db535a8fd1a334637","tabbable":null,"tooltip":null,"value":14}},"4c6adc115b1a4ed0bcff2ecbbf2c6733":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"4e6e9aaa7d0c43b09b83c30bd1815997":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"5e75ff1795d9427baf181e2a7e2c4730":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"63695a3e6100447b86ff2d6578c1e43f":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_00aa85ee5dae46daa91bdacd27fbbfe7","IPY_MODEL_8fcc55aeea4a43b29ddda4bd591161d9","IPY_MODEL_07c5861c30eb438e8832ef931971b29d"],"layout":"IPY_MODEL_0bf4d36d8b514cd8a467299cc66690e4","tabbable":null,"tooltip":null}},"73716f80cfcd4036bf2a253b7d11cc6e":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"788b32927b5b494494d861776dc99ed8":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"8290c175d3584f418dbac68924c40c9b":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"8503463c3f5c4b2fad05ed3e7f6eb112":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"87ba69ea04d04a81b802cf78c3521850":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"8fcc55aeea4a43b29ddda4bd591161d9":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"FloatProgressModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"FloatProgressModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"ProgressView","bar_style":"success","description":"","description_allow_html":false,"layout":"IPY_MODEL_5e75ff1795d9427baf181e2a7e2c4730","max":14,"min":0,"orientation":"horizontal","style":"IPY_MODEL_788b32927b5b494494d861776dc99ed8","tabbable":null,"tooltip":null,"value":14}},"92f432c402e140e7a9f32bbc0b2d452c":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_16ca1044e0bd4e76b437eca14154a207","placeholder":"​","style":"IPY_MODEL_9ced3d55e8464522964ebec98d4fcb6c","tabbable":null,"tooltip":null,"value":"100%"}},"9ced3d55e8464522964ebec98d4fcb6c":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"b030b120a95446668f0f764e9da72630":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"b26c69eb67484e7f86e150d6803168a7":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"b79bfc7f8eac4f619bb05fde3ac549a6":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"bfe62d1bfa41464db535a8fd1a334637":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"c4894b9838bf47988d327b5049cc954f":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_070e6b4c984b43d7b64b1353fad664f0","placeholder":"​","style":"IPY_MODEL_28fbc46c03624cd2a4efdecd824ae5b1","tabbable":null,"tooltip":null,"value":" 14/14 [00:00&lt;00:00, 33.45it/s]"}},"ca691eee0e4e4f5aab392e6210e9a74d":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"cc0855353c604c8c88339e42e2cdd20d":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_043565f4fc58490598a8bc818afc9d31","placeholder":"​","style":"IPY_MODEL_ff2ee7b4c4e94eeeacf4a99ee30e0e14","tabbable":null,"tooltip":null,"value":"100%"}},"cf6c3833098f44bbb1fc7edfe56e6e57":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HBoxModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HBoxModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HBoxView","box_style":"","children":["IPY_MODEL_398c0ed015bf4d269c8aeebb3500b5a1","IPY_MODEL_460ec3721d9246fd91464db7c379f434","IPY_MODEL_20a09fc24f1548c684f4219c17935024"],"layout":"IPY_MODEL_05f6ede5d9874f62978fb4df072f0fcf","tabbable":null,"tooltip":null}},"db20b24f112a4755ad2e0ba71953ba44":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLModel","state":{"_dom_classes":[],"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLModel","_view_count":null,"_view_module":"@jupyter-widgets/controls","_view_module_version":"2.0.0","_view_name":"HTMLView","description":"","description_allow_html":false,"layout":"IPY_MODEL_b79bfc7f8eac4f619bb05fde3ac549a6","placeholder":"​","style":"IPY_MODEL_87ba69ea04d04a81b802cf78c3521850","tabbable":null,"tooltip":null,"value":" 14/14 [00:00&lt;00:00, 30.48it/s]"}},"df12f5f72f9140d1abef370f0b0f8e79":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"df99634258df4d08bcbb368d21b5f184":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"ProgressStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"ProgressStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","bar_color":null,"description_width":""}},"e28fdcf72d3847b49d792257f1d53e7a":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"e4b9cd15ea74484591c79f3db764e992":{"model_module":"@jupyter-widgets/base","model_module_version":"2.0.0","model_name":"LayoutModel","state":{"_model_module":"@jupyter-widgets/base","_model_module_version":"2.0.0","_model_name":"LayoutModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"LayoutView","align_content":null,"align_items":null,"align_self":null,"border_bottom":null,"border_left":null,"border_right":null,"border_top":null,"bottom":null,"display":null,"flex":null,"flex_flow":null,"grid_area":null,"grid_auto_columns":null,"grid_auto_flow":null,"grid_auto_rows":null,"grid_column":null,"grid_gap":null,"grid_row":null,"grid_template_areas":null,"grid_template_columns":null,"grid_template_rows":null,"height":null,"justify_content":null,"justify_items":null,"left":null,"margin":null,"max_height":null,"max_width":null,"min_height":null,"min_width":null,"object_fit":null,"object_position":null,"order":null,"overflow":null,"padding":null,"right":null,"top":null,"visibility":null,"width":null}},"ecf34ff05fae4092acb2fc257298029f":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}},"ff2ee7b4c4e94eeeacf4a99ee30e0e14":{"model_module":"@jupyter-widgets/controls","model_module_version":"2.0.0","model_name":"HTMLStyleModel","state":{"_model_module":"@jupyter-widgets/controls","_model_module_version":"2.0.0","_model_name":"HTMLStyleModel","_view_count":null,"_view_module":"@jupyter-widgets/base","_view_module_version":"2.0.0","_view_name":"StyleView","background":null,"description_width":"","font_size":null,"text_color":null}}},"version_major":2,"version_minor":0}
 </script>
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
