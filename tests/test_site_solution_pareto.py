@@ -7,7 +7,7 @@ import pytest
 
 import lokigi.site
 from lokigi.mixins.site_solution_pareto import ParetoMixin
-from lokigi.multiobjective import ParetoMetric
+from lokigi.multiobjective import Metric
 
 
 class DummySolutionSet(ParetoMixin):
@@ -66,19 +66,19 @@ def single_optimum_df():
 @pytest.fixture
 def pareto_metrics():
     return [
-        ParetoMetric(
+        Metric(
             column="weighted_average",
             direction="lower_better",
             label="Average travel time",
             unit="minutes",
         ),
-        ParetoMetric(
+        Metric(
             column="max",
             direction="lower_better",
             label="Maximum travel time",
             unit="minutes",
         ),
-        ParetoMetric(
+        Metric(
             column="proportion_within_coverage_threshold",
             direction="higher_better",
             label="Coverage",
@@ -113,13 +113,13 @@ def long_label_solution_set():
         }
     )
     metrics = [
-        ParetoMetric(
+        Metric(
             column="weighted_average",
             direction="lower_better",
             label="whole-population weighted average travel time",
             unit="minutes",
         ),
-        ParetoMetric(
+        Metric(
             column="weighted_average_2",
             direction="lower_better",
             label="older-population weighted average travel time",
@@ -443,13 +443,13 @@ def pareto_solution_set():
     result = problem.solve(p=2, search_strategy="brute-force", show_progress=False)
     result.compute_pareto_front(
         [
-            ParetoMetric(
+            Metric(
                 column="weighted_average",
                 direction="lower_better",
                 label="Average travel time",
                 unit="minutes",
             ),
-            ParetoMetric(
+            Metric(
                 column="max",
                 direction="lower_better",
                 label="Max travel time",

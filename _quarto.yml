@@ -110,7 +110,7 @@ quartodoc:
             - compute_pareto_front
             - pareto_summary
             - plot_pareto_facets
-        - name: multiobjective.ParetoMetric
+        - name: multiobjective.Metric
           children: separate
         - name: site_solutions.SolutionComparator
           children: separate

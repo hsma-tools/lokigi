@@ -32,7 +32,7 @@ import pytest
 import pandas as pd
 import numpy as np
 
-from lokigi.multiobjective import ParetoMetric
+from lokigi.multiobjective import Metric
 from lokigi.site_solutions import SolutionComparator
 
 PRIMARY_WEIGHTED_AVERAGE = {
@@ -340,8 +340,8 @@ def test_compute_pareto_front_on_secondary_demand_column(
     result = loaded_problem_with_secondary_demand.solve(p=1)
     result.compute_pareto_front(
         metrics=[
-            ParetoMetric(column="weighted_average", direction="lower_better"),
-            ParetoMetric(
+            Metric(column="weighted_average", direction="lower_better"),
+            Metric(
                 column="weighted_average__future_demand", direction="lower_better"
             ),
         ]

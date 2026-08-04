@@ -2,7 +2,10 @@ from lokigi.utils import (
     SOLVER_DEFINITIONS,
     SUPPORTED_OBJECTIVES,
     PLANNED_OBJECTIVES,
-    _get_ranking_by_objective,
+    _FOR_RANKING_BASE_COLUMNS,
+    _RANK_SCORE_COL,
+    _add_rank_score_column,
+    _resolve_ranking_metric,
     _add_rank_column,
     _apply_cost_weighting,
     _get_required_site_indices,
@@ -683,6 +686,7 @@ class SiteProblem(
         p: int,
         objectives: str = "p_median",
         weights: dict = None,
+        rank_on=None,
         capacitated=False,  # Not yet implemented
         search_strategy: Literal["brute-force", "greedy", "grasp"] = "brute-force",
         brute_force_ignore_limit=False,
@@ -720,6 +724,19 @@ class SiteProblem(
             The optimization objective(s). Currently, only single-objective
             optimization is supported; if a list is provided, only the first
             element is used. Supported: "p_median", "p_center", "mclp", etc.
+
+            The objective sets both which metric is ranked by default and
+            which constraints apply ("mclp" requires `threshold_for_coverage`;
+            the "hybrid_*" models require `max_value_cutoff`). `rank_on`
+            below overrides only the first of those, so the two compose:
+            `objectives="hybrid_p_median", max_value_cutoff=60,
+            rank_on="inter_tertile_ratio"` means "cap the worst journey at 60
+            minutes, then pick the most equitable option that qualifies".
+
+            Pass "custom" for no model constraints at all -- it requires
+            `rank_on` and rejects `max_value_cutoff`. Use it when you'd
+            rather the returned `SiteSolutionSet` not name a textbook model
+            the run didn't actually perform.
         weights: dict
             Only used with p_median.
             A dictionary of weights. Recognized keys are "demand", "equity",
@@ -727,6 +744,50 @@ class SiteProblem(
             and any label registered via `add_additional_data()`. Not
             supported for "p_center", which ranks solely by worst-case
             travel time.
+
+            These are *row-level* weights over demand regions: they change
+            how `weighted_average` is computed, not which metric is ranked.
+            To rank on a different metric, use `rank_on`, not `weights`.
+            ("cost" is the exception -- a per-combination value blended in
+            after the fact, which is why it forces brute-force pruning to
+            materialise every combination first.)
+        rank_on : str or lokigi.multiobjective.Metric, optional
+            Rank and prune on this metric instead of the one implied by
+            `objectives`. Any scalar column `solve()` computes is valid --
+            `"inter_tertile_ratio"`, `"90th_percentile"`,
+            `"demand_beyond_threshold_45"`, `"proportion_demand_improved"`,
+            a `"<metric>__<label>"` secondary-matrix column, and so on. Call
+            `describe_solution_columns()` on any previous result to list
+            them.
+
+            Unlike re-sorting a finished `SiteSolutionSet`, this drives the
+            search itself, so it also decides which combinations survive
+            `brute_force_keep_best_n` or GRASP's pool -- re-sorting can only
+            reorder candidates that were already kept for a different
+            metric.
+
+            A bare string takes its direction from the usual convention
+            (coverage/improvement metrics are higher-is-better, travel costs
+            lower-is-better). Pass a `Metric` to state it explicitly, which
+            is the only way to express a metric that is best at neither
+            extreme::
+
+                from lokigi.multiobjective import Metric
+
+                problem.solve(
+                    p=3,
+                    rank_on=Metric(
+                        "inter_tertile_ratio",
+                        direction="closest_to_target",
+                        target=1.0,   # 1.0 = equal travel across equity bands
+                    ),
+                )
+
+            Validated against a representative combination before the search
+            starts, so naming a column that doesn't exist, holds one value
+            per equity band, or is NaN because its precondition wasn't met
+            (e.g. `inter_tertile_ratio` without `add_equity_data()`) fails
+            immediately rather than after a full solve.
         capacitated : bool, default False
             Whether to enforce site capacity constraints.
             *Note: Currently not implemented.*
@@ -949,6 +1010,27 @@ class SiteProblem(
                 "to count as covered)."
             )
 
+        # 'custom' has no ranking column of its own -- it exists purely to
+        # say "rank on what I name, with no model constraints", so without
+        # rank_on there is nothing at all to optimise.
+        if objective == "custom" and rank_on is None:
+            raise ValueError(
+                "The 'custom' objective requires rank_on=<column name or "
+                "Metric> -- it applies no model of its own, so the metric to "
+                "rank on has to come from you. Either pass rank_on, or use a "
+                "named objective "
+                f"({', '.join(o for o in SUPPORTED_OBJECTIVES if o != 'custom')})."
+            )
+
+        # Resolve what will actually be ranked. Done before the remaining
+        # validation because several checks below depend on the resolved
+        # column rather than on the objective.
+        scorer, rank_on_warning = _resolve_ranking_metric(
+            objective=objective, rank_on=rank_on, unreachable_cost=unreachable_cost
+        )
+        if rank_on_warning is not None:
+            warn(rank_on_warning, UserWarning, stacklevel=2)
+
         # Error early if trying to use weights with unsupported or inadvisable problem types.
         # p_center ranks solely by worst-case travel time (max), so a weights
         # dict would have no effect on the outcome -- reject it explicitly
@@ -1024,18 +1106,27 @@ class SiteProblem(
         # demand, since the excluded rows simply vanish from the average
         # rather than counting against it. unreachable_cost fixes that by
         # substituting a caller-chosen cost for every unreachable pair,
-        # used only for ranking/pruning (see _get_ranking_by_objective) --
-        # required for every objective except mclp, whose coverage-
-        # proportion ranking already treats "unreachable" as "not
-        # covered" (correctly bad) with no equivalent silent-reward risk.
-        if objective != "mclp" and unreachable_cost is None:
+        # used only for ranking/pruning (see _get_ranking_by_objective).
+        #
+        # Required exactly when the column being ranked is one of the
+        # reachable-only aggregates in _FOR_RANKING_BASE_COLUMNS, since
+        # those are the ones carrying that silent-reward failure mode. Any
+        # other ranking column already handles unreachability sensibly:
+        # a coverage proportion counts an unreachable pair as "not covered"
+        # (correctly bad), a beyond-threshold count as "beyond it", and so
+        # on. Keyed off the resolved column rather than off the objective
+        # (which is how this read before `rank_on` existed) so it stays
+        # right for a custom ranking metric -- for the built-in objectives
+        # the two are equivalent, since the three aggregates cover every
+        # objective except mclp.
+        if scorer.column in _FOR_RANKING_BASE_COLUMNS and unreachable_cost is None:
             primary_cost_cols = self.travel_matrix.columns.drop(
                 self._travel_matrix_source_col
             )
             if self.travel_matrix[primary_cost_cols].isna().any().any():
                 raise NotImplementedError(
-                    f"solve() requires unreachable_cost=<a number> for the "
-                    f"'{objective}' objective when the primary travel "
+                    f"solve() requires unreachable_cost=<a number> when "
+                    f"ranking on '{scorer.column}' and the primary travel "
                     "matrix (registered with allow_missing=True) actually "
                     "contains missing (NaN) values -- optimising/ranking "
                     "over partially-unreachable demand isn't safe without "
@@ -1190,6 +1281,27 @@ class SiteProblem(
                 "if you don't need that guarantee."
             )
 
+        # Catch a bad rank_on now, against one representative combination,
+        # rather than after a full search has run and produced a
+        # meaninglessly-ordered result. Costs a single extra evaluation
+        # (negligible beside the thousands the search itself does), and only
+        # when rank_on was actually passed. Every argument that decides
+        # which columns exist has to be forwarded, or the probe would report
+        # a column missing that the real run would have had.
+        if rank_on is not None:
+            self._validate_rank_on(
+                scorer=scorer,
+                p=p,
+                objective=objective,
+                weights=normalised_weights,
+                threshold_for_coverage=threshold_for_coverage,
+                full_secondary_metrics=full_secondary_metrics,
+                baseline_costs=baseline_costs,
+                meaningful_change_threshold=meaningful_change_threshold,
+                beyond_thresholds=beyond_thresholds,
+                unreachable_cost=unreachable_cost,
+            )
+
         if objective in [
             "p_median",
             "p_center",
@@ -1197,11 +1309,13 @@ class SiteProblem(
             "hybrid_p_median",
             "hybrid_simple_p_median",
             "mclp",
+            "custom",
         ]:
             return self._solve_pmedian_pcenter_mclp_problem(
                 p,
                 search_strategy=search_strategy,
                 objective=objective,
+                solve_scorer=scorer,
                 weights=normalised_weights,
                 brute_force_ignore_limit=brute_force_ignore_limit,
                 show_progress=show_progress,
@@ -1225,6 +1339,137 @@ class SiteProblem(
             )
         else:
             raise ValueError(f"Unknown objective '{objective}'.")
+
+    # MARK: _validate_rank_on
+    def _validate_rank_on(
+        self,
+        scorer,
+        p,
+        objective,
+        weights,
+        threshold_for_coverage,
+        full_secondary_metrics,
+        baseline_costs,
+        meaningful_change_threshold,
+        beyond_thresholds,
+        unreachable_cost,
+    ):
+        """
+        Check `rank_on` names something actually rankable, before searching.
+
+        Works by evaluating one representative combination and inspecting
+        the metrics dict it produces, rather than by checking the requested
+        name against a hardcoded list. Which columns exist is genuinely
+        intricate -- the population-impact family only appears with a
+        `baseline`, `<metric>__<label>` columns depend on which secondary
+        matrices are registered and on `full_secondary_metrics`,
+        `demand_beyond_threshold_<t>` on `beyond_thresholds` -- and a list
+        would drift out of step with `return_solution_metrics()` the first
+        time a metric was added. Asking a real result is always current.
+
+        A NaN is an error rather than a warning because it means the
+        ranking column carries no information at all, so every solution
+        would be tied and `solution_rank` would be meaningless -- silently
+        returning an arbitrary ordering is the worst of the options. The
+        preconditions that produce one (equity data registered, a coverage
+        threshold given, a baseline supplied) depend on the problem's
+        registered data rather than on which sites a combination picks, so
+        one probe answers for all of them.
+        """
+        probe_indices = list(_get_required_site_indices(self))
+        for index in range(self.total_n_sites):
+            if len(probe_indices) >= p:
+                break
+            if index not in probe_indices:
+                probe_indices.append(index)
+
+        metrics = self.evaluate_single_solution_single_objective(
+            site_indices=probe_indices,
+            objective=objective,
+            threshold_for_coverage=threshold_for_coverage,
+            weights=weights,
+            baseline_costs=baseline_costs,
+            meaningful_change_threshold=meaningful_change_threshold,
+            beyond_thresholds=beyond_thresholds,
+            unreachable_cost=unreachable_cost,
+        ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
+
+        column = scorer.column
+
+        if column not in metrics:
+            rankable = sorted(
+                name
+                for name, value in metrics.items()
+                if isinstance(value, (int, float, np.integer, np.floating))
+                and not isinstance(value, bool)
+            )
+            raise KeyError(
+                f"rank_on='{column}' is not a metric this problem computes. "
+                f"Rankable columns for this problem are: {', '.join(rankable)}. "
+                "Call describe_solution_columns() on a previous result for "
+                "these grouped and explained. Note that some columns only "
+                "appear once their input is registered -- the population-"
+                "impact metrics need solve(baseline=...), "
+                "demand_beyond_threshold_<t> needs beyond_thresholds=, and "
+                "'<metric>__<label>' needs the matching secondary travel "
+                "matrix or demand scenario."
+            )
+
+        value = metrics[column]
+
+        if isinstance(value, dict):
+            raise ValueError(
+                f"rank_on='{column}' holds one value per equity band (a "
+                f"dict of {len(value)} entries), so there is no single "
+                "number to rank solutions by. Rank on one of the scalar "
+                "summaries derived from the bands instead -- "
+                "'gap_absolute_weighted' (worst band minus best), "
+                "'gap_relative_weighted' (worst band over best), or "
+                "'inter_tertile_ratio' (most- over least-disadvantaged "
+                "third) -- or pick a single band out of this column "
+                "yourself after solving."
+            )
+
+        # None and NaN both mean "this metric wasn't measured", and which
+        # one you get is an implementation detail of the metric (equity
+        # summaries come back as None with no equity data registered, the
+        # coverage family as NaN with no threshold). Both get the
+        # precondition message, which is the useful one -- checked before
+        # the type guard below, or a None would be reported as a mere type
+        # error and send the reader looking for the wrong problem.
+        if value is None or (
+            isinstance(value, (int, float, np.integer, np.floating))
+            and pd.isna(value)
+        ):
+            hints = {
+                "inter_tertile": "register equity data via add_equity_data()",
+                "equity": "register equity data via add_equity_data()",
+                "gap_": "register equity data via add_equity_data()",
+                "coverage": "pass threshold_for_coverage= to solve()",
+                "within_coverage_threshold": "pass threshold_for_coverage= to solve()",
+                "improved": "pass baseline= to solve()",
+                "worsened": "pass baseline= to solve()",
+                "reduction": "pass baseline= to solve()",
+                "increase": "pass baseline= to solve()",
+            }
+            hint = next(
+                (advice for key, advice in hints.items() if key in column),
+                "check that whatever this metric is derived from is registered "
+                "on the problem",
+            )
+            raise ValueError(
+                f"rank_on='{column}' has no value for a representative "
+                "combination, so every solution would tie and the ranking "
+                f"would be meaningless. To rank on it, {hint}."
+            )
+
+        if not isinstance(value, (int, float, np.integer, np.floating)) or isinstance(
+            value, bool
+        ):
+            raise ValueError(
+                f"rank_on='{column}' is a {type(value).__name__}, not a "
+                "number, so solutions cannot be ordered by it."
+            )
 
     # MARK: _resolve_baseline_costs
     def _resolve_baseline_costs(self, baseline, objective, weights, threshold_for_coverage):
@@ -1316,6 +1561,7 @@ class SiteProblem(
         meaningful_change_threshold=0.0,
         beyond_thresholds=None,
         unreachable_cost=None,
+        solve_scorer=None,
     ):
         """
         Internal dispatcher for solving location-allocation problems.
@@ -1391,10 +1637,14 @@ class SiteProblem(
 
         Notes
         -----
-        The method uses `_get_ranking_by_objective` to determine the primary
-        sorting column. For "mclp", results are sorted in descending order of
-        coverage (higher is better), while for other objectives, results are
-        sorted in ascending order of cost (lower is better).
+        `solve_scorer` (the `Metric` resolved by `_resolve_ranking_metric`)
+        determines both the primary sorting column and its direction, and is
+        threaded into whichever search strategy runs so all of them agree.
+        Results are then sorted on `Metric.normalise()`'d values, where lower
+        is always better -- so a higher-is-better column like mclp's coverage
+        proportion, and one that is best at neither extreme like an
+        inter-tertile ratio targeting 1.0, both sort correctly under a single
+        ascending sort.
         """
 
         if objective not in SUPPORTED_OBJECTIVES:
@@ -1402,9 +1652,17 @@ class SiteProblem(
                 "Unsupported objective passed to _solve_pmedian_pcenter_mclp_problem. Please contact a developer."
             )
 
-        ranking = _get_ranking_by_objective(
-            objective=objective, unreachable_cost=unreachable_cost
-        )
+        # One resolved Metric drives every comparison from here on -- the
+        # brute-force heap, the greedy per-step sort, GRASP's construction
+        # and local search, and the final cross-strategy sort below. Each of
+        # those used to decide direction for itself with `objective ==
+        # "mclp"`, which no `rank_on` outside that binary could satisfy.
+        scorer = solve_scorer
+        if scorer is None:
+            scorer, _ = _resolve_ranking_metric(
+                objective=objective, rank_on=None, unreachable_cost=unreachable_cost
+            )
+        ranking = scorer.column
 
         if objective in ["hybrid_p_median", "hybrid_simple_p_median"]:
             max_value_cutoff = max_value_cutoff
@@ -1422,7 +1680,7 @@ class SiteProblem(
                 show_progress=show_progress,
                 brute_force_keep_best_n=brute_force_keep_best_n,
                 brute_force_keep_worst_n=brute_force_keep_worst_n,
-                rank_best_n_on=ranking,
+                scorer=scorer,
                 max_value_cutoff=max_value_cutoff,
                 threshold_for_coverage=threshold_for_coverage,
                 n_jobs=n_jobs,
@@ -1440,6 +1698,7 @@ class SiteProblem(
                 p=p,
                 weights=weights,
                 objectives=objective,
+                scorer=scorer,
                 show_progress=show_progress,
                 threshold_for_coverage=threshold_for_coverage,
                 max_value_cutoff=max_value_cutoff,
@@ -1457,6 +1716,7 @@ class SiteProblem(
                 p=p,
                 objectives=objective,
                 weights=weights,
+                scorer=scorer,
                 threshold_for_coverage=threshold_for_coverage,
                 num_solutions=grasp_num_solutions,
                 alpha=grasp_alpha,
@@ -1464,7 +1724,6 @@ class SiteProblem(
                 show_progress=show_progress,
                 random_seed=random_seed,
                 min_sites_different=grasp_min_sites_different,
-                is_minimization=objective != "mclp",
                 local_search_chance=grasp_local_search_chance,  # Chance that local searching will happen to improve found solution
                 max_swap_count_local_search=grasp_max_swap_count_local_search,
                 max_value_cutoff=max_value_cutoff,
@@ -1493,44 +1752,44 @@ class SiteProblem(
                 "search strategy."
             )
 
-        higher_is_better = objective == "mclp"
         outputs_df = pd.DataFrame(outputs)
 
+        score_col = ranking
         if weights and weights.get("cost", 0) > 0:
             outputs_df, score_col = _apply_cost_weighting(
                 outputs_df,
                 ranking_col=ranking,
                 weights=weights,
-                higher_is_better=higher_is_better,
+                scorer=scorer,
             )
-        else:
-            score_col = ranking
 
         # _apply_cost_weighting only blends onto its lower-is-better
         # "composite_score" scale when it actually has usable cost data to
         # blend; it no-ops (returns score_col == ranking unchanged) when
-        # e.g. every candidate's total_cost is NaN. Assuming "cost weight
-        # requested" implies "blended, therefore ascending" was wrong: for
-        # mclp (higher-is-better coverage proportion) whose cost weighting
-        # silently no-ops, sorting ascending on the raw ranking column
-        # ranks the WORST combination first. This is the final cross-
-        # strategy sort applied after brute-force/greedy/grasp all
-        # return, so it affects every search strategy alike.
-        blended = score_col != ranking
-        score_ascending = True if blended else not higher_is_better
+        # e.g. every candidate's total_cost is NaN. Whenever it hasn't
+        # blended, put the raw ranking column onto that same scale via the
+        # scorer, so the rank below is unconditionally ascending. Deciding
+        # the direction from the objective instead, as this used to, ranked
+        # the WORST combination first whenever cost weighting silently
+        # no-op'd on a higher-is-better objective -- and could not express a
+        # `closest_to_target` rank_on at all. This is the final
+        # cross-strategy sort, so it affects all three alike.
+        if score_col == ranking:
+            outputs_df, score_col = _add_rank_score_column(outputs_df, scorer)
 
         solution_df = _add_rank_column(
             outputs_df,
             score_col=score_col,
             tiebreaker_col="weighted_average",
-            ascending=[score_ascending, True],
-        )
+            ascending=[True, True],
+        ).drop(columns=_RANK_SCORE_COL, errors="ignore")
 
         return SiteSolutionSet(
             solution_df=solution_df,
             site_problem=self,
             objectives=objective,
             n_sites=p,
+            ranking_metric=scorer,
         )
 
     def evaluate_n_sites(self, min_sites, max_sites):

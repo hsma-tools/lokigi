@@ -1,4 +1,5 @@
 import numpy as np
+from dataclasses import replace
 from itertools import combinations
 from pandas.api.types import is_numeric_dtype
 import pandas as pd
@@ -12,6 +13,8 @@ from warnings import warn
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from lokigi.multiobjective import Metric
+
 PANDAS_EXTS = [".csv", ".parquet", ".xlsx", ".xls"]
 GEOPANDAS_EXTS = [".shp", ".geojson", ".gpkg"]
 
@@ -22,7 +25,15 @@ SUPPORTED_OBJECTIVES = [
     "simple_p_median",
     "hybrid_simple_p_median",
     "mclp",
+    "custom",
 ]
+
+# Ranking columns with a `_for_ranking` twin computed by
+# `EvaluatedCombination._compute_travel_metrics`. These are exactly the
+# metrics that average or maximise over *reachable* rows only, so ranking on
+# them unsubstituted silently rewards a combination for stranding demand --
+# see `_get_ranking_by_objective` and `solve()`'s `unreachable_cost`.
+_FOR_RANKING_BASE_COLUMNS = ["weighted_average", "unweighted_average", "max"]
 
 PLANNED_OBJECTIVES = [
     "lscp",
@@ -94,6 +105,14 @@ SOLVER_DEFINITIONS = {
         "trade_off": "Requires significantly more resources (budget/staff) than standard coverage to achieve the same geographic footprint.",
         "status": "Planned",
         "academic_ref": "Hogan & ReVelle (1986), Church & Murray (2018)",
+    },
+    "custom": {
+        "name": "Custom (caller-defined ranking metric)",
+        "goal": "Rank solutions on whichever metric solve() already computes that you name via rank_on=, with no model-specific constraints applied.",
+        "healthcare_context": "Use when the measure you actually care about isn't one of the named models above -- e.g. searching directly on inter_tertile_ratio (equity), or on the number of people left beyond a threshold. Pass rank_on= to a named objective instead if you also want that model's constraints (e.g. hybrid_p_median's max_value_cutoff).",
+        "trade_off": "Applies no feasibility constraints of its own, so nothing bounds the metrics you did not rank on -- check them in the returned solutions rather than assuming they are reasonable.",
+        "status": "Supported",
+        "academic_ref": "N/A -- not a named model from the location-allocation literature",
     },
 }
 
@@ -520,9 +539,96 @@ def _get_ranking_by_objective(objective, unreachable_cost=None):
         # Location Problem. The column name is unchanged; its meaning is not.
         return "proportion_within_coverage_threshold"
     else:
+        # Includes 'custom', which has no default column of its own -- it
+        # requires rank_on, and solve() rejects it without one.
         return None
 
     return f"{base}_for_ranking" if unreachable_cost is not None else base
+
+
+def _resolve_ranking_metric(objective, rank_on=None, unreachable_cost=None):
+    """
+    Resolve what `solve()` should actually rank and prune on, as a single
+    `Metric`.
+
+    Direction used to be decided independently in four places -- the
+    brute-force heap, the greedy per-step sort, GRASP's `is_minimization`,
+    and the final cross-strategy sort -- each spelled `objective == "mclp"`.
+    That works only while every objective's ranking column is either plainly
+    higher- or plainly lower-is-better, which `rank_on` breaks: an
+    inter-tertile ratio is best at 1.0, with both >1 and <1 worse. So all
+    four now read the `Metric` this returns, and use `Metric.normalise()`
+    to get a value where lower is always better.
+
+    Parameters
+    ----------
+    objective : str
+        The objective passed to `solve()`. Supplies the default ranking
+        column (and its direction) when `rank_on` is None.
+    rank_on : str or Metric, optional
+        Overrides the objective's default ranking column. A bare string
+        takes its direction from `_is_maximise_metric`; pass a `Metric` to
+        state the direction explicitly, which is the only way to express
+        `closest_to_target`.
+    unreachable_cost : float, optional
+        As passed to `solve()`. See the `_for_ranking` note below.
+
+    Returns
+    -------
+    tuple[Metric, str or None]
+        The resolved metric, and a warning message (or None). The caller
+        emits the warning so it points at the user's `solve()` call rather
+        than at this helper.
+
+    Notes
+    -----
+    When `unreachable_cost` is set, a ranking column in
+    `_FOR_RANKING_BASE_COLUMNS` is upgraded to its `_for_ranking` twin --
+    the same substitution `_get_ranking_by_objective` already makes for the
+    objective's default column. Honouring a literal `rank_on="max"` here
+    would rank on the reachable-only figure and so reintroduce exactly the
+    silent-reward bug `unreachable_cost` exists to prevent. It's a warning
+    rather than an error because the intent is unambiguous and we can do
+    the right thing; it's not silent because the column that ends up in
+    `solution_rank` is then not the one that was asked for.
+    """
+    if rank_on is None:
+        column = _get_ranking_by_objective(
+            objective=objective, unreachable_cost=unreachable_cost
+        )
+        if column is None:
+            return None, None
+        direction = "higher_better" if objective == "mclp" else "lower_better"
+        return Metric(column=column, direction=direction), None
+
+    if isinstance(rank_on, str):
+        metric = Metric(
+            column=rank_on,
+            direction="higher_better" if _is_maximise_metric(rank_on) else "lower_better",
+        )
+    elif isinstance(rank_on, Metric):
+        metric = replace(rank_on)
+    else:
+        raise TypeError(
+            f"Expected 'rank_on' to be a column name (str) or a "
+            f"lokigi.multiobjective.Metric, got {type(rank_on).__name__}."
+        )
+
+    warning = None
+    if unreachable_cost is not None and metric.column in _FOR_RANKING_BASE_COLUMNS:
+        upgraded = f"{metric.column}_for_ranking"
+        warning = (
+            f"rank_on='{metric.column}' was upgraded to '{upgraded}' because "
+            f"unreachable_cost={unreachable_cost} is set. '{metric.column}' "
+            "averages over reachable demand only, so ranking on it would "
+            "reward a solution for leaving demand unreachable (those rows "
+            "drop out of the average instead of counting against it). Pass "
+            f"rank_on='{upgraded}' explicitly to silence this, or drop "
+            "unreachable_cost to rank on reachable demand only."
+        )
+        metric = replace(metric, column=upgraded)
+
+    return metric, warning
 
 
 def _population_impact_metrics(
@@ -778,6 +884,37 @@ def _is_maximise_metric(col):
     )
 
 
+# Temporary column holding the lower-is-better view of whatever metric a
+# solve() is ranking on. Written just before a sort/prune and dropped
+# immediately after, so it never reaches `solution_df` -- it is fully
+# derivable from the ranking column and the resolved `Metric`.
+_RANK_SCORE_COL = "_rank_score"
+
+
+def _add_rank_score_column(df, scorer, output_col=_RANK_SCORE_COL):
+    """
+    Add a column holding `scorer`'s lower-is-better view of its ranking
+    column, so a batch can be sorted/pruned with a plain ascending sort.
+
+    Sorting on a normalised column rather than flipping an `ascending` flag
+    is what lets `solve(rank_on=...)` accept a `closest_to_target` metric:
+    "best" there is neither the largest nor the smallest raw value, so no
+    choice of `ascending` can express it. It also, correctly, ties values
+    equidistant from the target (an inter-tertile ratio of 0.8 and one of
+    1.2 are equally far from parity) -- the caller's tie-breaker column
+    then separates them.
+
+    Returns
+    -------
+    tuple[pandas.DataFrame, str]
+        A copy of `df` with the column added, and the column's name (so
+        call sites can use it exactly like `_apply_cost_weighting`'s).
+    """
+    df = df.copy()
+    df[output_col] = scorer.normalise(df[scorer.column].astype(float))
+    return df, output_col
+
+
 def _sort_solutions_by_metric(solution_df, rank_on):
     """
     Sort a solutions dataframe so the BEST solution for `rank_on` is first.
@@ -859,7 +996,7 @@ def _apply_cost_weighting(
     df,
     ranking_col,
     weights,
-    higher_is_better,
+    scorer,
     cost_col="total_cost",
     output_col="composite_score",
 ):
@@ -884,9 +1021,10 @@ def _apply_cost_weighting(
         The column holding each combination's primary objective value.
     weights : dict or None
         The (already-normalised) weights dict passed to `solve()`.
-    higher_is_better : bool
-        Whether higher values of `ranking_col` are better (e.g. True for
-        mclp's coverage proportion, False for weighted_average/max).
+    scorer : Metric
+        Describes the direction of `ranking_col`, via
+        `Metric.normalise()`. Takes the *raw* column and owns its
+        normalisation, so callers must pass the unnormalised values.
     cost_col : str, default "total_cost"
         The column holding each combination's total site cost.
     output_col : str, default "composite_score"
@@ -907,14 +1045,17 @@ def _apply_cost_weighting(
     ):
         return df, ranking_col
 
-    def _normalize_to_badness(series, invert):
-        norm = _min_max_normalize(series, constant_fill=0.0)
-        return (1.0 - norm) if invert else norm
-
-    primary_badness = _normalize_to_badness(
-        df[ranking_col].astype(float), invert=higher_is_better
+    # `Metric.normalise` already returns a lower-is-better view of the
+    # column, so a plain min-max on top of it lands on the 0=best "badness"
+    # scale for every direction. This replaces an `invert=higher_is_better`
+    # flag, which could only express the two-way split and so had no way to
+    # represent a `closest_to_target` rank_on. It is exactly equivalent for
+    # the two directions that flag could express: for higher-is-better,
+    # minmax(-x) == 1 - minmax(x), which is what inverting used to compute.
+    primary_badness = _min_max_normalize(
+        scorer.normalise(df[ranking_col].astype(float)), constant_fill=0.0
     )
-    cost_badness = _normalize_to_badness(df[cost_col].astype(float), invert=False)
+    cost_badness = _min_max_normalize(df[cost_col].astype(float), constant_fill=0.0)
 
     df = df.copy()
     df[output_col] = (1.0 - cost_weight) * primary_badness + cost_weight * cost_badness

@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from lokigi.multiobjective import ParetoMetric
+from lokigi.multiobjective import Metric
 
 # All tests in this file written by
 
@@ -11,7 +11,7 @@ from lokigi.multiobjective import ParetoMetric
 def test_closest_to_target_requires_target():
     """closest_to_target without a target should raise immediately."""
     with pytest.raises(ValueError) as exc_info:
-        ParetoMetric(column="equity_ratio", direction="closest_to_target")
+        Metric(column="equity_ratio", direction="closest_to_target")
 
     assert "equity_ratio" in str(exc_info.value)
     assert "closest_to_target" in str(exc_info.value)
@@ -19,7 +19,7 @@ def test_closest_to_target_requires_target():
 
 def test_closest_to_target_with_target_is_valid():
     """Providing a target alongside closest_to_target should not raise."""
-    metric = ParetoMetric(
+    metric = Metric(
         column="equity_ratio", direction="closest_to_target", target=1.0
     )
     assert metric.target == 1.0
@@ -27,17 +27,17 @@ def test_closest_to_target_with_target_is_valid():
 
 def test_label_defaults_to_title_cased_column():
     """No label given -> underscores replaced and first letter capitalised."""
-    metric = ParetoMetric(column="average_travel_time")
+    metric = Metric(column="average_travel_time")
     assert metric.label == "Average travel time"
 
 
 def test_label_is_not_overridden_when_given():
-    metric = ParetoMetric(column="average_travel_time", label="Avg. journey time")
+    metric = Metric(column="average_travel_time", label="Avg. journey time")
     assert metric.label == "Avg. journey time"
 
 
 def test_default_direction_is_lower_better():
-    metric = ParetoMetric(column="cost")
+    metric = Metric(column="cost")
     assert metric.direction == "lower_better"
 
 
@@ -45,7 +45,7 @@ def test_default_direction_is_lower_better():
 
 
 def test_normalise_higher_better_negates_series():
-    metric = ParetoMetric(column="coverage", direction="higher_better")
+    metric = Metric(column="coverage", direction="higher_better")
     series = pd.Series([10.0, 20.0, 30.0])
 
     result = metric.normalise(series)
@@ -54,7 +54,7 @@ def test_normalise_higher_better_negates_series():
 
 
 def test_normalise_lower_better_returns_series_unchanged():
-    metric = ParetoMetric(column="travel_time", direction="lower_better")
+    metric = Metric(column="travel_time", direction="lower_better")
     series = pd.Series([10.0, 20.0, 30.0])
 
     result = metric.normalise(series)
@@ -63,7 +63,7 @@ def test_normalise_lower_better_returns_series_unchanged():
 
 
 def test_normalise_closest_to_target_returns_absolute_deviation():
-    metric = ParetoMetric(
+    metric = Metric(
         column="equity_ratio", direction="closest_to_target", target=1.0
     )
     series = pd.Series([0.7, 1.0, 1.4])
@@ -75,7 +75,7 @@ def test_normalise_closest_to_target_returns_absolute_deviation():
 
 def test_normalise_result_always_makes_lower_better():
     """Whatever the direction, the best value in `series` should end up smallest after normalising."""
-    higher = ParetoMetric(column="coverage", direction="higher_better")
+    higher = Metric(column="coverage", direction="higher_better")
     series = pd.Series([10.0, 50.0, 30.0])  # 50 is the best (highest) value
 
     normed = higher.normalise(series)
@@ -87,33 +87,33 @@ def test_normalise_result_always_makes_lower_better():
 
 
 def test_format_delta_plain_number():
-    metric = ParetoMetric(column="travel_time", decimals=1)
+    metric = Metric(column="travel_time", decimals=1)
     assert metric.format_delta(2.34) == "2.3"
 
 
 def test_format_delta_takes_absolute_value():
-    metric = ParetoMetric(column="travel_time", decimals=1)
+    metric = Metric(column="travel_time", decimals=1)
     assert metric.format_delta(-2.34) == "2.3"
 
 
 def test_format_delta_with_unit():
-    metric = ParetoMetric(column="travel_time", unit="minutes", decimals=1)
+    metric = Metric(column="travel_time", unit="minutes", decimals=1)
     assert metric.format_delta(2.0) == "2.0 minutes"
 
 
 def test_format_delta_as_percentage_scales_and_labels():
-    metric = ParetoMetric(column="coverage", as_percentage=True, decimals=1)
+    metric = Metric(column="coverage", as_percentage=True, decimals=1)
     assert metric.format_delta(0.042) == "4.2 percentage points"
 
 
 def test_format_delta_as_percentage_ignores_unit():
     """as_percentage should take priority over a configured `unit`."""
-    metric = ParetoMetric(column="coverage", as_percentage=True, unit="km", decimals=0)
+    metric = Metric(column="coverage", as_percentage=True, unit="km", decimals=0)
     assert metric.format_delta(0.05) == "5 percentage points"
 
 
 def test_format_delta_respects_decimals():
-    metric = ParetoMetric(column="travel_time", decimals=3)
+    metric = Metric(column="travel_time", decimals=3)
     assert metric.format_delta(1.23456) == "1.235"
 
 
@@ -121,7 +121,7 @@ def test_format_delta_respects_decimals():
 
 
 def test_phrase_default_wording_when_better():
-    metric = ParetoMetric(
+    metric = Metric(
         column="travel_time", label="Average journey time", unit="minutes"
     )
     assert (
@@ -131,7 +131,7 @@ def test_phrase_default_wording_when_better():
 
 
 def test_phrase_default_wording_when_worse():
-    metric = ParetoMetric(
+    metric = Metric(
         column="travel_time", label="Average journey time", unit="minutes"
     )
     assert (
@@ -144,7 +144,7 @@ def test_phrase_uses_custom_phrasing_callable_when_given():
         verb = "gains" if better else "loses"
         return f"{metric.label} {verb} {abs(delta):.0f} people"
 
-    metric = ParetoMetric(
+    metric = Metric(
         column="people_covered", label="Coverage", phrasing=custom_phrasing
     )
 

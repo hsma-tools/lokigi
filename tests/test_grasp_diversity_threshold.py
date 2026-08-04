@@ -21,7 +21,7 @@ too similar) were wrongly accepted as "diverse enough".
 import pytest
 
 import lokigi
-from lokigi.utils import _too_similar_to_accepted
+from lokigi.utils import _resolve_ranking_metric, _too_similar_to_accepted
 
 
 # --- pure-function pin: the exact bug and fix, hand-computed ---
@@ -133,6 +133,7 @@ def test_grasp_computes_the_corrected_threshold_internally(
         p=p,
         objectives="p_median",
         weights={"demand": 1.0},
+        scorer=_resolve_ranking_metric(objective="p_median")[0],
         num_solutions=1,
         max_attempts=1,
         min_sites_different=m,

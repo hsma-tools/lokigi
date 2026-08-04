@@ -1152,19 +1152,21 @@ class SiteAttributeMixin:
         per-solution metric columns (suffixed `__<label>`, e.g.
         `min_cost__public_transport`, `weighted_average__public_transport`)
         into every solution `solve()` produces, so it can be used directly in
-        plots, `ParetoMetric(column=...)`, and post-hoc ranking
+        plots, `Metric(column=...)`, and post-hoc ranking
         (`rank_on="max__public_transport"`) -- without needing to `.copy()`
         the problem and solve it twice.
 
-        Because ranking (`rank_on`) reorders whatever `solve()` already
-        returned, it only reorders candidates that survived the *primary*
-        matrix's search and pruning. If `brute_force_keep_best_n` (or
-        `_worst_n`) is set, candidates were discarded on primary-matrix
-        performance before secondary metrics were ever considered -- so a
-        secondary ranking over what survives is not the true best solution
-        for that mode. When secondary matrices are in play, prefer retaining
-        every combination (no `brute_force_keep_best_n`/`_worst_n`) and using
-        `compute_pareto_front()` to explore the trade-off properly.
+        Post-hoc ranking reorders whatever `solve()` already returned, so it
+        only reorders candidates that survived the *primary* matrix's search
+        and pruning. If `brute_force_keep_best_n` (or `_worst_n`) is set,
+        candidates were discarded on primary-matrix performance before
+        secondary metrics were ever considered -- so a secondary ranking over
+        what survives is not the true best solution for that mode. To search
+        on a secondary matrix rather than merely re-sort by it, pass the
+        column to `solve(rank_on=...)`, which makes the pruning itself use
+        that metric. Alternatively, retain every combination (no
+        `brute_force_keep_best_n`/`_worst_n`) and use `compute_pareto_front()`
+        to explore the trade-off across both matrices at once.
 
         You may call this method multiple times with different `label`s to
         register as many secondary matrices as needed. Each one adds
@@ -1414,8 +1416,9 @@ class SiteAttributeMixin:
         `proportion_within_coverage_threshold__<label>` metric columns --
         the two metrics that actually change with demand -- into every
         solution `solve()` produces, so it can be used directly in plots,
-        `ParetoMetric(column=...)`, post-hoc ranking
-        (`rank_on="weighted_average__future_demand"`), or blended into the
+        `Metric(column=...)`, ranking (`rank_on=
+        "weighted_average__future_demand"`, either post-hoc or passed to
+        `solve()` to search on it directly), or blended into the
         optimisation objective via `weights={"future_demand": ...}`.
 
         By default a secondary demand scenario only re-weights the primary

@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 from lokigi.utils import (
+    _get_ranking_by_objective,
     _min_max_normalize,
     _select_solution,
     _sort_solutions_by_metric,
@@ -1804,6 +1805,11 @@ class SiteSolutionSet(
     n_sites : int, optional
         Number of sites selected in each solution (e.g., ``p`` in a p-median
         or p-center problem).
+    ranking_metric : lokigi.multiobjective.Metric, optional
+        The metric the search actually ranked and pruned on. Usually the one
+        implied by ``objectives``, but `solve(rank_on=...)` can override it,
+        in which case ``objectives`` alone no longer describes how these
+        solutions were ordered.
 
     Attributes
     ----------
@@ -1815,6 +1821,9 @@ class SiteSolutionSet(
         Objective(s) used in evaluation.
     n_sites : int or None
         Number of sites in each solution.
+    ranking_metric : lokigi.multiobjective.Metric or None
+        What ``solution_rank`` is actually ordered by. Read this rather than
+        ``objectives`` when reporting what was optimised.
 
     Notes
     -----
@@ -1826,7 +1835,9 @@ class SiteSolutionSet(
     outputs of the optimisation or search routine that generated it.
     """
 
-    def __init__(self, solution_df, site_problem, objectives, n_sites=None):
+    def __init__(
+        self, solution_df, site_problem, objectives, n_sites=None, ranking_metric=None
+    ):
         """
         Initialise a SiteSolutionSet instance.
 
@@ -1844,6 +1855,9 @@ class SiteSolutionSet(
             Objective(s) used to evaluate the solutions.
         n_sites : int, optional
             Number of sites selected in each solution.
+        ranking_metric : lokigi.multiobjective.Metric, optional
+            The metric the search ranked and pruned on. Defaults to None for
+            solution sets built by hand rather than by `solve()`.
 
         Notes
         -----
@@ -1854,11 +1868,55 @@ class SiteSolutionSet(
         self.site_problem = site_problem
         self.objectives = objectives
         self.n_sites = n_sites
+        # What solution_rank is actually ordered by. Kept separately from
+        # `objectives` because solve(rank_on=...) lets the two differ, and
+        # anything reporting "what was optimised" needs the real answer --
+        # see `_ranking_metric_summary` for the display side.
+        self.ranking_metric = ranking_metric
 
         self.pareto_metrics = None
 
     def copy(self):
         return copy.deepcopy(self)
+
+    def _ranks_on_custom_metric(self):
+        """
+        True when `solution_rank` reflects a `solve(rank_on=...)` metric
+        rather than the one this objective implies.
+
+        Display code branches on `self.objectives` to decide which numbers
+        to show ("mclp -> lead with coverage", and so on). That inference
+        silently breaks under `rank_on`: a run with
+        `objectives="p_median", rank_on="inter_tertile_ratio"` would be
+        annotated with the weighted average it did *not* optimise, and
+        `objectives="custom"` would fall through to the same default. So
+        anything reporting what was optimised asks this first.
+        """
+        if self.ranking_metric is None:
+            return False
+        default = _get_ranking_by_objective(objective=self.objectives)
+        if default is None:
+            # 'custom' has no implied column, so the ranking metric is by
+            # definition the caller's own.
+            return True
+        # solve() swaps in the `_for_ranking` twin when unreachable_cost is
+        # set; that's still the objective's own metric, not a custom one.
+        return self.ranking_metric.column not in (default, f"{default}_for_ranking")
+
+    def _ranking_metric_line(self, solution_row=None):
+        """
+        One-line "ranked on <metric>" label, or None when the objective
+        already describes the ranking. `solution_row` is an optional Series
+        for one solution, to include that solution's own value.
+        """
+        if not self._ranks_on_custom_metric():
+            return None
+        metric = self.ranking_metric
+        label = metric.label or metric.column
+        if solution_row is not None and metric.column in solution_row:
+            value = solution_row[metric.column]
+            return f"Ranked on {label}: {metric.format_value(value)}"
+        return f"Ranked on {label}"
 
     def _resolve_travel_columns(self, matrix=None):
         """

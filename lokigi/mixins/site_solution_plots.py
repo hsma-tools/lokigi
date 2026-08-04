@@ -1600,6 +1600,14 @@ class MapsMixin:
                 if unreachable_fragment:
                     metrics += f" \n{unreachable_fragment}"
 
+                # The metrics above are picked from `self.objectives`, which
+                # stops describing the ranking as soon as solve(rank_on=...)
+                # is used -- so name the real one rather than leaving the
+                # reader to assume the objective's default was optimised.
+                ranking_line = self._ranking_metric_line(solution.iloc[0])
+                if ranking_line:
+                    metrics += f" \n{ranking_line}"
+
                 title = plt.title(
                     f"{title_prefix} \n{metrics}", fontsize=title_fontsize
                 )
@@ -1897,6 +1905,13 @@ class MapsMixin:
                         ax.set_title(
                             f"Weighted Average: {solution[f'weighted_average{suffix}'].values[0]:.1f} {matrix_unit} \nMaximum: {solution[f'max{suffix}'].values[0]:.1f} {matrix_unit}{unreachable_suffix}"
                         )
+
+                    # These metrics are chosen from `self.objectives`, which
+                    # no longer describes the ranking once solve(rank_on=...)
+                    # is used -- so name the metric actually optimised.
+                    ranking_line = self._ranking_metric_line(solution.iloc[0])
+                    if ranking_line:
+                        ax.set_title(f"{ax.get_title()}\n{ranking_line}")
                 else:
                     ax.set_title(_safe_evaluate(subplot_title, solution=solution))
 
@@ -2223,6 +2238,13 @@ class MapsMixin:
                     )
                     if unreachable_fragment:
                         metrics += f" | {unreachable_fragment}"
+
+                    # Chosen from `self.objectives`, which stops describing
+                    # the ranking under solve(rank_on=...) -- name the real
+                    # one rather than implying the default was optimised.
+                    ranking_line = self._ranking_metric_line(solution.iloc[0])
+                    if ranking_line:
+                        metrics += f"\n{ranking_line}"
 
                     axes[i].set_title(
                         f"{title_prefix}\n{metrics}", fontsize=subplot_title_fontsize

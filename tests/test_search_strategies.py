@@ -19,6 +19,7 @@ import pandas as pd
 import pytest
 
 import lokigi
+from lokigi.utils import _resolve_ranking_metric
 
 
 # --- GRASP: core correctness for minimisation objectives (p_median, p_center) ---
@@ -136,6 +137,7 @@ def test_grasp_construction_and_local_search_use_the_real_coverage_threshold(
             p=2,
             objectives="mclp",
             weights={"demand": 1.0},
+            scorer=_resolve_ranking_metric(objective="mclp")[0],
             threshold_for_coverage=15,
             num_solutions=1,
             max_attempts=1,

@@ -14,7 +14,7 @@ import textwrap
 from lokigi.plot_utils import _add_plot_caption
 from lokigi.utils import _colours_and_styles, _is_maximise_metric, _get_ordinal_suffix
 
-from lokigi.multiobjective import ParetoMetric
+from lokigi.multiobjective import Metric
 
 
 def _format_site_diff_suffix(added, removed):
@@ -246,7 +246,7 @@ class ParetoMixin:
 
     def compute_pareto_front(
         self,
-        metrics: list[ParetoMetric],
+        metrics: list[Metric],
         id_col: str = "solution_rank",
     ) -> pd.DataFrame:
         """
@@ -389,7 +389,7 @@ class ParetoMixin:
         option is framed relative to a single reference option, in terms of
         what it gains and what it gives up -- no raw deltas, no jargon.
 
-        For best results, write each ParetoMetric.label as a short, plain
+        For best results, write each Metric.label as a short, plain
         phrase that reads naturally in a sentence (e.g. "average journey
         time" rather than "Weighted average"), and set `unit` / `as_percentage`
         so the numbers come out in a form people recognise (minutes, %, etc).
