@@ -126,6 +126,21 @@ Interested in generating your own travel matrices in this format?
 Check out the ["Lookup Up Travel Times Using APIs"](https://geographic.hsma.co.uk/mtt_travel_time_apis.html) chapter of the HSMA geographic book.
 :::
 
+::: callout-important
+## What if some journeys are impossible?
+
+Real travel matrices sometimes have gaps -- an origin/destination pair with no feasible journey at all, e.g. no public transport route within a reasonable search radius, or a site simply unreachable from an island or remote area. A common workaround is to fill these gaps with a very large placeholder number (e.g. `9999`) so the matrix has a value in every cell -- but this silently corrupts every average, maximum, and map colour scale that touches it, since lokigi has no way to tell that number apart from a genuine (if very long) journey.
+
+lokigi instead lets a travel matrix genuinely contain missing (`NA`) values, and treats them as "no feasible journey" throughout -- excluded from every average/maximum, shown as a distinct grey region on maps, and reported explicitly (e.g. "12 regions unreachable") rather than silently dropped. Two parameters control this:
+
+- `add_travel_matrix(allow_missing=True)` (and `add_secondary_travel_matrix(allow_missing=True)`) registers a matrix that is allowed to contain missing values. This is off by default, since an unexpected missing value more often means a typo or a data problem than a genuinely unreachable pair.
+- `treat_as_missing=<value>` converts an existing placeholder (like `9999`) to a proper missing value as the matrix is loaded, so you don't need to fix the source data by hand.
+
+If the matrix driving `solve()` (rather than a secondary one) has missing values, `solve()` also needs an `unreachable_cost=<a number>` argument -- a cost assumed for an unreachable pair only when comparing candidate solutions, so a solution is never picked simply because it strands people behind an unreachable pair. This never affects the travel times reported for your chosen solution, only which solution `solve()` finds.
+
+See the [multiple travel matrices example](../examples/location/multiple_travel_matrices/index.ipynb) for a worked demonstration using a real, partially-unreachable public transport matrix.
+:::
+
 ## Solving a simple problem
 
 If we don't have any other requirements, we can solve our problem right now!

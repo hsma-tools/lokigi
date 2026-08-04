@@ -1,6 +1,7 @@
 from lokigi.utils import (
+    _RANK_SCORE_COL,
+    _add_rank_score_column,
     _generate_all_combinations,
-    _get_ranking_by_objective,
     _get_required_site_indices,
     _too_similar_to_accepted,
     _apply_cost_weighting,
@@ -54,18 +55,30 @@ def _evaluate_chunk(
     weights,
     threshold_for_coverage,
     max_value_cutoff,
-    rank_best_n_on,
-    higher_is_better,
+    scorer,
     keep_best_n,
     keep_worst_n,
     stream_top_n,
     full_secondary_metrics=False,
+    baseline_costs=None,
+    meaningful_change_threshold=0.0,
+    beyond_thresholds=None,
+    unreachable_cost=None,
 ):
     """Evaluate one chunk of combinations. Returns either the list of
     metrics dicts (materialising path) or (local_best, local_worst) lists
     of (key, global_index, metrics) tuples (streaming path). Runs in a
     worker process under joblib, so it must not depend on any state that
-    changes across chunks (it doesn't -- the heaps below are local)."""
+    changes across chunks (it doesn't -- the heaps below are local).
+    `baseline_costs` (a dict of small pd.Series, see `solve()`'s `baseline`
+    parameter) pickles cheaply across the worker-process boundary -- it is
+    resolved once per `solve()` call, not once per combination.
+
+    The `max_value_cutoff` feasibility check reads `max_for_ranking`, not
+    `max` -- identical to `max` unless `unreachable_cost` is set, in which
+    case a combination that strands demand behind an unreachable pair is
+    correctly judged against the assumed cost of that failure, not judged
+    as if the stranded rows were never there at all."""
     if not stream_top_n:
         chunk_outputs = []
         for _global_index, possible_solution in indexed_chunk:
@@ -74,9 +87,16 @@ def _evaluate_chunk(
                 objective=objectives,
                 threshold_for_coverage=threshold_for_coverage,
                 weights=weights,
+                baseline_costs=baseline_costs,
+                meaningful_change_threshold=meaningful_change_threshold,
+                beyond_thresholds=beyond_thresholds,
+                unreachable_cost=unreachable_cost,
             ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
-            if max_value_cutoff is None or metrics["max"] <= max_value_cutoff:
+            if (
+                max_value_cutoff is None
+                or metrics["max_for_ranking"] <= max_value_cutoff
+            ):
                 chunk_outputs.append(metrics)
         return chunk_outputs
 
@@ -88,11 +108,20 @@ def _evaluate_chunk(
             objective=objectives,
             threshold_for_coverage=threshold_for_coverage,
             weights=weights,
+            baseline_costs=baseline_costs,
+            meaningful_change_threshold=meaningful_change_threshold,
+            beyond_thresholds=beyond_thresholds,
+            unreachable_cost=unreachable_cost,
         ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
-        raw_score = metrics[rank_best_n_on]
-        score = -raw_score if higher_is_better else raw_score
-        max_value = metrics["max"]
+        # `scorer.normalise` returns a value where lower is always better,
+        # whatever the ranking column's own direction -- so everything below
+        # this point is a plain minimisation. It's a per-element transform
+        # (negate, or distance-from-target), needing no view of the other
+        # combinations, which is what lets the streaming heap survive a
+        # custom `rank_on` where batch-relative cost weighting cannot.
+        score = float(scorer.normalise(metrics[scorer.column]))
+        max_value = metrics["max_for_ranking"]
 
         if max_value_cutoff is not None and max_value > max_value_cutoff:
             continue
@@ -115,11 +144,15 @@ class BruteForceMixin:
         show_progress: bool = False,
         brute_force_keep_best_n=None,
         brute_force_keep_worst_n=None,
-        rank_best_n_on="weighted_average",
+        scorer=None,
         max_value_cutoff=None,
         threshold_for_coverage=None,
         n_jobs=1,
         full_secondary_metrics=False,
+        baseline_costs=None,
+        meaningful_change_threshold=0.0,
+        beyond_thresholds=None,
+        unreachable_cost=None,
     ):
 
         # Greedy and GRASP already fail fast with a clear message when
@@ -202,10 +235,6 @@ class BruteForceMixin:
 
         outputs = []
 
-        # mclp's ranking column (coverage proportion) is higher-is-better,
-        # while every other objective's ranking column is lower-is-better.
-        higher_is_better = objectives == "mclp"
-
         # Chunk the (already fully materialised) combination list and hand
         # chunks to worker processes. Each combination's position in
         # `possible_combinations` doubles as its global_index, used only
@@ -243,12 +272,15 @@ class BruteForceMixin:
                 weights,
                 threshold_for_coverage,
                 max_value_cutoff,
-                rank_best_n_on,
-                higher_is_better,
+                scorer,
                 brute_force_keep_best_n if stream_top_n else None,
                 brute_force_keep_worst_n if stream_top_n else None,
                 stream_top_n,
                 full_secondary_metrics,
+                baseline_costs,
+                meaningful_change_threshold,
+                beyond_thresholds,
+                unreachable_cost,
             )
             for chunk in chunks
         )
@@ -300,37 +332,37 @@ class BruteForceMixin:
             outputs_df = pd.DataFrame(outputs)
             outputs_df, score_col = _apply_cost_weighting(
                 outputs_df,
-                ranking_col=rank_best_n_on,
+                ranking_col=scorer.column,
                 weights=weights,
-                higher_is_better=higher_is_better,
+                scorer=scorer,
             )
 
-            # _apply_cost_weighting's blended "composite_score" is always on
-            # a lower-is-better scale regardless of the underlying
-            # objective's direction -- but only when it actually blends. It
-            # no-ops (score_col == rank_best_n_on unchanged) when it lacks
-            # usable cost data, in which case the raw ranking column keeps
-            # its own direction (higher-is-better for mclp).
-            best_is_smallest = not (score_col == rank_best_n_on and higher_is_better)
+            # After this, "best" is unambiguously "smallest" either way:
+            # _apply_cost_weighting's blended "composite_score" is already on
+            # a lower-is-better scale, and when it no-ops (no usable cost
+            # data, so score_col comes back unchanged) `_RANK_SCORE_COL`
+            # puts the raw ranking column onto that same scale via the
+            # scorer. Deciding direction from the objective instead, as this
+            # used to, could not express a `closest_to_target` rank_on.
+            if score_col == scorer.column:
+                outputs_df, score_col = _add_rank_score_column(outputs_df, scorer)
 
             result_frames = []
             if brute_force_keep_best_n is not None:
                 result_frames.append(
                     outputs_df.nsmallest(brute_force_keep_best_n, score_col)
-                    if best_is_smallest
-                    else outputs_df.nlargest(brute_force_keep_best_n, score_col)
                 )
             if brute_force_keep_worst_n is not None:
                 result_frames.append(
                     outputs_df.nlargest(brute_force_keep_worst_n, score_col)
-                    if best_is_smallest
-                    else outputs_df.nsmallest(brute_force_keep_worst_n, score_col)
                 )
 
             combined = (
                 pd.concat(result_frames) if len(result_frames) > 1 else result_frames[0]
             )
-            return combined.to_dict("records")
+            return combined.drop(columns=_RANK_SCORE_COL, errors="ignore").to_dict(
+                "records"
+            )
         else:
             # Reconstruct the 'outputs' list
             # Extract dictionaries from heaps and sort them
@@ -358,13 +390,16 @@ class GreedyMixin:
         p: int,
         objectives,
         weights,
+        scorer,
         show_progress: bool = False,
         threshold_for_coverage=None,
         max_value_cutoff=None,
         full_secondary_metrics=False,
+        baseline_costs=None,
+        meaningful_change_threshold=0.0,
+        beyond_thresholds=None,
+        unreachable_cost=None,
     ):
-        ranking = _get_ranking_by_objective(objective=objectives)
-
         # Greedy grows the solution one site at a time, but every size-i
         # combination is also filtered to contain ALL required sites -- so
         # with two or more required sites, the early steps (i < n_required)
@@ -407,15 +442,16 @@ class GreedyMixin:
                         objective=objectives,
                         threshold_for_coverage=threshold_for_coverage,
                         weights=weights,
+                        baseline_costs=baseline_costs,
+                        meaningful_change_threshold=meaningful_change_threshold,
+                        beyond_thresholds=beyond_thresholds,
+                        unreachable_cost=unreachable_cost,
                     ).return_solution_metrics(
                         full_secondary_metrics=full_secondary_metrics
                     )
                 )
 
-            # mclp's ranking column (coverage proportion) is higher-is-better,
-            # while every other objective's ranking column is lower-is-better
             outputs_df = pd.DataFrame(outputs)
-            higher_is_better = objectives == "mclp"
 
             # The max-value cutoff (hybrid objectives) is a constraint on
             # the FINAL solution only: with fewer than p sites the
@@ -425,7 +461,9 @@ class GreedyMixin:
             # guarantee the hybrid objectives promise actually holds for
             # whatever is returned.
             if max_value_cutoff is not None and i == p:
-                outputs_df = outputs_df[outputs_df["max"] <= max_value_cutoff]
+                outputs_df = outputs_df[
+                    outputs_df["max_for_ranking"] <= max_value_cutoff
+                ]
                 if len(outputs_df) == 0:
                     raise ValueError(
                         f"Greedy search found no combination of {p} sites "
@@ -437,33 +475,32 @@ class GreedyMixin:
                         "'brute-force' or 'grasp', or relax the cutoff."
                     )
 
+            score_col = scorer.column
             if weights and weights.get("cost", 0) > 0:
                 outputs_df, score_col = _apply_cost_weighting(
                     outputs_df,
-                    ranking_col=ranking,
+                    ranking_col=scorer.column,
                     weights=weights,
-                    higher_is_better=higher_is_better,
+                    scorer=scorer,
                 )
-            else:
-                score_col = ranking
 
             # _apply_cost_weighting only blends onto its lower-is-better
             # "composite_score" scale when it actually has usable cost data
             # to blend (a positive cost weight is not enough on its own --
-            # it also no-ops, returning score_col == ranking unchanged, when
-            # e.g. every candidate's total_cost is NaN). Assuming "cost
-            # weight requested" implies "blended, therefore ascending" was
-            # wrong: for a higher-is-better objective (mclp) whose cost
-            # weighting silently no-ops, sorting ascending on the raw
-            # ranking column picks the WORST combination as "best".
-            blended = score_col != ranking
-            sort_ascending = [True, True] if blended else [not higher_is_better, True]
+            # it also no-ops, returning score_col unchanged, when e.g. every
+            # candidate's total_cost is NaN). Whenever it hasn't blended, put
+            # the raw ranking column onto that same lower-is-better scale via
+            # the scorer, so the sort below is unconditionally ascending. The
+            # old `not higher_is_better` flag could only express a two-way
+            # split, so it had no way to rank on a `closest_to_target` metric.
+            if score_col == scorer.column:
+                outputs_df, score_col = _add_rank_score_column(outputs_df, scorer)
 
             evaluated_solutions = outputs_df.sort_values(
                 [score_col, "weighted_average"],
-                ascending=sort_ascending,
+                ascending=[True, True],
                 kind="mergesort",
-            )
+            ).drop(columns=_RANK_SCORE_COL, errors="ignore")
 
             # print("==Evaluated solution dataframe==")
             # print(evaluated_solutions)
@@ -493,6 +530,10 @@ class GreedyMixin:
             objective=objectives,
             threshold_for_coverage=threshold_for_coverage,
             weights=weights,
+            baseline_costs=baseline_costs,
+            meaningful_change_threshold=meaningful_change_threshold,
+            beyond_thresholds=beyond_thresholds,
+            unreachable_cost=unreachable_cost,
         ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
         return [best_solution_metrics]
@@ -504,6 +545,7 @@ class GraspMixin:
         p: int,
         objectives,
         weights,
+        scorer,
         num_solutions: int = 5,
         show_progress: bool = False,
         threshold_for_coverage=None,
@@ -511,18 +553,28 @@ class GraspMixin:
         random_seed: int = 42,
         max_attempts: int | str = "default",
         min_sites_different: int = 1,
-        is_minimization: bool = True,  # Flag for sort order & thresholding
         local_search_chance=0.8,  # Chance that local searching will happen to improve found solution
         max_swap_count_local_search=10,
         max_value_cutoff=None,
         full_secondary_metrics=False,
+        baseline_costs=None,
+        meaningful_change_threshold=0.0,
+        beyond_thresholds=None,
+        unreachable_cost=None,
     ):
         """
         GRASP (Greedy Randomised Adaptive Search Procedure) for finding multiple
         near-optimal facility location solutions.
+
+        Every comparison below runs on `scorer.normalise()`'d values, where
+        lower is always better -- so this is unconditionally a minimisation.
+        The `is_minimization` flag this replaced could only express a
+        two-way split, and so could not represent a `closest_to_target`
+        `rank_on` (an inter-tertile ratio is best at 1.0, with both larger
+        and smaller values worse).
         """
         rng = random.Random(random_seed)
-        ranking = _get_ranking_by_objective(objective=objectives)
+        ranking = scorer.column
         all_site_indices = list(range(self.total_n_sites))
 
         # Brute force and greedy enforce required_sites_col through
@@ -580,6 +632,10 @@ class GraspMixin:
                 objective=objectives,
                 threshold_for_coverage=threshold_for_coverage,
                 weights=weights,
+                baseline_costs=baseline_costs,
+                meaningful_change_threshold=meaningful_change_threshold,
+                beyond_thresholds=beyond_thresholds,
+                unreachable_cost=unreachable_cost,
             ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
         pbar = None
@@ -633,21 +689,20 @@ class GraspMixin:
                         pd.DataFrame(candidate_rows),
                         ranking_col=ranking,
                         weights=weights,
-                        higher_is_better=not is_minimization,
+                        scorer=scorer,
                     )
                     # _apply_cost_weighting only blends onto its
                     # lower-is-better "composite_score" scale when it has
                     # usable cost data to blend -- a positive cost weight
                     # alone isn't enough, it also no-ops (score_col ==
                     # ranking unchanged) when e.g. every candidate's
-                    # total_cost is NaN. Assuming "cost requested" implies
-                    # "blended, therefore minimised" was wrong: for a
-                    # maximising objective (mclp) whose cost weighting
-                    # silently no-ops, treating its raw score as
-                    # lower-is-better picks the WORST candidates for the RCL.
-                    scores_minimized = (
-                        True if score_col != ranking else is_minimization
-                    )
+                    # total_cost is NaN. In that case put the raw ranking
+                    # column onto the same scale via the scorer, so either
+                    # way the RCL below is built on lower-is-better values.
+                    if score_col == ranking:
+                        candidates_df, score_col = _add_rank_score_column(
+                            candidates_df, scorer
+                        )
                     candidate_scores: list[tuple[float, float, int]] = list(
                         zip(
                             candidates_df[score_col],
@@ -656,16 +711,18 @@ class GraspMixin:
                         )
                     )
                 else:
-                    scores_minimized = is_minimization
                     candidate_scores: list[tuple[float, float, int]] = [
-                        (row[ranking], row["weighted_average"], row["site"])
+                        (
+                            float(scorer.normalise(row[ranking])),
+                            row["weighted_average"],
+                            row["site"],
+                        )
                         for row in candidate_rows
                     ]
 
-                # [UPDATED] Sort and construct RCL based on minimization vs maximization
-                candidate_scores.sort(
-                    key=lambda x: (x[0], x[1]), reverse=not scores_minimized
-                )
+                # Scores are lower-is-better by construction above, so this
+                # is always a minimisation -- no direction branch needed.
+                candidate_scores.sort(key=lambda x: (x[0], x[1]))
 
                 f_best = candidate_scores[0][0]
                 f_worst = candidate_scores[-1][0]
@@ -675,16 +732,8 @@ class GraspMixin:
                     # All candidates are tied; picking any of them is equally greedy.
                     rcl = [s for _, _, s in candidate_scores]
                 else:
-                    if scores_minimized:
-                        threshold = f_best + alpha * value_range
-                        rcl = [
-                            s for score, _, s in candidate_scores if score <= threshold
-                        ]
-                    else:
-                        threshold = f_best - alpha * value_range
-                        rcl = [
-                            s for score, _, s in candidate_scores if score >= threshold
-                        ]
+                    threshold = f_best + alpha * value_range
+                    rcl = [s for score, _, s in candidate_scores if score <= threshold]
 
                 if not rcl:
                     rcl = [candidate_scores[0][2]]
@@ -714,7 +763,7 @@ class GraspMixin:
                     current_metrics = _get_cached_metrics(
                         tuple(sorted(current_solution))
                     )
-                    current_primary = current_metrics[ranking]
+                    current_primary = float(scorer.normalise(current_metrics[ranking]))
                     current_secondary = current_metrics["weighted_average"]
 
                     outside_sites = [
@@ -735,21 +784,18 @@ class GraspMixin:
                                 swap_metrics = _get_cached_metrics(
                                     tuple(sorted(candidate))
                                 )
-                                swap_primary = swap_metrics[ranking]
+                                swap_primary = float(
+                                    scorer.normalise(swap_metrics[ranking])
+                                )
                                 swap_secondary = swap_metrics["weighted_average"]
 
-                                if is_minimization:
-                                    is_better = (swap_primary, swap_secondary) < (
-                                        current_primary,
-                                        current_secondary,
-                                    )
-                                else:
-                                    is_better = (swap_primary, swap_secondary) > (
-                                        current_primary,
-                                        current_secondary,
-                                    )
-
-                                if is_better:
+                                # Both sides are normalised, so lower is
+                                # always better and one comparison covers
+                                # every ranking direction.
+                                if (swap_primary, swap_secondary) < (
+                                    current_primary,
+                                    current_secondary,
+                                ):
                                     # First-Improvement: Apply immediately, break loops, restart neighborhood
                                     current_solution = candidate
                                     current_solution_set = set(current_solution)
@@ -797,31 +843,31 @@ class GraspMixin:
                                 )
 
                         if swap_candidates:
-                            # `higher_is_better` is consumed *inside*
-                            # _apply_cost_weighting: it inverts the raw
-                            # ranking column into "badness" (0=best) before
-                            # blending in cost, and the returned score_col
-                            # ("composite_score") is on that same
-                            # lower-is-better, 0-is-best scale regardless of
-                            # whether the underlying objective is minimized
-                            # (e.g. weighted_average) or maximized (e.g.
-                            # mclp's coverage proportion) -- BUT ONLY when
-                            # it actually blends. _apply_cost_weighting also
-                            # no-ops (returns score_col == ranking_col
-                            # unchanged) when it lacks usable cost data to
-                            # blend (e.g. every candidate's total_cost is
-                            # NaN), in which case score_col is back on the
-                            # ORIGINAL objective's natural scale, and a
-                            # blind "<" would pick the worst swap instead of
-                            # the best one for a maximizing objective (mclp)
-                            # whose cost weighting silently no-op'd.
+                            # `scorer` is consumed *inside*
+                            # _apply_cost_weighting: it puts the raw ranking
+                            # column onto a "badness" (0=best) scale before
+                            # blending in cost, so the returned score_col
+                            # ("composite_score") is lower-is-better whatever
+                            # the ranking column's own direction -- BUT ONLY
+                            # when it actually blends. It also no-ops
+                            # (returns score_col == ranking_col unchanged)
+                            # when it lacks usable cost data to blend (e.g.
+                            # every candidate's total_cost is NaN), in which
+                            # case score_col is back on the ranking column's
+                            # natural scale and a blind "<" would pick the
+                            # worst swap for a maximising metric. Normalising
+                            # here in that case keeps the comparison below
+                            # unconditional.
                             batch_df, score_col = _apply_cost_weighting(
                                 pd.DataFrame(rows),
                                 ranking_col=ranking,
                                 weights=weights,
-                                higher_is_better=not is_minimization,
+                                scorer=scorer,
                             )
-                            blended = score_col != ranking
+                            if score_col == ranking:
+                                batch_df, score_col = _add_rank_score_column(
+                                    batch_df, scorer
+                                )
                             current_score = batch_df.iloc[0][score_col]
                             current_secondary_score = batch_df.iloc[0][
                                 "weighted_average"
@@ -845,12 +891,9 @@ class GraspMixin:
                                     row["weighted_average"],
                                 )
                                 current = (current_score, current_secondary_score)
-                                is_better = (
-                                    candidate_score < current
-                                    if (blended or is_minimization)
-                                    else candidate_score > current
-                                )
-                                if is_better:
+                                # score_col is lower-is-better either way
+                                # (blended composite, or normalised raw).
+                                if candidate_score < current:
                                     current_solution = swap_candidates[i]
                                     current_solution_set = set(current_solution)
                                     improved = True
@@ -867,7 +910,7 @@ class GraspMixin:
                 candidate_metrics = _get_cached_metrics(
                     tuple(sorted(current_solution))
                 )
-                if candidate_metrics["max"] > max_value_cutoff:
+                if candidate_metrics["max_for_ranking"] > max_value_cutoff:
                     continue
 
             # ---------------------------------------------------------------
@@ -880,12 +923,24 @@ class GraspMixin:
 
             current_solution.sort()
 
-            # Accept the solution
+            # Accept the solution.
+            #
+            # `unreachable_cost` must be passed here, not just to the cached
+            # in-loop evaluations above: without it the returned rows'
+            # `*_for_ranking` columns fall back to the reachable-only
+            # figures, so GRASP would *search* on substituted values but
+            # *return* unsubstituted ones -- and solve()'s final sort ranks
+            # the returned pool on exactly those columns. Brute-force and
+            # greedy have always passed it; this call was the odd one out.
             final_metrics = self.evaluate_single_solution_single_objective(
                 site_indices=current_solution,
                 objective=objectives,
                 threshold_for_coverage=threshold_for_coverage,  # Applied only at the end
                 weights=weights,
+                baseline_costs=baseline_costs,
+                meaningful_change_threshold=meaningful_change_threshold,
+                beyond_thresholds=beyond_thresholds,
+                unreachable_cost=unreachable_cost,
             ).return_solution_metrics(full_secondary_metrics=full_secondary_metrics)
 
             accepted_solution_sets.append(current_solution_set)

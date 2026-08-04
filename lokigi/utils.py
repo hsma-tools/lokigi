@@ -1,4 +1,5 @@
 import numpy as np
+from dataclasses import replace
 from itertools import combinations
 from pandas.api.types import is_numeric_dtype
 import pandas as pd
@@ -12,6 +13,8 @@ from warnings import warn
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from lokigi.multiobjective import Metric
+
 PANDAS_EXTS = [".csv", ".parquet", ".xlsx", ".xls"]
 GEOPANDAS_EXTS = [".shp", ".geojson", ".gpkg"]
 
@@ -22,7 +25,15 @@ SUPPORTED_OBJECTIVES = [
     "simple_p_median",
     "hybrid_simple_p_median",
     "mclp",
+    "custom",
 ]
+
+# Ranking columns with a `_for_ranking` twin computed by
+# `EvaluatedCombination._compute_travel_metrics`. These are exactly the
+# metrics that average or maximise over *reachable* rows only, so ranking on
+# them unsubstituted silently rewards a combination for stranding demand --
+# see `_get_ranking_by_objective` and `solve()`'s `unreachable_cost`.
+_FOR_RANKING_BASE_COLUMNS = ["weighted_average", "unweighted_average", "max"]
 
 PLANNED_OBJECTIVES = [
     "lscp",
@@ -94,6 +105,14 @@ SOLVER_DEFINITIONS = {
         "trade_off": "Requires significantly more resources (budget/staff) than standard coverage to achieve the same geographic footprint.",
         "status": "Planned",
         "academic_ref": "Hogan & ReVelle (1986), Church & Murray (2018)",
+    },
+    "custom": {
+        "name": "Custom (caller-defined ranking metric)",
+        "goal": "Rank solutions on whichever metric solve() already computes that you name via rank_on=, with no model-specific constraints applied.",
+        "healthcare_context": "Use when the measure you actually care about isn't one of the named models above -- e.g. searching directly on inter_tertile_ratio (equity), or on the number of people left beyond a threshold. Pass rank_on= to a named objective instead if you also want that model's constraints (e.g. hybrid_p_median's max_value_cutoff).",
+        "trade_off": "Applies no feasibility constraints of its own, so nothing bounds the metrics you did not rank on -- check them in the returned solutions rather than assuming they are reasonable.",
+        "status": "Supported",
+        "academic_ref": "N/A -- not a named model from the location-allocation literature",
     },
 }
 
@@ -288,8 +307,15 @@ def _get_required_site_indices(site_problem) -> list:
     Flag values are matched case-insensitively against a set of sensible
     "truthy" markers, so the column may hold booleans, integers, or messy
     strings ("Y", " true ", 1, ...).
+
+    Tolerates a `site_problem` that doesn't define
+    `_candidate_sites_required_sites_col` at all (e.g. a minimal stub used
+    in tests to isolate a single metric), treating it the same as "no
+    required sites configured" rather than raising.
     """
-    if site_problem is None or site_problem._candidate_sites_required_sites_col is None:
+    if site_problem is None or getattr(
+        site_problem, "_candidate_sites_required_sites_col", None
+    ) is None:
         return []
 
     truthy_values = {"y", "yes", "true", "t", "required", "1"}
@@ -486,17 +512,337 @@ def _safe_evaluate(text_string, solution):
         return text_string
 
 
-def _get_ranking_by_objective(objective):
+def _get_ranking_by_objective(objective, unreachable_cost=None):
+    """
+    The `solution_df` column search/pruning ranks combinations on, for a
+    given objective.
+
+    `unreachable_cost` resolves to the `_for_ranking` variant of that
+    column (`weighted_average_for_ranking`, etc.) whenever it is not
+    `None` -- computed by `EvaluatedCombination._compute_travel_metrics`
+    with every unreachable (NaN) travel cost substituted by
+    `unreachable_cost`, so a combination that stranded demand is never
+    silently rewarded by those rows simply dropping out of a reachable-
+    only average. 'mclp' never needs this: its coverage-proportion ranking
+    already treats an unreachable pair as "not covered" (correctly bad),
+    with no equivalent silent-reward failure mode, so it is left on its
+    plain column regardless of `unreachable_cost`.
+    """
     if objective in ["p_median", "hybrid_p_median"]:
-        return "weighted_average"
+        base = "weighted_average"
     elif objective in ["simple_p_median", "hybrid_simple_p_median"]:
-        return "unweighted_average"
+        base = "unweighted_average"
     elif objective in ["p_center"]:
-        return "max"
+        base = "max"
     elif objective in ["mclp"]:
         # Demand-weighted since v0.7.0, matching the textbook Maximal Covering
         # Location Problem. The column name is unchanged; its meaning is not.
         return "proportion_within_coverage_threshold"
+    else:
+        # Includes 'custom', which has no default column of its own -- it
+        # requires rank_on, and solve() rejects it without one.
+        return None
+
+    return f"{base}_for_ranking" if unreachable_cost is not None else base
+
+
+def _resolve_ranking_metric(objective, rank_on=None, unreachable_cost=None):
+    """
+    Resolve what `solve()` should actually rank and prune on, as a single
+    `Metric`.
+
+    Direction used to be decided independently in four places -- the
+    brute-force heap, the greedy per-step sort, GRASP's `is_minimization`,
+    and the final cross-strategy sort -- each spelled `objective == "mclp"`.
+    That works only while every objective's ranking column is either plainly
+    higher- or plainly lower-is-better, which `rank_on` breaks: an
+    inter-tertile ratio is best at 1.0, with both >1 and <1 worse. So all
+    four now read the `Metric` this returns, and use `Metric.normalise()`
+    to get a value where lower is always better.
+
+    Parameters
+    ----------
+    objective : str
+        The objective passed to `solve()`. Supplies the default ranking
+        column (and its direction) when `rank_on` is None.
+    rank_on : str or Metric, optional
+        Overrides the objective's default ranking column. A bare string
+        takes its direction from `_is_maximise_metric`; pass a `Metric` to
+        state the direction explicitly, which is the only way to express
+        `closest_to_target`.
+    unreachable_cost : float, optional
+        As passed to `solve()`. See the `_for_ranking` note below.
+
+    Returns
+    -------
+    tuple[Metric, str or None]
+        The resolved metric, and a warning message (or None). The caller
+        emits the warning so it points at the user's `solve()` call rather
+        than at this helper.
+
+    Notes
+    -----
+    When `unreachable_cost` is set, a ranking column in
+    `_FOR_RANKING_BASE_COLUMNS` is upgraded to its `_for_ranking` twin --
+    the same substitution `_get_ranking_by_objective` already makes for the
+    objective's default column. Honouring a literal `rank_on="max"` here
+    would rank on the reachable-only figure and so reintroduce exactly the
+    silent-reward bug `unreachable_cost` exists to prevent. It's a warning
+    rather than an error because the intent is unambiguous and we can do
+    the right thing; it's not silent because the column that ends up in
+    `solution_rank` is then not the one that was asked for.
+    """
+    if rank_on is None:
+        column = _get_ranking_by_objective(
+            objective=objective, unreachable_cost=unreachable_cost
+        )
+        if column is None:
+            return None, None
+        direction = "higher_better" if objective == "mclp" else "lower_better"
+        return Metric(column=column, direction=direction), None
+
+    if isinstance(rank_on, str):
+        metric = Metric(
+            column=rank_on,
+            direction="higher_better" if _is_maximise_metric(rank_on) else "lower_better",
+        )
+    elif isinstance(rank_on, Metric):
+        metric = replace(rank_on)
+    else:
+        raise TypeError(
+            f"Expected 'rank_on' to be a column name (str) or a "
+            f"lokigi.multiobjective.Metric, got {type(rank_on).__name__}."
+        )
+
+    warning = None
+    if unreachable_cost is not None and metric.column in _FOR_RANKING_BASE_COLUMNS:
+        upgraded = f"{metric.column}_for_ranking"
+        warning = (
+            f"rank_on='{metric.column}' was upgraded to '{upgraded}' because "
+            f"unreachable_cost={unreachable_cost} is set. '{metric.column}' "
+            "averages over reachable demand only, so ranking on it would "
+            "reward a solution for leaving demand unreachable (those rows "
+            "drop out of the average instead of counting against it). Pass "
+            f"rank_on='{upgraded}' explicitly to silence this, or drop "
+            "unreachable_cost to rank on reachable demand only."
+        )
+        metric = replace(metric, column=upgraded)
+
+    return metric, warning
+
+
+def _population_impact_metrics(
+    current, baseline, demand=None, meaningful_change_threshold=0.0
+):
+    """
+    Per-region diff of `current` vs `baseline`, classified into
+    improved/worsened/unchanged and summarised by region count and (if
+    `demand` is given) demand-weighted people count.
+
+    Shared by `SolutionComparator.population_impact_summary()` (v1) and
+    `solve(baseline=...)` (v2) so the two paths cannot silently drift apart
+    on the same underlying arithmetic.
+
+    Parameters
+    ----------
+    current, baseline : array-like of float
+        Per-region travel cost, aligned to the same region order (the
+        caller is responsible for alignment -- e.g. by demand-location ID,
+        never by position/index alone).
+    demand : array-like of float, optional
+        Per-region demand weight, aligned to the same region order. `None`
+        when no demand data is registered on the problem -- `demand_*`,
+        `proportion_demand_*`, `total_demand` and the two weighted-mean
+        columns are then `NaN`, and only the `regions_*` counts and the
+        (unweighted-mean) improvement/worsening magnitudes are populated.
+    meaningful_change_threshold : float, default 0.0
+        A region's cost must have moved by strictly more than
+        `max(meaningful_change_threshold, 1e-9)` to count as improved or
+        worsened; anything else (including exactly
+        `meaningful_change_threshold`) is `unchanged`. The `1e-9` floor
+        absorbs floating-point noise at the default threshold of 0.0.
+
+    Returns
+    -------
+    dict
+        `regions_improved`/`regions_worsened`/`regions_unchanged` (counts);
+        `demand_improved`/`demand_worsened`/`demand_unchanged` (`NaN` if
+        `demand` is None); `proportion_demand_improved`/
+        `proportion_demand_worsened` (share of `total_demand`, `NaN` if
+        `demand` is None or its total is <= 0); `total_demand` (`NaN` if
+        `demand` is None); `mean_reduction_among_improved`/
+        `mean_increase_among_worsened` (demand-weighted mean if `demand`
+        is given, else a plain mean; positive magnitudes; `NaN` if the
+        bucket is empty, or if `demand` is given but every region in the
+        bucket has zero/NaN demand); `max_reduction`/`max_increase`
+        (largest single-region change in each direction, positive; `NaN`
+        if the bucket is empty).
+
+    Notes
+    -----
+    All magnitudes are reported positive -- direction is carried by the
+    bucket name (`_improved`/`_worsened`), not by sign. This sidesteps the
+    `set_a - set_b` sign convention `get_metric_summary()` and
+    `compare_site_allocation()` use, which would otherwise be ambiguous
+    for a baseline diff that is naturally `candidate - baseline`.
+    """
+    current = np.asarray(current, dtype=float)
+    baseline = np.asarray(baseline, dtype=float)
+    delta = current - baseline  # negative = improved (cheaper)
+
+    tol = max(meaningful_change_threshold, 1e-9)
+    improved = delta < -tol
+    worsened = delta > tol
+    unchanged = ~improved & ~worsened
+
+    regions_improved = int(improved.sum())
+    regions_worsened = int(worsened.sum())
+    regions_unchanged = int(unchanged.sum())
+
+    max_reduction = -delta[improved].min() if regions_improved else np.nan
+    max_increase = delta[worsened].max() if regions_worsened else np.nan
+
+    if demand is None:
+        demand_improved = np.nan
+        demand_worsened = np.nan
+        demand_unchanged = np.nan
+        proportion_demand_improved = np.nan
+        proportion_demand_worsened = np.nan
+        total_demand = np.nan
+        mean_reduction_among_improved = (
+            -delta[improved].mean() if regions_improved else np.nan
+        )
+        mean_increase_among_worsened = (
+            delta[worsened].mean() if regions_worsened else np.nan
+        )
+    else:
+        demand = np.asarray(demand, dtype=float)
+        total_demand = demand.sum()
+        demand_improved = demand[improved].sum()
+        demand_worsened = demand[worsened].sum()
+        demand_unchanged = demand[unchanged].sum()
+
+        if total_demand > 0:
+            proportion_demand_improved = demand_improved / total_demand
+            proportion_demand_worsened = demand_worsened / total_demand
+        else:
+            proportion_demand_improved = np.nan
+            proportion_demand_worsened = np.nan
+
+        mean_reduction_among_improved = (
+            -np.average(delta[improved], weights=demand[improved])
+            if demand_improved and not np.isnan(demand_improved)
+            else np.nan
+        )
+        mean_increase_among_worsened = (
+            np.average(delta[worsened], weights=demand[worsened])
+            if demand_worsened and not np.isnan(demand_worsened)
+            else np.nan
+        )
+
+    # Cast every numeric value to a native Python float (regions_* are
+    # already native ints, above). Numpy >=2.0 reprs its scalar types as
+    # e.g. np.float64(46907.0) rather than 46907.0 -- harmless once these
+    # values sit inside a DataFrame column (which formats through its own
+    # display logic regardless), but a returned-bare dict repr shows the
+    # wrapper verbatim, which is exactly the case
+    # `population_impact_summary()` hits when `as_dict=True`.
+    return {
+        "regions_improved": regions_improved,
+        "regions_worsened": regions_worsened,
+        "regions_unchanged": regions_unchanged,
+        "demand_improved": float(demand_improved),
+        "demand_worsened": float(demand_worsened),
+        "demand_unchanged": float(demand_unchanged),
+        "proportion_demand_improved": float(proportion_demand_improved),
+        "proportion_demand_worsened": float(proportion_demand_worsened),
+        "total_demand": float(total_demand),
+        "mean_reduction_among_improved": float(mean_reduction_among_improved),
+        "mean_increase_among_worsened": float(mean_increase_among_worsened),
+        "max_reduction": float(max_reduction),
+        "max_increase": float(max_increase),
+    }
+
+
+def _format_threshold(t):
+    """
+    Render a threshold value for use in a column name, e.g. `30 -> "30"`,
+    `42.5 -> "42.5"`. Used to build `demand_beyond_threshold_<t>` /
+    `regions_beyond_threshold_<t>` column names -- deliberately a single
+    underscore before the value (not `__`, which is reserved for secondary
+    travel-matrix/demand-scenario suffixes) so the two conventions can never
+    collide, e.g. `demand_beyond_threshold_45__public_transport`.
+    """
+    return f"{float(t):g}"
+
+
+def _split_bins_into_tertiles(unique_bins, disadvantaged_end=None):
+    """
+    Split a sorted list of equity-band values into three roughly equal
+    chunks (via `np.array_split`), returning them ordered from
+    MOST-disadvantaged to LEAST-disadvantaged.
+
+    `disadvantaged_end` mirrors `add_equity_data()`'s parameter of the same
+    name: "low" means the lowest band values are the most disadvantaged
+    (e.g. IMD decile 1 = most deprived), "high" means the opposite. `None`
+    (its default) is treated as "low" -- the assumption every pre-existing
+    caller of this arithmetic hardcoded, so behaviour is unchanged for any
+    problem that never specified `disadvantaged_end`; only a problem that
+    explicitly set `disadvantaged_end="high"` gets a (correct) different
+    tertile ordering than before.
+
+    Parameters
+    ----------
+    unique_bins : sequence
+        Sorted, distinct equity-band values (e.g. IMD deciles 1-10).
+    disadvantaged_end : {"low", "high", None}, optional
+
+    Returns
+    -------
+    (list, list, list) or (None, None, None)
+        `(most_disadvantaged, middle, least_disadvantaged)` chunks, or
+        `(None, None, None)` if fewer than 3 distinct bins were given.
+    """
+    if len(unique_bins) < 3:
+        return None, None, None
+
+    chunks = np.array_split(list(unique_bins), 3)
+    if disadvantaged_end == "high":
+        chunks = list(reversed(chunks))
+
+    return list(chunks[0]), list(chunks[1]), list(chunks[2])
+
+
+def _order_bins_most_to_least_disadvantaged(unique_bins, disadvantaged_end):
+    """
+    Order `unique_bins` (already `sorted()`) most- to least-disadvantaged
+    per `add_equity_data(disadvantaged_end=...)`, individually rather than
+    bucketed into thirds -- built on `_split_bins_into_tertiles()`'s own
+    ordering so the two never drift apart.
+
+    Falls back to a plain reversal when there are too few distinct bands
+    to split into tertiles at all (`_split_bins_into_tertiles` then returns
+    `(None, None, None)`) but `disadvantaged_end="high"` -- without this,
+    that case would silently fall back to ascending raw-bin order (least-
+    disadvantaged first), which is exactly backwards.
+
+    Parameters
+    ----------
+    unique_bins : sequence
+        Sorted, distinct equity-band values (e.g. IMD deciles 1-10).
+    disadvantaged_end : {"low", "high", None}, optional
+
+    Returns
+    -------
+    list
+        `unique_bins`, reordered most- to least-disadvantaged.
+    """
+    lower, middle, upper = _split_bins_into_tertiles(unique_bins, disadvantaged_end)
+    if lower is not None:
+        return lower + middle + upper
+    if disadvantaged_end == "high":
+        return list(reversed(unique_bins))
+    return list(unique_bins)
 
 
 def _is_maximise_metric(col):
@@ -504,13 +850,21 @@ def _is_maximise_metric(col):
     True for solution metrics where a HIGHER value is better.
 
     Every other reported metric is a travel cost, where lower is better, so
-    the coverage proportions are the only maximisation objectives.
+    the coverage proportions and the "improvement" side of the population-
+    impact metrics (see `_population_impact_metrics`) are the only
+    maximisation objectives -- a bigger improved/reduced number is good, a
+    bigger worsened/increased number is bad.
 
     Matches on a substring rather than the exact column name so that it also
     covers the `regions` variant and any `__<label>` secondary-travel-matrix
     suffix -- the exact-equality checks this replaced silently treated
     `proportion_within_coverage_threshold__<label>` as a minimisation
     objective, sorting secondary-matrix coverage backwards.
+
+    `demand_unchanged`/`regions_unchanged` are directionless (neither a
+    higher nor lower count is inherently "better") and are treated as
+    lower-is-better here purely by omission; they are not meaningful
+    `rank_on`/`sort_by` targets either way.
 
     Parameters
     ----------
@@ -521,15 +875,52 @@ def _is_maximise_metric(col):
     -------
     bool
     """
-    return isinstance(col, str) and "within_coverage_threshold" in col
+    if not isinstance(col, str):
+        return False
+    return (
+        "within_coverage_threshold" in col
+        or "improved" in col
+        or "reduction" in col
+    )
 
 
-def _sort_solutions_by_metric(solution_df, rank_on):
+# Temporary column holding the lower-is-better view of whatever metric a
+# solve() is ranking on. Written just before a sort/prune and dropped
+# immediately after, so it never reaches `solution_df` -- it is fully
+# derivable from the ranking column and the resolved `Metric`.
+_RANK_SCORE_COL = "_rank_score"
+
+
+def _add_rank_score_column(df, scorer, output_col=_RANK_SCORE_COL):
     """
-    Sort a solutions dataframe so the BEST solution for `rank_on` is first.
+    Add a column holding `scorer`'s lower-is-better view of its ranking
+    column, so a batch can be sorted/pruned with a plain ascending sort.
 
-    Every `rank_on` call site used to sort with a bare
-    `solution_df.sort_values(rank_on)`, i.e. always ascending. That is right
+    Sorting on a normalised column rather than flipping an `ascending` flag
+    is what lets `solve(rank_on=...)` accept a `closest_to_target` metric:
+    "best" there is neither the largest nor the smallest raw value, so no
+    choice of `ascending` can express it. It also, correctly, ties values
+    equidistant from the target (an inter-tertile ratio of 0.8 and one of
+    1.2 are equally far from parity) -- the caller's tie-breaker column
+    then separates them.
+
+    Returns
+    -------
+    tuple[pandas.DataFrame, str]
+        A copy of `df` with the column added, and the column's name (so
+        call sites can use it exactly like `_apply_cost_weighting`'s).
+    """
+    df = df.copy()
+    df[output_col] = scorer.normalise(df[scorer.column].astype(float))
+    return df, output_col
+
+
+def _sort_solutions_by_metric(solution_df, sort_by):
+    """
+    Sort a solutions dataframe so the BEST solution for `sort_by` is first.
+
+    Every `sort_by` call site used to sort with a bare
+    `solution_df.sort_values(sort_by)`, i.e. always ascending. That is right
     for the travel-cost metrics but backwards for the coverage proportions,
     where higher is better -- so asking for the best solution by coverage
     returned the worst-covering one. Direction is resolved per column by
@@ -538,8 +929,8 @@ def _sort_solutions_by_metric(solution_df, rank_on):
     Parameters
     ----------
     solution_df : pandas.DataFrame
-        A solutions dataframe (or any frame containing `rank_on`).
-    rank_on : str or sequence of str
+        A solutions dataframe (or any frame containing `sort_by`).
+    sort_by : str or sequence of str
         Name of the metric column to rank by, or several for a primary
         metric plus tie-breakers. Direction is resolved per column, so a
         coverage metric can be tie-broken by a travel cost and each is still
@@ -552,7 +943,7 @@ def _sort_solutions_by_metric(solution_df, rank_on):
 
     Notes
     -----
-    `kind="mergesort"` is a stable sort, so solutions tied on `rank_on` keep
+    `kind="mergesort"` is a stable sort, so solutions tied on `sort_by` keep
     the relative order they already had rather than being reshuffled
     arbitrarily. Ties are routine here -- on the sample Brighton problem
     `max` takes only 5 distinct values across 15 candidate combinations --
@@ -565,7 +956,7 @@ def _sort_solutions_by_metric(solution_df, rank_on):
     unconditionally is therefore belt-and-braces for the multi-column case,
     and load-bearing for the single-column one.
     """
-    columns = [rank_on] if isinstance(rank_on, str) else list(rank_on)
+    columns = [sort_by] if isinstance(sort_by, str) else list(sort_by)
     return solution_df.sort_values(
         columns,
         ascending=[not _is_maximise_metric(col) for col in columns],
@@ -605,7 +996,7 @@ def _apply_cost_weighting(
     df,
     ranking_col,
     weights,
-    higher_is_better,
+    scorer,
     cost_col="total_cost",
     output_col="composite_score",
 ):
@@ -630,9 +1021,10 @@ def _apply_cost_weighting(
         The column holding each combination's primary objective value.
     weights : dict or None
         The (already-normalised) weights dict passed to `solve()`.
-    higher_is_better : bool
-        Whether higher values of `ranking_col` are better (e.g. True for
-        mclp's coverage proportion, False for weighted_average/max).
+    scorer : Metric
+        Describes the direction of `ranking_col`, via
+        `Metric.normalise()`. Takes the *raw* column and owns its
+        normalisation, so callers must pass the unnormalised values.
     cost_col : str, default "total_cost"
         The column holding each combination's total site cost.
     output_col : str, default "composite_score"
@@ -653,14 +1045,17 @@ def _apply_cost_weighting(
     ):
         return df, ranking_col
 
-    def _normalize_to_badness(series, invert):
-        norm = _min_max_normalize(series, constant_fill=0.0)
-        return (1.0 - norm) if invert else norm
-
-    primary_badness = _normalize_to_badness(
-        df[ranking_col].astype(float), invert=higher_is_better
+    # `Metric.normalise` already returns a lower-is-better view of the
+    # column, so a plain min-max on top of it lands on the 0=best "badness"
+    # scale for every direction. This replaces an `invert=higher_is_better`
+    # flag, which could only express the two-way split and so had no way to
+    # represent a `closest_to_target` rank_on. It is exactly equivalent for
+    # the two directions that flag could express: for higher-is-better,
+    # minmax(-x) == 1 - minmax(x), which is what inverting used to compute.
+    primary_badness = _min_max_normalize(
+        scorer.normalise(df[ranking_col].astype(float)), constant_fill=0.0
     )
-    cost_badness = _normalize_to_badness(df[cost_col].astype(float), invert=False)
+    cost_badness = _min_max_normalize(df[cost_col].astype(float), constant_fill=0.0)
 
     df = df.copy()
     df[output_col] = (1.0 - cost_weight) * primary_badness + cost_weight * cost_badness
@@ -708,6 +1103,103 @@ def _validate_capacity_constraint(self):
             f"but only {total_capacity} total slots. You need to add more "
             "candidate sites or increase 'p'."
         )
+
+
+def _resolve_site_numeric_column(
+    candidate_sites,
+    candidate_id_col,
+    col,
+    site_names,
+    param_name,
+    quantity_label,
+    allow_missing=False,
+):
+    """
+    Validate and return a numeric per-site column from `candidate_sites`,
+    indexed by `site_names` in the order given.
+
+    Shared by `SFCAMixin._resolve_supply` (2SFCA's `supply_col`, always
+    `allow_missing=False` -- a missing supply value would silently corrupt
+    every region's accessibility score) and `SiteSolutionSet.
+    site_capacity_summary()` (`capacity_col`, `allow_missing=True` -- a
+    missing capacity is row-local, and `candidate_sites` legitimately mixes
+    already-operating sites with not-yet-built proposals that have no
+    capacity figure yet).
+
+    Parameters
+    ----------
+    candidate_sites : pandas.DataFrame
+    candidate_id_col : str
+    col : str
+        The column to resolve, e.g. a `supply_col` or `capacity_col` value.
+    site_names : list of str
+        Sites to resolve the column for, in this order.
+    param_name : str
+        The caller's parameter name for `col`, e.g. "supply_col" or
+        "capacity_col" -- used verbatim in every raised message.
+    quantity_label : str
+        A short noun phrase for what the column represents, e.g. "supply
+        quantity" or "capacity" -- used in the negative-value message.
+    allow_missing : bool, default False
+        If False (2SFCA's behaviour), a NaN value anywhere in the resolved
+        column raises. If True, NaN values are returned as-is; the caller
+        is responsible for handling them (typically: propagating to NaN in
+        a derived ratio, and warning).
+
+    Returns
+    -------
+    pandas.Series
+        Indexed by `site_names`, in that order.
+
+    Raises
+    ------
+    ValueError
+        If `col` is not a column of `candidate_sites`, or if any resolved
+        value is negative, or (when `allow_missing=False`) if any resolved
+        value is NaN.
+    KeyError
+        If any of `site_names` is not in `candidate_sites`.
+    TypeError
+        If the column is not numeric.
+    """
+    if col not in candidate_sites.columns:
+        raise ValueError(
+            f"{param_name}={col!r} not found in candidate_sites. "
+            f"Available columns: {list(candidate_sites.columns)}."
+        )
+
+    indexed = candidate_sites.set_index(candidate_id_col)[col]
+
+    missing = [s for s in site_names if s not in indexed.index]
+    if missing:
+        raise KeyError(f"Sites not found in candidate_sites: {missing}.")
+
+    resolved = indexed.loc[site_names]
+
+    if not pd.api.types.is_numeric_dtype(resolved):
+        raise TypeError(
+            f"{param_name}={col!r} must contain numeric values. "
+            "Hint: try pd.to_numeric() on this column before calling "
+            "add_sites()."
+        )
+
+    if not allow_missing:
+        null_sites = resolved[resolved.isna()].index.tolist()
+        if null_sites:
+            raise ValueError(
+                f"The following sites are missing a value in "
+                f"{param_name}={col!r}: {null_sites}."
+            )
+
+    negative_sites = resolved[resolved < 0].index.tolist()
+    if negative_sites:
+        raise ValueError(
+            f"The following sites have a negative value in "
+            f"{param_name}={col!r}, which is not a valid {quantity_label}: "
+            f"{negative_sites}."
+        )
+
+    return resolved
 
 
 def _wrap_label(text, width):
@@ -779,12 +1271,12 @@ def _add_rank_column(df, score_col, tiebreaker_col, ascending=True):
 
 
 def _select_solution(
-    solution_df, rank_on=None, solution_rank=1, site_names=None, site_indices=None
+    solution_df, sort_by=None, solution_rank=1, site_names=None, site_indices=None
 ):
     """
     Select a single solution from solution_df based on provided criteria.
 
-    Priority: site_indices > site_names > rank_on/solution_rank
+    Priority: site_indices > site_names > sort_by/solution_rank
 
     Returns
     -------
@@ -817,8 +1309,8 @@ def _select_solution(
         return filtered.head(1).reset_index()
 
     # Priority 3: rank-based selection
-    if rank_on is not None:
-        sorted_df = _sort_solutions_by_metric(solution_df, rank_on)
+    if sort_by is not None:
+        sorted_df = _sort_solutions_by_metric(solution_df, sort_by)
     else:
         sorted_df = solution_df
 
@@ -848,6 +1340,33 @@ def _get_ordinal_suffix(n):
         return "th"
     else:
         return {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+
+
+def _unreachable_metrics_fragment(regions_unreachable):
+    """
+    "N regions unreachable" (singular-aware), or "" when `regions_
+    unreachable` is 0 -- for appending to a plot title/label wherever the
+    honest, reachable-only travel-cost metrics (weighted_average, max,
+    ...) are already being reported alongside it. Without this, a demand
+    location with no feasible journey (`add_travel_matrix(allow_missing=
+    True)`) simply disappears from a plot's summary text with no
+    indication anything was excluded.
+
+    Parameters
+    ----------
+    regions_unreachable : int
+        `solution_df`'s `regions_unreachable` value (or its `__<label>`
+        secondary-matrix variant) for the solution being plotted.
+
+    Returns
+    -------
+    str
+    """
+    n = int(regions_unreachable)
+    if n == 0:
+        return ""
+    region_word = "region" if n == 1 else "regions"
+    return f"{n} {region_word} unreachable"
 
 
 def _reject_removed_basemap_alias(kwargs, method_name):

@@ -1,7 +1,148 @@
-from lokigi.utils import _safe_evaluate, _select_solution, _get_ordinal_suffix
+from lokigi.utils import (
+    _safe_evaluate,
+    _select_solution,
+    _get_ordinal_suffix,
+    _unreachable_metrics_fragment,
+)
+import json
+import textwrap
 import matplotlib.pyplot as plt
+import pandas as pd
+from branca.element import MacroElement, Template
 from matplotlib.colors import ListedColormap
 from matplotlib.lines import Line2D
+
+#: Whether interactive maps carry the hidden-container zoom guard (see
+#: :func:`_attach_deferred_fit_bounds`). Set
+#: ``lokigi.plot_utils.DEFERRED_FIT_BOUNDS = False`` to stop attaching it.
+DEFERRED_FIT_BOUNDS = True
+
+
+class _DeferredFitBounds(MacroElement):
+    """Re-run ``fitBounds`` once the map container first gains a real size.
+
+    Leaflet derives its zoom level from the pixel size of the map
+    container. If the map is initialised while that container is hidden
+    (``display: none``, as reveal.js does for every non-active slide, and
+    Quarto tabsets do for inactive tabs), the container measures 0x0 and
+    ``fitBounds`` clamps to zoom 0 -- the whole world. Showing the slide
+    later fixes tile layout but never re-runs ``fitBounds``, so the map
+    stays zoomed out.
+
+    This element watches for the container gaining a non-zero size and,
+    when it does, re-applies the correct bounds exactly once. Maps that
+    were visible when they loaded skip the observer entirely.
+    """
+
+    _template = Template(
+        """
+        {% macro script(this, kwargs) %}
+            (function () {
+                var map = {{ this._parent.get_name() }};
+                var bounds = {{ this.bounds_json }};
+                var container = map.getContainer();
+
+                function rendered() {
+                    return container.clientWidth > 0
+                        && container.clientHeight > 0;
+                }
+
+                // Leaflet caches the size it measured at init, so this
+                // reports what fitBounds actually used, not the size now.
+                var size = map.getSize();
+
+                // Laid out correctly already, or no way to watch for it.
+                if ((size.x > 0 && size.y > 0)
+                        || typeof ResizeObserver === "undefined") {
+                    return;
+                }
+
+                var observer = new ResizeObserver(function () {
+                    if (!rendered()) {
+                        return;
+                    }
+                    // One shot: never fight the user's own pan or zoom.
+                    observer.disconnect();
+                    map.invalidateSize();
+                    map.fitBounds(bounds);
+                });
+                observer.observe(container);
+            })();
+        {% endmacro %}
+        """
+    )
+
+    def __init__(self, bounds):
+        super().__init__()
+        self._name = "DeferredFitBounds"
+        self.bounds_json = json.dumps(bounds)
+
+
+def _attach_deferred_fit_bounds(m):
+    """Attach the hidden-container zoom guard to a folium map.
+
+    Call this only once every layer has been added -- the bounds are read
+    back off the map's children.
+
+    Parameters
+    ----------
+    m : folium.Map
+        The map to guard.
+
+    Returns
+    -------
+    folium.Map
+        The same map, for use as ``return _attach_deferred_fit_bounds(m)``.
+    """
+    if not DEFERRED_FIT_BOUNDS:
+        return m
+
+    bounds = m.get_bounds()
+
+    # No child layer could report bounds, so there is nothing to fit to.
+    if any(coord is None for corner in bounds for coord in corner):
+        return m
+
+    m.add_child(_DeferredFitBounds(bounds))
+
+    return m
+
+
+def _add_plot_caption(fig, caption, default_caption, width=90):
+    """
+    Render a stakeholder-facing "how to read this" caption below a chart.
+
+    Parameters
+    ----------
+    fig : matplotlib.figure.Figure
+        Figure to draw the caption on.
+    caption : str or None
+        Caller-supplied override. `None` uses `default_caption`; `""`
+        suppresses the caption entirely; any other string is used verbatim.
+    default_caption : str or None
+        Caption used when `caption` is None. Pass None (not just an empty
+        string) when the caller has no default to offer for this particular
+        plot configuration.
+    width : int, default 90
+        `textwrap.wrap` fill width the caption is wrapped to before being
+        drawn.
+    """
+    if caption is None:
+        caption = default_caption
+    if not caption:
+        return
+    wrapped = "\n".join(textwrap.wrap(caption, width=width))
+    fig.text(
+        0.01,
+        -0.02,
+        wrapped,
+        ha="left",
+        va="top",
+        fontsize=8.5,
+        color="dimgray",
+        wrap=True,
+        transform=fig.transFigure,
+    )
 
 
 def plot_solution_sets_comparison(
@@ -10,6 +151,7 @@ def plot_solution_sets_comparison(
     figsize=(16, 8),
     title=None,
     title_fontsize=14,
+    shared_color_scale=True,
     **shared_plot_kwargs,
 ):
     """
@@ -28,7 +170,7 @@ def plot_solution_sets_comparison(
         - 'solution_rank': int
         - 'site_names': list of str
         - 'site_indices': list of int or np.ndarray
-        - 'rank_on': str
+        - 'sort_by': str
         - 'title': str (subplot title)
         - Any other plot_best_combination() parameters
     figsize : tuple, default=(16, 8)
@@ -37,6 +179,19 @@ def plot_solution_sets_comparison(
         Overall figure title (suptitle). If None, no suptitle is added.
     title_fontsize : int, default=14
         Font size for the overall figure title.
+    shared_color_scale : bool, default True
+        Every subplot using the default cost-based colouring (i.e. not
+        `plot_site_allocation` or `plot_regions_not_meeting_threshold`,
+        which already use their own categorical/fixed-`[0, 1]` scales)
+        shares one `vmin`/`vmax` across all such panels, computed from
+        their own selected solution's travel-cost values. Without this,
+        each panel independently autoscales to its own min/max -- two
+        panels can end up looking like a similar spread of outcomes on
+        the map even when, say, public transport times are five times
+        longer than car times everywhere, since the colour gradient
+        looks the same despite wildly different absolute numbers. Set to
+        False to restore each panel's own independent scale (e.g. if the
+        solution sets being compared use genuinely incomparable units).
     **shared_plot_kwargs
         Keyword arguments applied to all subplots. Individual subplot configs
         override these shared settings.
@@ -91,19 +246,48 @@ def plot_solution_sets_comparison(
     if n_plots == 1:
         axes = [axes]
 
-    # Plot each solution from its respective solution set
-    for i, (solution_set, config) in enumerate(zip(solution_sets, solutions_config)):
-        # Merge shared kwargs with individual config
+    # Resolve every panel's selected solution up front (rather than inside
+    # the plotting loop below) so a shared vmin/vmax can be computed across
+    # all cost-based panels before any of them are actually drawn.
+    resolved_solutions = []
+    for solution_set, config in zip(solution_sets, solutions_config):
         plot_kwargs = {**shared_plot_kwargs, **config}
-
-        # Get the solution
         solution = _select_solution(
             solution_set.solution_df,
-            rank_on=config.get("rank_on"),
+            sort_by=config.get("sort_by"),
             solution_rank=config.get("solution_rank", 1),
             site_names=config.get("site_names"),
             site_indices=config.get("site_indices"),
         )
+        is_cost_based = not plot_kwargs.get(
+            "plot_site_allocation", False
+        ) and not plot_kwargs.get("plot_regions_not_meeting_threshold", False)
+        resolved_solutions.append((solution_set, solution, is_cost_based))
+
+    global_vmin = global_vmax = None
+    if shared_color_scale:
+        cost_values = []
+        for solution_set, solution, is_cost_based in resolved_solutions:
+            if not is_cost_based:
+                continue
+            cost_col, _, _, _, _ = solution_set._resolve_travel_columns(None)
+            problem_df = (
+                solution["problem_df"].values[0]
+                if hasattr(solution["problem_df"], "values")
+                else solution["problem_df"][0]
+            )
+            cost_values.append(problem_df[cost_col])
+        if cost_values:
+            combined_costs = pd.concat(cost_values)
+            global_vmin = combined_costs.min()
+            global_vmax = combined_costs.max()
+
+    # Plot each solution from its respective solution set
+    for i, (solution_set, config) in enumerate(zip(solution_sets, solutions_config)):
+        # Merge shared kwargs with individual config
+        plot_kwargs = {**shared_plot_kwargs, **config}
+        solution = resolved_solutions[i][1]
+        is_cost_based = resolved_solutions[i][2]
 
         # Extract plotting parameters (same as before)
         show_all_locations = plot_kwargs.pop("show_all_locations", True)
@@ -169,6 +353,8 @@ def plot_solution_sets_comparison(
             label_wrap_width=label_wrap_width,
             discrete_cmap=discrete_cmap,
             colors=colors,
+            global_vmin=global_vmin if is_cost_based else None,
+            global_vmax=global_vmax if is_cost_based else None,
             add_legend=True,
             legend_kwargs=legend_kwargs,
         )
@@ -235,6 +421,12 @@ def plot_solution_sets_comparison(
                         f"Weighted Avg: {solution['weighted_average'].values[0]:.1f} | "
                         f"Max: {solution['max'].values[0]:.1f}"
                     )
+
+                unreachable_fragment = _unreachable_metrics_fragment(
+                    solution["regions_unreachable"].values[0]
+                )
+                if unreachable_fragment:
+                    metrics += f" | {unreachable_fragment}"
 
                 axes[i].set_title(
                     f"{title_prefix}\n{metrics}", fontsize=subplot_title_fontsize

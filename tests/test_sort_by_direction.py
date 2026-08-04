@@ -1,17 +1,17 @@
 """
-Regression tests for `rank_on`'s sort direction.
+Regression tests for `sort_by`'s sort direction.
 
-Every `rank_on` call site used to sort with a bare
-`solution_df.sort_values(rank_on)` -- always ascending. That is correct for
+Every `sort_by` call site used to sort with a bare
+`solution_df.sort_values(sort_by)` -- always ascending. That is correct for
 the travel-cost metrics, which are all "lower is better", but backwards for
 the coverage proportions, where higher is better. The result was that
 
     solutions.return_best_combination_site_names(
-        rank_on="proportion_within_coverage_threshold"
+        sort_by="proportion_within_coverage_threshold"
     )
 
 returned the WORST-covering combination, from a method whose name promises
-the best one. Every `rank_on`-accepting method shared the bug, including the
+the best one. Every `sort_by`-accepting method shared the bug, including the
 plotting entry points, which selected the worst solutions to plot.
 
 Direction is now resolved per column by `_sort_solutions_by_metric`, which
@@ -92,7 +92,7 @@ def test_sort_helper_resolves_each_column_independently(solutions):
 def test_return_best_combination_site_names_ranks_coverage_highest_first(
     solutions, column
 ):
-    assert solutions.return_best_combination_site_names(rank_on=column) == [
+    assert solutions.return_best_combination_site_names(sort_by=column) == [
         "BEST_COVER"
     ]
 
@@ -101,14 +101,14 @@ def test_return_best_combination_site_names_ranks_coverage_highest_first(
 def test_return_best_combination_site_indices_ranks_coverage_highest_first(
     solutions, column
 ):
-    assert solutions.return_best_combination_site_indices(rank_on=column) == [0, 1]
+    assert solutions.return_best_combination_site_indices(sort_by=column) == [0, 1]
 
 
 @pytest.mark.parametrize("column", [COVERAGE, COVERAGE_REGIONS, COVERAGE_SECONDARY])
 def test_return_best_combination_details_ranks_coverage_highest_first(
     solutions, column
 ):
-    details = solutions.return_best_combination_details(rank_on=column, top_n=2)
+    details = solutions.return_best_combination_details(sort_by=column, top_n=2)
 
     assert details["site_names"].tolist() == [["BEST_COVER"], ["MIDDLE"]]
 
@@ -116,13 +116,13 @@ def test_return_best_combination_details_ranks_coverage_highest_first(
 def test_return_best_combination_details_still_ranks_cost_lowest_first(solutions):
     """The mirror case -- travel costs must keep their existing ascending
     order, so the direction fix can't have flipped everything blindly."""
-    details = solutions.return_best_combination_details(rank_on="max", top_n=2)
+    details = solutions.return_best_combination_details(sort_by="max", top_n=2)
 
     assert details["site_names"].tolist() == [["WORST_COVER"], ["MIDDLE"]]
 
 
-def test_rank_on_none_preserves_solve_order(solutions):
-    """Without `rank_on`, the solver's own ranking is used untouched."""
+def test_sort_by_none_preserves_solve_order(solutions):
+    """Without `sort_by`, the solver's own ranking is used untouched."""
     assert solutions.return_best_combination_site_names() == ["BEST_COVER"]
     assert solutions.return_best_combination_details(top_n=3)[
         "site_names"
@@ -134,25 +134,25 @@ def test_rank_on_none_preserves_solve_order(solutions):
 
 @pytest.mark.parametrize("column", [COVERAGE, COVERAGE_REGIONS, COVERAGE_SECONDARY])
 def test_select_solution_ranks_coverage_highest_first(solutions, column):
-    selected = _select_solution(solutions.solution_df, rank_on=column, solution_rank=1)
+    selected = _select_solution(solutions.solution_df, sort_by=column, solution_rank=1)
     assert selected["site_names"].iloc[0] == ["BEST_COVER"]
 
 
 @pytest.mark.parametrize("column", [COVERAGE, COVERAGE_REGIONS, COVERAGE_SECONDARY])
 def test_select_solution_second_rank_walks_down_from_the_best(solutions, column):
-    selected = _select_solution(solutions.solution_df, rank_on=column, solution_rank=2)
+    selected = _select_solution(solutions.solution_df, sort_by=column, solution_rank=2)
     assert selected["site_names"].iloc[0] == ["MIDDLE"]
 
 
 def test_select_solution_still_ranks_cost_lowest_first(solutions):
-    selected = _select_solution(solutions.solution_df, rank_on="max", solution_rank=1)
+    selected = _select_solution(solutions.solution_df, sort_by="max", solution_rank=1)
     assert selected["site_names"].iloc[0] == ["WORST_COVER"]
 
 
-def test_select_solution_explicit_site_names_ignores_rank_on(solutions):
-    """`site_names` has priority over `rank_on`, so direction is irrelevant."""
+def test_select_solution_explicit_site_names_ignores_sort_by(solutions):
+    """`site_names` has priority over `sort_by`, so direction is irrelevant."""
     selected = _select_solution(
-        solutions.solution_df, rank_on=COVERAGE, site_names=["WORST_COVER"]
+        solutions.solution_df, sort_by=COVERAGE, site_names=["WORST_COVER"]
     )
     assert selected["site_names"].iloc[0] == ["WORST_COVER"]
 
@@ -211,7 +211,7 @@ def test_sort_helper_keeps_tied_solutions_in_their_existing_order():
 
 # --- plot_travel_time_distribution ----------------------------------------
 #
-# The only rank_on call site that sorts on two columns (rank_on plus
+# The only sort_by call site that sorts on two columns (sort_by plus
 # secondary_ranking), and the only one reached through a plotting method
 # rather than an accessor, so it is exercised end-to-end on a solved problem.
 
@@ -246,7 +246,7 @@ def solved_mclp(loaded_problem):
 
 def test_travel_time_distribution_plots_the_best_covering_solutions(solved_mclp):
     figure = solved_mclp.plot_travel_time_distribution(
-        top_n=2, rank_on="proportion_within_coverage_threshold"
+        top_n=2, sort_by="proportion_within_coverage_threshold"
     )
 
     assert _plotted_site_sets(figure) == {
@@ -257,7 +257,7 @@ def test_travel_time_distribution_plots_the_best_covering_solutions(solved_mclp)
 
 def test_travel_time_distribution_still_plots_lowest_cost_first(solved_mclp):
     """Mirror case: ranking on a travel cost keeps its ascending order."""
-    figure = solved_mclp.plot_travel_time_distribution(top_n=1, rank_on="max")
+    figure = solved_mclp.plot_travel_time_distribution(top_n=1, sort_by="max")
 
     assert _plotted_site_sets(figure) == {frozenset({"Site_A", "Site_C"})}
 
@@ -268,7 +268,7 @@ def test_travel_time_distribution_accepts_bottom_n(solved_mclp):
     keyword arguments, so passing bottom_n at all was an instant crash.
     """
     figure = solved_mclp.plot_travel_time_distribution(
-        top_n=1, bottom_n=1, rank_on="proportion_within_coverage_threshold"
+        top_n=1, bottom_n=1, sort_by="proportion_within_coverage_threshold"
     )
 
     # Best-covering {A, C} plus worst-covering {A, B}; {B, C} sits between

@@ -120,7 +120,7 @@ def solution_df():
 
 def test_select_solution_by_site_indices_takes_priority(solution_df):
     result = _select_solution(
-        solution_df, rank_on="weighted_average", solution_rank=1, site_indices=[2, 1]
+        solution_df, sort_by="weighted_average", solution_rank=1, site_indices=[2, 1]
     )
     assert result.iloc[0]["site_names"] == ["B", "C"]
 
@@ -130,10 +130,10 @@ def test_select_solution_by_site_names_when_no_indices_given(solution_df):
     assert result.iloc[0]["site_indices"] == [0, 2]
 
 
-def test_select_solution_by_rank_on_and_solution_rank(solution_df):
-    """rank_on='weighted_average' should sort ascending first (5.0 is lowest,
+def test_select_solution_by_sort_by_and_solution_rank(solution_df):
+    """sort_by='weighted_average' should sort ascending first (5.0 is lowest,
     so solution_rank=1 after re-sorting is the row with weighted_average 5.0)."""
-    result = _select_solution(solution_df, rank_on="weighted_average", solution_rank=1)
+    result = _select_solution(solution_df, sort_by="weighted_average", solution_rank=1)
     assert result.iloc[0]["weighted_average"] == 5.0
 
 
@@ -206,6 +206,17 @@ def test_get_ranking_by_objective_maps_every_supported_objective(
         # SolutionComparator.
         "proportion_within_coverage_threshold__public_transport",
         "proportion_regions_within_coverage_threshold__public_transport",
+        # Population-impact-vs-baseline columns (see
+        # _population_impact_metrics): a bigger improved/reduced number is
+        # good, so these are higher-is-better too, including their
+        # secondary-matrix/demand-scenario __<label> suffixed forms.
+        "demand_improved",
+        "regions_improved",
+        "proportion_demand_improved",
+        "mean_reduction_among_improved",
+        "max_reduction",
+        "demand_improved__public_transport",
+        "mean_reduction_among_improved__older_population",
     ],
 )
 def test_is_maximise_metric_is_true_for_every_coverage_column(column):
@@ -222,6 +233,18 @@ def test_is_maximise_metric_is_true_for_every_coverage_column(column):
         "total_cost",
         "max__public_transport",
         "coverage_threshold",  # the configured threshold, not a coverage score
+        # Population-impact "worsened"/"increase" columns are LOWER-is-
+        # better (fewer people worse off, or a smaller increase, is good)
+        # -- the mirror image of the _improved/_reduction columns above.
+        "demand_worsened",
+        "regions_worsened",
+        "mean_increase_among_worsened",
+        "max_increase",
+        # Directionless: neither a higher nor lower count is inherently
+        # "better", so treated as lower-is-better here purely by omission
+        # (see _is_maximise_metric's docstring).
+        "demand_unchanged",
+        "regions_unchanged",
         None,
     ],
 )

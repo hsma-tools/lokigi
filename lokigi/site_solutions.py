@@ -3,7 +3,17 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from lokigi.utils import _min_max_normalize, _select_solution, _sort_solutions_by_metric
+from lokigi.utils import (
+    _get_ranking_by_objective,
+    _min_max_normalize,
+    _select_solution,
+    _sort_solutions_by_metric,
+    _population_impact_metrics,
+    _split_bins_into_tertiles,
+    _format_threshold,
+    _get_required_site_indices,
+    _resolve_site_numeric_column,
+)
 
 from lokigi.mixins.site_solution_plots import (
     MapsMixin,
@@ -24,6 +34,19 @@ from lokigi.mixins.site_eda import (
     SiteProblemEDAMixin,
 )
 from lokigi.mixins.site_accessibility import AccessibilityPlotMixin
+
+
+# Reserved key `SiteProblem._resolve_baseline_costs()` uses to smuggle the
+# baseline's `site_names` through `baseline_costs` (nominally a
+# `dict[str, pandas.Series]` of cost columns) to `EvaluatedCombination.
+# __init__`, which pops it out before the cost-Series validation loop ever
+# sees it. Avoids threading a second `baseline_site_names` parameter through
+# every brute-force/greedy/GRASP call site that already passes
+# `baseline_costs` through unopened -- this key is never seen by any of
+# them, only by the two places that actually construct/consume the dict.
+# Dunder-style so it can never collide with a real cost-column name
+# ("min_cost", "min_cost__<label>").
+_BASELINE_SITE_NAMES_KEY = "__baseline_site_names__"
 
 
 # MARK: CLASS EvaluatedCombination
@@ -56,6 +79,28 @@ class EvaluatedCombination:
     coverage_threshold : float, optional
         Threshold used to determine whether a demand point is considered covered.
         If provided, used to compute the proportion of demand points within coverage.
+    baseline_costs : dict[str, pandas.Series], optional
+        Maps a cost-column name ("min_cost", or "min_cost__<label>" for a
+        registered secondary travel matrix) to a baseline per-region cost
+        Series, indexed by demand-location ID
+        (`site_problem._demand_data_id_col`). When given, `population_impact`
+        (and the corresponding `demand_improved`/`regions_improved`/etc.
+        keys in `return_solution_metrics()`) diff this combination's own
+        costs against it. `None` (the default) skips this entirely.
+    meaningful_change_threshold : float, default 0.0
+        Passed through to `_population_impact_metrics()` -- see there for
+        the improved/worsened/unchanged classification rule.
+    beyond_thresholds : float or sequence of float, optional
+        One or more "left behind" travel-cost thresholds. For each value
+        `t`, adds `demand_beyond_threshold_<t>` / `regions_beyond_
+        threshold_<t>` (headcount/region-count with a cost beyond `t`) to
+        `return_solution_metrics()`, plus a `_by_equity_group` dict variant
+        of each when equity data is registered. Deliberately a distinct
+        parameter from `coverage_threshold`/`threshold_for_coverage`
+        (opposite crossing direction: "covered" is good, "beyond" is bad)
+        and, unlike it, supports more than one threshold at once. `None`
+        (the default) adds no columns, keeping `solution_df`'s schema
+        unchanged for callers that never ask for this.
 
     Attributes
     ----------
@@ -94,6 +139,10 @@ class EvaluatedCombination:
         threshold, counting every region equally regardless of its demand.
         Identical to `proportion_within_coverage_threshold` when demand is
         uniform (including when `add_demand()` was never called).
+    population_impact : dict or None
+        `_population_impact_metrics()`'s output diffing this combination's
+        `min_cost` against `baseline_costs["min_cost"]`, or `None` if no
+        `baseline_costs` was supplied.
 
 
 
@@ -111,12 +160,77 @@ class EvaluatedCombination:
         weights,
         site_problem,
         coverage_threshold=None,
+        baseline_costs=None,
+        meaningful_change_threshold=0.0,
+        beyond_thresholds=None,
+        unreachable_cost=None,
     ):
         self.solution_type = solution_type
         self.site_names = site_names
         self.site_indices = site_indices
         self.evaluated_combination_df = evaluated_combination_df
         self.site_problem = site_problem
+        self._meaningful_change_threshold = meaningful_change_threshold
+        self._unreachable_cost = unreachable_cost
+
+        if beyond_thresholds is None:
+            self.beyond_thresholds = ()
+        elif isinstance(beyond_thresholds, (int, float, np.integer, np.floating)):
+            # np.integer doesn't subclass int (unlike np.floating, which
+            # does subclass float) -- without it, a numpy-integer scalar
+            # (e.g. from a column's .max()) fell into the `else` branch and
+            # crashed with "'numpy.int64' object is not iterable".
+            self.beyond_thresholds = (float(beyond_thresholds),)
+        else:
+            self.beyond_thresholds = tuple(float(t) for t in beyond_thresholds)
+
+        # Population-impact-vs-baseline support (see _population_impact_
+        # metrics in utils.py). `baseline_costs` maps a cost-column name
+        # ("min_cost", or "min_cost__<label>" for a secondary travel
+        # matrix) to a baseline pd.Series indexed by demand-location ID
+        # (site_problem._demand_data_id_col). Aligned once here, by ID --
+        # NEVER by position -- and reused by every _compute_travel_metrics
+        # call below (primary matrix, each secondary matrix, each
+        # secondary demand scenario), since they all key off the same
+        # cost-column names.
+        # Popped out before the cost-Series validation loop below ever sees
+        # it -- see _BASELINE_SITE_NAMES_KEY's own docstring. None if
+        # baseline_costs didn't carry it (e.g. a direct, advanced caller of
+        # evaluate_single_solution_single_objective(baseline_costs=...) that
+        # built the dict by hand rather than via solve(baseline=...)).
+        self._baseline_site_names = None
+        if baseline_costs is not None:
+            baseline_costs = dict(baseline_costs)
+            self._baseline_site_names = baseline_costs.pop(
+                _BASELINE_SITE_NAMES_KEY, None
+            )
+
+        self._baseline_cost_arrays = {}
+        if baseline_costs is not None:
+            id_col = getattr(site_problem, "_demand_data_id_col", None)
+            if id_col is None or id_col not in evaluated_combination_df.columns:
+                raise ValueError(
+                    "baseline_costs was supplied, but this combination's "
+                    "problem_df has no demand-location ID column "
+                    f"({id_col!r}) to align against. This should not be "
+                    "reachable through the public API."
+                )
+            region_ids = evaluated_combination_df[id_col]
+            for cost_col, baseline_series in baseline_costs.items():
+                missing_mask = ~region_ids.isin(baseline_series.index)
+                if missing_mask.any():
+                    missing_ids = region_ids[missing_mask].tolist()
+                    raise ValueError(
+                        f"Baseline is missing {len(missing_ids)} demand "
+                        f"location(s) present in this solution's problem_df "
+                        f"for '{cost_col}': {missing_ids[:10]}"
+                        f"{', ...' if len(missing_ids) > 10 else ''}. The "
+                        "baseline and candidate solutions must be evaluated "
+                        "against the exact same demand locations."
+                    )
+                self._baseline_cost_arrays[cost_col] = baseline_series.reindex(
+                    region_ids
+                ).to_numpy()
 
         self.weighted_by_equity_group = {}
         self.unweighted_by_equity_group = {}
@@ -355,18 +469,47 @@ class EvaluatedCombination:
         # matrices get the identical treatment below, applied to their own
         # suffixed columns -- see _compute_travel_metrics.
         primary_metrics = self._compute_travel_metrics(
-            "min_cost", "within_threshold", active_weights
+            "min_cost",
+            "within_threshold",
+            active_weights,
+            unit=getattr(self.site_problem, "_travel_matrix_unit", None),
+            unreachable_cost=unreachable_cost,
         )
         self.weighted_average = primary_metrics["weighted_average"]
         self.unweighted_average = primary_metrics["unweighted_average"]
         self.percentile_90th = primary_metrics["percentile_90th"]
         self.max = primary_metrics["max"]
+        self.weighted_average_for_ranking = primary_metrics[
+            "weighted_average_for_ranking"
+        ]
+        self.unweighted_average_for_ranking = primary_metrics[
+            "unweighted_average_for_ranking"
+        ]
+        self.max_for_ranking = primary_metrics["max_for_ranking"]
+        self.regions_unreachable = primary_metrics["regions_unreachable"]
+        self.demand_unreachable = primary_metrics["demand_unreachable"]
+        self.proportion_demand_unreachable = primary_metrics[
+            "proportion_demand_unreachable"
+        ]
+        self.regions_unreachable_by_equity_group = primary_metrics[
+            "regions_unreachable_by_equity_group"
+        ]
+        self.demand_unreachable_by_equity_group = primary_metrics[
+            "demand_unreachable_by_equity_group"
+        ]
         self.proportion_within_coverage_threshold = primary_metrics[
             "proportion_within_coverage_threshold"
         ]
         self.proportion_regions_within_coverage_threshold = primary_metrics[
             "proportion_regions_within_coverage_threshold"
         ]
+        self.demand_within_coverage_threshold = primary_metrics[
+            "demand_within_coverage_threshold"
+        ]
+        self.regions_within_coverage_threshold = primary_metrics[
+            "regions_within_coverage_threshold"
+        ]
+        self.beyond_threshold_metrics = primary_metrics["beyond_threshold_metrics"]
         self.weighted_by_equity_group = primary_metrics["weighted_by_equity_group"]
         self.unweighted_by_equity_group = primary_metrics["unweighted_by_equity_group"]
         self.coverage_by_equity_group = primary_metrics["coverage_by_equity_group"]
@@ -374,6 +517,12 @@ class EvaluatedCombination:
             "coverage_regions_by_equity_group"
         ]
         self.max_cost_by_equity_group = primary_metrics["max_cost_by_equity_group"]
+        self.demand_improved_by_equity_group = primary_metrics[
+            "demand_improved_by_equity_group"
+        ]
+        self.demand_worsened_by_equity_group = primary_metrics[
+            "demand_worsened_by_equity_group"
+        ]
         self.gap_absolute_weighted = primary_metrics["gap_absolute_weighted"]
         self.gap_absolute_desc = primary_metrics["gap_absolute_desc"]
         self.gap_relative_weighted = primary_metrics["gap_relative_weighted"]
@@ -383,6 +532,7 @@ class EvaluatedCombination:
         self.avg_upper_third_bins = primary_metrics["avg_upper_third_bins"]
         self.inter_tertile_ratio = primary_metrics["inter_tertile_ratio"]
         self.inter_tertile_desc = primary_metrics["inter_tertile_desc"]
+        self.population_impact = primary_metrics["population_impact"]
 
         # Secondary travel matrices: same statistics, computed from their
         # own suffixed `min_cost__<label>` / `within_threshold__<label>`
@@ -396,7 +546,10 @@ class EvaluatedCombination:
             if cost_col not in self.evaluated_combination_df.columns:
                 continue
             self.secondary_metrics[label] = self._compute_travel_metrics(
-                cost_col, within_col, active_weights
+                cost_col,
+                within_col,
+                active_weights,
+                unit=self.site_problem.secondary_travel_matrices[label]["unit"],
             )
 
         # Secondary demand scenarios: re-weight the primary matrix's
@@ -422,6 +575,7 @@ class EvaluatedCombination:
                     "within_threshold",
                     active_weights=dweights,
                     coverage_demand=dweights,
+                    unit=getattr(self.site_problem, "_travel_matrix_unit", None),
                 )
             }
             for tlabel in dmeta["also_weight_matrices"]:
@@ -433,6 +587,7 @@ class EvaluatedCombination:
                     f"within_threshold__{tlabel}",
                     active_weights=dweights,
                     coverage_demand=dweights,
+                    unit=self.site_problem.secondary_travel_matrices[tlabel]["unit"],
                 )
             self.secondary_demand_metrics[dlabel] = per_matrix
 
@@ -468,32 +623,61 @@ class EvaluatedCombination:
         Proportion covered -- demand-weighted when `demand` is supplied,
         otherwise the plain share of regions.
 
+        Thin wrapper around `_coverage_stats()` for the many call sites
+        that only need the proportion (e.g. the per-equity-band
+        breakdowns), keeping their signature unchanged.
+        """
+        proportion, _, _ = EvaluatedCombination._coverage_stats(within_flags, demand)
+        return proportion
+
+    @staticmethod
+    def _coverage_stats(within_flags, demand):
+        """
+        Proportion, absolute demand, and region count covered --
+        demand-weighted when `demand` is supplied, otherwise the plain
+        share/count of regions.
+
         The all-NaN check is load-bearing. `within_flags` is entirely NaN
         whenever no `threshold_for_coverage` was given, and that must stay
         NaN ("not measured"). It cannot be left to the arithmetic below,
         because pandas' `.sum()` skips NaN: the weighted branch would
         otherwise return a confident 0.0 -- "none of the demand is covered"
         -- for a problem where coverage was never assessed at all.
+
+        Returns
+        -------
+        (proportion, covered_demand, covered_regions) : (float, float, int)
+            `covered_demand` is `NaN` whenever `demand` is None (there is no
+            headcount to report, only a share of regions); `proportion` and
+            `covered_demand` are both `NaN` if `within_flags` is all-NaN.
         """
         if within_flags.isna().all():
-            return np.nan
+            return np.nan, np.nan, 0
 
         covered = within_flags.astype(float)
+        covered_regions = int(covered.sum())
 
         if demand is None:
-            return float(covered.sum() / len(covered))
+            return float(covered.sum() / len(covered)), np.nan, covered_regions
 
         total_demand = demand.sum()
         if total_demand <= 0:
             # Defensive only, and not reachable through the public API: a
             # zero-demand problem already raises "Weights sum to zero" from
             # np.average when weighted_average is computed further up.
-            return np.nan
+            return np.nan, np.nan, covered_regions
 
-        return float((covered * demand).sum() / total_demand)
+        covered_demand = float((covered * demand).sum())
+        return covered_demand / total_demand, covered_demand, covered_regions
 
     def _compute_travel_metrics(
-        self, cost_col, within_col, active_weights, coverage_demand=None
+        self,
+        cost_col,
+        within_col,
+        active_weights,
+        coverage_demand=None,
+        unit=None,
+        unreachable_cost=None,
     ):
         """
         Compute weighted/unweighted travel-cost summary statistics and the
@@ -505,6 +689,13 @@ class EvaluatedCombination:
         combination gets identical treatment rather than a parallel,
         potentially-diverging implementation.
 
+        `unit` names the travel-cost unit this `cost_col` was registered
+        with (`add_travel_matrix(unit=...)`/`add_secondary_travel_matrix(
+        unit=...)`), used only in `gap_absolute_desc`'s wording ("Spread of
+        2.6 minutes" rather than the meaningless bare "Spread of 2.6
+        units"). Falls back to the literal word "units" if `None` -- e.g.
+        no unit was ever registered -- so the sentence still reads.
+
         `coverage_demand` overrides the demand series used to weight
         `proportion_within_coverage_threshold` (and its equity breakdown).
         It defaults to the primary demand column (via
@@ -513,30 +704,129 @@ class EvaluatedCombination:
         weighted by the primary demand. A secondary *demand* scenario
         passes its own scenario series here instead, so "proportion of
         demand covered" reflects that scenario's demand rather than the
-        primary one.
+        primary one. It also determines the weighting for
+        `population_impact` (see below), for the same reason.
+
+        The returned dict also carries a `population_impact` key -- `None`
+        unless a baseline was supplied for `cost_col` (i.e.
+        `cost_col in self._baseline_cost_arrays`), in which case it is the
+        `_population_impact_metrics()` dict diffing `df[cost_col]` against
+        that baseline, weighted by `demand_series` above.
+
+        It also carries a `beyond_threshold_metrics` dict, keyed by each
+        value in `self.beyond_thresholds` -- empty unless that was
+        populated (see `EvaluatedCombination`'s `beyond_thresholds`
+        parameter).
+
+        `weighted_average`/`unweighted_average`/`percentile_90th`/`max` are
+        computed over reachable rows only (`cost_col` not NaN) -- an
+        `allow_missing=True` travel matrix would otherwise poison every one
+        of these via plain NaN propagation (a single unreachable row turns
+        the demand-weighted average of every *other* row's real travel time
+        into NaN too). How much was excluded is reported alongside them via
+        `regions_unreachable`/`demand_unreachable`/
+        `proportion_demand_unreachable`, rather than silently dropped.
+
+        `unreachable_cost`, if given, additionally produces
+        `weighted_average_for_ranking`/`unweighted_average_for_ranking`/
+        `max_for_ranking` -- the same three statistics, but with every
+        unreachable row's cost substituted by `unreachable_cost` rather
+        than excluded. These exist purely so `solve()` can rank/prune
+        combinations without silently rewarding one for stranding more
+        demand (the honest, reachable-only figures above would do exactly
+        that, since the excluded rows simply vanish from the average
+        rather than counting against it) -- they are not meant for
+        reporting or plotting, which should keep using the honest figures.
+        `None` (the default) makes all three identical to their honest
+        counterparts, so every caller that doesn't pass it gets
+        unchanged, unambiguous behaviour.
         """
         df = self.evaluated_combination_df
 
-        weighted_average = np.average(df[cost_col], weights=active_weights)
-        unweighted_average = np.average(df[cost_col])
-        percentile_90th = np.percentile(df[cost_col], q=90)
-        max_cost = np.max(df[cost_col])
+        reachable_mask = df[cost_col].notna()
+        regions_unreachable = int((~reachable_mask).sum())
+
+        if reachable_mask.any():
+            reachable_costs = df.loc[reachable_mask, cost_col]
+            weighted_average = np.average(
+                reachable_costs, weights=active_weights.loc[reachable_mask]
+            )
+            unweighted_average = np.average(reachable_costs)
+            percentile_90th = np.percentile(reachable_costs, q=90)
+            max_cost = np.max(reachable_costs)
+        else:
+            weighted_average = np.nan
+            unweighted_average = np.nan
+            percentile_90th = np.nan
+            max_cost = np.nan
+
+        if unreachable_cost is None:
+            weighted_average_for_ranking = weighted_average
+            unweighted_average_for_ranking = unweighted_average
+            max_for_ranking = max_cost
+        else:
+            costs_for_ranking = df[cost_col].fillna(unreachable_cost)
+            weighted_average_for_ranking = np.average(
+                costs_for_ranking, weights=active_weights
+            )
+            unweighted_average_for_ranking = np.average(costs_for_ranking)
+            max_for_ranking = np.max(costs_for_ranking)
 
         demand_series = (
             coverage_demand if coverage_demand is not None else self._coverage_demand_series()
         )
-        proportion_within_coverage_threshold = self._coverage_proportion(
-            df[within_col], demand_series
-        )
+
+        if demand_series is None:
+            demand_unreachable = np.nan
+            proportion_demand_unreachable = np.nan
+        else:
+            demand_unreachable = float(demand_series[~reachable_mask].sum())
+            total_demand = demand_series.sum()
+            proportion_demand_unreachable = (
+                demand_unreachable / total_demand if total_demand > 0 else np.nan
+            )
+        (
+            proportion_within_coverage_threshold,
+            demand_within_coverage_threshold,
+            regions_within_coverage_threshold,
+        ) = self._coverage_stats(df[within_col], demand_series)
         proportion_regions_within_coverage_threshold = self._coverage_proportion(
             df[within_col], None
         )
+
+        # "Left behind" headcounts: how many people/regions have a travel
+        # cost beyond each threshold in self.beyond_thresholds, computed
+        # directly from cost_col rather than the single pre-baked
+        # within_col -- unlike coverage, this supports several thresholds
+        # at once. NaN (unreachable) cost counts as beyond every
+        # threshold, matching within_col's "NaN cost -> not covered"
+        # convention in direction (both treat unreachable as the bad
+        # outcome).
+        beyond_threshold_metrics = {}
+        beyond_flags_by_threshold = {
+            t: ~(df[cost_col] <= t) for t in self.beyond_thresholds
+        }
+        for t, beyond_flags in beyond_flags_by_threshold.items():
+            beyond_threshold_metrics[t] = {
+                "regions_beyond": int(beyond_flags.sum()),
+                "demand_beyond": (
+                    np.nan
+                    if demand_series is None
+                    else float((beyond_flags.astype(float) * demand_series).sum())
+                ),
+                "regions_beyond_by_equity_group": {},
+                "demand_beyond_by_equity_group": {},
+            }
 
         weighted_by_equity_group = {}
         unweighted_by_equity_group = {}
         coverage_by_equity_group = {}
         coverage_regions_by_equity_group = {}
         max_cost_by_equity_group = {}
+        regions_unreachable_by_equity_group = {}
+        demand_unreachable_by_equity_group = {}
+        demand_improved_by_equity_group = {}
+        demand_worsened_by_equity_group = {}
         gap_absolute_weighted = None
         gap_absolute_desc = "N/A (No equity data)"
         gap_relative_weighted = None
@@ -547,6 +837,11 @@ class EvaluatedCombination:
         inter_tertile_ratio = None
         inter_tertile_desc = "N/A (No equity data)"
 
+        # Resolved here (rather than just before the return statement, as
+        # in earlier versions of this method) so the equity-group breakdown
+        # below can also compute a per-band population impact.
+        baseline_array = self._baseline_cost_arrays.get(cost_col)
+
         equity_col = getattr(self.site_problem, "_equity_data_equity_col", None)
 
         if equity_col and equity_col in df.columns:
@@ -555,18 +850,32 @@ class EvaluatedCombination:
             # 1. Unweighted average by equity group
             unweighted_by_equity_group = grouped_df[cost_col].mean().round(2).to_dict()
 
-            # 2. Weighted average by equity group (matching global composite weights logic)
+            # 2. Weighted average by equity group (matching global composite
+            # weights logic). Restricted to this band's reachable rows for
+            # the same reason as the global weighted_average above -- a
+            # single unreachable row would otherwise turn the whole band's
+            # np.average into NaN via plain propagation. Unlike
+            # unweighted_by_equity_group/max_cost_by_equity_group (both
+            # pandas groupby aggregates, which skip NaN natively), this one
+            # calls np.average manually and needs the same explicit
+            # reachable-subset treatment as the primary computation.
             for band, group in grouped_df:
+                group_costs = group.loc[reachable_mask.loc[group.index], cost_col]
+
+                if group_costs.empty:
+                    weighted_by_equity_group[band] = np.nan
+                    continue
+
                 # Extract matching row weights for this specific group
-                group_weights = active_weights.loc[group.index]
+                group_weights = active_weights.loc[group_costs.index]
 
                 # Avoid ZeroDivisionError if the combined weight for this band is 0
                 if group_weights.sum() > 0:
                     weighted_by_equity_group[band] = np.average(
-                        group[cost_col], weights=group_weights
+                        group_costs, weights=group_weights
                     ).round(2)
                 else:
-                    weighted_by_equity_group[band] = group[cost_col].mean()
+                    weighted_by_equity_group[band] = group_costs.mean()
 
             # 3. Disparity Metrics & Verbal Descriptors
             if weighted_by_equity_group:
@@ -575,7 +884,11 @@ class EvaluatedCombination:
                 group_max_cost = max(weighted_vals)
 
                 gap_absolute_weighted = group_max_cost - group_min_cost
-                gap_absolute_desc = f"Spread of {gap_absolute_weighted:.1f} units between best and worst groups"
+                unit_word = unit if unit else "units"
+                gap_absolute_desc = (
+                    f"Spread of {gap_absolute_weighted:.1f} {unit_word} "
+                    "between best and worst groups"
+                )
 
                 if group_min_cost > 0:
                     gap_relative_weighted = group_max_cost / group_min_cost
@@ -623,11 +936,90 @@ class EvaluatedCombination:
             # 5. Worst-Case Scenarios by Group
             max_cost_by_equity_group = grouped_df[cost_col].max().round(2).to_dict()
 
+            # 5b. Left-behind headcounts by group -- who's beyond each
+            # threshold, split by equity band (e.g. "how many of the
+            # people beyond 45 minutes are in the most deprived third?").
+            for t, beyond_flags in beyond_flags_by_threshold.items():
+                beyond_threshold_metrics[t]["regions_beyond_by_equity_group"] = {
+                    band: int(beyond_flags.loc[group.index].sum())
+                    for band, group in grouped_df
+                }
+                if demand_series is not None:
+                    beyond_threshold_metrics[t]["demand_beyond_by_equity_group"] = {
+                        band: float(
+                            (
+                                beyond_flags.loc[group.index].astype(float)
+                                * demand_series.loc[group.index]
+                            ).sum()
+                        )
+                        for band, group in grouped_df
+                    }
+
+            # 5b2. Unreachable headcounts by group -- same "left behind"
+            # shape as 5b above, but for demand locations with no reachable
+            # site at all (NaN cost_col), rather than one beyond a specific
+            # cutoff.
+            unreachable_mask = ~reachable_mask
+            regions_unreachable_by_equity_group = {
+                band: int(unreachable_mask.loc[group.index].sum())
+                for band, group in grouped_df
+            }
+            if demand_series is not None:
+                demand_unreachable_by_equity_group = {
+                    band: float(
+                        demand_series.loc[group.index][
+                            unreachable_mask.loc[group.index]
+                        ].sum()
+                    )
+                    for band, group in grouped_df
+                }
+
+            # 5c. Population impact by group -- who actually benefited from
+            # this solution vs the baseline, split by equity band (e.g.
+            # "are the most deprived areas improving at a higher rate than
+            # the least deprived?"). Only computed when a baseline was
+            # supplied for this cost_col. `df.index.get_indexer` converts
+            # each group's (label) index into positions, since
+            # `baseline_array` and `df[cost_col].to_numpy()` are positional
+            # arrays aligned to `df`'s row order, not necessarily identical
+            # to its index labels.
+            if baseline_array is not None:
+                cost_array = df[cost_col].to_numpy()
+                for band, group in grouped_df:
+                    positions = df.index.get_indexer(group.index)
+                    group_demand = (
+                        None
+                        if demand_series is None
+                        else demand_series.loc[group.index].to_numpy()
+                    )
+                    band_impact = _population_impact_metrics(
+                        current=cost_array[positions],
+                        baseline=baseline_array[positions],
+                        demand=group_demand,
+                        meaningful_change_threshold=self._meaningful_change_threshold,
+                    )
+                    demand_improved_by_equity_group[band] = band_impact[
+                        "demand_improved"
+                    ]
+                    demand_worsened_by_equity_group[band] = band_impact[
+                        "demand_worsened"
+                    ]
+
             # 6. Tertile Groupings (Averaging the bin results into thirds)
-            # Sorts the bins (e.g., 1-10) and splits them into 3 roughly equal chunks
+            # Sorts the bins (e.g., 1-10) and splits them into 3 roughly
+            # equal chunks, ordered most- to least-disadvantaged per
+            # `_equity_data_disadvantaged_end` (defaults to "low" --
+            # lower bins = more deprived -- when unset, matching every
+            # pre-existing caller's assumption).
             unique_bins = sorted(list(weighted_by_equity_group.keys()))
-            if len(unique_bins) >= 3:
-                chunks = np.array_split(unique_bins, 3)
+            disadvantaged_end = getattr(
+                self.site_problem, "_equity_data_disadvantaged_end", None
+            )
+            lower_chunk, middle_chunk, upper_chunk = _split_bins_into_tertiles(
+                unique_bins, disadvantaged_end
+            )
+            if lower_chunk is not None:
+                chunks = (lower_chunk, middle_chunk, upper_chunk)
                 avg_lower_third_bins = np.mean(
                     [weighted_by_equity_group[b] for b in chunks[0]]
                 )
@@ -641,8 +1033,11 @@ class EvaluatedCombination:
                 if avg_upper_third_bins and avg_upper_third_bins > 0:
                     inter_tertile_ratio = avg_lower_third_bins / avg_upper_third_bins
 
-                    # Generate Inter-Tertile Ratio Descriptor
-                    # (Assuming lower bins = higher deprivation, e.g., IMD Deciles 1-3)
+                    # Generate Inter-Tertile Ratio Descriptor. "Most
+                    # deprived" always refers to `chunks[0]` above, which
+                    # `_split_bins_into_tertiles` has already ordered per
+                    # `disadvantaged_end` -- so this wording is correct
+                    # regardless of which end of the raw bin scale that is.
                     if 0.95 <= inter_tertile_ratio <= 1.05:
                         inter_tertile_desc = (
                             "Balanced (Macro travel times are broadly equal)"
@@ -663,18 +1058,42 @@ class EvaluatedCombination:
                     inter_tertile_ratio = np.nan
                     inter_tertile_desc = "N/A (Zero upper-third travel time)"
 
+        population_impact = (
+            None
+            if baseline_array is None
+            else _population_impact_metrics(
+                current=df[cost_col].to_numpy(),
+                baseline=baseline_array,
+                demand=None if demand_series is None else demand_series.to_numpy(),
+                meaningful_change_threshold=self._meaningful_change_threshold,
+            )
+        )
+
         return {
             "weighted_average": weighted_average,
             "unweighted_average": unweighted_average,
             "percentile_90th": percentile_90th,
             "max": max_cost,
+            "weighted_average_for_ranking": weighted_average_for_ranking,
+            "unweighted_average_for_ranking": unweighted_average_for_ranking,
+            "max_for_ranking": max_for_ranking,
+            "regions_unreachable": regions_unreachable,
+            "demand_unreachable": demand_unreachable,
+            "proportion_demand_unreachable": proportion_demand_unreachable,
+            "regions_unreachable_by_equity_group": regions_unreachable_by_equity_group,
+            "demand_unreachable_by_equity_group": demand_unreachable_by_equity_group,
             "proportion_within_coverage_threshold": proportion_within_coverage_threshold,
             "proportion_regions_within_coverage_threshold": proportion_regions_within_coverage_threshold,
+            "demand_within_coverage_threshold": demand_within_coverage_threshold,
+            "regions_within_coverage_threshold": regions_within_coverage_threshold,
+            "beyond_threshold_metrics": beyond_threshold_metrics,
             "weighted_by_equity_group": weighted_by_equity_group,
             "unweighted_by_equity_group": unweighted_by_equity_group,
             "coverage_by_equity_group": coverage_by_equity_group,
             "coverage_regions_by_equity_group": coverage_regions_by_equity_group,
             "max_cost_by_equity_group": max_cost_by_equity_group,
+            "demand_improved_by_equity_group": demand_improved_by_equity_group,
+            "demand_worsened_by_equity_group": demand_worsened_by_equity_group,
             "gap_absolute_weighted": gap_absolute_weighted,
             "gap_absolute_desc": gap_absolute_desc,
             "gap_relative_weighted": gap_relative_weighted,
@@ -684,6 +1103,7 @@ class EvaluatedCombination:
             "avg_upper_third_bins": avg_upper_third_bins,
             "inter_tertile_ratio": inter_tertile_ratio,
             "inter_tertile_desc": inter_tertile_desc,
+            "population_impact": population_impact,
         }
 
     def show_result_df(self):
@@ -732,7 +1152,10 @@ class EvaluatedCombination:
             1.5x longer than the best-served group.
 
         4. Inter-Tertile Ratio ('inter_tertile_ratio'):
-            Measures macro-equity assuming lower bins = higher deprivation (e.g., IMD 1-3).
+            Measures macro-equity between the most- and least-disadvantaged
+            equity-band tertiles, per `add_equity_data(disadvantaged_end=...)`
+            -- lower bins = more disadvantaged (e.g. IMD 1-3) when
+            `disadvantaged_end="low"` or unset; the reverse when `"high"`.
             SORTING CRITERIA:
 
             * ITR > 1.0: Inequity. The most deprived third faces longer travel times
@@ -757,14 +1180,53 @@ class EvaluatedCombination:
             The demand-weighted figure is the one 'mclp' optimises, matching the
             textbook Maximal Covering Location Problem.
 
+        5b. Absolute coverage headcounts ('demand_within_coverage_threshold',
+            'regions_within_coverage_threshold'):
+            HIGHER is better. The literal headcount/region-count behind the
+            two coverage proportions above -- e.g. "391,823 people" rather
+            than "75.4%" -- for reporting to audiences who find an absolute
+            number more legible than a percentage. `NaN`/`0` under the same
+            conditions as the proportions.
+
+        5c. Unreachable headcounts ('regions_unreachable', 'demand_unreachable',
+            'proportion_demand_unreachable'):
+            LOWER is better. How many regions / how much demand had no
+            feasible journey to any selected site at all -- a missing (NaN)
+            travel cost, only possible once a travel matrix was registered
+            with `add_travel_matrix(allow_missing=True)`. `0`/`0.0` when
+            every region reached at least one selected site (including
+            every problem that never opted into `allow_missing`). Distinct
+            from -- and independent of -- `threshold_for_coverage`: a
+            region can be "beyond threshold" while still reachable, or
+            unreachable with no threshold ever configured.
+            `weighted_average`/`unweighted_average`/`90th_percentile`/`max`
+            above are computed over reachable regions only, rather than
+            this headcount silently dragging them toward whatever value an
+            unreachable pair happened to hold.
+
+        5d. Ranking-only travel cost ('weighted_average_for_ranking',
+            'unweighted_average_for_ranking', 'max_for_ranking'):
+            LOWER is better -- but NOT a reporting metric. Identical to
+            'weighted_average'/'unweighted_average'/'max' unless
+            `solve(unreachable_cost=...)` was used, in which case every
+            unreachable row is substituted with `unreachable_cost` instead
+            of excluded, matching what `solve()` actually ranked/pruned
+            combinations on. Kept alongside the honest figures rather than
+            replacing them so the two are always visibly distinguishable:
+            the reachable-only numbers describe what really happened,
+            these describe what the search optimised. Present regardless
+            of whether `unreachable_cost` was used -- identical to their
+            honest counterparts when it wasn't, so this column always
+            exists and needs no conditional handling.
+
         6. Secondary travel matrices (columns suffixed `__<label>`, e.g.
            'weighted_average__public_transport'):
 
             Registered via `add_secondary_travel_matrix(label=...)`. Same metrics
-            and sort direction as their unsuffixed counterparts above (1a/1b/5),
+            and sort direction as their unsuffixed counterparts above (1a/1b/5/5c),
             computed against that matrix's own travel costs instead of the
             primary matrix. By default, only the core scalar metrics (both
-            coverage proportions included) plus the
+            coverage proportions and the unreachable headcounts included) plus the
             float-valued equity aggregations (gap_absolute_weighted,
             gap_relative_weighted, avg_*_third_bins, inter_tertile_ratio) are
             included per matrix, to keep this table from growing unboundedly
@@ -774,26 +1236,145 @@ class EvaluatedCombination:
             underlying per-region `problem_df` always carries
             `min_cost__<label>` / `selected_site__<label>` /
             `within_threshold__<label>` regardless of this setting.
+
+        7. Population impact vs baseline (`demand_improved`,
+           `demand_worsened`, `demand_unchanged`, `proportion_demand_
+           improved`, `proportion_demand_worsened`, `regions_improved`,
+           `regions_worsened`, `regions_unchanged`,
+           `mean_reduction_among_improved`, `mean_increase_among_worsened`,
+           `max_reduction`, `max_increase`):
+
+            Only present when a baseline was supplied (`solve(baseline=...)`,
+            or a baseline was passed to `evaluate_single_solution_single_
+            objective()` directly) -- absent otherwise, not `NaN`, so
+            `solution_df`'s schema is unchanged for callers that never ask
+            for a baseline. `demand_*`/`mean_*` are HIGHER-is-better for the
+            `_improved`/`reduction` names (more people better off, or a
+            bigger improvement) and LOWER-is-better for the `_worsened`/
+            `increase` names; `*_unchanged` is directionless. See
+            `SolutionComparator.population_impact_summary()` for the
+            equivalent baseline-vs-candidate comparison without solving via
+            `solve(baseline=...)`. Secondary travel matrices and secondary
+            demand scenarios get only the demand-weighted subset
+            (`demand_improved__<label>`, `demand_worsened__<label>`,
+            `demand_unchanged__<label>`, `mean_reduction_among_improved__
+            <label>`, `mean_increase_among_worsened__<label>`) by default;
+            `full_secondary_metrics=True` also adds the region counts and
+            max change (`regions_improved__<label>`, etc.) for secondary
+            travel matrices. Demand scenarios never get the region-count/max
+            variants (region membership doesn't vary with demand), matching
+            point 6's "only what varies with demand" rule.
+
+            When equity data is also registered, `demand_improved_by_equity_
+            group` / `demand_worsened_by_equity_group` (dict per band) are
+            also added -- e.g. "are the most deprived areas improving at a
+            higher rate than the least deprived?". Primary matrix only;
+            not yet broken down for secondary travel matrices/demand
+            scenarios.
+
+        7b. Which sites actually changed (`sites_closed_vs_baseline`,
+            `sites_added_vs_baseline`):
+
+            `sites_closed_vs_baseline` is the baseline's own site names
+            absent from this solution's `site_names`; `sites_added_vs_
+            baseline` is `site_names` absent from the baseline's. Answers
+            "which sites changed?" directly, rather than requiring a caller
+            to compute the set difference themselves -- useful when several
+            solutions share nearly all the same sites and only differ in
+            one or two, which a bare `site_names` column doesn't make
+            obvious at a glance. Present under the same condition as the
+            rest of this point (a baseline was supplied); absent, not empty
+            lists, otherwise.
+
+        8. "Left behind" headcounts (`demand_beyond_threshold_<t>`,
+           `regions_beyond_threshold_<t>`, one pair per threshold `t` in
+           `beyond_thresholds`, plus a `_by_equity_group` dict variant of
+           each when equity data is registered):
+
+            LOWER is better -- the opposite direction from the coverage
+            metrics in point 5, since these count people/regions a
+            threshold crossing leaves *outside* rather than within. A
+            distinct concept from `threshold_for_coverage`/'coverage
+            metrics' even though both compare a travel cost against a
+            cutoff: "covered" (good, one threshold) vs "beyond" (bad, any
+            number of thresholds at once). Thresholds are independent, not
+            cumulative -- `demand_beyond_threshold_45` is not a subset of
+            `demand_beyond_threshold_30`'s complement; each is a fresh
+            count against its own cutoff. Only present when
+            `beyond_thresholds` was supplied -- absent, not `NaN`,
+            otherwise. Secondary travel matrices get the demand-weighted
+            headcount by default (`demand_beyond_threshold_<t>__<label>`);
+            `full_secondary_metrics=True` also adds region counts and the
+            equity breakdowns, matching point 6/7's pattern. Secondary
+            demand scenarios get only the demand-weighted headcount, never
+            region counts or equity breakdowns, matching point 6's "only
+            what varies with demand" rule.
+
+        9. Additional sites chosen beyond required (`additional_site_names`):
+
+            `site_names` with the required sites (flagged via
+            `add_sites(required_sites_col=...)`) removed -- e.g. for a "we
+            have 4 sites and are opening 1 more" problem, this is just the
+            new site, rather than all 5 names, which otherwise look
+            identical across every solution that all correctly keep the
+            same 4 required sites. Only present when at least one required
+            site is configured; absent, not an empty list, otherwise.
+
+        10. Sites not selected (`unselected_site_names`):
+
+            Every registered candidate site absent from `site_names`, in
+            canonical site-index order -- the complement of `site_names`
+            among ALL candidates, not just the required ones point 9
+            removes. Always present (unlike point 9), since it doesn't
+            depend on any optional registered data.
         """
+
+        # getattr-guarded: a minimal stub site_problem (as used by some
+        # tests to isolate a single metric) may not define candidate_sites
+        # at all -- treated the same as "nothing to report" rather than
+        # raising, matching _get_required_site_indices's own tolerance.
+        candidate_sites = getattr(self.site_problem, "candidate_sites", None)
+        id_col = getattr(self.site_problem, "_candidate_sites_candidate_id_col", None)
+        if candidate_sites is not None and id_col is not None:
+            all_sites_in_order = candidate_sites.sort_values("canonical_site_index")[
+                id_col
+            ].tolist()
+            selected = set(self.site_names)
+            unselected_site_names = [
+                name for name in all_sites_in_order if name not in selected
+            ]
+        else:
+            unselected_site_names = []
 
         # Return weighted average
         metrics = {
             "site_names": self.site_names,
             "site_indices": self.site_indices,
+            "unselected_site_names": unselected_site_names,
             "coverage_threshold": self.coverage_threshold,
             "weighted_average": self.weighted_average,
             "unweighted_average": self.unweighted_average,
             "90th_percentile": self.percentile_90th,
             "max": self.max,
+            "weighted_average_for_ranking": self.weighted_average_for_ranking,
+            "unweighted_average_for_ranking": self.unweighted_average_for_ranking,
+            "max_for_ranking": self.max_for_ranking,
             "total_cost": self.total_cost,
             "proportion_within_coverage_threshold": self.proportion_within_coverage_threshold,
             "proportion_regions_within_coverage_threshold": self.proportion_regions_within_coverage_threshold,
+            "demand_within_coverage_threshold": self.demand_within_coverage_threshold,
+            "regions_within_coverage_threshold": self.regions_within_coverage_threshold,
+            "regions_unreachable": self.regions_unreachable,
+            "demand_unreachable": self.demand_unreachable,
+            "proportion_demand_unreachable": self.proportion_demand_unreachable,
             # Granular Equity Collections
             "weighted_by_equity_group": self.weighted_by_equity_group,
             "unweighted_by_equity_group": self.unweighted_by_equity_group,
             "coverage_by_equity_group": self.coverage_by_equity_group,
             "coverage_regions_by_equity_group": self.coverage_regions_by_equity_group,
             "max_cost_by_equity_group": self.max_cost_by_equity_group,
+            "regions_unreachable_by_equity_group": self.regions_unreachable_by_equity_group,
+            "demand_unreachable_by_equity_group": self.demand_unreachable_by_equity_group,
             # Numeric Aggregations
             "gap_absolute_weighted": self.gap_absolute_weighted,
             "gap_relative_weighted": self.gap_relative_weighted,
@@ -808,6 +1389,91 @@ class EvaluatedCombination:
             # Underlying per-region df
             "problem_df": self.evaluated_combination_df,
         }
+
+        # Additional sites chosen beyond required: only present when at
+        # least one required site is configured (see point 9 above), so
+        # solution_df's schema is unchanged for every caller that never
+        # uses required_sites_col.
+        required_indices = _get_required_site_indices(self.site_problem)
+        if required_indices:
+            candidate_sites = self.site_problem.candidate_sites
+            id_col = self.site_problem._candidate_sites_candidate_id_col
+            required_names = set(
+                candidate_sites.loc[
+                    candidate_sites["canonical_site_index"].isin(required_indices),
+                    id_col,
+                ]
+            )
+            metrics["additional_site_names"] = [
+                name for name in self.site_names if name not in required_names
+            ]
+
+        # Population impact vs baseline: only present when a baseline was
+        # actually supplied (self.population_impact is None otherwise), so
+        # solution_df's schema is unchanged for every caller that doesn't
+        # ask for one. See point 7 in the docstring above.
+        if self.population_impact is not None:
+            pi = self.population_impact
+            metrics["demand_improved"] = pi["demand_improved"]
+            metrics["demand_worsened"] = pi["demand_worsened"]
+            metrics["demand_unchanged"] = pi["demand_unchanged"]
+            metrics["proportion_demand_improved"] = pi["proportion_demand_improved"]
+            metrics["proportion_demand_worsened"] = pi["proportion_demand_worsened"]
+            metrics["regions_improved"] = pi["regions_improved"]
+            metrics["regions_worsened"] = pi["regions_worsened"]
+            metrics["regions_unchanged"] = pi["regions_unchanged"]
+            metrics["mean_reduction_among_improved"] = pi[
+                "mean_reduction_among_improved"
+            ]
+            metrics["mean_increase_among_worsened"] = pi[
+                "mean_increase_among_worsened"
+            ]
+            metrics["max_reduction"] = pi["max_reduction"]
+            metrics["max_increase"] = pi["max_increase"]
+            if self.demand_improved_by_equity_group:
+                metrics["demand_improved_by_equity_group"] = (
+                    self.demand_improved_by_equity_group
+                )
+                metrics["demand_worsened_by_equity_group"] = (
+                    self.demand_worsened_by_equity_group
+                )
+
+        # Which sites actually changed vs the baseline -- see point 7b in
+        # the docstring above. Gated independently of population_impact
+        # (rather than reusing that same `if`): both are normally present
+        # together, since both come from the same solve(baseline=...) call,
+        # but an advanced direct caller of evaluate_single_solution_single_
+        # objective(baseline_costs=...) could supply cost Series without
+        # the site-names sentinel, and these two should reflect exactly
+        # what was actually provided.
+        if self._baseline_site_names is not None:
+            current_names = set(self.site_names)
+            baseline_names = set(self._baseline_site_names)
+            metrics["sites_closed_vs_baseline"] = [
+                name for name in self._baseline_site_names if name not in current_names
+            ]
+            metrics["sites_added_vs_baseline"] = [
+                name for name in self.site_names if name not in baseline_names
+            ]
+
+        # "Left behind" headcounts: only present when beyond_thresholds was
+        # supplied (self.beyond_threshold_metrics is empty otherwise), so
+        # solution_df's schema is unchanged for callers that never ask for
+        # this. One demand/regions pair per threshold, plus a
+        # `_by_equity_group` dict variant of each whenever equity data is
+        # registered (empty dict otherwise, so no column is added).
+        for t, bt in self.beyond_threshold_metrics.items():
+            t_suffix = _format_threshold(t)
+            metrics[f"demand_beyond_threshold_{t_suffix}"] = bt["demand_beyond"]
+            metrics[f"regions_beyond_threshold_{t_suffix}"] = bt["regions_beyond"]
+            if bt["demand_beyond_by_equity_group"]:
+                metrics[f"demand_beyond_threshold_{t_suffix}_by_equity_group"] = bt[
+                    "demand_beyond_by_equity_group"
+                ]
+            if bt["regions_beyond_by_equity_group"]:
+                metrics[f"regions_beyond_threshold_{t_suffix}_by_equity_group"] = bt[
+                    "regions_beyond_by_equity_group"
+                ]
 
         # Secondary travel matrices: core five metrics + float-valued equity
         # aggregations by default (see the interpretation guide above); pass
@@ -824,6 +1490,17 @@ class EvaluatedCombination:
             metrics[f"proportion_regions_within_coverage_threshold__{label}"] = (
                 secondary["proportion_regions_within_coverage_threshold"]
             )
+            metrics[f"demand_within_coverage_threshold__{label}"] = secondary[
+                "demand_within_coverage_threshold"
+            ]
+            metrics[f"regions_within_coverage_threshold__{label}"] = secondary[
+                "regions_within_coverage_threshold"
+            ]
+            metrics[f"regions_unreachable__{label}"] = secondary["regions_unreachable"]
+            metrics[f"demand_unreachable__{label}"] = secondary["demand_unreachable"]
+            metrics[f"proportion_demand_unreachable__{label}"] = secondary[
+                "proportion_demand_unreachable"
+            ]
             metrics[f"gap_absolute_weighted__{label}"] = secondary[
                 "gap_absolute_weighted"
             ]
@@ -857,6 +1534,12 @@ class EvaluatedCombination:
                 metrics[f"max_cost_by_equity_group__{label}"] = secondary[
                     "max_cost_by_equity_group"
                 ]
+                metrics[f"regions_unreachable_by_equity_group__{label}"] = secondary[
+                    "regions_unreachable_by_equity_group"
+                ]
+                metrics[f"demand_unreachable_by_equity_group__{label}"] = secondary[
+                    "demand_unreachable_by_equity_group"
+                ]
                 metrics[f"gap_absolute_description__{label}"] = secondary[
                     "gap_absolute_desc"
                 ]
@@ -867,12 +1550,59 @@ class EvaluatedCombination:
                     "inter_tertile_desc"
                 ]
 
-        # Secondary demand scenarios: only the two metrics that actually
-        # vary with demand (weighted_average, proportion_within_coverage_
-        # threshold -- see _compute_travel_metrics' coverage_demand
-        # docstring). Suffix order is travel-label-first, demand-label-
-        # second (`weighted_average__<travel>__<demand>`) for the opt-in
-        # cross with a secondary travel matrix registered via
+            secondary_pi = secondary.get("population_impact")
+            if secondary_pi is not None:
+                metrics[f"demand_improved__{label}"] = secondary_pi["demand_improved"]
+                metrics[f"demand_worsened__{label}"] = secondary_pi["demand_worsened"]
+                metrics[f"demand_unchanged__{label}"] = secondary_pi[
+                    "demand_unchanged"
+                ]
+                metrics[f"mean_reduction_among_improved__{label}"] = secondary_pi[
+                    "mean_reduction_among_improved"
+                ]
+                metrics[f"mean_increase_among_worsened__{label}"] = secondary_pi[
+                    "mean_increase_among_worsened"
+                ]
+                if full_secondary_metrics:
+                    metrics[f"regions_improved__{label}"] = secondary_pi[
+                        "regions_improved"
+                    ]
+                    metrics[f"regions_worsened__{label}"] = secondary_pi[
+                        "regions_worsened"
+                    ]
+                    metrics[f"regions_unchanged__{label}"] = secondary_pi[
+                        "regions_unchanged"
+                    ]
+                    metrics[f"max_reduction__{label}"] = secondary_pi["max_reduction"]
+                    metrics[f"max_increase__{label}"] = secondary_pi["max_increase"]
+
+            for t, bt in secondary.get("beyond_threshold_metrics", {}).items():
+                t_suffix = _format_threshold(t)
+                metrics[f"demand_beyond_threshold_{t_suffix}__{label}"] = bt[
+                    "demand_beyond"
+                ]
+                if full_secondary_metrics:
+                    metrics[f"regions_beyond_threshold_{t_suffix}__{label}"] = bt[
+                        "regions_beyond"
+                    ]
+                    if bt["demand_beyond_by_equity_group"]:
+                        metrics[
+                            f"demand_beyond_threshold_{t_suffix}_by_equity_group__{label}"
+                        ] = bt["demand_beyond_by_equity_group"]
+                    if bt["regions_beyond_by_equity_group"]:
+                        metrics[
+                            f"regions_beyond_threshold_{t_suffix}_by_equity_group__{label}"
+                        ] = bt["regions_beyond_by_equity_group"]
+
+        # Secondary demand scenarios: only the metrics that actually vary
+        # with demand (weighted_average, proportion_within_coverage_
+        # threshold, demand_unreachable -- see _compute_travel_metrics'
+        # coverage_demand docstring). regions_unreachable is deliberately
+        # excluded: which regions are reachable at all is a property of the
+        # cost matrix alone, identical across every demand scenario.
+        # Suffix order is travel-label-first, demand-label-second
+        # (`weighted_average__<travel>__<demand>`) for the opt-in cross
+        # with a secondary travel matrix registered via
         # also_weight_matrices; `weighted_average__<demand>` for the
         # (default) primary-travel case. Per-scenario equity breakdowns are
         # not yet supported and are never emitted here, regardless of
@@ -884,8 +1614,158 @@ class EvaluatedCombination:
                 metrics[f"proportion_within_coverage_threshold__{suffix}"] = dmetrics[
                     "proportion_within_coverage_threshold"
                 ]
+                metrics[f"demand_unreachable__{suffix}"] = dmetrics[
+                    "demand_unreachable"
+                ]
+
+                demand_pi = dmetrics.get("population_impact")
+                if demand_pi is not None:
+                    metrics[f"demand_improved__{suffix}"] = demand_pi[
+                        "demand_improved"
+                    ]
+                    metrics[f"demand_worsened__{suffix}"] = demand_pi[
+                        "demand_worsened"
+                    ]
+                    metrics[f"demand_unchanged__{suffix}"] = demand_pi[
+                        "demand_unchanged"
+                    ]
+                    metrics[f"mean_reduction_among_improved__{suffix}"] = demand_pi[
+                        "mean_reduction_among_improved"
+                    ]
+                    metrics[f"mean_increase_among_worsened__{suffix}"] = demand_pi[
+                        "mean_increase_among_worsened"
+                    ]
+
+                for t, bt in dmetrics.get("beyond_threshold_metrics", {}).items():
+                    t_suffix = _format_threshold(t)
+                    metrics[f"demand_beyond_threshold_{t_suffix}__{suffix}"] = bt[
+                        "demand_beyond"
+                    ]
 
         return metrics
+
+
+# Groups of `solution_df` base column names (before stripping any
+# `__<label>` secondary-matrix/demand-scenario suffix), for
+# `SiteSolutionSet.describe_solution_columns()`. Printed in this order.
+_SOLUTION_COLUMN_GROUPS = [
+    (
+        "Which sites",
+        "Which candidate sites make up this solution.",
+        {
+            "solution_rank",
+            "site_names",
+            "site_indices",
+            "additional_site_names",
+            "unselected_site_names",
+        },
+    ),
+    (
+        "Travel cost",
+        "How far people have to travel under this solution (lower is better), and how many had no feasible journey at all.",
+        {
+            "weighted_average",
+            "unweighted_average",
+            "90th_percentile",
+            "max",
+            "total_cost",
+            "regions_unreachable",
+            "demand_unreachable",
+            "proportion_demand_unreachable",
+            "weighted_average_for_ranking",
+            "unweighted_average_for_ranking",
+            "max_for_ranking",
+        },
+    ),
+    (
+        "Coverage",
+        "Share/headcount of people or places within threshold_for_coverage (higher is better).",
+        {
+            "coverage_threshold",
+            "proportion_within_coverage_threshold",
+            "proportion_regions_within_coverage_threshold",
+            "demand_within_coverage_threshold",
+            "regions_within_coverage_threshold",
+        },
+    ),
+    (
+        "Equity",
+        "How unevenly travel cost is spread across the groups registered via add_equity_data().",
+        {
+            "gap_absolute_weighted",
+            "gap_relative_weighted",
+            "avg_lower_third_bins",
+            "avg_middle_third_bins",
+            "avg_upper_third_bins",
+            "inter_tertile_ratio",
+            "gap_absolute_description",
+            "gap_relative_description",
+            "inter_tertile_description",
+            "weighted_by_equity_group",
+            "unweighted_by_equity_group",
+            "coverage_by_equity_group",
+            "coverage_regions_by_equity_group",
+            "max_cost_by_equity_group",
+            "regions_unreachable_by_equity_group",
+            "demand_unreachable_by_equity_group",
+        },
+    ),
+    (
+        "Change vs a baseline",
+        "Per-person/per-region comparison against the baseline passed to solve(baseline=...) -- present only if one was supplied.",
+        {
+            "demand_improved",
+            "demand_worsened",
+            "demand_unchanged",
+            "proportion_demand_improved",
+            "proportion_demand_worsened",
+            "regions_improved",
+            "regions_worsened",
+            "regions_unchanged",
+            "mean_reduction_among_improved",
+            "mean_increase_among_worsened",
+            "max_reduction",
+            "max_increase",
+            "regions_newly_covered",
+            "regions_newly_uncovered",
+            "demand_newly_covered",
+            "demand_newly_uncovered",
+            "demand_improved_by_equity_group",
+            "demand_worsened_by_equity_group",
+            "sites_closed_vs_baseline",
+            "sites_added_vs_baseline",
+        },
+    ),
+    (
+        "Underlying per-region data",
+        "The full per-region breakdown behind every metric above.",
+        {"problem_df"},
+    ),
+]
+
+
+def _classify_solution_column(col):
+    """
+    Return the `_SOLUTION_COLUMN_GROUPS` category name for a `solution_df`
+    column, or "Left behind (beyond a threshold)" for a
+    `demand_beyond_threshold_<t>`/`regions_beyond_threshold_<t>` column
+    (any suffix -- numeric threshold, `_by_equity_group`, `__<label>`), or
+    "Other" if it doesn't match anything known (e.g. a future metric this
+    grouping hasn't been updated for yet).
+
+    Secondary travel-matrix/demand-scenario columns (`<base>__<label>`) are
+    classified by their base name, same as the primary column.
+    """
+    if col.startswith("demand_beyond_threshold") or col.startswith(
+        "regions_beyond_threshold"
+    ):
+        return "Left behind (beyond a threshold)"
+
+    base = col.split("__", 1)[0]
+    for name, _description, members in _SOLUTION_COLUMN_GROUPS:
+        if base in members:
+            return name
+    return "Other"
 
 
 # MARK: CLASS SiteSolutionSet
@@ -925,6 +1805,11 @@ class SiteSolutionSet(
     n_sites : int, optional
         Number of sites selected in each solution (e.g., ``p`` in a p-median
         or p-center problem).
+    ranking_metric : lokigi.multiobjective.Metric, optional
+        The metric the search actually ranked and pruned on. Usually the one
+        implied by ``objectives``, but `solve(rank_on=...)` can override it,
+        in which case ``objectives`` alone no longer describes how these
+        solutions were ordered.
 
     Attributes
     ----------
@@ -936,18 +1821,23 @@ class SiteSolutionSet(
         Objective(s) used in evaluation.
     n_sites : int or None
         Number of sites in each solution.
+    ranking_metric : lokigi.multiobjective.Metric or None
+        What ``solution_rank`` is actually ordered by. Read this rather than
+        ``objectives`` when reporting what was optimised.
 
     Notes
     -----
     Solutions are typically pre-sorted before being passed to this class
-    (e.g., by objective value and tie-breakers). The optional ``rank_on``
+    (e.g., by objective value and tie-breakers). The optional ``sort_by``
     argument in methods allows overriding this ordering dynamically.
 
     The structure of ``solution_df`` is assumed to be consistent with the
     outputs of the optimisation or search routine that generated it.
     """
 
-    def __init__(self, solution_df, site_problem, objectives, n_sites=None):
+    def __init__(
+        self, solution_df, site_problem, objectives, n_sites=None, ranking_metric=None
+    ):
         """
         Initialise a SiteSolutionSet instance.
 
@@ -965,6 +1855,9 @@ class SiteSolutionSet(
             Objective(s) used to evaluate the solutions.
         n_sites : int, optional
             Number of sites selected in each solution.
+        ranking_metric : lokigi.multiobjective.Metric, optional
+            The metric the search ranked and pruned on. Defaults to None for
+            solution sets built by hand rather than by `solve()`.
 
         Notes
         -----
@@ -975,11 +1868,55 @@ class SiteSolutionSet(
         self.site_problem = site_problem
         self.objectives = objectives
         self.n_sites = n_sites
+        # What solution_rank is actually ordered by. Kept separately from
+        # `objectives` because solve(rank_on=...) lets the two differ, and
+        # anything reporting "what was optimised" needs the real answer --
+        # see `_ranking_metric_summary` for the display side.
+        self.ranking_metric = ranking_metric
 
         self.pareto_metrics = None
 
     def copy(self):
         return copy.deepcopy(self)
+
+    def _ranks_on_custom_metric(self):
+        """
+        True when `solution_rank` reflects a `solve(rank_on=...)` metric
+        rather than the one this objective implies.
+
+        Display code branches on `self.objectives` to decide which numbers
+        to show ("mclp -> lead with coverage", and so on). That inference
+        silently breaks under `rank_on`: a run with
+        `objectives="p_median", rank_on="inter_tertile_ratio"` would be
+        annotated with the weighted average it did *not* optimise, and
+        `objectives="custom"` would fall through to the same default. So
+        anything reporting what was optimised asks this first.
+        """
+        if self.ranking_metric is None:
+            return False
+        default = _get_ranking_by_objective(objective=self.objectives)
+        if default is None:
+            # 'custom' has no implied column, so the ranking metric is by
+            # definition the caller's own.
+            return True
+        # solve() swaps in the `_for_ranking` twin when unreachable_cost is
+        # set; that's still the objective's own metric, not a custom one.
+        return self.ranking_metric.column not in (default, f"{default}_for_ranking")
+
+    def _ranking_metric_line(self, solution_row=None):
+        """
+        One-line "ranked on <metric>" label, or None when the objective
+        already describes the ranking. `solution_row` is an optional Series
+        for one solution, to include that solution's own value.
+        """
+        if not self._ranks_on_custom_metric():
+            return None
+        metric = self.ranking_metric
+        label = metric.label or metric.column
+        if solution_row is not None and metric.column in solution_row:
+            value = solution_row[metric.column]
+            return f"Ranked on {label}: {metric.format_value(value)}"
+        return f"Ranked on {label}"
 
     def _resolve_travel_columns(self, matrix=None):
         """
@@ -1041,6 +1978,84 @@ class SiteSolutionSet(
         else:
             return self.solution_df.columns
 
+    def describe_solution_columns(self, return_dict=False):
+        """
+        Print (or return) `solution_df`'s columns grouped by what they
+        mean, for a first look at a table that can otherwise run to
+        30-40 columns (`show_solutions_colnames()` lists them, but flatly,
+        with no indication of which ones are related or why they're there).
+
+Groups whose columns are genuinely absent from
+        `solution_df` (e.g. "Change vs a baseline" without `solve(baseline=
+        ...)`) are omitted, as are "Coverage" and "Equity" when their
+        columns are present but hold nothing but placeholder `NaN`/`None`/
+        "N/A ..." values (those two are always part of `solution_df`'s
+        schema, unlike the others, so column presence alone can't be used
+        to decide whether to show them). Within a group, columns are
+        listed in `solution_df`'s own column order. A group named "Other"
+        is printed last if any column doesn't match a known category (e.g.
+        a metric added after this method was last updated) -- see
+        `return_solution_metrics()`'s docstring for what every column
+        actually means.
+
+        Parameters
+        ----------
+        return_dict : bool, default False
+            If True, return `{group_name: [column_name, ...]}` instead of
+            printing it.
+
+        Returns
+        -------
+        dict or None
+            The grouped columns if `return_dict=True`; otherwise None (the
+            grouping is printed instead).
+        """
+        descriptions = {
+            name: description for name, description, _members in _SOLUTION_COLUMN_GROUPS
+        }
+        descriptions["Left behind (beyond a threshold)"] = (
+            "Headcounts beyond each cutoff in beyond_thresholds (lower is better)."
+        )
+        descriptions["Other"] = (
+            "Not yet categorised -- see return_solution_metrics()'s docstring."
+        )
+
+        # Printed in this order; "Underlying per-region data" and "Other"
+        # stay last regardless of where they sit in _SOLUTION_COLUMN_GROUPS.
+        ordered_names = [
+            name
+            for name, _description, _members in _SOLUTION_COLUMN_GROUPS
+            if name != "Underlying per-region data"
+        ]
+        ordered_names += ["Left behind (beyond a threshold)", "Underlying per-region data", "Other"]
+
+        groups = {name: [] for name in ordered_names}
+        for col in self.solution_df.columns:
+            groups[_classify_solution_column(col)].append(col)
+
+        # Unlike the genuinely conditional groups above (present/absent as
+        # actual columns), "Coverage" and "Equity" columns are always part
+        # of solution_df's schema, holding placeholder NaN/None/"N/A ..."
+        # values when not applicable -- so gate these two explicitly on
+        # whether they're actually meaningful, matching
+        # show_solutions_summary()'s "no group full of placeholders" rule.
+        if self.site_problem.equity_data is None:
+            groups["Equity"] = []
+        if not self.solution_df["coverage_threshold"].notna().any():
+            groups["Coverage"] = []
+
+        groups = {name: cols for name, cols in groups.items() if cols}
+
+        if return_dict:
+            return groups
+
+        for name, cols in groups.items():
+            print(f"=== {name} ===")
+            print(descriptions[name])
+            for col in cols:
+                print(f"  {col}")
+            print()
+
     def _expand_dict_columns(self, df):
         """
         Return a copy of `df` with every dict-valued column (e.g. the
@@ -1089,7 +2104,7 @@ class SiteSolutionSet(
         inplace : bool, default False
             If True (and `expand_dict_columns=True`), the expansion is also
             written back to `self.solution_df`, so it persists for
-            subsequent calls, plotting, `rank_on`, etc. Has no effect unless
+            subsequent calls, plotting, `sort_by`, etc. Has no effect unless
             `expand_dict_columns=True`, in which case a `UserWarning` is
             raised instead, since passing `inplace=True` alone does nothing
             and likely indicates the caller meant to also pass
@@ -1125,13 +2140,315 @@ class SiteSolutionSet(
         else:
             return round(df, rounding).head(n_best)
 
-    def return_best_combination_details(self, rank_on=None, top_n=1):
+    def _resolve_site_diff(self, df, diff_against):
+        """
+        Per-row site-name diff against a chosen reference, for telling
+        apart near-identical top-N rows that only differ by one or two
+        sites out of many -- unlike `sites_closed_vs_baseline`/
+        `sites_added_vs_baseline`, this doesn't require `solve(baseline=
+        ...)`; it diffs rows against EACH OTHER (or a fixed reference
+        site set), which is the only option available when there's no
+        external baseline to compare against at all.
+
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            `solution_df` (or a `.head(n_best)` slice of it).
+        diff_against : {"default", "rank_1", "previous_rank", "required_sites"}
+            "default" resolves to "required_sites" if at least one site is
+            flagged via `add_sites(required_sites_col=...)`, else
+            "rank_1" -- required sites are the closest thing to a "we
+            already have these, what's new" reference when one is
+            configured, and the top-ranked solution is the next most
+            natural default otherwise. "rank_1" diffs every row against
+            the `solution_rank == 1` row's site_names. "previous_rank"
+            diffs every row against the row immediately above it once
+            sorted by `solution_rank` (the first row has nothing above
+            it, so its diff is empty/zero, not `NaN` -- `previous_rank`
+            answers "what changed one rank down", and there IS no rank
+            below rank 1). "required_sites" diffs every row against the
+            required-sites set directly, raising if none are configured
+            (silently falling back would be surprising for an explicit
+            request, unlike "default"'s silent fallback).
+
+        Returns
+        -------
+        dict or None
+            `{"added": pandas.Series, "removed": pandas.Series, "changed":
+            pandas.Series, "label": str}` -- `added`/`removed` are
+            comma-joined site-name strings, `changed` is the size of the
+            symmetric difference (`len(added) + len(removed)`), and
+            `label` names the reference for use in column headers (e.g.
+            "rank 1"). `None` if `df` has no `solution_rank` column at
+            all (a single directly-evaluated solution has nothing to
+            diff against).
+
+        Raises
+        ------
+        ValueError
+            If `diff_against` isn't one of the values above, or if
+            `diff_against="required_sites"` was explicitly requested but
+            no required sites are configured.
+        """
+        valid = {"default", "rank_1", "previous_rank", "required_sites"}
+        if diff_against not in valid:
+            raise ValueError(
+                f"diff_against must be one of {sorted(valid)}, got {diff_against!r}."
+            )
+
+        if "solution_rank" not in df.columns:
+            return None
+
+        required_indices = _get_required_site_indices(self.site_problem)
+
+        if diff_against == "default":
+            diff_against = "required_sites" if required_indices else "rank_1"
+
+        if diff_against == "required_sites":
+            if not required_indices:
+                raise ValueError(
+                    "diff_against='required_sites' requires at least one site "
+                    "flagged via add_sites(required_sites_col=...) -- none are "
+                    "configured on this problem. Pass diff_against='rank_1' or "
+                    "'previous_rank' instead, or leave diff_against='default' "
+                    "to fall back to 'rank_1' automatically."
+                )
+            candidate_sites = self.site_problem.candidate_sites
+            id_col = self.site_problem._candidate_sites_candidate_id_col
+            reference_names = set(
+                candidate_sites.loc[
+                    candidate_sites["canonical_site_index"].isin(required_indices),
+                    id_col,
+                ]
+            )
+            added = df["site_names"].apply(lambda names: sorted(set(names) - reference_names))
+            removed = df["site_names"].apply(lambda names: sorted(reference_names - set(names)))
+            label = "required sites"
+
+        elif diff_against == "rank_1":
+            rank_1_names = set(
+                self.solution_df.loc[
+                    self.solution_df["solution_rank"] == 1, "site_names"
+                ].iloc[0]
+            )
+            added = df["site_names"].apply(lambda names: sorted(set(names) - rank_1_names))
+            removed = df["site_names"].apply(lambda names: sorted(rank_1_names - set(names)))
+            label = "rank 1"
+
+        else:  # previous_rank
+            ordered = df.sort_values("solution_rank", kind="stable")
+            previous_names = ordered["site_names"].shift(1)
+            added = pd.Series(
+                [
+                    sorted(set(current) - set(previous))
+                    if isinstance(previous, list)
+                    else []
+                    for current, previous in zip(ordered["site_names"], previous_names)
+                ],
+                index=ordered.index,
+            ).reindex(df.index)
+            removed = pd.Series(
+                [
+                    sorted(set(previous) - set(current))
+                    if isinstance(previous, list)
+                    else []
+                    for current, previous in zip(ordered["site_names"], previous_names)
+                ],
+                index=ordered.index,
+            ).reindex(df.index)
+            label = "previous rank"
+
+        changed = added.apply(len) + removed.apply(len)
+        return {
+            "added": added.apply(lambda names: ", ".join(names)),
+            "removed": removed.apply(lambda names: ", ".join(names)),
+            "changed": changed,
+            "label": label,
+        }
+
+    def show_solutions_summary(self, n_best=None, diff_against="default"):
+        """
+        Return a stakeholder-facing view of the solution table: a handful
+        of plain-English columns with units in the header, in place of
+        `show_solutions()`'s full ~30-40 column schema (jargon names, no
+        units, and placeholder `None`/`NaN`/"N/A (No equity data)" columns
+        whenever a given input -- equity data, a coverage threshold, a
+        baseline -- wasn't registered).
+
+        Always included: `Sites in this option` (`site_names`) and `Sites
+        not in this option` (`unselected_site_names`), both joined into one
+        readable string rather than a list pandas truncates mid-entry,
+        `Average travel time (mins)` (`weighted_average`), and `Longest
+        journey (mins)` (`max`). `Rank` is also included for a
+        multi-solution `SiteSolutionSet` (from `solve()`), but omitted for a
+        single directly-evaluated solution (`evaluate_baseline()` or
+        `evaluate_single_solution_single_objective()`), which has no
+        `solution_rank` column to show.
+
+        `Additional sites chosen` (site_names minus the sites flagged via
+        `add_sites(required_sites_col=...)`) is only added when at least one
+        required site is configured -- e.g. for a "we have 4 sites and are
+        opening 1 more" problem, it's just the new site, rather than
+        `Sites in this option` repeating the same 4 required names alongside
+        it in every row.
+
+        `Sites added (vs <reference>)`/`Sites removed (vs <reference>)`/
+        `Sites changed (vs <reference>)` (a per-row site-name diff against
+        `diff_against`, see below) are added whenever there's more than one
+        solution to tell apart (i.e. `solution_rank` exists) -- this is
+        what makes several near-identical top-N rows (e.g. a brute-force
+        search that only ever swaps one or two sites out of many)
+        distinguishable at a glance without scanning two long, truncated
+        `Sites in this option` strings against each other by eye.
+
+        Coverage columns (`People within <threshold> mins`, `% within
+        <threshold> mins`) are only added if `threshold_for_coverage` was
+        set on this solve. `Sites closed` and `Sites added` (`sites_closed_
+        vs_baseline`/`sites_added_vs_baseline`, joined into readable
+        strings) and the population-impact-vs-baseline columns (`People
+        with a longer/shorter journey`, `% of cohort with a longer/shorter
+        journey`, `Avg increase/reduction for them (mins)`) are only added
+        if a baseline was supplied (`solve(baseline=...)` or
+        `evaluate_baseline()`/`evaluate_single_solution_single_
+        objective(baseline=...)`). Equity columns (`Equity gap (mins,
+        best vs worst group)` and the two plain-English equity verdicts)
+        are only added if equity data was registered via `add_equity_data()`.
+        A section absent from the input is omitted entirely rather than
+        shown full of placeholders.
+
+        Parameters
+        ----------
+        n_best : int, optional
+            Number of top-ranked solutions to include. If None, every row
+            in `solution_df` is included.
+        diff_against : {"default", "rank_1", "previous_rank", "required_sites"}, default "default"
+            What each row's site-name diff columns are computed against.
+            "default" resolves to "required_sites" if at least one site is
+            flagged via `add_sites(required_sites_col=...)` (the closest
+            thing to "what's new beyond what we already have"), else falls
+            back to "rank_1" silently. "rank_1" diffs every row against
+            the top-ranked solution's site_names -- a single, stable
+            reference point for comparing any row directly to the best
+            one. "previous_rank" diffs every row against the row one rank
+            better than it -- reads as "what changes if you loosen the
+            criteria one more notch", though unlike "rank_1" the
+            reference itself moves every row, so two non-adjacent ranks
+            can't be compared directly from this column alone.
+            "required_sites" diffs directly against the required-sites
+            set, raising `ValueError` if none are configured (an explicit
+            request for a reference that doesn't exist, unlike
+            "default"'s silent fallback). See `_resolve_site_diff` for the
+            full definition.
+
+        Returns
+        -------
+        pandas.DataFrame
+            One row per solution, columns as described above. People counts
+            are whole numbers, travel times are rounded to 1 decimal place,
+            and coverage is given as both a headcount and a percentage. Any
+            `NaN` (e.g. `mean_reduction_among_improved` when nobody's
+            journey actually improved) is filled with 0, since a stakeholder
+            reading of "no one" is better served by 0 than an unexplained
+            blank.
+
+        Notes
+        -----
+        This is a read-only, additive view -- it never modifies
+        `solution_df`, and `show_solutions()`'s own column set is
+        unaffected. Use `show_solutions()` (optionally with
+        `expand_dict_columns=True`) for the full underlying data, e.g. for
+        further computation or export.
+
+        The equity verdict columns are full sentences and can exceed 50
+        characters. Displaying this DataFrame bare in Jupyter truncates any
+        cell over pandas' `display.max_colwidth` (50 by default) with
+        "..." -- run `pd.set_option("display.max_colwidth", None)` once at
+        the top of a notebook to see them in full, or call
+        `.to_string()` on the result.
+        """
+        df = self.solution_df.head(n_best)
+
+        summary = pd.DataFrame(index=df.index)
+        if "solution_rank" in df.columns:
+            summary["Rank"] = df["solution_rank"]
+        summary["Sites in this option"] = df["site_names"].apply(
+            lambda names: ", ".join(names)
+        )
+        if "additional_site_names" in df.columns:
+            summary["Additional sites chosen"] = df["additional_site_names"].apply(
+                lambda names: ", ".join(names)
+            )
+        summary["Sites not in this option"] = df["unselected_site_names"].apply(
+            lambda names: ", ".join(names)
+        )
+
+        site_diff = self._resolve_site_diff(df, diff_against)
+        if site_diff is not None:
+            label = site_diff["label"]
+            summary[f"Sites added (vs {label})"] = site_diff["added"]
+            summary[f"Sites removed (vs {label})"] = site_diff["removed"]
+            summary[f"Sites changed (vs {label})"] = site_diff["changed"]
+
+        summary["Average travel time (mins)"] = df["weighted_average"].round(1)
+        summary["Longest journey (mins)"] = df["max"].round(1)
+
+        if df["coverage_threshold"].notna().any():
+            threshold = df["coverage_threshold"].iloc[0]
+            summary[f"People within {threshold:.0f} mins"] = df[
+                "demand_within_coverage_threshold"
+            ].round(0).astype("Int64")
+            summary[f"% within {threshold:.0f} mins"] = (
+                df["proportion_within_coverage_threshold"] * 100
+            ).round(1)
+
+        if "sites_closed_vs_baseline" in df.columns:
+            summary["Sites closed"] = df["sites_closed_vs_baseline"].apply(
+                lambda names: ", ".join(names)
+            )
+            summary["Sites added"] = df["sites_added_vs_baseline"].apply(
+                lambda names: ", ".join(names)
+            )
+
+        if "demand_worsened" in df.columns:
+            summary["People with a longer journey"] = (
+                df["demand_worsened"].round(0).astype("Int64")
+            )
+            summary["% of cohort with a longer journey"] = (
+                df["proportion_demand_worsened"] * 100
+            ).round(1)
+            summary["Avg increase for them (mins)"] = df[
+                "mean_increase_among_worsened"
+            ].round(1)
+            summary["People with a shorter journey"] = (
+                df["demand_improved"].round(0).astype("Int64")
+            )
+            summary["% of cohort with a shorter journey"] = (
+                df["proportion_demand_improved"] * 100
+            ).round(1)
+            summary["Avg reduction for them (mins)"] = df[
+                "mean_reduction_among_improved"
+            ].round(1)
+
+        if self.site_problem.equity_data is not None:
+            summary["Equity gap (mins, best vs worst group)"] = df[
+                "gap_absolute_weighted"
+            ].round(1)
+            summary["Equity verdict (best vs worst group)"] = df[
+                "gap_relative_description"
+            ]
+            summary["Equity verdict (most vs least deprived third)"] = df[
+                "inter_tertile_description"
+            ]
+
+        return summary.fillna(0)
+
+    def return_best_combination_details(self, sort_by=None, top_n=1):
         """
         Return details of the top-ranked solution(s).
 
         Parameters
         ----------
-        rank_on : str, optional
+        sort_by : str, optional
             Column name to rank the solutions by before selecting the top
             entries. If None, the existing order of ``solution_df``, which is
             based on the objective selected, is used.
@@ -1150,22 +2467,22 @@ class SiteSolutionSet(
         best: coverage proportions are ranked highest-first, and every other
         reported metric is a travel cost and is ranked lowest-first.
         """
-        if rank_on is not None:
+        if sort_by is not None:
             return (
-                _sort_solutions_by_metric(self.solution_df, rank_on)
+                _sort_solutions_by_metric(self.solution_df, sort_by)
                 .head(top_n)
                 .reset_index()
             )
         else:
             return self.solution_df.head(top_n).reset_index()
 
-    def return_best_combination_site_indices(self, rank_on=None):
+    def return_best_combination_site_indices(self, sort_by=None):
         """
         Return the site indices for the best-performing solution.
 
         Parameters
         ----------
-        rank_on : str, optional
+        sort_by : str, optional
             Column name to rank the solutions by. If provided, the solution
             with the BEST value in this column is selected -- the highest for
             coverage proportions, the lowest for travel-cost metrics.
@@ -1179,20 +2496,20 @@ class SiteSolutionSet(
             Typically a list or array of site indices.
 
         """
-        if rank_on is not None:
-            return _sort_solutions_by_metric(self.solution_df, rank_on)[
+        if sort_by is not None:
+            return _sort_solutions_by_metric(self.solution_df, sort_by)[
                 "site_indices"
             ].iloc[0]
         else:
             return self.solution_df["site_indices"].iloc[0]
 
-    def return_best_combination_site_names(self, rank_on=None):
+    def return_best_combination_site_names(self, sort_by=None):
         """
         Return the site names for the best-performing solution.
 
         Parameters
         ----------
-        rank_on : str, optional
+        sort_by : str, optional
             Column name to rank the solutions by. If provided, the solution
             with the BEST value in this column is selected -- the highest for
             coverage proportions, the lowest for travel-cost metrics.
@@ -1206,8 +2523,8 @@ class SiteSolutionSet(
             Typically a list or array of site names.
 
         """
-        if rank_on is not None:
-            return _sort_solutions_by_metric(self.solution_df, rank_on)[
+        if sort_by is not None:
+            return _sort_solutions_by_metric(self.solution_df, sort_by)[
                 "site_names"
             ].iloc[0]
         else:
@@ -1216,7 +2533,7 @@ class SiteSolutionSet(
     def site_allocation_summary(
         self,
         by="demand",
-        rank_on=None,
+        sort_by=None,
         solution_rank=1,
         site_names=None,
         site_indices=None,
@@ -1249,12 +2566,12 @@ class SiteSolutionSet(
             metrics (see `EvaluatedCombination.return_solution_metrics`):
             unqualified means demand-weighted. The two coincide when demand
             is uniform, including when `add_demand()` was never called.
-        rank_on : str, optional
+        sort_by : str, optional
         solution_rank : int, default 1
         site_names : list, optional
         site_indices : list, optional
             Solution selection, as in `plot_best_combination`. Priority is
-            site_indices > site_names > rank_on/solution_rank.
+            site_indices > site_names > sort_by/solution_rank.
         matrix : str, optional
             Label of a secondary travel matrix registered via
             `add_secondary_travel_matrix()`. Summarises allocation, and
@@ -1263,7 +2580,7 @@ class SiteSolutionSet(
             of the primary matrix's.
         demand : str, optional
             Label of a secondary demand scenario registered via
-            `add_secondary_demand()`. Computes `total_demand` and (for
+            `add_secondary_demand()`. Computes `allocated_demand` and (for
             `by="demand"`) `proportion` / `average_travel_cost` under that
             scenario's demand instead of the primary demand data. Combines
             freely with `matrix=`.
@@ -1273,8 +2590,9 @@ class SiteSolutionSet(
         pandas.DataFrame
             One row per site in the chosen solution, indexed by site name
             ("site") in canonical site-index order. Columns: `n_regions`,
-            `total_demand` (omitted when no demand data is registered),
-            `proportion` (sums to 1.0 across the frame), and
+            `allocated_demand` (omitted when no demand data is registered),
+            `proportion` (sums to 1.0 across the frame, UNLESS the
+            solution has unreachable demand -- see Notes), and
             `average_travel_cost` (in the travel matrix's registered unit
             -- e.g. minutes, or miles if the matrix was built from
             distances rather than times).
@@ -1308,6 +2626,18 @@ class SiteSolutionSet(
         would roughly double typical travel distance for patients, while
         adding a third site offered only limited benefit over the existing
         two.
+
+        A demand location with no feasible journey to any selected site
+        (`add_travel_matrix(allow_missing=True)`) has a missing
+        (`selected_site` is not a value) rather than a real site, so it
+        cannot appear in any site's row -- it is excluded from
+        `n_regions`/`allocated_demand`/`proportion` entirely rather than
+        attributed to whichever site happens to be nearest-but-
+        unreachable. `proportion` then sums to less than `1.0` by exactly
+        that share; the solution's own `regions_unreachable`/`demand_
+        unreachable`/`proportion_demand_unreachable` (`return_solution_
+        metrics()`) account for what's missing. `0` for every problem
+        that never opts into `allow_missing`.
         """
         if by not in ("demand", "regions"):
             raise ValueError(f"by must be 'demand' or 'regions', got {by!r}.")
@@ -1316,7 +2646,7 @@ class SiteSolutionSet(
 
         solution = _select_solution(
             self.solution_df,
-            rank_on=rank_on,
+            sort_by=sort_by,
             solution_rank=solution_rank,
             site_names=site_names,
             site_indices=site_indices,
@@ -1372,16 +2702,16 @@ class SiteSolutionSet(
         result.index.name = "site"
 
         if has_demand:
-            total_demand = per_region[demand_col].astype(float).sum()
+            overall_demand = per_region[demand_col].astype(float).sum()
             demand_by_site = (
                 per_region.groupby(selected_site_col)[demand_col]
                 .sum()
                 .reindex(selected_sites, fill_value=0.0)
             )
-            result["total_demand"] = demand_by_site
+            result["allocated_demand"] = demand_by_site
 
         if by == "demand":
-            result["proportion"] = result["total_demand"] / total_demand
+            result["proportion"] = result["allocated_demand"] / overall_demand
 
             # sum(cost * demand) / sum(demand) per site, mirroring how the
             # solution-level `weighted_average` is computed. Grouping and
@@ -1407,12 +2737,301 @@ class SiteSolutionSet(
 
         return result
 
+    def site_capacity_summary(
+        self,
+        capacity_col=None,
+        demand_to_capacity_rate=1.0,
+        sort_by=None,
+        solution_rank=1,
+        site_names=None,
+        site_indices=None,
+        matrix=None,
+        demand=None,
+    ):
+        """
+        Per-site comparison of a chosen solution's allocated demand against
+        registered capacity: does each selected site have room for the
+        demand it is closest to?
+
+        Builds directly on `site_allocation_summary(by="demand")` -- this
+        is "does the allocation fit?", where that method answers "who gets
+        allocated where?". This is a diagnostic only: it does not feed back
+        into `solve()`, which still has no capacitated search strategy
+        (`capacitated=True` raises `NotImplementedError`).
+
+        Parameters
+        ----------
+        capacity_col : str, optional
+            Column in `candidate_sites` giving each site's capacity, in
+            whatever unit the caller's capacity is measured in (e.g.
+            appointments/week). Defaults to the `capacity_col` registered
+            via `add_sites()`; passing one here overrides it for this call
+            only, so the same solution can be scored under a different
+            capacity definition, mirroring `two_step_floating_catchment`'s
+            call-time `supply_col`. Raises if neither is available.
+        demand_to_capacity_rate : float, default 1.0
+            Converts allocated demand into capacity units, e.g. `5.2`
+            appointments consumed per unit of demand per year. Demand (e.g.
+            population) and capacity (e.g. appointment slots) are usually
+            in different units, so a raw demand-over-capacity ratio is
+            meaningless without this. Must be a positive real number --
+            this is deliberately a single scalar applied uniformly to every
+            site and region; it cannot yet vary by region (e.g. by age
+            structure or deprivation), which would systematically
+            understate load in demographics with higher real usage rates.
+        sort_by : str, optional
+        solution_rank : int, default 1
+        site_names : list, optional
+        site_indices : list, optional
+            Solution selection, as in `site_allocation_summary`. Priority
+            is site_indices > site_names > sort_by/solution_rank.
+        matrix : str, optional
+            Label of a secondary travel matrix registered via
+            `add_secondary_travel_matrix()`. Passed through to
+            `site_allocation_summary()`; capacity itself is a property of
+            the site, not the matrix, so it is unaffected.
+        demand : str, optional
+            Label of a secondary demand scenario registered via
+            `add_secondary_demand()`. Passed through to
+            `site_allocation_summary()`.
+
+        Returns
+        -------
+        pandas.DataFrame
+            One row per site in the chosen solution, indexed by site name
+            ("site") in canonical site-index order (not sorted -- use
+            e.g. `.sort_values("allocated_utilisation_ratio",
+            ascending=False)` to rank sites by pressure). Columns:
+
+            - `n_regions`, `allocated_demand` -- as in
+              `site_allocation_summary()`.
+            - `allocated_load` -- `allocated_demand *
+              demand_to_capacity_rate`, in capacity units.
+            - `capacity` -- the resolved `capacity_col`, echoed back.
+            - `allocated_utilisation_ratio` -- `allocated_load / capacity`.
+              `1.0` means exactly full; values above `1.0` are genuinely
+              over capacity and are not clipped.
+
+            Present only if `current_load_col` or `utilisation_col` was
+            registered via `add_sites()`:
+
+            - `current_load` -- present iff `current_load_col` was
+              registered; the raw registered value, echoed back.
+            - `baseline_utilisation_ratio` -- present iff `utilisation_col`
+              was registered; the raw registered ratio, echoed back.
+            - `headroom` -- `capacity - current_load` on the raw-counts
+              path, or `capacity * (1 - baseline_utilisation_ratio)` on the
+              precomputed-ratio path. Present whenever either input above
+              is present: unlike `site_utilisation_summary()`, capacity is
+              mandatory here, so the ratio path can always derive it.
+            - `incremental_headroom_ratio` -- `allocated_load / headroom`.
+              Not clipped; a negative value means the site is already over
+              capacity today, so no allocation is absorbable at all -- see
+              `residual_headroom` for a more readable version of that case.
+            - `residual_headroom` -- `headroom - allocated_load`. Negative
+              means a shortfall in capacity units.
+
+        Raises
+        ------
+        ValueError
+            If no `capacity_col` is available (neither passed nor
+            registered), if the resolved capacity column is not found, is
+            non-numeric, or has a negative value for a selected site, if
+            `demand_to_capacity_rate` is not a positive real number, or if
+            no demand data is registered.
+        KeyError
+            If a selected site is missing from `candidate_sites`.
+
+        Notes
+        -----
+        **`allocated_utilisation_ratio` and `incremental_headroom_ratio`
+        encode contradictory assumptions about what the allocated demand
+        represents, and only one is usually right for a given study.**
+        `allocated_utilisation_ratio` assumes the allocated demand
+        *replaces* today's activity entirely -- the whole-network
+        reallocation that `solve()` actually models, where every region is
+        served by its closest selected site. `incremental_headroom_ratio`
+        assumes the allocated demand lands *on top of* today's activity --
+        e.g. a new service line delivered from existing sites, where the
+        modelled cohort is additional to current caseload. Which one
+        applies depends on what the study is asking, not on whether
+        `current_load_col`/`utilisation_col` happened to be registered --
+        so read the Notes above before trusting either number, and don't
+        assume the mere presence of `incremental_headroom_ratio` means it
+        is the metric to use.
+
+        A zero-allocation site (see `site_allocation_summary`'s Notes)
+        gets an explicit row with `allocated_demand=0`, `allocated_load=0`
+        and `allocated_utilisation_ratio=0.0` -- genuinely measured and
+        idle, not "not measured".
+
+        Capacity of `0` with a nonzero allocation gives `inf`, not a
+        clipped or coerced value -- infinitely over capacity is the
+        honest answer. Capacity of `0` with zero allocation gives `NaN`
+        (0/0), a known ambiguity between "no capacity" and "undefined".
+        NaN capacity for a site (only reachable when `capacity_col` allows
+        missing values, unlike `add_sites(capacity_col=...)` which does
+        not) NaN's every ratio for that site and raises a `UserWarning`
+        naming it, rather than silently reading as `0.0` ("measured, and
+        empty").
+
+        Unreachable demand locations (`add_travel_matrix(allow_missing=
+        True)`) are excluded from `site_allocation_summary()`'s allocation
+        entirely, so `allocated_demand` -- and therefore every ratio here
+        -- *understates* true load for every site, with no visible sum-
+        to-less-than-1.0 tell the way `proportion` has. A `UserWarning` is
+        raised whenever the selected solution has `regions_unreachable >
+        0`, naming the count, so this doesn't pass silently.
+
+        If a call-time `capacity_col` differs from the one registered via
+        `add_sites()`, `headroom` is computed from the call-time capacity
+        on both the raw-counts and precomputed-ratio paths, so it can
+        differ from `site_utilisation_summary()`'s own `headroom` for the
+        same site.
+        """
+        if not isinstance(demand_to_capacity_rate, (int, float)) or isinstance(
+            demand_to_capacity_rate, bool
+        ):
+            raise ValueError(
+                "demand_to_capacity_rate must be a positive number "
+                "(capacity units consumed per unit of demand), got "
+                f"{demand_to_capacity_rate!r}."
+            )
+        if demand_to_capacity_rate <= 0:
+            raise ValueError(
+                "demand_to_capacity_rate must be a positive number "
+                "(capacity units consumed per unit of demand), got "
+                f"{demand_to_capacity_rate}. A rate of 0 would report every "
+                "site as empty regardless of allocated demand."
+            )
+
+        resolved_capacity_col = (
+            capacity_col
+            if capacity_col is not None
+            else self.site_problem._candidate_sites_capacity_col
+        )
+        if resolved_capacity_col is None:
+            raise ValueError(
+                "site_capacity_summary() requires a capacity column. Either "
+                "pass capacity_col='<your column>' at call time, or "
+                "register one via add_sites(..., capacity_col=...)."
+            )
+
+        demand_col = getattr(self.site_problem, "_demand_data_demand_col", None)
+        if demand is None:
+            has_demand = demand_col is not None
+        else:
+            registered_demand_labels = getattr(
+                self.site_problem, "secondary_demand_matrices", {}
+            )
+            has_demand = demand in registered_demand_labels
+        if not has_demand:
+            raise ValueError(
+                "site_capacity_summary() requires demand data -- there is "
+                "nothing to compare against capacity. Call add_demand() "
+                "first, or register a secondary demand scenario via "
+                "add_secondary_demand()."
+            )
+
+        _, _, _, _, suffix = self._resolve_travel_columns(matrix)
+        selected_solution = _select_solution(
+            self.solution_df,
+            sort_by=sort_by,
+            solution_rank=solution_rank,
+            site_names=site_names,
+            site_indices=site_indices,
+        )
+        regions_unreachable = selected_solution[f"regions_unreachable{suffix}"].values[
+            0
+        ]
+        if regions_unreachable > 0:
+            warnings.warn(
+                f"site_capacity_summary: {regions_unreachable} region(s) in "
+                "this solution have no feasible journey to any selected "
+                "site and are excluded from allocated_demand entirely. "
+                "Every ratio below therefore UNDERSTATES true load -- "
+                "unlike site_allocation_summary()'s 'proportion', there is "
+                "no visible sum-to-less-than-1.0 tell for this.",
+                stacklevel=2,
+            )
+
+        allocation = self.site_allocation_summary(
+            by="demand",
+            sort_by=sort_by,
+            solution_rank=solution_rank,
+            site_names=site_names,
+            site_indices=site_indices,
+            matrix=matrix,
+            demand=demand,
+        )
+
+        selected_sites = list(allocation.index)
+        capacity = _resolve_site_numeric_column(
+            self.site_problem.candidate_sites,
+            self.site_problem._candidate_sites_candidate_id_col,
+            resolved_capacity_col,
+            selected_sites,
+            param_name="capacity_col",
+            quantity_label="capacity",
+            allow_missing=True,
+        ).reindex(selected_sites)
+
+        missing_capacity_sites = capacity[capacity.isna()].index.tolist()
+        if missing_capacity_sites:
+            warnings.warn(
+                "site_capacity_summary: no capacity registered in "
+                f"capacity_col={resolved_capacity_col!r} for site(s): "
+                f"{missing_capacity_sites}. Their allocated_utilisation_ratio "
+                "is NaN (not measured), not 0.0.",
+                stacklevel=2,
+            )
+
+        result = pd.DataFrame(index=allocation.index)
+        result.index.name = "site"
+        result["n_regions"] = allocation["n_regions"]
+        result["allocated_demand"] = allocation["allocated_demand"]
+        result["allocated_load"] = (
+            result["allocated_demand"] * demand_to_capacity_rate
+        )
+        result["capacity"] = capacity
+        result["allocated_utilisation_ratio"] = (
+            result["allocated_load"] / result["capacity"]
+        )
+
+        candidate_sites = self.site_problem.candidate_sites
+        candidate_id_col = self.site_problem._candidate_sites_candidate_id_col
+        has_current_load = self.site_problem._candidate_sites_current_load_col is not None
+        has_baseline_ratio = self.site_problem._candidate_sites_utilisation_col is not None
+
+        if has_current_load or has_baseline_ratio:
+            selected = candidate_sites.set_index(candidate_id_col).loc[selected_sites]
+
+            if has_current_load:
+                result["current_load"] = selected[
+                    self.site_problem._candidate_sites_current_load_col
+                ].to_numpy()
+                result["headroom"] = result["capacity"] - result["current_load"]
+            else:
+                result["baseline_utilisation_ratio"] = selected[
+                    self.site_problem._candidate_sites_utilisation_col
+                ].to_numpy()
+                result["headroom"] = result["capacity"] * (
+                    1 - result["baseline_utilisation_ratio"]
+                )
+
+            result["incremental_headroom_ratio"] = (
+                result["allocated_load"] / result["headroom"]
+            )
+            result["residual_headroom"] = result["headroom"] - result["allocated_load"]
+
+        return result
+
     def two_step_floating_catchment(
         self,
         supply_col,
         catchment_size=None,
         distance_decay=None,
-        rank_on=None,
+        sort_by=None,
         solution_rank=1,
         site_names=None,
         site_indices=None,
@@ -1446,12 +3065,12 @@ class SiteSolutionSet(
         distance_decay : list of (float, float) or dict, optional
             Enhanced 2SFCA step-decay bands or a continuous decay kernel,
             forwarded as-is. See `SiteProblem.two_step_floating_catchment`.
-        rank_on : str, optional
+        sort_by : str, optional
         solution_rank : int, default 1
         site_names : list, optional
         site_indices : list, optional
             Solution selection, as in `site_allocation_summary`. Priority
-            is site_indices > site_names > rank_on/solution_rank.
+            is site_indices > site_names > sort_by/solution_rank.
         matrix : str, optional
             Label of a secondary travel matrix registered via
             `add_secondary_travel_matrix()`. Scores accessibility under
@@ -1486,7 +3105,7 @@ class SiteSolutionSet(
         """
         solution = _select_solution(
             self.solution_df,
-            rank_on=rank_on,
+            sort_by=sort_by,
             solution_rank=solution_rank,
             site_names=site_names,
             site_indices=site_indices,

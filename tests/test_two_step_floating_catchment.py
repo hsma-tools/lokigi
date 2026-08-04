@@ -127,10 +127,10 @@ def test_unreachable_region_is_zero_not_nan(sfca_problem):
 
 
 def test_nan_travel_cost_treated_as_unreachable_not_propagated():
-    """A NaN travel cost is only rejected at registration time for secondary
-    matrices (`_build_secondary_travel_frames`) -- the primary matrix (used
-    here) allows it through unvalidated, so a missing origin-destination
-    route legitimately reaches `two_step_floating_catchment()`.
+    """A NaN travel cost is rejected at registration time unless
+    `add_travel_matrix(allow_missing=True)` opts in -- passed here so a
+    genuinely missing origin-destination route reaches
+    `two_step_floating_catchment()`, rather than raising at registration.
 
     This underwrites the safety of building `weight_matrix` from boolean
     comparisons against `cost_frame` (`cost_frame <= x`, `.where(cost_frame
@@ -166,7 +166,7 @@ def test_nan_travel_cost_treated_as_unreachable_not_propagated():
     problem = lokigi.site.SiteProblem(debug_mode=False)
     problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
     problem.add_sites(candidate_df, candidate_id_col="site_id")
-    problem.add_travel_matrix(travel_df, source_col="source_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id", allow_missing=True)
 
     region_frame, site_frame = problem.two_step_floating_catchment(
         supply_col="supply", catchment_size=15, return_site_ratios=True
@@ -224,6 +224,27 @@ def test_per_capita_scales_accessibility_but_not_site_frame(sfca_problem):
         region_frame["accessibility"] * 100_000,
     )
     pd.testing.assert_frame_equal(scaled_site_frame, site_frame)
+
+
+@pytest.mark.parametrize("bad_per_capita", [0, -1.0])
+def test_non_positive_per_capita_raises(sfca_problem, bad_per_capita):
+    with pytest.raises(ValueError, match="per_capita"):
+        sfca_problem.two_step_floating_catchment(
+            supply_col="supply",
+            catchment_size=15,
+            site_names=["Site_1", "Site_2"],
+            per_capita=bad_per_capita,
+        )
+
+
+def test_non_numeric_per_capita_raises(sfca_problem):
+    with pytest.raises(ValueError, match="per_capita"):
+        sfca_problem.two_step_floating_catchment(
+            supply_col="supply",
+            catchment_size=15,
+            site_names=["Site_1", "Site_2"],
+            per_capita="fast",
+        )
 
 
 def test_matrix_argument_uses_secondary_costs(sfca_problem_with_secondary_matrix):
@@ -358,7 +379,13 @@ def test_null_supply_raises():
 
 def test_negative_supply_raises():
     problem = _sfca_problem_with_supply_values([10, -5])
-    with pytest.raises(ValueError, match="Site_2"):
+    # Also pins "supply quantity" specifically, not just the site name --
+    # this method's validation is shared with site_capacity_summary()'s via
+    # a common resolver (_resolve_site_numeric_column), parametrised by a
+    # quantity_label ("supply quantity" here, "capacity" there); a
+    # regression that mixed the two labels up would still match on
+    # "Site_2" alone.
+    with pytest.raises(ValueError, match="not a valid supply quantity.*Site_2"):
         problem.two_step_floating_catchment(supply_col="supply", catchment_size=15)
 
 

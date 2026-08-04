@@ -1,3 +1,4 @@
+from lokigi.plot_utils import _add_plot_caption, _attach_deferred_fit_bounds
 from lokigi.utils import (
     _validate_columns,
     _load_spatial_or_tabular_data,
@@ -50,6 +51,59 @@ def _apply_unit_conversion(loaded_df, unit, from_unit, to_unit):
         resolved_unit = unit
 
     return loaded_df, resolved_unit
+
+
+def _apply_treat_as_missing(loaded_df, source_col, treat_as_missing):
+    """Convert an existing missing-data sentinel (e.g. 9999) in a travel
+    matrix's cost columns to a proper NaN, before any missing-value check or
+    unit conversion runs -- so `treat_as_missing` is always matched against
+    the value as the caller supplied it, not a unit-converted one.
+    `treat_as_missing` may be a scalar (matched by equality) or a callable
+    taking a cell value and returning bool. Mutates and returns `loaded_df`.
+    """
+    if treat_as_missing is None:
+        return loaded_df
+
+    cost_cols = loaded_df.columns.drop(source_col)
+    if callable(treat_as_missing):
+        sentinel_mask = loaded_df[cost_cols].map(treat_as_missing)
+    else:
+        sentinel_mask = loaded_df[cost_cols] == treat_as_missing
+    loaded_df[cost_cols] = loaded_df[cost_cols].where(~sentinel_mask)
+    return loaded_df
+
+
+def _reject_missing_travel_values(loaded_df, cost_cols, allow_missing, method_name):
+    """Raise unless `allow_missing` opts in, if any of `cost_cols` in
+    `loaded_df` hold a missing (NaN) travel cost.
+
+    A missing travel cost means "no feasible journey" for that
+    origin-destination pair (e.g. no public transport route within a
+    permissive search radius) -- lokigi treats that as a real, first-class
+    outcome rather than something to silently paper over with a sentinel
+    like 9999, but it still has to be an explicit opt-in: an unnoticed NaN
+    (an ID mismatch, a botched generation run) should keep failing loudly.
+    """
+    if allow_missing:
+        return
+
+    nan_mask = loaded_df[cost_cols].isna()
+    if not nan_mask.any().any():
+        return
+
+    n_missing = int(nan_mask.sum().sum())
+    example_rows = loaded_df.index[nan_mask.any(axis=1)][:5].tolist()
+    raise ValueError(
+        f"{method_name} found {n_missing} missing (NaN) travel cost "
+        f"value(s) (e.g. row(s) {example_rows}). A missing value means "
+        "\"no feasible journey\" for that origin-destination pair, not a "
+        "data error to be assumed away -- pass allow_missing=True to "
+        "register the matrix as-is (unreachable pairs are then treated as "
+        "genuinely unreachable throughout evaluation and plotting, rather "
+        "than needing a large sentinel travel time), or "
+        "treat_as_missing=<value or callable> to convert an existing "
+        "sentinel (e.g. 9999) to a proper missing value first."
+    )
 
 
 class SiteAttributeMixin:
@@ -516,7 +570,7 @@ class SiteAttributeMixin:
                     )
         else:
             m = self.candidate_sites.explore(marker_kwds=dict(radius=8))
-            return m
+            return _attach_deferred_fit_bounds(m)
 
     ###############################
     # MARK: Site Utilisation
@@ -687,6 +741,7 @@ class SiteAttributeMixin:
         add_basemap=True,
         tiles="CartoDB positron",
         title=None,
+        caption=None,
         ax=None,
         figsize=None,
         **kwargs,
@@ -737,6 +792,13 @@ class SiteAttributeMixin:
             download entirely.
         title : str, optional
             Axes title. Ignored on interactive maps.
+        caption : str or None, default None
+            `None` prints a short "how to read this" explanation of the
+            marker colour/size below the chart; pass `""` to suppress it
+            or a custom string to replace it, matching the existing
+            `caption` convention on `plot_accessibility()` /
+            `plot_pareto_summary()` / `plot_site_reallocation_matrix()` /
+            `plot_population_impact_histogram()`. Static branch only.
         ax : matplotlib.axes.Axes, optional
             Existing axes to plot onto. Ignored if `interactive=True`.
         figsize : tuple, optional
@@ -810,10 +872,12 @@ class SiteAttributeMixin:
                 missing_kwds=dict(color=missing_site_colour),
                 **kwargs,
             )
-            return m
+            return _attach_deferred_fit_bounds(m)
 
         if ax is None:
-            _, ax = plt.subplots(figsize=figsize)
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.get_figure()
 
         site_gdf.plot(
             column="utilisation_ratio",
@@ -872,6 +936,13 @@ class SiteAttributeMixin:
                     "Continuing without a basemap.",
                     stacklevel=2,
                 )
+
+        default_caption = (
+            "Markers are coloured (and sized) by each site's current "
+            "real-world utilisation ratio -- today's baseline, independent "
+            "of any solve() or catchment/demand modelling."
+        )
+        _add_plot_caption(fig, caption, default_caption)
 
         return ax
 
@@ -937,6 +1008,8 @@ class SiteAttributeMixin:
         unit=None,
         from_unit=None,
         to_unit=None,
+        allow_missing=False,
+        treat_as_missing=None,
     ):
         """
         Add a travel cost matrix to the problem and handle unit conversions.
@@ -964,6 +1037,27 @@ class SiteAttributeMixin:
             The current time unit of the numeric values in the dataframe.
         to_unit : {"seconds", "minutes", "hours"}, optional
             The target time unit for the numeric values in the dataframe.
+        allow_missing : bool, default False
+            Whether to allow missing (NaN) travel costs -- a demand
+            location with no feasible journey to a given site (e.g. no
+            public transport route within a permissive search radius). By
+            default a missing value raises `ValueError`, since an unnoticed
+            NaN usually means an ID mismatch or a botched generation run.
+            Once `allow_missing=True`, `min_cost`/`weighted_average`/etc.
+            skip unreachable rows rather than propagating NaN into every
+            metric, and separate `regions_unreachable`/`demand_unreachable`
+            metrics report how many/how much was excluded. `solve()` does
+            not yet support optimising over a matrix with missing values --
+            see its own error for the current workaround.
+        treat_as_missing : scalar or callable, optional
+            An existing missing-data sentinel already baked into
+            `travel_matrix_df` (e.g. `9999`), converted to a proper missing
+            value before anything else runs. A scalar is matched by
+            equality; a callable is applied to every cost cell and should
+            return `True` for values that mean "missing" (e.g. `lambda v: v
+            >= 9000`). Implies data containing missing values, so also pass
+            `allow_missing=True` unless the conversion is expected to find
+            nothing.
 
         Returns
         -------
@@ -972,7 +1066,9 @@ class SiteAttributeMixin:
         Raises
         ------
         ValueError
-            If the `source_col` is missing from the provided dataframe.
+            If the `source_col` is missing from the provided dataframe, or
+            if the matrix contains missing (NaN) travel costs and
+            `allow_missing` was not set.
         KeyError
             If the `from_unit` to `to_unit` combination is not supported
             by the internal conversion dictionary.
@@ -999,6 +1095,14 @@ class SiteAttributeMixin:
                 "We found these instead: {available}. Please double-check the column names "
                 "you are passing to the .add_travel_matrix() method."
             ),
+        )
+
+        loaded_df = _apply_treat_as_missing(loaded_df, source_col, treat_as_missing)
+        _reject_missing_travel_values(
+            loaded_df,
+            loaded_df.columns.drop(source_col),
+            allow_missing,
+            "add_travel_matrix()",
         )
 
         loaded_df, self._travel_matrix_unit = _apply_unit_conversion(
@@ -1034,6 +1138,8 @@ class SiteAttributeMixin:
         from_unit=None,
         to_unit=None,
         threshold_for_coverage=None,
+        allow_missing=False,
+        treat_as_missing=None,
     ):
         """
         Register an additional travel/cost matrix for a different mode or
@@ -1046,19 +1152,21 @@ class SiteAttributeMixin:
         per-solution metric columns (suffixed `__<label>`, e.g.
         `min_cost__public_transport`, `weighted_average__public_transport`)
         into every solution `solve()` produces, so it can be used directly in
-        plots, `ParetoMetric(column=...)`, and post-hoc ranking
-        (`rank_on="max__public_transport"`) -- without needing to `.copy()`
+        plots, `Metric(column=...)`, and post-hoc ranking
+        (`sort_by="max__public_transport"`) -- without needing to `.copy()`
         the problem and solve it twice.
 
-        Because ranking (`rank_on`) reorders whatever `solve()` already
-        returned, it only reorders candidates that survived the *primary*
-        matrix's search and pruning. If `brute_force_keep_best_n` (or
-        `_worst_n`) is set, candidates were discarded on primary-matrix
-        performance before secondary metrics were ever considered -- so a
-        secondary ranking over what survives is not the true best solution
-        for that mode. When secondary matrices are in play, prefer retaining
-        every combination (no `brute_force_keep_best_n`/`_worst_n`) and using
-        `compute_pareto_front()` to explore the trade-off properly.
+        Post-hoc ranking reorders whatever `solve()` already returned, so it
+        only reorders candidates that survived the *primary* matrix's search
+        and pruning. If `brute_force_keep_best_n` (or `_worst_n`) is set,
+        candidates were discarded on primary-matrix performance before
+        secondary metrics were ever considered -- so a secondary ranking over
+        what survives is not the true best solution for that mode. To search
+        on a secondary matrix rather than merely re-sort by it, pass the
+        column to `solve(rank_on=...)`, which makes the pruning itself use
+        that metric. Alternatively, retain every combination (no
+        `brute_force_keep_best_n`/`_worst_n`) and use `compute_pareto_front()`
+        to explore the trade-off across both matrices at once.
 
         You may call this method multiple times with different `label`s to
         register as many secondary matrices as needed. Each one adds
@@ -1095,6 +1203,18 @@ class SiteAttributeMixin:
             (e.g. 60 minutes for public transport vs 20 for car). If not
             provided, falls back to the `threshold_for_coverage` passed to
             `solve()` / `evaluate_single_solution_single_objective()`.
+        allow_missing : bool, default False
+            Whether to allow missing (NaN) travel costs -- a demand
+            location with no feasible journey to a given site. By default a
+            missing value raises `KeyError` once `solve()` builds this
+            matrix's aligned frame (see Notes below); `allow_missing=True`
+            treats it as genuinely unreachable instead, the same as
+            `add_travel_matrix(allow_missing=True)`.
+        treat_as_missing : scalar or callable, optional
+            An existing missing-data sentinel already baked into
+            `travel_matrix_df` (e.g. `9999`), converted to a proper missing
+            value before anything else runs -- see
+            `add_travel_matrix(treat_as_missing=...)`.
 
         Returns
         -------
@@ -1111,11 +1231,11 @@ class SiteAttributeMixin:
         Notes
         -----
         Secondary matrices must be complete: every demand location and every
-        candidate site must have a non-missing value. This is validated when
-        `solve()` builds the aligned per-solution frames (not here, since
-        demand/sites may not yet be registered) -- see `solve()` for the
-        specific errors raised for missing rows, missing columns, or NaN
-        cells.
+        candidate site must have a row/column, and (unless `allow_missing=
+        True`) a non-missing value. This is validated when `solve()` builds
+        the aligned per-solution frames (not here, since demand/sites may
+        not yet be registered) -- see `solve()` for the specific errors
+        raised for missing rows or missing columns.
         """
         if not label or not isinstance(label, str):
             raise ValueError(
@@ -1159,6 +1279,8 @@ class SiteAttributeMixin:
             ),
         )
 
+        loaded_df = _apply_treat_as_missing(loaded_df, source_col, treat_as_missing)
+
         loaded_df, resolved_unit = _apply_unit_conversion(
             loaded_df, unit, from_unit, to_unit
         )
@@ -1168,6 +1290,7 @@ class SiteAttributeMixin:
             "source_col": source_col,
             "unit": resolved_unit,
             "threshold_for_coverage": threshold_for_coverage,
+            "allow_missing": allow_missing,
         }
 
     def show_secondary_travel_matrix(self, label):
@@ -1204,12 +1327,15 @@ class SiteAttributeMixin:
 
         Reindexing (rather than merging) guarantees row alignment to the
         primary demand/travel index and cannot duplicate rows. Every
-        secondary matrix must be complete -- every demand location present
-        as a row, every candidate site present as a column, and no missing
-        (NaN) values in the selected site columns -- since a partially
+        secondary matrix must have every demand location present as a row
+        and every candidate site present as a column -- a partially
         populated matrix would silently compute its averages over a
         different denominator than the primary matrix, making the two
-        non-comparable.
+        non-comparable. Missing (NaN) *values* within those cells are
+        rejected too, unless the matrix was registered with
+        `add_secondary_travel_matrix(allow_missing=True)`, in which case
+        they are kept as genuinely-unreachable travel costs (see
+        `EvaluatedCombination._compute_travel_metrics`).
         """
         self._secondary_travel_frames = {}
 
@@ -1248,19 +1374,21 @@ class SiteAttributeMixin:
 
             frame = matrix.set_index(source_col).reindex(demand_index)[site_names]
 
-            nan_mask = frame.isna().any(axis=1)
-            if nan_mask.any():
-                nan_ids = frame.index[nan_mask].tolist()
-                raise KeyError(
-                    f"Secondary travel matrix '{label}' has {len(nan_ids)} "
-                    f"demand location(s) with a missing value for at least "
-                    f"one candidate site (e.g. {nan_ids[:5]}). This usually "
-                    "means a route is missing for that origin-destination "
-                    "pair (e.g. no public transport route). Fill unreachable "
-                    "pairs with a large sentinel travel time (so they "
-                    "correctly fall outside any coverage threshold), or "
-                    "restrict the demand set to locations this matrix covers."
-                )
+            if not meta.get("allow_missing", False):
+                nan_mask = frame.isna().any(axis=1)
+                if nan_mask.any():
+                    nan_ids = frame.index[nan_mask].tolist()
+                    raise KeyError(
+                        f"Secondary travel matrix '{label}' has {len(nan_ids)} "
+                        f"demand location(s) with a missing value for at least "
+                        f"one candidate site (e.g. {nan_ids[:5]}). This usually "
+                        "means a route is missing for that origin-destination "
+                        "pair (e.g. no public transport route). Register this "
+                        "matrix with add_secondary_travel_matrix(allow_missing="
+                        "True) to treat these as genuinely unreachable, or "
+                        "restrict the demand set to locations this matrix "
+                        "covers."
+                    )
 
             self._secondary_travel_frames[label] = frame
 
@@ -1288,9 +1416,11 @@ class SiteAttributeMixin:
         `proportion_within_coverage_threshold__<label>` metric columns --
         the two metrics that actually change with demand -- into every
         solution `solve()` produces, so it can be used directly in plots,
-        `ParetoMetric(column=...)`, post-hoc ranking
-        (`rank_on="weighted_average__future_demand"`), or blended into the
-        optimisation objective via `weights={"future_demand": ...}`.
+        `Metric(column=...)`, ranking (`sort_by=
+        "weighted_average__future_demand"` post-hoc, or
+        `solve(rank_on="weighted_average__future_demand")` to search on it
+        directly), or blended into the optimisation objective via
+        `weights={"future_demand": ...}`.
 
         By default a secondary demand scenario only re-weights the primary
         travel matrix. Pass `also_weight_matrices` to additionally compute
@@ -1532,6 +1662,20 @@ class SiteAttributeMixin:
 
         The merged result is stored in the `self.travel_and_demand_df` attribute.
         """
+        if self.travel_matrix is None:
+            raise ValueError(
+                "No travel matrix or other cost matrix has been provided, "
+                "so demand locations cannot be linked to sites. Please add "
+                "one using the .add_travel_matrix() method and try again."
+            )
+
+        if self.demand_data is None:
+            raise ValueError(
+                "No demand data has been provided, so demand locations "
+                "cannot be linked to sites. Please add it using the "
+                ".add_demand() method and try again."
+            )
+
         # If one is a geopandas dataframe, put that first in the merge call so that the
         # output object will also be a geodataframe
         if self._demand_data_type == "geopandas":

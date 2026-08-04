@@ -8,7 +8,8 @@ from matplotlib.lines import Line2D
 import pandas as pd
 from requests.exceptions import RequestException
 
-from lokigi.utils import _min_max_normalize
+from lokigi.plot_utils import _add_plot_caption, _attach_deferred_fit_bounds
+from lokigi.utils import _min_max_normalize, _resolve_site_numeric_column
 
 
 class SFCAMixin:
@@ -24,43 +25,15 @@ class SFCAMixin:
 
     @staticmethod
     def _resolve_supply(candidate_sites, candidate_id_col, supply_col, site_names):
-        if supply_col not in candidate_sites.columns:
-            raise ValueError(
-                f"supply_col={supply_col!r} not found in candidate_sites. "
-                f"Available columns: {list(candidate_sites.columns)}."
-            )
-
-        indexed = candidate_sites.set_index(candidate_id_col)[supply_col]
-
-        missing = [s for s in site_names if s not in indexed.index]
-        if missing:
-            raise KeyError(f"Sites not found in candidate_sites: {missing}.")
-
-        supply = indexed.loc[site_names]
-
-        if not pd.api.types.is_numeric_dtype(supply):
-            raise TypeError(
-                f"supply_col={supply_col!r} must contain numeric values. "
-                "Hint: try pd.to_numeric() on this column before calling "
-                "add_sites()."
-            )
-
-        null_sites = supply[supply.isna()].index.tolist()
-        if null_sites:
-            raise ValueError(
-                f"The following sites are missing a value in "
-                f"supply_col={supply_col!r}: {null_sites}."
-            )
-
-        negative_sites = supply[supply < 0].index.tolist()
-        if negative_sites:
-            raise ValueError(
-                f"The following sites have a negative value in "
-                f"supply_col={supply_col!r}, which is not a valid supply "
-                f"quantity: {negative_sites}."
-            )
-
-        return supply
+        return _resolve_site_numeric_column(
+            candidate_sites,
+            candidate_id_col,
+            supply_col,
+            site_names,
+            param_name="supply_col",
+            quantity_label="supply quantity",
+            allow_missing=False,
+        )
 
     @staticmethod
     def _resolve_catchment_weights(cost_frame, catchment_size, distance_decay):
@@ -441,7 +414,8 @@ class SFCAMixin:
         per_capita : float, default 1
             Multiplier applied to the `accessibility` column, e.g. 1_000
             to express supply per 1,000 head instead of raw supply units
-            per head. Does not affect `site_frame`.
+            per head. Does not affect `site_frame`. Must be a positive
+            number.
         return_site_ratios : bool, default False
             If True, also return the step-1 per-site table -- useful for
             finding which site is driving an implausible regional score.
@@ -460,12 +434,13 @@ class SFCAMixin:
         Raises
         ------
         ValueError
-            If both `site_names` and `site_indices` are given, if neither
-            or both of `catchment_size`/`distance_decay` are given, if no
-            demand data is registered, if `supply_col` is missing or
-            contains a null/negative value for a scored site, if `matrix`
-            is not a registered secondary travel matrix label, if `demand`
-            is not a registered secondary demand scenario label, or if
+            If both `site_names` and `site_indices` are given, if
+            `per_capita` is not a positive number, if neither or both of
+            `catchment_size`/`distance_decay` are given, if no demand data
+            is registered, if `supply_col` is missing or contains a
+            null/negative value for a scored site, if `matrix` is not a
+            registered secondary travel matrix label, if `demand` is not a
+            registered secondary demand scenario label, or if
             `distance_decay` fails its own validation (see above).
         TypeError
             If `supply_col` is not numeric.
@@ -496,6 +471,17 @@ class SFCAMixin:
             raise ValueError(
                 "Please provide at most one of 'site_names' or "
                 "'site_indices', not both."
+            )
+
+        if not isinstance(per_capita, (int, float)) or isinstance(per_capita, bool):
+            raise ValueError(
+                f"per_capita must be a positive number, got {per_capita!r}."
+            )
+        if per_capita <= 0:
+            raise ValueError(
+                f"per_capita must be a positive number, got {per_capita}. A "
+                "value of 0 would zero out every region's accessibility "
+                "score regardless of supply or demand."
             )
 
         if self._demand_data_demand_col is None:
@@ -625,6 +611,9 @@ class AccessibilityPlotMixin:
         per_capita=1,
         interactive=False,
         cmap="Blues",
+        show_site_ratio=False,
+        site_colour="black",
+        site_marker_size=60,
         site_cmap="RdYlGn",
         missing_site_colour="lightgrey",
         marker_size_range=(40, 220),
@@ -634,16 +623,22 @@ class AccessibilityPlotMixin:
         add_basemap=True,
         show_axis=False,
         title=None,
+        caption=None,
         ax=None,
         figsize=None,
         **kwargs,
     ):
         """
         Map 2SFCA accessibility: a region choropleth of `accessibility`,
-        overlaid with site markers coloured and sized by their step-1
-        supply-to-demand `ratio` -- so a map reader can see both where
+        overlaid with site markers. By default the markers are plain,
+        uniformly coloured/sized location dots -- pass
+        `show_site_ratio=True` to instead colour and size them by their
+        step-1 supply-to-demand `ratio`, so a map reader can see both where
         access is poor and which site is driving it (an overloaded,
-        low-ratio site drawn small and red) in one view.
+        low-ratio site drawn small and red) in one view. The ratio view is
+        opt-in because it's easy to misread as a raw capacity/
+        overutilisation metric, when it's actually a relative figure
+        specific to the chosen `catchment_size`/`distance_decay`.
 
         Parameters
         ----------
@@ -660,7 +655,7 @@ class AccessibilityPlotMixin:
             method's docstring (`catchment_size`/`distance_decay` are
             mutually exclusive there too). On a `SiteSolutionSet`, this
             always scores `solution_rank=1` -- to plot a specific
-            `rank_on`/`solution_rank` solution, call
+            `sort_by`/`solution_rank` solution, call
             `two_step_floating_catchment(..., return_site_ratios=True)`
             yourself and pass the results in as `region_frame`/`site_frame`.
         interactive : bool, default False
@@ -668,23 +663,45 @@ class AccessibilityPlotMixin:
             Otherwise returns a static matplotlib Axes.
         cmap : str, default "Blues"
             Colormap for the region choropleth (`accessibility`).
+        show_site_ratio : bool, default False
+            If False (the default), site markers are plain, uniformly
+            coloured/sized location dots (`site_colour`/`site_marker_size`
+            control their appearance). If True, markers are instead
+            coloured and sized by their step-1 supply-to-demand `ratio`
+            -- see `site_cmap`/`missing_site_colour`/`marker_size_range`,
+            which only apply in this mode.
+        site_colour : str, default "black"
+            Marker colour for site markers when `show_site_ratio=False`.
+        site_marker_size : float, default 60
+            Static marker size for site markers when `show_site_ratio=False`.
+            Ignored on interactive maps, where Folium markers are a fixed
+            size.
         site_cmap : str, default "RdYlGn"
-            Colormap for site markers (`ratio`) -- red for an overloaded,
-            low-ratio site, green for a relatively uncontested one.
+            Colormap for site markers (`ratio`) when `show_site_ratio=True`
+            -- red for an overloaded, low-ratio site, green for a
+            relatively uncontested one.
         missing_site_colour : str, default "lightgrey"
-            Colour (and static marker size, at the smallest of
-            `marker_size_range`) for a site with an undefined `ratio` --
-            no demand fell within its catchment, so there is nothing to
-            colour or size it by.
+            When `show_site_ratio=True`: colour (and static marker size, at
+            the smallest of `marker_size_range`) for a site with an
+            undefined `ratio` -- no demand fell within its catchment, so
+            there is nothing to colour or size it by.
         marker_size_range : tuple of (float, float), default (40, 220)
-            Smallest and largest static marker size, linearly scaled by
-            `ratio`. Ignored on interactive maps, where Folium markers are
-            a fixed size.
+            When `show_site_ratio=True`: smallest and largest static marker
+            size, linearly scaled by `ratio`. Ignored on interactive maps,
+            where Folium markers are a fixed size.
         add_basemap : bool, default True
             If True, adds a background web map. Set False to skip the tile
             download entirely.
         title : str, optional
             Axes title. Ignored on interactive maps.
+        caption : str, optional
+            Explanatory text shown below the chart, wrapped to fit. If
+            `None` (the default), a stakeholder-facing caption explaining
+            how to read the region shading -- and, depending on
+            `show_site_ratio`, either that the site markers are plain
+            location dots or how to read their colour/size -- is
+            generated; pass `""` to suppress it, or a custom string to
+            replace it. Ignored on interactive maps.
         ax : matplotlib.axes.Axes, optional
             Existing axes to plot onto. Ignored if `interactive=True`.
         figsize : tuple, optional
@@ -769,12 +786,13 @@ class AccessibilityPlotMixin:
             )
             site_gdf = site_gdf.drop(site_gdf.filter(regex="_y$").columns, axis=1)
 
-            min_size, max_size = marker_size_range
-            site_gdf["_marker_size"] = (
-                min_size
-                + _min_max_normalize(site_gdf["ratio"], constant_fill=1.0)
-                * (max_size - min_size)
-            ).fillna(min_size)
+            if show_site_ratio:
+                min_size, max_size = marker_size_range
+                site_gdf["_marker_size"] = (
+                    min_size
+                    + _min_max_normalize(site_gdf["ratio"], constant_fill=1.0)
+                    * (max_size - min_size)
+                ).fillna(min_size)
 
         if interactive:
             m = region_gdf.explore(
@@ -792,25 +810,37 @@ class AccessibilityPlotMixin:
             )
 
             if has_site_geometry:
-                site_gdf.explore(
-                    m=m,
-                    column="ratio",
-                    cmap=site_cmap,
-                    tooltip=[
-                        ctx._candidate_sites_candidate_id_col,
-                        "supply",
-                        "catchment_demand",
-                        "ratio",
-                    ],
-                    popup=True,
-                    marker_kwds=dict(radius=8),
-                    missing_kwds=dict(color=missing_site_colour),
-                )
+                tooltip = [
+                    ctx._candidate_sites_candidate_id_col,
+                    "supply",
+                    "catchment_demand",
+                    "ratio",
+                ]
+                if show_site_ratio:
+                    site_gdf.explore(
+                        m=m,
+                        column="ratio",
+                        cmap=site_cmap,
+                        tooltip=tooltip,
+                        popup=True,
+                        marker_kwds=dict(radius=8),
+                        missing_kwds=dict(color=missing_site_colour),
+                    )
+                else:
+                    site_gdf.explore(
+                        m=m,
+                        color=site_colour,
+                        tooltip=tooltip,
+                        popup=True,
+                        marker_kwds=dict(radius=8),
+                    )
 
-            return m
+            return _attach_deferred_fit_bounds(m)
 
         if ax is None:
-            _, ax = plt.subplots(figsize=figsize)
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.get_figure()
 
         region_gdf.plot(
             column="accessibility",
@@ -824,37 +854,48 @@ class AccessibilityPlotMixin:
         )
 
         if has_site_geometry:
-            site_gdf.plot(
-                column="ratio",
-                cmap=site_cmap,
-                markersize=site_gdf["_marker_size"],
-                edgecolor="black",
-                linewidth=0.5,
-                ax=ax,
-                legend=True,
-                legend_kwds={"label": "Site supply:demand ratio", "shrink": 0.6},
-                missing_kwds=dict(color=missing_site_colour, label="No catchment demand"),
-            )
+            if show_site_ratio:
+                site_gdf.plot(
+                    column="ratio",
+                    cmap=site_cmap,
+                    markersize=site_gdf["_marker_size"],
+                    edgecolor="black",
+                    linewidth=0.5,
+                    ax=ax,
+                    legend=True,
+                    legend_kwds={"label": "Site supply:demand ratio", "shrink": 0.6},
+                    missing_kwds=dict(
+                        color=missing_site_colour, label="No catchment demand"
+                    ),
+                )
 
-            # geopandas' missing_kwds `label` only surfaces in a discrete
-            # `scheme=` legend, not the continuous colorbar used here, so
-            # the grey "no catchment demand" markers would otherwise have
-            # no legend entry explaining them.
-            if site_gdf["ratio"].isna().any():
-                ax.legend(
-                    handles=[
-                        Line2D(
-                            [0],
-                            [0],
-                            marker="o",
-                            color="none",
-                            markerfacecolor=missing_site_colour,
-                            markeredgecolor="black",
-                            markersize=8,
-                            label="No catchment demand",
-                        )
-                    ],
-                    loc="lower left",
+                # geopandas' missing_kwds `label` only surfaces in a discrete
+                # `scheme=` legend, not the continuous colorbar used here, so
+                # the grey "no catchment demand" markers would otherwise have
+                # no legend entry explaining them.
+                if site_gdf["ratio"].isna().any():
+                    ax.legend(
+                        handles=[
+                            Line2D(
+                                [0],
+                                [0],
+                                marker="o",
+                                color="none",
+                                markerfacecolor=missing_site_colour,
+                                markeredgecolor="black",
+                                markersize=8,
+                                label="No catchment demand",
+                            )
+                        ],
+                        loc="lower left",
+                    )
+            else:
+                site_gdf.plot(
+                    color=site_colour,
+                    markersize=site_marker_size,
+                    edgecolor="black",
+                    linewidth=0.5,
+                    ax=ax,
                 )
 
         if add_basemap:
@@ -872,5 +913,30 @@ class AccessibilityPlotMixin:
 
         if not show_axis:
             ax.axis("off")
+
+        default_caption = (
+            "How to read this: each region is shaded by its accessibility "
+            "score -- how much supply is available per head within reach, "
+            "relative to the rest of this map (see the legend for the "
+            "scale)."
+        )
+        if has_site_geometry:
+            if show_site_ratio:
+                default_caption += (
+                    " Each site is coloured and sized by its own supply:demand "
+                    "ratio: a small marker means a low ratio (an overloaded "
+                    "site with little spare capacity), a large marker means a "
+                    "high ratio (relatively more to go around); a grey marker "
+                    "means no demand fell within that site's catchment, so no "
+                    "ratio could be calculated."
+                )
+            else:
+                default_caption += (
+                    " Sites are shown as plain markers at their location "
+                    "only -- their colour and size carry no meaning here. "
+                    "Pass show_site_ratio=True to instead colour and size "
+                    "them by their own supply:demand ratio."
+                )
+        _add_plot_caption(fig, caption, default_caption)
 
         return ax

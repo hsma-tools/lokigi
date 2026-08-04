@@ -41,6 +41,7 @@ listing:
       - "location/coverage_metrics/index.ipynb"
       - "location/accessibility_2sfca/index.ipynb"
       - "location/site_utilisation/index.ipynb"
+      - "location/population_impact/index.ipynb"
     type: grid
     sort: false
     grid-columns: 3
@@ -51,6 +52,7 @@ listing:
       - "location/comparing_solutions/index.ipynb"
       - "location/multiple_travel_matrices/index.ipynb"
       - "location/multiple_demand_matrices/index.ipynb"
+      - "location/custom_ranking_metric/index.ipynb"
       - "location/multiobjective_optimisation_weights/index.ipynb"
       - "location/multiobjective_optimisation_pareto/index.ipynb"
       - "location/site_costs/index.ipynb"

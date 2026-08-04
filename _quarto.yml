@@ -85,14 +85,22 @@ quartodoc:
             # due to the use of mixins and them not being picked up if
             # not explicitly included
             - show_solutions
+            - show_solutions_summary
+            - describe_solution_columns
             - return_best_combination_details
             - return_best_combination_site_indices
             - return_best_combination_site_names
             - site_allocation_summary
+            - site_capacity_summary
+            - two_step_floating_catchment
+            - plot_accessibility
             - plot_n_best_combinations_bar
             - plot_site_allocation_summary
+            - plot_site_capacity_summary
+            - plot_allocated_utilisation
             - plot_best_combination
             - plot_n_best_combinations
+            - plot_solution_comparison
             - plot_travel_time_distribution
             - check_solution_equity
             - plot_top_n_solution_equity
@@ -102,7 +110,7 @@ quartodoc:
             - compute_pareto_front
             - pareto_summary
             - plot_pareto_facets
-        - name: multiobjective.ParetoMetric
+        - name: multiobjective.Metric
           children: separate
         - name: site_solutions.SolutionComparator
           children: separate
@@ -113,8 +121,12 @@ quartodoc:
             - compare_top_results
             - get_metric_summary
             - compare_site_allocation
+            - population_impact_summary
+            - population_impact_phrase
             - site_overlap
             - plot_comparison
+            - plot_population_impact_summary
+            - plot_population_impact_histogram
     - title: Travel Matrix Helpers
       desc: "Classes and methods which can help with generation of travel matrices"
       contents:

@@ -314,3 +314,56 @@ def test_grasp_honours_two_required_sites():
     for site_names in result.solution_df["site_names"]:
         assert "Site_Req" in site_names
         assert "Site_2" in site_names
+
+
+# --- additional_site_names (site_names minus the required sites) ---
+
+
+def test_additional_site_names_present_and_correct_with_one_required_site():
+    """4 candidates, Site_Req required, p=2 -- every solution has exactly
+    one free slot, so additional_site_names is that single partner site."""
+    problem = _problem_with_terrible_required_site()
+    result = problem.solve(p=2, objectives="p_median", show_progress=False)
+
+    assert "additional_site_names" in result.solution_df.columns
+    for _, row in result.solution_df.iterrows():
+        non_required = [n for n in row["site_names"] if n != "Site_Req"]
+        assert row["additional_site_names"] == non_required
+
+
+def test_additional_site_names_correct_with_two_required_sites():
+    problem = _problem_with_terrible_required_site(also_require=("Site_2",))
+    result = problem.solve(p=3, objectives="p_median", show_progress=False)
+
+    for _, row in result.solution_df.iterrows():
+        assert "Site_Req" not in row["additional_site_names"]
+        assert "Site_2" not in row["additional_site_names"]
+        assert set(row["additional_site_names"]) == set(row["site_names"]) - {
+            "Site_Req",
+            "Site_2",
+        }
+
+
+def test_additional_site_names_absent_without_required_sites():
+    problem = _problem_with_terrible_required_site(mark_required=False)
+    result = problem.solve(p=2, objectives="p_median", show_progress=False)
+    assert "additional_site_names" not in result.solution_df.columns
+
+
+def test_additional_site_names_in_show_solutions_summary():
+    problem = _problem_with_terrible_required_site()
+    result = problem.solve(p=2, objectives="p_median", show_progress=False)
+    df = result.show_solutions_summary()
+
+    assert "Additional sites chosen" in df.columns
+    raw_row = result.show_solutions(rounding=None).iloc[0]
+    assert df["Additional sites chosen"].iloc[0] == ", ".join(
+        raw_row["additional_site_names"]
+    )
+
+
+def test_additional_sites_chosen_absent_from_summary_without_required_sites():
+    problem = _problem_with_terrible_required_site(mark_required=False)
+    result = problem.solve(p=2, objectives="p_median", show_progress=False)
+    df = result.show_solutions_summary()
+    assert "Additional sites chosen" not in df.columns

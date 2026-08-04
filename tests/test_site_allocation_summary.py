@@ -156,7 +156,7 @@ def test_by_demand_without_demand_data_raises(loaded_problem, monkeypatch):
     # by="regions" never needed demand data, so it still works.
     summary = result.site_allocation_summary(by="regions")
     assert summary["proportion"].sum() == pytest.approx(1.0)
-    assert "total_demand" not in summary.columns
+    assert "allocated_demand" not in summary.columns
 
 
 def test_selection_arguments_take_priority_site_indices_over_site_names(loaded_problem):

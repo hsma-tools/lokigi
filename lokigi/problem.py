@@ -1,4 +1,5 @@
 import pandas as pd
+from lokigi.plot_utils import _attach_deferred_fit_bounds
 from lokigi.utils import (
     _load_spatial_or_tabular_data,
     GEOPANDAS_EXTS,
@@ -361,6 +362,7 @@ class _Problem:
         add_basemap: bool = True,
         tiles="CartoDB positron",
         show_axis: bool = False,
+        title=None,
         **kwargs,
     ):
         """
@@ -396,6 +398,12 @@ class _Problem:
             .. versionchanged:: 0.7.0
                 Renamed from ``show_basemap``, which has been removed.
 
+        title : str, optional
+            Title for a static plot (`ax.set_title()`). Ignored if
+            `interactive=True` -- a Folium map has no equivalent built-in
+            title support. `None` (the default) leaves the plot untitled,
+            matching prior behaviour.
+
         **kwargs : dict
             Additional keyword arguments passed to either
             `geopandas.GeoDataFrame.plot` or `geopandas.GeoDataFrame.explore`.
@@ -424,6 +432,12 @@ class _Problem:
 
         Interactive maps default to the "CartoDB positron" tile set and
         the "Blues" colormap for demand visualization.
+
+        The static plot's colour bar is labelled "Demand" (`plot_demand=
+        True`) or with the human-readable `add_equity_data(label=...)`,
+        falling back to the raw equity column name if no label was
+        registered (`plot_equity=True`) -- previously unlabelled either
+        way.
         """
         _reject_removed_basemap_alias(kwargs, "plot_region_geometry_layer")
 
@@ -483,16 +497,20 @@ class _Problem:
                     **kwargs,
                 )
 
-                return m
+                return _attach_deferred_fit_bounds(m)
             else:
                 ax = plotting_df.plot(
                     column=demand_value_col,
                     legend=True,
+                    legend_kwds={"label": "Demand"},
                     cmap=cmap,
                     edgecolor=edgecolor,
                     linewidth=linewidth,
                     **kwargs,
                 )
+
+                if title:
+                    ax.set_title(title)
 
                 if add_basemap:
                     try:
@@ -541,16 +559,21 @@ class _Problem:
                     **kwargs,
                 )
 
-                return m
+                return _attach_deferred_fit_bounds(m)
             else:
+                equity_axis_label = self._equity_data_label or self._equity_data_equity_col
                 ax = plotting_df.plot(
                     column=self._equity_data_equity_col,
                     legend=True,
+                    legend_kwds={"label": equity_axis_label},
                     cmap=cmap,
                     edgecolor=edgecolor,
                     linewidth=linewidth,
                     **kwargs,
                 )
+
+                if title:
+                    ax.set_title(title)
 
                 if add_basemap:
                     try:
@@ -573,7 +596,7 @@ class _Problem:
 
                 self._setup_equal_demand_df()
 
-            plotting_df = plotting_df.merge(
+            plotting_df = self.region_geometry_layer.merge(
                 self.demand_data[[self._demand_data_id_col]],
                 left_on=self._region_geometry_layer_common_col,
                 right_on=self._demand_data_id_col,
@@ -583,12 +606,15 @@ class _Problem:
             plotting_df = self.region_geometry_layer
 
         if interactive:
-            m = self.region_geometry_layer.explore(
+            m = plotting_df.explore(
                 tiles=tiles, edgecolor=edgecolor, linewidth=linewidth, **kwargs
             )
-            return m
+            return _attach_deferred_fit_bounds(m)
         else:
-            ax = self.region_geometry_layer.plot(**kwargs)
+            ax = plotting_df.plot(**kwargs)
+
+            if title:
+                ax.set_title(title)
 
             if add_basemap:
                 try:

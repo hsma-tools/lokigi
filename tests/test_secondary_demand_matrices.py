@@ -32,7 +32,7 @@ import pytest
 import pandas as pd
 import numpy as np
 
-from lokigi.multiobjective import ParetoMetric
+from lokigi.multiobjective import Metric
 from lokigi.site_solutions import SolutionComparator
 
 PRIMARY_WEIGHTED_AVERAGE = {
@@ -340,8 +340,8 @@ def test_compute_pareto_front_on_secondary_demand_column(
     result = loaded_problem_with_secondary_demand.solve(p=1)
     result.compute_pareto_front(
         metrics=[
-            ParetoMetric(column="weighted_average", direction="lower_better"),
-            ParetoMetric(
+            Metric(column="weighted_average", direction="lower_better"),
+            Metric(
                 column="weighted_average__future_demand", direction="lower_better"
             ),
         ]
@@ -434,12 +434,12 @@ def test_site_allocation_summary_demand_kwarg_matches_hand_computed_values(
     default_summary = result.site_allocation_summary(by="demand")
     future_summary = result.site_allocation_summary(by="demand", demand="future_demand")
 
-    assert default_summary.loc["Site_B", "total_demand"] == 450
+    assert default_summary.loc["Site_B", "allocated_demand"] == 450
     assert default_summary.loc["Site_B", "average_travel_cost"] == pytest.approx(
         PRIMARY_WEIGHTED_AVERAGE["Site_B"]
     )
 
-    assert future_summary.loc["Site_B", "total_demand"] == 400
+    assert future_summary.loc["Site_B", "allocated_demand"] == 400
     assert future_summary.loc["Site_B", "average_travel_cost"] == pytest.approx(
         FUTURE_WEIGHTED_AVERAGE["Site_B"]
     )

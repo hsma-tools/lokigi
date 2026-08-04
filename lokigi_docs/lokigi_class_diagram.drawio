@@ -119,13 +119,13 @@
         <mxCell id="sASGx5K_2yOEXVtlDN7d-20" parent="sASGx5K_2yOEXVtlDN7d-17" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ show_solutions()" vertex="1">
           <mxGeometry height="26" width="400" y="60" as="geometry" />
         </mxCell>
-        <mxCell id="sASGx5K_2yOEXVtlDN7d-49" parent="sASGx5K_2yOEXVtlDN7d-17" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ return_best_combination_details(rank_on, top_n)" vertex="1">
+        <mxCell id="sASGx5K_2yOEXVtlDN7d-49" parent="sASGx5K_2yOEXVtlDN7d-17" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ return_best_combination_details(sort_by, top_n)" vertex="1">
           <mxGeometry height="26" width="400" y="86" as="geometry" />
         </mxCell>
-        <mxCell id="sASGx5K_2yOEXVtlDN7d-51" parent="sASGx5K_2yOEXVtlDN7d-17" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ return_best_combination_site_indices(rank_on)" vertex="1">
+        <mxCell id="sASGx5K_2yOEXVtlDN7d-51" parent="sASGx5K_2yOEXVtlDN7d-17" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ return_best_combination_site_indices(sort_by)" vertex="1">
           <mxGeometry height="26" width="400" y="112" as="geometry" />
         </mxCell>
-        <mxCell id="sASGx5K_2yOEXVtlDN7d-52" parent="sASGx5K_2yOEXVtlDN7d-17" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ return_best_combination_site_names(rank_on)" vertex="1">
+        <mxCell id="sASGx5K_2yOEXVtlDN7d-52" parent="sASGx5K_2yOEXVtlDN7d-17" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ return_best_combination_site_names(sort_by)" vertex="1">
           <mxGeometry height="26" width="400" y="138" as="geometry" />
         </mxCell>
         <mxCell id="sASGx5K_2yOEXVtlDN7d-68" parent="sASGx5K_2yOEXVtlDN7d-17" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ plot_travel_time_distribution()" vertex="1">

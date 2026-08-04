@@ -24,7 +24,7 @@ import pytest
 import pandas as pd
 import numpy as np
 
-from lokigi.multiobjective import ParetoMetric
+from lokigi.multiobjective import Metric
 
 PRIMARY_WEIGHTED_AVERAGE = {
     "Site_A": 9500 / 450,
@@ -218,8 +218,8 @@ def test_compute_pareto_front_on_secondary_column(loaded_problem_with_secondary_
     result = loaded_problem_with_secondary_matrix.solve(p=1)
     result.compute_pareto_front(
         metrics=[
-            ParetoMetric(column="weighted_average", direction="lower_better"),
-            ParetoMetric(
+            Metric(column="weighted_average", direction="lower_better"),
+            Metric(
                 column="weighted_average__public_transport", direction="lower_better"
             ),
         ]
@@ -236,14 +236,14 @@ def test_compute_pareto_front_on_secondary_column(loaded_problem_with_secondary_
     assert pareto_by_site["Site_C"] is True
 
 
-def test_rank_on_secondary_column_reorders_and_changes_winner(
+def test_sort_by_secondary_column_reorders_and_changes_winner(
     loaded_problem_with_secondary_matrix,
 ):
     result = loaded_problem_with_secondary_matrix.solve(p=1)
 
     primary_best = result.return_best_combination_site_names()
     secondary_best = result.return_best_combination_site_names(
-        rank_on="max__public_transport"
+        sort_by="max__public_transport"
     )
 
     assert primary_best == ["Site_B"]

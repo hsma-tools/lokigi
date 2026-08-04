@@ -6,7 +6,7 @@ website:
     - contents:
       - reference/site.SiteProblem.qmd
       - reference/site.SiteSolutionSet.qmd
-      - reference/multiobjective.ParetoMetric.qmd
+      - reference/multiobjective.Metric.qmd
       - reference/site_solutions.SolutionComparator.qmd
       section: Location Optimization Problem Classes
     - contents:

@@ -5,8 +5,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pytest
 
+import lokigi.site
 from lokigi.mixins.site_solution_pareto import ParetoMixin
-from lokigi.multiobjective import ParetoMetric
+from lokigi.multiobjective import Metric
 
 
 class DummySolutionSet(ParetoMixin):
@@ -65,19 +66,19 @@ def single_optimum_df():
 @pytest.fixture
 def pareto_metrics():
     return [
-        ParetoMetric(
+        Metric(
             column="weighted_average",
             direction="lower_better",
             label="Average travel time",
             unit="minutes",
         ),
-        ParetoMetric(
+        Metric(
             column="max",
             direction="lower_better",
             label="Maximum travel time",
             unit="minutes",
         ),
-        ParetoMetric(
+        Metric(
             column="proportion_within_coverage_threshold",
             direction="higher_better",
             label="Coverage",
@@ -112,13 +113,13 @@ def long_label_solution_set():
         }
     )
     metrics = [
-        ParetoMetric(
+        Metric(
             column="weighted_average",
             direction="lower_better",
             label="whole-population weighted average travel time",
             unit="minutes",
         ),
-        ParetoMetric(
+        Metric(
             column="weighted_average_2",
             direction="lower_better",
             label="older-population weighted average travel time",
@@ -396,3 +397,119 @@ def test_plot_all_metric_pareto_front_pairs_returns_figure(full_metrics_df):
         assert isinstance(fig, plt.Figure)
     finally:
         plt.close(fig)
+
+
+# --- diff_against (plot_pareto_summary / plot_pareto_facets) ---------------
+#
+# _resolve_site_diff lives on the real SiteSolutionSet (site_solutions.py),
+# not on the minimal DummySolutionSet stub used above -- these tests need an
+# actual solve() result so diff_against has something to call.
+
+
+@pytest.fixture
+def pareto_solution_set():
+    """4-site/3-demand-location problem, brute-forced at p=2 (6
+    combinations). Rank 1 = {Site_B, Site_D}, rank 2 = {Site_A, Site_C} --
+    disjoint from rank 1, so every site differs between them, and both are
+    Pareto-optimal across (weighted_average, max) by construction:
+        L1: A=10, B=25, C=30, D=12
+        L2: A=20, B=5,  C=10, D=22
+        L3: A=30, B=15, C=8,  D=9
+    """
+    demand_df = pd.DataFrame(
+        {"location_id": ["L1", "L2", "L3"], "demand": [100, 100, 100]}
+    )
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": ["Site_A", "Site_B", "Site_C", "Site_D"],
+            "lat": [51.1, 51.2, 51.3, 51.4],
+            "long": [-0.1, -0.2, -0.3, -0.4],
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["L1", "L2", "L3"],
+            "Site_A": [10.0, 20.0, 30.0],
+            "Site_B": [25.0, 5.0, 15.0],
+            "Site_C": [30.0, 10.0, 8.0],
+            "Site_D": [12.0, 22.0, 9.0],
+        }
+    )
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+
+    result = problem.solve(p=2, search_strategy="brute-force", show_progress=False)
+    result.compute_pareto_front(
+        [
+            Metric(
+                column="weighted_average",
+                direction="lower_better",
+                label="Average travel time",
+                unit="minutes",
+            ),
+            Metric(
+                column="max",
+                direction="lower_better",
+                label="Max travel time",
+                unit="minutes",
+            ),
+        ]
+    )
+    return result
+
+
+def test_plot_pareto_summary_diff_against_none_is_unchanged(pareto_solution_set):
+    fig = pareto_solution_set.plot_pareto_summary()
+    labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+    assert labels == ["Option 1", "Option 2"]
+
+
+def test_plot_pareto_summary_diff_against_rank_1_labels_the_reference_empty(
+    pareto_solution_set,
+):
+    fig = pareto_solution_set.plot_pareto_summary(diff_against="rank_1")
+    labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+    assert labels[0] == "Option 1"
+
+
+def test_plot_pareto_summary_diff_against_rank_1_shows_added_and_removed(
+    pareto_solution_set,
+):
+    fig = pareto_solution_set.plot_pareto_summary(diff_against="rank_1")
+    labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+    other = labels[1]
+    assert "+Site_A, Site_C" in other
+    assert "-Site_B, Site_D" in other
+    # The two clauses must be semicolon-separated, not comma-separated,
+    # or "+Site_A, Site_C, -Site_B, Site_D" misreads as four separately
+    # signed items instead of two added and two removed.
+    assert "; -" in other
+
+
+def test_plot_pareto_summary_invalid_diff_against_raises(pareto_solution_set):
+    with pytest.raises(ValueError, match="diff_against must be one of"):
+        pareto_solution_set.plot_pareto_summary(diff_against="sideways")
+
+
+def test_plot_pareto_facets_diff_against_none_omits_diff_line(pareto_solution_set):
+    fig = pareto_solution_set.plot_pareto_facets()
+    for ax in fig.axes:
+        assert "Diff (vs" not in ax.get_title(loc="left")
+
+
+def test_plot_pareto_facets_diff_against_rank_1_adds_diff_line(pareto_solution_set):
+    fig = pareto_solution_set.plot_pareto_facets(diff_against="rank_1")
+    titles = [ax.get_title(loc="left") for ax in fig.axes]
+
+    # Rank 1's own facet has nothing to diff against itself.
+    assert not any("Diff (vs" in t for t in titles if "Option\\ 1" in t)
+    # Rank 2's facet shows the diff against rank 1.
+    rank_2_title = next(t for t in titles if "Option\\ 2" in t)
+    assert "Diff (vs rank 1): +Site_A, Site_C; -Site_B, Site_D" in rank_2_title
+
+
+def test_plot_pareto_facets_invalid_diff_against_raises(pareto_solution_set):
+    with pytest.raises(ValueError, match="diff_against must be one of"):
+        pareto_solution_set.plot_pareto_facets(diff_against="sideways")

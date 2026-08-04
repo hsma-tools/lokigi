@@ -10,11 +10,16 @@ that's intentional: they pin the correct behaviour so a future fix shows up
 as a newly-passing test rather than silent, undetected correctness drift.
 """
 
+import itertools
+import math
+import random
 import warnings
 
+import pandas as pd
 import pytest
 
 import lokigi
+from lokigi.utils import _resolve_ranking_metric
 
 
 # --- GRASP: core correctness for minimisation objectives (p_median, p_center) ---
@@ -132,6 +137,7 @@ def test_grasp_construction_and_local_search_use_the_real_coverage_threshold(
             p=2,
             objectives="mclp",
             weights={"demand": 1.0},
+            scorer=_resolve_ranking_metric(objective="mclp")[0],
             threshold_for_coverage=15,
             num_solutions=1,
             max_attempts=1,
@@ -203,6 +209,84 @@ def test_grasp_warns_when_diversity_budget_is_exhausted(loaded_problem):
     assert any(
         "exhausted attempt budget" in str(warning.message) for warning in caught
     )
+
+
+@pytest.mark.parametrize(
+    "n_required,expected_total_combinations",
+    [
+        (3, math.comb(7, 2)),  # 10 sites, 3 required, p=5 -> free slots C(7,2)=21
+        (0, math.comb(10, 5)),  # no required sites -> unrestricted C(10,5)=252
+    ],
+    ids=["with_required_sites", "no_required_sites"],
+)
+def test_grasp_total_combinations_uses_required_site_adjusted_math_comb(
+    monkeypatch, n_required, expected_total_combinations
+):
+    """GRASP's default `max_attempts` is capped at `total_combinations =
+    math.comb(total_n_sites - n_required, p - n_required)`
+    (mixins/site_solvers.py:591-596) -- the free search space once required
+    sites are pinned, not the raw C(n, p). Forgetting the required-site
+    adjustment would instead compute C(10, 5)=252 for the first case.
+
+    `total_combinations`/`max_attempts` are local variables never exposed
+    on the result, so this counts calls to `random.Random.randint` instead:
+    it's the only `.randint(` call in the file, made exactly once per
+    while-loop iteration (attempt), immediately before `attempts += 1` --
+    an exact, external attempt counter.
+
+    grasp_num_solutions=300 (budget 300*20=6000) exceeds both 21 and 252
+    either way, and since at most 252 distinct combinations can ever exist
+    across both parametrized cases, GRASP can never accept 300 diverse
+    solutions in either -- so it's guaranteed to run until attempts ==
+    max_attempts == total_combinations, making the attempt count a
+    deterministic proxy for the value under test regardless of how easy
+    or hard the diversity constraint happens to be to satisfy.
+    """
+    n_sites = 10
+    p = 5
+    demand_df = pd.DataFrame({"location_id": ["LSOA_1"], "demand": [100]})
+    candidate_df = pd.DataFrame(
+        {
+            "site_id": [f"Site_{i}" for i in range(n_sites)],
+            "lat": [51.0 + 0.01 * i for i in range(n_sites)],
+            "long": [-0.01 * (i + 1) for i in range(n_sites)],
+            "required": ["yes"] * n_required + ["no"] * (n_sites - n_required),
+        }
+    )
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["LSOA_1"],
+            **{f"Site_{i}": [float(i + 1)] for i in range(n_sites)},
+        }
+    )
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(
+        candidate_df, candidate_id_col="site_id", required_sites_col="required"
+    )
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+
+    call_count = 0
+    original_randint = random.Random.randint
+
+    def counting_randint(self, a, b):
+        nonlocal call_count
+        call_count += 1
+        return original_randint(self, a, b)
+
+    monkeypatch.setattr(random.Random, "randint", counting_randint)
+
+    problem.solve(
+        p=p,
+        objectives="p_median",
+        search_strategy="grasp",
+        show_progress=False,
+        grasp_num_solutions=300,
+        grasp_max_attempts="default",
+    )
+
+    assert call_count == expected_total_combinations
 
 
 # --- Brute force: keep_best_n / keep_worst_n heap tie-break ---
@@ -904,3 +988,102 @@ def test_brute_force_n_jobs_one_evaluates_as_a_single_chunk(
 
     assert len(calls) == 1
     assert len(calls[0]) == 30  # every combination, in the one chunk
+
+
+# --- Brute force: every generated combination is evaluated, exactly once ---
+
+
+@pytest.mark.parametrize("n_jobs", [1, 2], ids=["single_chunk", "multi_chunk"])
+def test_brute_force_evaluates_every_combination_exactly_once(
+    five_site_problem, n_jobs
+):
+    """The plain ("keep everything") brute-force path must return exactly
+    the set of combinations `_generate_all_combinations` produces -- no
+    skips, no duplicates, no substitutions. A count-only check (`len(...)
+    == 10`) wouldn't catch a bug that evaluates one combination twice while
+    dropping another, so this compares the actual sets of site indices.
+
+    n_jobs=2 is the meaningful case: with 10 combinations and n_jobs=1
+    everything runs as a single chunk (mixins/site_solvers.py:252-253), so
+    the chunk-splitting/merging path (`n_chunks = min(n_combinations,
+    n_workers*4)`, merged back via `outputs.extend(result)` per chunk at
+    line 297) never actually runs. At n_jobs=2, `five_site_problem`'s 10
+    combinations split into 5 chunks of 2 each (n_chunks=8 is only a
+    target used to derive chunk_size=ceil(10/8)=2; ceil-rounding that size
+    up means fewer, larger chunks actually cover the 10 combinations),
+    exercising that merge."""
+    result = five_site_problem.solve(
+        p=2,
+        objectives="p_median",
+        search_strategy="brute-force",
+        show_progress=False,
+        n_jobs=n_jobs,
+    )
+
+    expected = {frozenset(c) for c in itertools.combinations(range(5), 2)}
+    actual = {frozenset(row["site_indices"]) for _, row in result.solution_df.iterrows()}
+
+    assert actual == expected
+
+
+# --- Brute force: BRUTE_FORCE_WARN_THRESHOLD / BRUTE_FORCE_LIMIT reaction ---
+
+
+def test_brute_force_warns_when_warn_threshold_is_crossed(
+    five_site_problem, monkeypatch
+):
+    """Crossing BRUTE_FORCE_WARN_THRESHOLD (but not BRUTE_FORCE_LIMIT) must
+    emit a UserWarning mentioning the combination count, and still return
+    every combination -- it's advisory, not a cap."""
+    import lokigi.mixins.site_solvers as site_solvers
+
+    monkeypatch.setattr(site_solvers, "BRUTE_FORCE_WARN_THRESHOLD", 3)
+    monkeypatch.setattr(site_solvers, "BRUTE_FORCE_LIMIT", 50)
+
+    with pytest.warns(UserWarning, match="10"):
+        result = five_site_problem.solve(
+            p=2,
+            objectives="p_median",
+            search_strategy="brute-force",
+            show_progress=False,
+        )
+
+    assert len(result.solution_df) == 10
+
+
+def test_brute_force_raises_when_limit_is_crossed(five_site_problem, monkeypatch):
+    """Crossing BRUTE_FORCE_LIMIT without `brute_force_ignore_limit` must
+    raise MemoryError rather than silently evaluating everything."""
+    import lokigi.mixins.site_solvers as site_solvers
+
+    monkeypatch.setattr(site_solvers, "BRUTE_FORCE_LIMIT", 5)
+
+    with pytest.raises(MemoryError, match="10"):
+        five_site_problem.solve(
+            p=2,
+            objectives="p_median",
+            search_strategy="brute-force",
+            show_progress=False,
+        )
+
+
+def test_brute_force_ignore_limit_suppresses_the_error_but_still_warns(
+    five_site_problem, monkeypatch
+):
+    """`brute_force_ignore_limit=True` must suppress the MemoryError, emit
+    a different ("opted to ignore") warning instead, and still evaluate
+    every combination rather than silently truncating."""
+    import lokigi.mixins.site_solvers as site_solvers
+
+    monkeypatch.setattr(site_solvers, "BRUTE_FORCE_LIMIT", 5)
+
+    with pytest.warns(UserWarning, match="ignore the advised limit"):
+        result = five_site_problem.solve(
+            p=2,
+            objectives="p_median",
+            search_strategy="brute-force",
+            show_progress=False,
+            brute_force_ignore_limit=True,
+        )
+
+    assert len(result.solution_df) == 10

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lokigi"
-version = "0.8.0"
+version = "0.9.0"
 description = "A package for generating, ranking, analysing and visualising the best candidate solutions for discrete facility location problems"
 readme = "README.md"
 license = "MIT"
@@ -22,6 +22,7 @@ classifiers = [
 ]
 
 dependencies = [
+    "numba>0.57.0",
     "numpy>=1.26.2,<3.0.0",
     "pandas>=2.0.1,<4.0.0",
     "geopandas>=1.0.0,<2.0.0",
@@ -36,7 +37,10 @@ dependencies = [
     "sweetpareto>=1.1.0",
     "seaborn>=0.13.0,<1.0.0",
     "plotly>=5.0.0,<7.0.0",
-    "esda>=2.9.0",
+    # <3.0.0: esda 3 changes Moran_Local's default alternative hypothesis,
+    # which would silently change get_hotspots() classifications -- see the
+    # comment at the Moran_Local call in lokigi/mixins/site_eda.py before raising
+    "esda>=2.9.0,<3.0.0",
     "pysal>=25.7",
     "osmium>=4.3.1",
 ]
