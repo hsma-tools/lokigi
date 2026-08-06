@@ -21,8 +21,10 @@ from lokigi.utils import (
     _get_ordinal_suffix,
     _sort_solutions_by_metric,
     _order_bins_most_to_least_disadvantaged,
+    _split_bins_into_tertiles,
     _unreachable_metrics_fragment,
     _min_max_normalize,
+    _MOST_TO_LEAST_DISADVANTAGED_SUFFIX,
 )
 from lokigi.plot_utils import _add_plot_caption, _attach_deferred_fit_bounds
 import warnings
@@ -56,6 +58,7 @@ class NonMapPlotsMixin:
         interactive_height=600,
         static_width=12,
         static_height=6,
+        **kwargs,
     ):
         """
         Plot a bar chart of the top-performing site combinations.
@@ -86,6 +89,10 @@ class NonMapPlotsMixin:
             Otherwise, the provided string is used as the title.
         plot_names: bool, default=True
             If True, plots site names. If false, plots canonical site indices.
+        **kwargs : dict
+            Additional keyword arguments passed to the underlying bar call
+            -- `plotly.express.bar` when ``interactive=True``, `Axes.bar`
+            otherwise.
 
         Returns
         -------
@@ -153,6 +160,7 @@ class NonMapPlotsMixin:
                     if y_axis_label == "default"
                     else y_axis_label,
                 },
+                **kwargs,
             )
 
             fig.update_layout(
@@ -165,6 +173,7 @@ class NonMapPlotsMixin:
             ax.bar(
                 df["site_names"] if plot_names else df["site_indices"],
                 df[y_axis],
+                **kwargs,
             )
 
             if title == "default":
@@ -212,6 +221,7 @@ class NonMapPlotsMixin:
         interactive_height=600,
         static_width=10,
         static_height=6,
+        **kwargs,
     ):
         """
         Bar chart of `site_allocation_summary()` for one chosen solution.
@@ -256,6 +266,10 @@ class NonMapPlotsMixin:
             Explicit ``{site_name: color}`` mapping, e.g. one already built
             for a companion map, so the two figures share identical
             colours. Sites not present in this mapping are coloured grey.
+        **kwargs : dict
+            Additional keyword arguments passed to the underlying bar call
+            -- `plotly.express.bar` when ``interactive=True``, `Axes.barh`
+            otherwise.
 
         Returns
         -------
@@ -403,6 +417,7 @@ class NonMapPlotsMixin:
                 orientation="h",
                 title=title,
                 labels={"_plot_value": x_label, "site": y_label},
+                **kwargs,
             )
             fig.update_traces(
                 marker_color=colors,
@@ -420,7 +435,7 @@ class NonMapPlotsMixin:
             fig.update_yaxes(autorange="reversed")
         else:
             fig, ax = plt.subplots(figsize=(static_width, static_height))
-            bars = ax.barh(summary["site"], plot_values, color=colors)
+            bars = ax.barh(summary["site"], plot_values, color=colors, **kwargs)
             ax.bar_label(bars, labels=bar_text)
             if title is not None:
                 ax.set_title(title)
@@ -464,6 +479,7 @@ class NonMapPlotsMixin:
         static_width=10,
         static_height=6,
         ax=None,
+        **kwargs,
     ):
         """
         Bar chart of `site_capacity_summary()` for one chosen solution.
@@ -529,6 +545,11 @@ class NonMapPlotsMixin:
             figure `ax` belongs to, not just this panel -- pass
             `caption=""` if that would land awkwardly among the other
             panels of a shared figure.
+        **kwargs : dict
+            Additional keyword arguments passed to the underlying bar call
+            -- `plotly.express.bar` when ``interactive=True``, `Axes.barh`
+            otherwise. The reference line (`show_reference_line`) is a
+            separate call and unaffected by this.
 
         Returns
         -------
@@ -644,6 +665,7 @@ class NonMapPlotsMixin:
                 orientation="h",
                 title=title,
                 labels={"_plot_value": x_label, "site": y_label},
+                **kwargs,
             )
             fig.update_traces(marker_color=colors, text=bar_text, textposition="outside")
             fig.update_layout(width=interactive_width, height=interactive_height)
@@ -662,7 +684,7 @@ class NonMapPlotsMixin:
             else:
                 fig = ax.get_figure()
 
-            bars = ax.barh(summary["site"], plot_values, color=colors)
+            bars = ax.barh(summary["site"], plot_values, color=colors, **kwargs)
             ax.bar_label(bars, labels=bar_text)
             if title is not None:
                 ax.set_title(title)
@@ -2591,6 +2613,7 @@ class EquityPlotsMixin:
         colour_mode: Optional[Literal["gradient", "above_below_avg"]] = None,
         show_site_names=False,
         matrix=None,
+        weighted=False,
     ):
         """
         Summarise and optionally plot equity metrics for a selected solution.
@@ -2628,6 +2651,18 @@ class EquityPlotsMixin:
             `add_secondary_travel_matrix()`. If provided, the summary is
             computed from that matrix's own min-cost column instead of the
             primary travel matrix.
+        weighted : bool, default=False
+            If False (the default, unchanged from prior behaviour), each
+            band's value is the plain (unweighted) mean of ``min_cost``
+            across its regions -- every region counts equally regardless of
+            demand. If True, it is instead the demand-weighted mean already
+            stored as ``weighted_by_equity_group`` (or its ``__<label>``
+            secondary-matrix equivalent), the same figure
+            ``inter_tertile_ratio``/``plot_equity_tertiles()`` are built
+            from. The two can differ materially on real data -- pick
+            ``weighted=True`` if you want numbers that reconcile with
+            ``inter_tertile_ratio``, or compare against
+            ``plot_equity_tertiles()``, which defaults the other way.
 
         Returns
         -------
@@ -2648,11 +2683,12 @@ class EquityPlotsMixin:
         -----
         - The equity grouping column is defined by
         ``self.site_problem._equity_data_equity_col``.
-        - The plotted metric is the mean of ``min_cost`` within each group.
+        - The plotted metric is the mean of ``min_cost`` within each group
+        (demand-weighted if ``weighted=True``).
         - When using Matplotlib with a provided ``ax``, the plot is drawn onto the
         supplied axes and the corresponding figure is returned.
         """
-        cost_col, _, _, unit, _ = self._resolve_travel_columns(matrix)
+        cost_col, _, _, unit, suffix = self._resolve_travel_columns(matrix)
         unit_parenthetical = f" ({unit})" if unit else ""
         cost_axis_label = f"Average travel time{unit_parenthetical}"
         equity_axis_label = (
@@ -2667,19 +2703,41 @@ class EquityPlotsMixin:
         else:
             plotting_row = self.solution_df.iloc[solution_rank - 1]
 
-        summary_equity_df = (
-            plotting_row["problem_df"]
-            .groupby(self.site_problem._equity_data_equity_col)[cost_col]
-            .agg("mean")
-            .round(2)
-            .reset_index()
-            .rename(columns={cost_col: "min_cost"})
-        )
+        equity_col = self.site_problem._equity_data_equity_col
+
+        if weighted:
+            value_col = f"weighted_by_equity_group{suffix}"
+            if value_col not in self.solution_df.columns:
+                raise ValueError(
+                    f"'{value_col}' is not available in solution_df. Per-band "
+                    "demand-weighted travel times for a secondary travel "
+                    "matrix require solve(..., full_secondary_metrics=True); "
+                    "rerun solve() with that flag, or omit matrix= to use "
+                    "the primary travel matrix."
+                )
+            per_band = plotting_row[value_col]
+            if not per_band:
+                raise ValueError("No equity data loaded. Call add_equity_data() first.")
+            summary_equity_df = (
+                pd.DataFrame(
+                    {equity_col: list(per_band.keys()), "min_cost": list(per_band.values())}
+                )
+                .sort_values(equity_col)
+                .reset_index(drop=True)
+            )
+        else:
+            summary_equity_df = (
+                plotting_row["problem_df"]
+                .groupby(equity_col)[cost_col]
+                .agg("mean")
+                .round(2)
+                .reset_index()
+                .rename(columns={cost_col: "min_cost"})
+            )
 
         if not return_plot:
             return summary_equity_df
         else:
-            equity_col = self.site_problem._equity_data_equity_col
             disadvantaged_end = getattr(
                 self.site_problem, "_equity_data_disadvantaged_end", None
             )
@@ -2689,7 +2747,7 @@ class EquityPlotsMixin:
             summary_equity_df = (
                 summary_equity_df.set_index(equity_col).loc[ordered_bins].reset_index()
             )
-            equity_axis_label = f"{equity_axis_label} (most to least disadvantaged)"
+            equity_axis_label = f"{equity_axis_label}{_MOST_TO_LEAST_DISADVANTAGED_SUFFIX}"
 
             if title == "default":
                 if show_site_names:
@@ -2905,6 +2963,229 @@ class EquityPlotsMixin:
             fig.delaxes(axes[j])
 
         plt.tight_layout()
+
+        return fig
+
+    def plot_equity_tertiles(
+        self,
+        solution_rank=1,
+        sort_by=None,
+        weighted=True,
+        show_tertile_averages=True,
+        colours=None,
+        title="default",
+        caption=None,
+        figsize=(9, 6),
+        ax=None,
+        matrix=None,
+    ):
+        """
+        Bar chart of average travel time per equity band, ordered most- to
+        least-disadvantaged, with the most- and least-disadvantaged thirds
+        highlighted and their own averages drawn across their bars --
+        visually decomposing ``inter_tertile_ratio`` as "these bars against
+        those bars" instead of leaving the reader to reconstruct its
+        direction from a single number near 1.
+
+        Distinct from ``check_solution_equity()``, which by default plots
+        the *unweighted* mean of ``min_cost`` per band (every region counts
+        equally). This method defaults to the *demand-weighted* mean
+        (``weighted_by_equity_group``), because that is what
+        ``inter_tertile_ratio`` is actually built from -- the two can
+        differ materially on real data, so a solution that looks balanced
+        on one can look skewed on the other. Pass ``weighted=False`` to
+        instead plot the same unweighted figure ``check_solution_equity()``
+        shows, for a direct comparison.
+
+        Parameters
+        ----------
+        solution_rank : int, default=1
+            Rank of the solution to plot (1-indexed).
+        sort_by : str or None, optional
+            Column name used to rank solutions before selecting
+            ``solution_rank``. If None, the existing order is used.
+        weighted : bool, default=True
+            If True (the default), bars show the demand-weighted mean
+            travel time per band (``weighted_by_equity_group``), matching
+            ``inter_tertile_ratio``. If False, bars show the plain
+            (unweighted) mean instead, matching
+            ``check_solution_equity(weighted=False)`` (its own default).
+        show_tertile_averages : bool, default=True
+            If True, draw a dashed horizontal line across the most- and
+            least-disadvantaged thirds at their own average, annotated with
+            its value.
+        colours : tuple of str, optional
+            ``(most_disadvantaged, middle, least_disadvantaged)`` bar
+            colours. Defaults to a red/grey/blue triple already used
+            elsewhere in this module for "worse/neutral/better"
+            (``plot_site_capacity_summary``'s over/under-capacity colours).
+        title : str, default="default"
+            Plot title. If "default", states the inter-tertile ratio and
+            its plain-English verdict (``inter_tertile_description``) when
+            ``weighted=True``, or the two thirds' own averages when
+            ``weighted=False`` (which has no single official ratio to
+            name).
+        caption : str or None, default None
+            `None` prints a short "how to read this" explanation of the
+            bar colours and dashed lines. Pass `""` to suppress it, or a
+            custom string to replace it (matches `_add_plot_caption`'s
+            existing convention on `plot_site_capacity_summary()` etc.).
+        figsize : tuple, default (9, 6)
+            Figure size when this method creates its own figure (i.e.
+            ``ax`` is None). Ignored otherwise.
+        ax : matplotlib.axes.Axes, optional
+            Existing axes to draw onto instead of creating a new figure,
+            e.g. to embed this as one panel of a larger layout. When
+            given, the caller owns the figure's lifecycle: this method
+            does not call `plt.tight_layout()` or close the figure
+            afterwards, and `caption` (if not suppressed) is still placed
+            relative to the *whole* figure `ax` belongs to -- pass
+            `caption=""` if that would land awkwardly among other panels.
+        matrix : str, optional
+            Label of a secondary travel matrix registered via
+            `add_secondary_travel_matrix()`. Requires that matrix to have
+            been solved with `solve(..., full_secondary_metrics=True)`,
+            since the per-band breakdown this plot needs is only computed
+            then.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+
+        Raises
+        ------
+        ValueError
+            If no equity data was registered, if fewer than 3 distinct
+            equity bands exist (a tertile split is meaningless below that),
+            or if `matrix` names a secondary travel matrix that was not
+            solved with `full_secondary_metrics=True`.
+        """
+        _, _, _, unit, suffix = self._resolve_travel_columns(matrix)
+        unit_suffix = f" {unit}" if unit else ""
+
+        value_key = "weighted_by_equity_group" if weighted else "unweighted_by_equity_group"
+        value_col = f"{value_key}{suffix}"
+        if value_col not in self.solution_df.columns:
+            raise ValueError(
+                f"'{value_col}' is not available in solution_df. Per-band "
+                "travel times for a secondary travel matrix require "
+                "solve(..., full_secondary_metrics=True); rerun solve() "
+                "with that flag, or omit matrix= to use the primary "
+                "travel matrix."
+            )
+
+        selected = _select_solution(self.solution_df, sort_by=sort_by, solution_rank=solution_rank)
+        row = selected.iloc[0]
+
+        per_band = row[value_col]
+        if not per_band:
+            raise ValueError("No equity data loaded. Call add_equity_data() first.")
+
+        disadvantaged_end = getattr(
+            self.site_problem, "_equity_data_disadvantaged_end", None
+        )
+        most, middle, least = _split_bins_into_tertiles(sorted(per_band.keys()), disadvantaged_end)
+        if most is None:
+            raise ValueError(
+                "plot_equity_tertiles() needs at least 3 distinct equity "
+                f"bands to split into tertiles; found {len(per_band)}."
+            )
+
+        if weighted:
+            lower_avg = row[f"avg_lower_third_bins{suffix}"]
+            upper_avg = row[f"avg_upper_third_bins{suffix}"]
+        else:
+            lower_avg = float(np.mean([per_band[b] for b in most]))
+            upper_avg = float(np.mean([per_band[b] for b in least]))
+
+        equity_axis_label = (
+            self.site_problem._equity_data_label
+            or self.site_problem._equity_data_equity_col
+        )
+        equity_axis_label = f"{equity_axis_label}{_MOST_TO_LEAST_DISADVANTAGED_SUFFIX}"
+
+        if title == "default":
+            if weighted:
+                ratio = row[f"inter_tertile_ratio{suffix}"]
+                description = row[f"inter_tertile_description{suffix}"]
+                ratio_text = "N/A" if pd.isna(ratio) else f"{ratio:.2f}"
+                title = f"Inter-tertile ratio: {ratio_text} — {description}"
+            else:
+                title = (
+                    f"Most-disadvantaged third avg {lower_avg:.1f}{unit_suffix} vs "
+                    f"least-disadvantaged third avg {upper_avg:.1f}{unit_suffix} "
+                    "(unweighted)"
+                )
+
+        most_colour, middle_colour, least_colour = colours or (
+            "#C44E52",
+            "#D9D9D9",
+            "#4C72B0",
+        )
+
+        owns_figure = ax is None
+        if owns_figure:
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.get_figure()
+
+        ordered = most + middle + least
+        bar_colours = (
+            [most_colour] * len(most)
+            + [middle_colour] * len(middle)
+            + [least_colour] * len(least)
+        )
+        x_positions = np.arange(len(ordered))
+        ax.bar(
+            x_positions,
+            [per_band[b] for b in ordered],
+            color=bar_colours,
+            edgecolor="white",
+        )
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels([str(b) for b in ordered])
+        ax.set_xlabel(equity_axis_label)
+        unit_parenthetical = f" ({unit})" if unit else ""
+        ax.set_ylabel(f"Average travel time{unit_parenthetical}")
+        ax.set_title(title)
+
+        if show_tertile_averages:
+            for label, bands, value, colour in (
+                ("Most-disadvantaged third", most, lower_avg, most_colour),
+                ("Least-disadvantaged third", least, upper_avg, least_colour),
+            ):
+                start = ordered.index(bands[0]) - 0.5
+                end = start + len(bands)
+                ax.hlines(value, start, end, color=colour, linestyle="--", linewidth=2)
+                ax.annotate(
+                    f"{label}: {value:.1f}{unit_suffix}",
+                    ((start + end) / 2, value),
+                    textcoords="offset points",
+                    xytext=(0, 10),
+                    ha="center",
+                    fontsize=9,
+                    color=colour,
+                    bbox={
+                        "facecolor": "white",
+                        "edgecolor": "none",
+                        "pad": 1.5,
+                        "alpha": 0.85,
+                    },
+                )
+            ax.margins(y=0.15)
+
+        weighting_word = "demand-weighted" if weighted else "unweighted"
+        default_caption = (
+            f"Bars show each equity band's {weighting_word} average travel "
+            "time. The dashed lines mark the average across the "
+            "most- and least-disadvantaged thirds (highlighted); the "
+            "paler middle third is not part of the ratio."
+        )
+        _add_plot_caption(fig, caption, default_caption)
+
+        if owns_figure:
+            plt.tight_layout()
+            plt.close(fig)
 
         return fig
 

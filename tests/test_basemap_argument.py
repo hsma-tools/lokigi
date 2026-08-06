@@ -19,6 +19,11 @@ the wrong spelling never reached code that understood it:
 pre-1.0). That same `**kwargs` forwarding means a bare removal would give
 old callers the identical cryptic failure, so the three methods explicitly
 reject the removed name with a message naming the replacement.
+
+plot_sites picked up the same guard later for a different reason: it never
+carried the old spelling, but once it gained **kwargs forwarding of its own
+it was exposed to the identical silent-absorption failure, so it rejects
+the removed name too. See test_plot_sites_rejects_the_removed_show_basemap_kwarg.
 """
 
 import matplotlib
@@ -153,13 +158,22 @@ def test_removed_name_is_rejected_before_any_analysis_runs(
     assert called == [], f"{method_name} ran analysis before rejecting the call"
 
 
-def test_methods_that_always_used_add_basemap_are_unchanged(
+def test_plot_sites_always_used_add_basemap(
     plottable_problem, stub_basemap_tiles  # noqa: F811
 ):
-    """plot_sites always spelled it add_basemap. It has no **kwargs, so the
-    removed name raises a normal TypeError from Python itself."""
+    """plot_sites always spelled it add_basemap."""
     plottable_problem.plot_sites(add_basemap=False)
     assert stub_basemap_tiles == []
 
-    with pytest.raises(TypeError, match="show_basemap"):
+
+def test_plot_sites_rejects_the_removed_show_basemap_kwarg(
+    plottable_problem  # noqa: F811
+):
+    """plot_sites now forwards **kwargs to the underlying plot/explore call
+    (see plot_region_geometry_layer, plot_hotspots, plot_quadrant_map for
+    the same problem), so without the guard `show_basemap` would be
+    silently absorbed and forwarded to matplotlib, surfacing there as
+    `PathCollection.set() got an unexpected keyword argument` instead of a
+    message naming the real problem."""
+    with pytest.raises(TypeError, match="no longer accepts 'show_basemap'"):
         plottable_problem.plot_sites(show_basemap=False)

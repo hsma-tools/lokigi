@@ -211,6 +211,122 @@ def test_tertile_ordering_respects_disadvantaged_end_high(loaded_problem):
     assert "Highly Inequitable" in result.inter_tertile_desc
 
 
+def test_tertile_split_uses_equal_sized_ends_not_array_split_remainder():
+    """Regression test for the `_split_bins_into_tertiles()` fix: with 10
+    IMD deciles (not divisible by 3), the old `np.array_split`-based split
+    put the leftover band in the first chunk (1-4 / 5-7 / 8-10), comparing
+    a 4-band "most deprived" group against a 3-band "least deprived" one.
+    The fix keeps both ends at 3 bands each and puts the leftover decile
+    (4) in the ignored middle instead (1-3 / 4-7 / 8-10).
+
+    Decile 4's travel time (30.0) is deliberately far out of line with the
+    rest, so which chunk it lands in isn't cosmetic: including it in the
+    "most deprived" average (old behaviour) pushes inter_tertile_ratio from
+    1.0 ("Balanced") to 1.5 ("Highly Inequitable") -- the fix changes not
+    just a number but which `inter_tertile_desc` band the result falls
+    into."""
+    demand_df = pd.DataFrame(
+        {
+            "location_id": [f"LSOA_{i}" for i in range(1, 11)],
+            "demand": [100] * 10,
+        }
+    )
+    candidate_df = pd.DataFrame({"site_id": ["Site_A"], "lat": [51.5], "long": [-0.1]})
+    travel_df = pd.DataFrame(
+        {
+            "source_id": [f"LSOA_{i}" for i in range(1, 11)],
+            "Site_A": [10.0, 10.0, 10.0, 30.0, 0.0, 0.0, 0.0, 10.0, 10.0, 10.0],
+        }
+    )
+    equity_df = pd.DataFrame(
+        {"location_id": [f"LSOA_{i}" for i in range(1, 11)], "imd_decile": range(1, 11)}
+    )
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+    problem.add_equity_data(
+        equity_df,
+        equity_col="imd_decile",
+        common_col="location_id",
+        label="IMD decile",
+        disadvantaged_end="low",
+    )
+
+    result = problem.evaluate_single_solution_single_objective(
+        objective="p_median", site_indices=[0]
+    )
+
+    assert result.avg_lower_third_bins == pytest.approx(10.0)
+    assert result.avg_middle_third_bins == pytest.approx(7.5)
+    assert result.avg_upper_third_bins == pytest.approx(10.0)
+
+    # The invariant the discrepancy report caught: the ratio is exactly the
+    # mean of the two chunks _split_bins_into_tertiles() actually returned,
+    # not some other grouping.
+    assert result.inter_tertile_ratio == pytest.approx(
+        result.avg_lower_third_bins / result.avg_upper_third_bins
+    )
+    assert result.inter_tertile_ratio == pytest.approx(1.0)
+    assert "Balanced" in result.inter_tertile_desc
+
+
+def test_check_solution_equity_weighted_matches_weighted_by_equity_group():
+    """check_solution_equity(weighted=True) must return the same figures as
+    weighted_by_equity_group (and therefore inter_tertile_ratio) -- the
+    whole point of adding weighted= was to remove the silent divergence
+    between this method's default (plain per-region mean) and the
+    demand-weighted metric plot_equity_tertiles() decomposes. Uses a band
+    with two locations at very different demand so the weighted and
+    unweighted means are provably different, not just non-identical by
+    floating-point noise."""
+    demand_df = pd.DataFrame(
+        {
+            "location_id": ["LSOA_1a", "LSOA_1b", "LSOA_2", "LSOA_3"],
+            "demand": [990, 10, 100, 100],
+        }
+    )
+    candidate_df = pd.DataFrame({"site_id": ["Site_A"], "lat": [51.5], "long": [-0.1]})
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["LSOA_1a", "LSOA_1b", "LSOA_2", "LSOA_3"],
+            "Site_A": [0.0, 100.0, 20.0, 30.0],
+        }
+    )
+    equity_df = pd.DataFrame(
+        {
+            "location_id": ["LSOA_1a", "LSOA_1b", "LSOA_2", "LSOA_3"],
+            "band": [1, 1, 2, 3],
+        }
+    )
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+    problem.add_equity_data(
+        equity_df,
+        equity_col="band",
+        common_col="location_id",
+        label="Band",
+        disadvantaged_end="low",
+    )
+    solution = problem.solve(p=1, search_strategy="brute-force", show_progress=False)
+    row = solution.solution_df.iloc[0]
+
+    unweighted_summary = solution.check_solution_equity(weighted=False).set_index("band")[
+        "min_cost"
+    ]
+    weighted_summary = solution.check_solution_equity(weighted=True).set_index("band")[
+        "min_cost"
+    ]
+
+    assert unweighted_summary.loc[1] == pytest.approx(50.0)
+    assert weighted_summary.loc[1] == pytest.approx(row["weighted_by_equity_group"][1])
+    assert weighted_summary.loc[1] != pytest.approx(unweighted_summary.loc[1])
+    assert weighted_summary.loc[1] == pytest.approx(0.0, abs=2.0)
+
+
 def test_fewer_than_three_equity_bins_skips_tertile_calculation():
     """Tertile metrics require >= 3 distinct equity bands (site_solutions.py:325);
     with only 2, avg_*_third_bins and inter_tertile_ratio should stay unset."""

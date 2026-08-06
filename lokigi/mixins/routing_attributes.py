@@ -5,7 +5,7 @@ import warnings
 from lokigi.travel_utils import prepare_valhalla_network
 from shapely.geometry import Point
 import geopandas
-from lokigi.utils import _guess_crs
+from lokigi.utils import _guess_crs, _reject_removed_basemap_alias
 import contextily as cx
 import matplotlib.pyplot as plt
 import textwrap
@@ -389,7 +389,9 @@ class RoutingAttributeMixin:
     def show_resources(self):
         return self.resources_data
 
-    def plot_resources(self, add_basemap=True, show_labels=True, interactive=False):
+    def plot_resources(
+        self, add_basemap=True, show_labels=True, interactive=False, **kwargs
+    ):
         """
         Generate a visualization of the resource locations.
 
@@ -404,11 +406,17 @@ class RoutingAttributeMixin:
             If True, displays labels/counts on static plots.
         interactive : bool, default False
             If True, returns an interactive Folium map.
+        **kwargs : dict
+            Additional keyword arguments passed to the marker plotting
+            call -- `GeoDataFrame.plot` on the static path, or
+            `folium.CircleMarker` (applied to every marker) on the
+            interactive path.
 
         Returns
         -------
         matplotlib.axes.Axes or folium.Map
         """
+        _reject_removed_basemap_alias(kwargs, "plot_resources")
 
         # ------------------------------------------------------------------
         # Aggregate coincident points
@@ -448,6 +456,7 @@ class RoutingAttributeMixin:
             ax = grouped.plot(
                 figsize=(10, 10),
                 markersize=grouped["marker_size"],
+                **kwargs,
             )
 
             if show_labels:
@@ -512,6 +521,7 @@ class RoutingAttributeMixin:
                     tooltip=row["display_label"],
                     popup=row["popup"],
                     fill=True,
+                    **kwargs,
                 ).add_to(m)
 
             return m

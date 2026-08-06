@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lokigi"
-version = "0.9.0"
+version = "0.9.1"
 description = "A package for generating, ranking, analysing and visualising the best candidate solutions for discrete facility location problems"
 readme = "README.md"
 license = "MIT"

@@ -6,6 +6,7 @@ from lokigi.utils import (
     _check_crs_match_pref,
     _convert_crs,
     _min_max_normalize,
+    _reject_removed_basemap_alias,
 )
 
 # Data manipulation imports
@@ -96,7 +97,7 @@ def _reject_missing_travel_values(loaded_df, cost_cols, allow_missing, method_na
     raise ValueError(
         f"{method_name} found {n_missing} missing (NaN) travel cost "
         f"value(s) (e.g. row(s) {example_rows}). A missing value means "
-        "\"no feasible journey\" for that origin-destination pair, not a "
+        '"no feasible journey" for that origin-destination pair, not a '
         "data error to be assumed away -- pass allow_missing=True to "
         "register the matrix as-is (unreachable pairs are then treated as "
         "genuinely unreachable throughout evaluation and plotting, rather "
@@ -508,7 +509,9 @@ class SiteAttributeMixin:
         """
         return self.candidate_sites
 
-    def plot_sites(self, add_basemap=True, show_labels=True, interactive=False):
+    def plot_sites(
+        self, add_basemap=True, show_labels=True, interactive=False, **kwargs
+    ):
         """
         Generate a visualization of the candidate facility sites.
 
@@ -542,8 +545,10 @@ class SiteAttributeMixin:
         legible even in high-density areas. Labels are title-cased and
         wrapped at a width of 15 characters.
         """
+        _reject_removed_basemap_alias(kwargs, "plot_sites")
+
         if not interactive:
-            ax = self.candidate_sites.plot()
+            ax = self.candidate_sites.plot(**kwargs)
 
             if show_labels:
                 texts = []
@@ -569,7 +574,7 @@ class SiteAttributeMixin:
                         stacklevel=2,
                     )
         else:
-            m = self.candidate_sites.explore(marker_kwds=dict(radius=8))
+            m = self.candidate_sites.explore(marker_kwds=dict(radius=8), **kwargs)
             return _attach_deferred_fit_bounds(m)
 
     ###############################
@@ -695,12 +700,9 @@ class SiteAttributeMixin:
                 raise KeyError(f"Sites not found in candidate_sites: {missing}.")
             site_names_resolved = list(site_names)
         else:
-            site_names_resolved = (
-                self.candidate_sites.sort_values("canonical_site_index")[
-                    self._candidate_sites_candidate_id_col
-                ]
-                .tolist()
-            )
+            site_names_resolved = self.candidate_sites.sort_values(
+                "canonical_site_index"
+            )[self._candidate_sites_candidate_id_col].tolist()
 
         selected = self.candidate_sites.set_index(
             self._candidate_sites_candidate_id_col

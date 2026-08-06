@@ -776,11 +776,30 @@ def _format_threshold(t):
     return f"{float(t):g}"
 
 
+#: Suffix appended to an equity axis label wherever bands are drawn/ordered
+#: most- to least-disadvantaged (`check_solution_equity()`,
+#: `plot_equity_tertiles()`) -- shared so the two labels can't drift apart.
+_MOST_TO_LEAST_DISADVANTAGED_SUFFIX = " (most to least disadvantaged)"
+
+
 def _split_bins_into_tertiles(unique_bins, disadvantaged_end=None):
     """
-    Split a sorted list of equity-band values into three roughly equal
-    chunks (via `np.array_split`), returning them ordered from
-    MOST-disadvantaged to LEAST-disadvantaged.
+    Split a sorted list of equity-band values into three chunks, returning
+    them ordered from MOST-disadvantaged to LEAST-disadvantaged.
+
+    The two end chunks are always equal in size (`len(unique_bins) // 3`
+    each); any bins left over from that division go to the ignored middle
+    chunk rather than to either end, so the two ends being compared are
+    never a different size from one another. E.g. for 10 IMD deciles
+    (1-10), the split is `[1,2,3] / [4,5,6,7] / [8,9,10]` -- deciles 1-3
+    vs 8-10, with the extra decile absorbed by the ignored middle rather
+    than tipping one end to four bins.
+
+    Equal band *counts* is not the same as equal *population*: with
+    IMD deciles specifically (a national construct), the two end chunks
+    can hold very different headcounts within a single local geography.
+    This function does not correct for that -- it only guarantees the
+    chunk sizes are equal.
 
     `disadvantaged_end` mirrors `add_equity_data()`'s parameter of the same
     name: "low" means the lowest band values are the most disadvantaged
@@ -806,9 +825,11 @@ def _split_bins_into_tertiles(unique_bins, disadvantaged_end=None):
     if len(unique_bins) < 3:
         return None, None, None
 
-    chunks = np.array_split(list(unique_bins), 3)
+    bins = list(unique_bins)
+    end_size = len(bins) // 3
+    chunks = (bins[:end_size], bins[end_size : len(bins) - end_size], bins[len(bins) - end_size :])
     if disadvantaged_end == "high":
-        chunks = list(reversed(chunks))
+        chunks = tuple(reversed(chunks))
 
     return list(chunks[0]), list(chunks[1]), list(chunks[2])
 
