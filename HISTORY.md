@@ -1,9 +1,16 @@
 ## v0.9.1
 
+### ⚠️ Breaking changes
+
+lokigi is pre-1.0, so breaking changes can land in any minor release. Read this before upgrading -- it is detailed in the notes below.
+
+- **The equity tertile split now keeps both ends equal-sized.** `avg_lower_third_bins`, `avg_upper_third_bins`, `inter_tertile_ratio`, `inter_tertile_description`, and the tertile-ordered outputs built on the same split all change on any problem whose equity bands don't divide evenly by 3 -- deciles (the common case) and quintiles both qualify.
+
 ### Notes
 
 - Add support for keyword arguments in plot sites, which will be passed through to gdf.explore() or matplotlib's plotting respectively depending on whether the plot is interactive.
     - Like `plot_region_geometry_layer`/`plot_hotspots`/`plot_quadrant_map`, `plot_sites` now explicitly rejects the removed `show_basemap` name with a message naming `add_basemap` instead of forwarding it into `**kwargs`, where it would otherwise be silently absorbed (interactive path) or surface as a matplotlib-internals `AttributeError` naming neither the method nor the real problem (static path)
+- Fix `_split_bins_into_tertiles()` (the shared helper behind `inter_tertile_ratio` and friends) putting an unequal number of bands in its two end chunks. It previously delegated to `np.array_split`, which places any remainder in the *first* chunks -- for 10 IMD deciles that gave a 4-band "most disadvantaged" group against a 3-band "least disadvantaged" one (deciles 1-4 vs 8-10), so the ratio divided two means taken over differently-sized groups depending on an implementation detail rather than a modelling choice. The two end chunks are now always `len(bins) // 3` bands each, with any leftover absorbed by the ignored middle chunk (deciles 1-3 vs 8-10, with decile 4 now correctly excluded from both ends). Affects `avg_lower_third_bins`/`avg_middle_third_bins`/`avg_upper_third_bins`, `inter_tertile_ratio`, `inter_tertile_description`, `decision_summary()`'s tertile sentences, and `check_solution_equity()`/`plot_population_impact_by_equity_group()`'s band grouping. Problems with a band count divisible by 3 (including the common 3-band case) are unaffected; `disadvantaged_end` ordering is unchanged. Because `inter_tertile_ratio` can be a Pareto metric or `rank_on` target, Pareto-front membership and `rank_on="inter_tertile_ratio"` searches can select a different combination than before
 
 
 ## v0.9.0
