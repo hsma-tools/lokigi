@@ -272,6 +272,61 @@ def test_tertile_split_uses_equal_sized_ends_not_array_split_remainder():
     assert "Balanced" in result.inter_tertile_desc
 
 
+def test_check_solution_equity_weighted_matches_weighted_by_equity_group():
+    """check_solution_equity(weighted=True) must return the same figures as
+    weighted_by_equity_group (and therefore inter_tertile_ratio) -- the
+    whole point of adding weighted= was to remove the silent divergence
+    between this method's default (plain per-region mean) and the
+    demand-weighted metric plot_equity_tertiles() decomposes. Uses a band
+    with two locations at very different demand so the weighted and
+    unweighted means are provably different, not just non-identical by
+    floating-point noise."""
+    demand_df = pd.DataFrame(
+        {
+            "location_id": ["LSOA_1a", "LSOA_1b", "LSOA_2", "LSOA_3"],
+            "demand": [990, 10, 100, 100],
+        }
+    )
+    candidate_df = pd.DataFrame({"site_id": ["Site_A"], "lat": [51.5], "long": [-0.1]})
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ["LSOA_1a", "LSOA_1b", "LSOA_2", "LSOA_3"],
+            "Site_A": [0.0, 100.0, 20.0, 30.0],
+        }
+    )
+    equity_df = pd.DataFrame(
+        {
+            "location_id": ["LSOA_1a", "LSOA_1b", "LSOA_2", "LSOA_3"],
+            "band": [1, 1, 2, 3],
+        }
+    )
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id")
+    problem.add_equity_data(
+        equity_df,
+        equity_col="band",
+        common_col="location_id",
+        label="Band",
+        disadvantaged_end="low",
+    )
+    solution = problem.solve(p=1, search_strategy="brute-force", show_progress=False)
+    row = solution.solution_df.iloc[0]
+
+    unweighted_summary = solution.check_solution_equity(weighted=False).set_index("band")[
+        "min_cost"
+    ]
+    weighted_summary = solution.check_solution_equity(weighted=True).set_index("band")[
+        "min_cost"
+    ]
+
+    assert unweighted_summary.loc[1] == pytest.approx(50.0)
+    assert weighted_summary.loc[1] == pytest.approx(row["weighted_by_equity_group"][1])
+    assert weighted_summary.loc[1] != pytest.approx(unweighted_summary.loc[1])
+    assert weighted_summary.loc[1] == pytest.approx(0.0, abs=2.0)
+
+
 def test_fewer_than_three_equity_bins_skips_tertile_calculation():
     """Tertile metrics require >= 3 distinct equity bands (site_solutions.py:325);
     with only 2, avg_*_third_bins and inter_tertile_ratio should stay unset."""

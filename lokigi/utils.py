@@ -776,6 +776,12 @@ def _format_threshold(t):
     return f"{float(t):g}"
 
 
+#: Suffix appended to an equity axis label wherever bands are drawn/ordered
+#: most- to least-disadvantaged (`check_solution_equity()`,
+#: `plot_equity_tertiles()`) -- shared so the two labels can't drift apart.
+_MOST_TO_LEAST_DISADVANTAGED_SUFFIX = " (most to least disadvantaged)"
+
+
 def _split_bins_into_tertiles(unique_bins, disadvantaged_end=None):
     """
     Split a sorted list of equity-band values into three chunks, returning
