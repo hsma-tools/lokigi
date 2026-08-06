@@ -58,6 +58,7 @@ class NonMapPlotsMixin:
         interactive_height=600,
         static_width=12,
         static_height=6,
+        **kwargs,
     ):
         """
         Plot a bar chart of the top-performing site combinations.
@@ -88,6 +89,10 @@ class NonMapPlotsMixin:
             Otherwise, the provided string is used as the title.
         plot_names: bool, default=True
             If True, plots site names. If false, plots canonical site indices.
+        **kwargs : dict
+            Additional keyword arguments passed to the underlying bar call
+            -- `plotly.express.bar` when ``interactive=True``, `Axes.bar`
+            otherwise.
 
         Returns
         -------
@@ -155,6 +160,7 @@ class NonMapPlotsMixin:
                     if y_axis_label == "default"
                     else y_axis_label,
                 },
+                **kwargs,
             )
 
             fig.update_layout(
@@ -167,6 +173,7 @@ class NonMapPlotsMixin:
             ax.bar(
                 df["site_names"] if plot_names else df["site_indices"],
                 df[y_axis],
+                **kwargs,
             )
 
             if title == "default":
@@ -214,6 +221,7 @@ class NonMapPlotsMixin:
         interactive_height=600,
         static_width=10,
         static_height=6,
+        **kwargs,
     ):
         """
         Bar chart of `site_allocation_summary()` for one chosen solution.
@@ -258,6 +266,10 @@ class NonMapPlotsMixin:
             Explicit ``{site_name: color}`` mapping, e.g. one already built
             for a companion map, so the two figures share identical
             colours. Sites not present in this mapping are coloured grey.
+        **kwargs : dict
+            Additional keyword arguments passed to the underlying bar call
+            -- `plotly.express.bar` when ``interactive=True``, `Axes.barh`
+            otherwise.
 
         Returns
         -------
@@ -405,6 +417,7 @@ class NonMapPlotsMixin:
                 orientation="h",
                 title=title,
                 labels={"_plot_value": x_label, "site": y_label},
+                **kwargs,
             )
             fig.update_traces(
                 marker_color=colors,
@@ -422,7 +435,7 @@ class NonMapPlotsMixin:
             fig.update_yaxes(autorange="reversed")
         else:
             fig, ax = plt.subplots(figsize=(static_width, static_height))
-            bars = ax.barh(summary["site"], plot_values, color=colors)
+            bars = ax.barh(summary["site"], plot_values, color=colors, **kwargs)
             ax.bar_label(bars, labels=bar_text)
             if title is not None:
                 ax.set_title(title)
@@ -466,6 +479,7 @@ class NonMapPlotsMixin:
         static_width=10,
         static_height=6,
         ax=None,
+        **kwargs,
     ):
         """
         Bar chart of `site_capacity_summary()` for one chosen solution.
@@ -531,6 +545,11 @@ class NonMapPlotsMixin:
             figure `ax` belongs to, not just this panel -- pass
             `caption=""` if that would land awkwardly among the other
             panels of a shared figure.
+        **kwargs : dict
+            Additional keyword arguments passed to the underlying bar call
+            -- `plotly.express.bar` when ``interactive=True``, `Axes.barh`
+            otherwise. The reference line (`show_reference_line`) is a
+            separate call and unaffected by this.
 
         Returns
         -------
@@ -646,6 +665,7 @@ class NonMapPlotsMixin:
                 orientation="h",
                 title=title,
                 labels={"_plot_value": x_label, "site": y_label},
+                **kwargs,
             )
             fig.update_traces(marker_color=colors, text=bar_text, textposition="outside")
             fig.update_layout(width=interactive_width, height=interactive_height)
@@ -664,7 +684,7 @@ class NonMapPlotsMixin:
             else:
                 fig = ax.get_figure()
 
-            bars = ax.barh(summary["site"], plot_values, color=colors)
+            bars = ax.barh(summary["site"], plot_values, color=colors, **kwargs)
             ax.bar_label(bars, labels=bar_text)
             if title is not None:
                 ax.set_title(title)

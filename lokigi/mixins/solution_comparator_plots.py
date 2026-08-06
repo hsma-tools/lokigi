@@ -229,6 +229,7 @@ class SolutionComparatorPlotsMixin:
         title="default",
         caption=None,
         ax=None,
+        **kwargs,
     ):
         """
         Heatmap of `site_reallocation_matrix()`: rows = `set_a`'s selected
@@ -272,6 +273,8 @@ class SolutionComparatorPlotsMixin:
             suppress it, or a custom string to replace it.
         ax : matplotlib.axes.Axes, optional
             Existing Axes to draw into instead of creating a new figure.
+        **kwargs : dict
+            Additional keyword arguments passed to `seaborn.heatmap`.
 
         Returns
         -------
@@ -299,6 +302,7 @@ class SolutionComparatorPlotsMixin:
             fmt=fmt,
             ax=ax,
             cbar_kws={"label": cbar_label},
+            **kwargs,
         )
         ax.set_xlabel(self.labels[1])
         ax.set_ylabel(self.labels[0])
