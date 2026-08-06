@@ -361,7 +361,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    interactive_height<span class="op">=</span><span class="dv">600</span>,</span>
 <span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    static_width<span class="op">=</span><span class="dv">12</span>,</span>
 <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    static_height<span class="op">=</span><span class="dv">6</span>,</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Plot a bar chart of the top-performing site combinations.</p>
 <p>This method visualises the performance of the top <code>n_best</code> solutions using a bar chart, where each bar represents a solution and its value corresponds to the selected metric (e.g., weighted average travel time).</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">
@@ -417,6 +418,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td></td>
 <td>If True, plots site names. If false, plots canonical site indices.</td>
 <td><code>True</code></td>
+</tr>
+<tr class="odd">
+<td>**kwargs</td>
+<td>dict</td>
+<td>Additional keyword arguments passed to the underlying bar call – <code>plotly.express.bar</code> when <code>interactive=True</code>, <code>Axes.bar</code> otherwise.</td>
+<td><code>{}</code></td>
 </tr>
 </tbody>
 </table>

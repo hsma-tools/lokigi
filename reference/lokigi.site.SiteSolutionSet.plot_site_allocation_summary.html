@@ -367,7 +367,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    interactive_height<span class="op">=</span><span class="dv">600</span>,</span>
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    static_width<span class="op">=</span><span class="dv">10</span>,</span>
 <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    static_height<span class="op">=</span><span class="dv">6</span>,</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Bar chart of <code>site_allocation_summary()</code> for one chosen solution.</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
@@ -458,6 +459,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>dict</td>
 <td>Explicit <code>{site_name: color}</code> mapping, e.g.&nbsp;one already built for a companion map, so the two figures share identical colours. Sites not present in this mapping are coloured grey.</td>
 <td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td>**kwargs</td>
+<td>dict</td>
+<td>Additional keyword arguments passed to the underlying bar call – <code>plotly.express.bar</code> when <code>interactive=True</code>, <code>Axes.barh</code> otherwise.</td>
+<td><code>{}</code></td>
 </tr>
 </tbody>
 </table>

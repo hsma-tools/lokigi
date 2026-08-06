@@ -373,7 +373,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    static_width<span class="op">=</span><span class="dv">10</span>,</span>
 <span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>    static_height<span class="op">=</span><span class="dv">6</span>,</span>
 <span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>    ax<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Bar chart of <code>site_capacity_summary()</code> for one chosen solution.</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
@@ -500,6 +501,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>matplotlib.axes.Axes</td>
 <td>Existing axes to draw the static chart onto instead of creating a new figure, e.g.&nbsp;to embed this as one panel of a larger layout. Ignored if <code>interactive=True</code>. When given, the caller owns the figure’s lifecycle: unlike the default (self-contained) case, this method does not call <code>plt.tight_layout()</code> or close the figure afterwards. <code>caption</code> (if not suppressed) is still placed relative to the <em>whole</em> figure <code>ax</code> belongs to, not just this panel – pass <code>caption=""</code> if that would land awkwardly among the other panels of a shared figure.</td>
 <td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td>**kwargs</td>
+<td>dict</td>
+<td>Additional keyword arguments passed to the underlying bar call – <code>plotly.express.bar</code> when <code>interactive=True</code>, <code>Axes.barh</code> otherwise. The reference line (<code>show_reference_line</code>) is a separate call and unaffected by this.</td>
+<td><code>{}</code></td>
 </tr>
 </tbody>
 </table>
