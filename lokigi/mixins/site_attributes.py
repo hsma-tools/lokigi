@@ -6,6 +6,7 @@ from lokigi.utils import (
     _check_crs_match_pref,
     _convert_crs,
     _min_max_normalize,
+    _reject_removed_basemap_alias,
 )
 
 # Data manipulation imports
@@ -544,6 +545,8 @@ class SiteAttributeMixin:
         legible even in high-density areas. Labels are title-cased and
         wrapped at a width of 15 characters.
         """
+        _reject_removed_basemap_alias(kwargs, "plot_sites")
+
         if not interactive:
             ax = self.candidate_sites.plot(**kwargs)
 

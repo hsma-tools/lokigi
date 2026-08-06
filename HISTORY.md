@@ -1,3 +1,11 @@
+## v0.9.1
+
+### Notes
+
+- Add support for keyword arguments in plot sites, which will be passed through to gdf.explore() or matplotlib's plotting respectively depending on whether the plot is interactive.
+    - Like `plot_region_geometry_layer`/`plot_hotspots`/`plot_quadrant_map`, `plot_sites` now explicitly rejects the removed `show_basemap` name with a message naming `add_basemap` instead of forwarding it into `**kwargs`, where it would otherwise be silently absorbed (interactive path) or surface as a matplotlib-internals `AttributeError` naming neither the method nor the real problem (static path)
+
+
 ## v0.9.0
 
 - Add a `caption` parameter to `plot_accessibility()`: `None` (the default) prints a stakeholder-facing "how to read this" explanation of the region shading -- and, depending on `show_site_ratio` below, of the site markers too -- below the chart; pass `""` to suppress it or a custom string to replace it, matching the existing `caption` convention on `plot_pareto_summary()`/`plot_site_reallocation_matrix()`/`plot_population_impact_histogram()`. Also factors the shared caption-rendering logic those four now use into `lokigi.plot_utils._add_plot_caption()` (internal, no behaviour change to the existing three)
