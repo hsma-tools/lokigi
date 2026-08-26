@@ -36,6 +36,43 @@ from lokigi.mixins.site_eda import (
 from lokigi.mixins.site_accessibility import AccessibilityPlotMixin
 
 
+# Per-region row weights as actually used to score a combination (the
+# demand column, or the compound blend under a multi-key `weights=` dict).
+# Written onto every `problem_df` so post-hoc per-band recomputation --
+# `equity=<label>` on the reporting methods -- can reproduce the solve-time
+# weighting exactly rather than approximating it with raw demand.
+_ROW_WEIGHT_COL = "_row_weight"
+
+
+# `_equity_band_metrics()` key -> the `solution_df` column the solve stores
+# it under (suffixed `__<matrix>` for a secondary travel matrix). Mostly
+# identity, but the three verbal descriptors are stored under `description`
+# where the helper returns `desc`, so `_resolve_equity_view()` needs the
+# mapping to hand back one consistent shape whichever path it took.
+#
+# demand_improved/worsened_by_equity_group are deliberately absent: they
+# exist only when a baseline was supplied, so requiring them would make
+# every baseline-free solve look like a partial breakdown.
+_EQUITY_BAND_STORED_NAMES = {
+    "weighted_by_equity_group": "weighted_by_equity_group",
+    "unweighted_by_equity_group": "unweighted_by_equity_group",
+    "coverage_by_equity_group": "coverage_by_equity_group",
+    "coverage_regions_by_equity_group": "coverage_regions_by_equity_group",
+    "max_cost_by_equity_group": "max_cost_by_equity_group",
+    "regions_unreachable_by_equity_group": "regions_unreachable_by_equity_group",
+    "demand_unreachable_by_equity_group": "demand_unreachable_by_equity_group",
+    "gap_absolute_weighted": "gap_absolute_weighted",
+    "gap_relative_weighted": "gap_relative_weighted",
+    "avg_lower_third_bins": "avg_lower_third_bins",
+    "avg_middle_third_bins": "avg_middle_third_bins",
+    "avg_upper_third_bins": "avg_upper_third_bins",
+    "inter_tertile_ratio": "inter_tertile_ratio",
+    "gap_absolute_desc": "gap_absolute_description",
+    "gap_relative_desc": "gap_relative_description",
+    "inter_tertile_desc": "inter_tertile_description",
+}
+
+
 # Reserved key `SiteProblem._resolve_baseline_costs()` uses to smuggle the
 # baseline's `site_names` through `baseline_costs` (nominally a
 # `dict[str, pandas.Series]` of cost columns) to `EvaluatedCombination.
@@ -47,6 +84,330 @@ from lokigi.mixins.site_accessibility import AccessibilityPlotMixin
 # Dunder-style so it can never collide with a real cost-column name
 # ("min_cost", "min_cost__<label>").
 _BASELINE_SITE_NAMES_KEY = "__baseline_site_names__"
+
+
+def _equity_band_metrics(
+    df,
+    equity_col,
+    cost_col,
+    within_col,
+    row_weights,
+    demand_series,
+    reachable_mask,
+    disadvantaged_end=None,
+    unit=None,
+    baseline_array=None,
+    beyond_flags_by_threshold=None,
+    beyond_threshold_metrics=None,
+    meaningful_change_threshold=0.0,
+):
+    """
+    Every per-equity-band aggregation for one travel-cost column, against
+    one equity dimension.
+
+    Split out of `EvaluatedCombination._compute_travel_metrics()` so that
+    the solve-time path and the post-hoc `equity=<label>` reporting views
+    share one implementation. Two copies of this arithmetic would agree on
+    the day they were written and drift thereafter, and the drift would
+    show up as a chart quietly disagreeing with the number printed beside
+    it -- so `SiteSolutionSet._recompute_equity_bands()` calls this rather
+    than reimplementing the groupby.
+
+    Every band value is computed from `df` alone, so it works equally on a
+    live `evaluated_combination_df` mid-solve and on a stored `problem_df`
+    afterwards -- which is what makes selecting a non-primary equity
+    dimension possible at all.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Per-region frame carrying `cost_col`, `within_col` and
+        `equity_col`. All registered equity dimensions are merged into
+        `problem_df`, so any of them can be named here.
+    equity_col : str or None
+        The band column for the dimension being aggregated. `None`, or a
+        column absent from `df`, yields the empty/`None` defaults below --
+        the "no equity data registered" case, which is not an error.
+    row_weights : pandas.Series
+        Per-region weights `weighted_by_equity_group` is computed against:
+        the demand column, or the compound blend under a multi-key
+        `weights=` dict. Post-hoc callers read this back off `problem_df`
+        (see `_ROW_WEIGHT_COL`) rather than re-deriving it, so their
+        numbers match the solve's exactly.
+    demand_series : pandas.Series or None
+        Demand weighting the coverage/headcount breakdowns. `None` falls
+        back to region counts, matching `_coverage_stats()`.
+    reachable_mask : pandas.Series of bool
+        Which rows have a finite `cost_col`. Passed in rather than derived
+        so it stays identical to the one the scalar metrics used.
+    disadvantaged_end : {"low", "high"}, optional
+        Which end of the band scale is most disadvantaged, per
+        `add_equity_data(disadvantaged_end=...)`. Drives the tertile split
+        only; every other aggregation here is order-independent.
+    beyond_flags_by_threshold, beyond_threshold_metrics : dict, optional
+        When both are given, the per-band "left behind" counts are written
+        **into** `beyond_threshold_metrics` in place, keeping that dict's
+        shape owned by the caller that built it.
+
+    Returns
+    -------
+    dict
+        The 18 band-related keys of `_compute_travel_metrics()`'s result.
+    """
+    beyond_flags_by_threshold = beyond_flags_by_threshold or {}
+    if beyond_threshold_metrics is None:
+        beyond_threshold_metrics = {}
+
+    weighted_by_equity_group = {}
+    unweighted_by_equity_group = {}
+    coverage_by_equity_group = {}
+    coverage_regions_by_equity_group = {}
+    max_cost_by_equity_group = {}
+    regions_unreachable_by_equity_group = {}
+    demand_unreachable_by_equity_group = {}
+    demand_improved_by_equity_group = {}
+    demand_worsened_by_equity_group = {}
+    gap_absolute_weighted = None
+    gap_absolute_desc = "N/A (No equity data)"
+    gap_relative_weighted = None
+    gap_relative_desc = "N/A (No equity data)"
+    avg_lower_third_bins = None
+    avg_middle_third_bins = None
+    avg_upper_third_bins = None
+    inter_tertile_ratio = None
+    inter_tertile_desc = "N/A (No equity data)"
+
+    if equity_col and equity_col in df.columns:
+        grouped_df = df.groupby(equity_col)
+
+        # 1. Unweighted average by equity group
+        unweighted_by_equity_group = grouped_df[cost_col].mean().round(2).to_dict()
+
+        # 2. Weighted average by equity group (matching the composite
+        # weights logic `weighted_average` uses). Restricted to this
+        # band's reachable rows for the same reason the caller's
+        # `weighted_average` is -- a
+        # single unreachable row would otherwise turn the whole band's
+        # np.average into NaN via plain propagation. Unlike
+        # unweighted_by_equity_group/max_cost_by_equity_group (both
+        # pandas groupby aggregates, which skip NaN natively), this one
+        # calls np.average manually and needs the same explicit
+        # reachable-subset treatment as the primary computation.
+        for band, group in grouped_df:
+            group_costs = group.loc[reachable_mask.loc[group.index], cost_col]
+
+            if group_costs.empty:
+                weighted_by_equity_group[band] = np.nan
+                continue
+
+            # Extract matching row weights for this specific group
+            group_weights = row_weights.loc[group_costs.index]
+
+            # Avoid ZeroDivisionError if the combined weight for this band is 0
+            if group_weights.sum() > 0:
+                weighted_by_equity_group[band] = np.average(
+                    group_costs, weights=group_weights
+                ).round(2)
+            else:
+                weighted_by_equity_group[band] = group_costs.mean()
+
+        # 3. Disparity Metrics & Verbal Descriptors
+        if weighted_by_equity_group:
+            weighted_vals = list(weighted_by_equity_group.values())
+            group_min_cost = min(weighted_vals)
+            group_max_cost = max(weighted_vals)
+
+            gap_absolute_weighted = group_max_cost - group_min_cost
+            unit_word = unit if unit else "units"
+            gap_absolute_desc = (
+                f"Spread of {gap_absolute_weighted:.1f} {unit_word} "
+                "between best and worst groups"
+            )
+
+            if group_min_cost > 0:
+                gap_relative_weighted = group_max_cost / group_min_cost
+
+                # Generate Relative Gap Descriptor
+                if gap_relative_weighted <= 1.005:
+                    gap_relative_desc = "Perfect Parity"
+                elif gap_relative_weighted <= 1.10:
+                    gap_relative_desc = (
+                        "Minimal Disparity (Worst group travels <10% longer)"
+                    )
+                elif gap_relative_weighted <= 1.30:
+                    gap_relative_desc = (
+                        "Moderate Disparity (Worst group travels 10-30% longer)"
+                    )
+                else:
+                    pct_longer = (gap_relative_weighted - 1.0) * 100
+                    gap_relative_desc = f"Significant Disparity (Worst group travels {pct_longer:.0f}% longer)"
+            else:
+                gap_relative_weighted = np.nan
+                gap_relative_desc = "N/A (Zero baseline cost)"
+
+        # 4. Coverage Equity (Thresholds by Group)
+        # Mirrors the caller's scalar coverage pair, under the same naming
+        # rule: the unqualified dict is demand-weighted, the `regions` one
+        # is the plain share of regions in each band.
+        if within_col in df.columns:
+            coverage_regions_by_equity_group = {
+                band: round(EvaluatedCombination._coverage_proportion(group[within_col], None), 2)
+                for band, group in grouped_df
+            }
+            coverage_by_equity_group = {
+                band: round(
+                    EvaluatedCombination._coverage_proportion(
+                        group[within_col],
+                        None
+                        if demand_series is None
+                        else demand_series.loc[group.index],
+                    ),
+                    2,
+                )
+                for band, group in grouped_df
+            }
+
+        # 5. Worst-Case Scenarios by Group
+        max_cost_by_equity_group = grouped_df[cost_col].max().round(2).to_dict()
+
+        # 5b. Left-behind headcounts by group -- who's beyond each
+        # threshold, split by equity band (e.g. "how many of the
+        # people beyond 45 minutes are in the most deprived third?").
+        for t, beyond_flags in beyond_flags_by_threshold.items():
+            beyond_threshold_metrics[t]["regions_beyond_by_equity_group"] = {
+                band: int(beyond_flags.loc[group.index].sum())
+                for band, group in grouped_df
+            }
+            if demand_series is not None:
+                beyond_threshold_metrics[t]["demand_beyond_by_equity_group"] = {
+                    band: float(
+                        (
+                            beyond_flags.loc[group.index].astype(float)
+                            * demand_series.loc[group.index]
+                        ).sum()
+                    )
+                    for band, group in grouped_df
+                }
+
+        # 5b2. Unreachable headcounts by group -- same "left behind"
+        # shape as 5b above, but for demand locations with no reachable
+        # site at all (NaN cost_col), rather than one beyond a specific
+        # cutoff.
+        unreachable_mask = ~reachable_mask
+        regions_unreachable_by_equity_group = {
+            band: int(unreachable_mask.loc[group.index].sum())
+            for band, group in grouped_df
+        }
+        if demand_series is not None:
+            demand_unreachable_by_equity_group = {
+                band: float(
+                    demand_series.loc[group.index][
+                        unreachable_mask.loc[group.index]
+                    ].sum()
+                )
+                for band, group in grouped_df
+            }
+
+        # 5c. Population impact by group -- who actually benefited from
+        # this solution vs the baseline, split by equity band (e.g.
+        # "are the most deprived areas improving at a higher rate than
+        # the least deprived?"). Only computed when a baseline was
+        # supplied for this cost_col. `df.index.get_indexer` converts
+        # each group's (label) index into positions, since
+        # `baseline_array` and `df[cost_col].to_numpy()` are positional
+        # arrays aligned to `df`'s row order, not necessarily identical
+        # to its index labels.
+        if baseline_array is not None:
+            cost_array = df[cost_col].to_numpy()
+            for band, group in grouped_df:
+                positions = df.index.get_indexer(group.index)
+                group_demand = (
+                    None
+                    if demand_series is None
+                    else demand_series.loc[group.index].to_numpy()
+                )
+                band_impact = _population_impact_metrics(
+                    current=cost_array[positions],
+                    baseline=baseline_array[positions],
+                    demand=group_demand,
+                    meaningful_change_threshold=meaningful_change_threshold,
+                )
+                demand_improved_by_equity_group[band] = band_impact[
+                    "demand_improved"
+                ]
+                demand_worsened_by_equity_group[band] = band_impact[
+                    "demand_worsened"
+                ]
+
+        # 6. Tertile Groupings (Averaging the bin results into thirds)
+        # Sorts the bins (e.g., 1-10) and splits them into 3 roughly
+        # equal chunks, ordered most- to least-disadvantaged per
+        # `disadvantaged_end` (defaults to "low" --
+        # lower bins = more deprived -- when unset, matching every
+        # pre-existing caller's assumption).
+        unique_bins = sorted(list(weighted_by_equity_group.keys()))
+        lower_chunk, middle_chunk, upper_chunk = _split_bins_into_tertiles(
+            unique_bins, disadvantaged_end
+        )
+        if lower_chunk is not None:
+            chunks = (lower_chunk, middle_chunk, upper_chunk)
+            avg_lower_third_bins = np.mean(
+                [weighted_by_equity_group[b] for b in chunks[0]]
+            )
+            avg_middle_third_bins = np.mean(
+                [weighted_by_equity_group[b] for b in chunks[1]]
+            )
+            avg_upper_third_bins = np.mean(
+                [weighted_by_equity_group[b] for b in chunks[2]]
+            )
+
+            if avg_upper_third_bins and avg_upper_third_bins > 0:
+                inter_tertile_ratio = avg_lower_third_bins / avg_upper_third_bins
+
+                # Generate Inter-Tertile Ratio Descriptor. "Most
+                # deprived" always refers to `chunks[0]` above, which
+                # `_split_bins_into_tertiles` has already ordered per
+                # `disadvantaged_end` -- so this wording is correct
+                # regardless of which end of the raw bin scale that is.
+                if 0.95 <= inter_tertile_ratio <= 1.05:
+                    inter_tertile_desc = (
+                        "Balanced (Macro travel times are broadly equal)"
+                    )
+                elif 1.05 < inter_tertile_ratio <= 1.25:
+                    pct = (inter_tertile_ratio - 1.0) * 100
+                    inter_tertile_desc = f"Slightly Inequitable (Most deprived travel {pct:.0f}% longer)"
+                elif inter_tertile_ratio > 1.25:
+                    pct = (inter_tertile_ratio - 1.0) * 100
+                    inter_tertile_desc = f"Highly Inequitable (Most deprived travel {pct:.0f}% longer)"
+                elif 0.75 <= inter_tertile_ratio < 0.95:
+                    pct = (1.0 - inter_tertile_ratio) * 100
+                    inter_tertile_desc = f"Slightly Progressive (Most deprived travel {pct:.0f}% shorter)"
+                else:
+                    pct = (1.0 - inter_tertile_ratio) * 100
+                    inter_tertile_desc = f"Highly Progressive (Most deprived travel {pct:.0f}% shorter)"
+            else:
+                inter_tertile_ratio = np.nan
+                inter_tertile_desc = "N/A (Zero upper-third travel time)"
+    return {
+        "weighted_by_equity_group": weighted_by_equity_group,
+        "unweighted_by_equity_group": unweighted_by_equity_group,
+        "coverage_by_equity_group": coverage_by_equity_group,
+        "coverage_regions_by_equity_group": coverage_regions_by_equity_group,
+        "max_cost_by_equity_group": max_cost_by_equity_group,
+        "regions_unreachable_by_equity_group": regions_unreachable_by_equity_group,
+        "demand_unreachable_by_equity_group": demand_unreachable_by_equity_group,
+        "demand_improved_by_equity_group": demand_improved_by_equity_group,
+        "demand_worsened_by_equity_group": demand_worsened_by_equity_group,
+        "gap_absolute_weighted": gap_absolute_weighted,
+        "gap_absolute_desc": gap_absolute_desc,
+        "gap_relative_weighted": gap_relative_weighted,
+        "gap_relative_desc": gap_relative_desc,
+        "avg_lower_third_bins": avg_lower_third_bins,
+        "avg_middle_third_bins": avg_middle_third_bins,
+        "avg_upper_third_bins": avg_upper_third_bins,
+        "inter_tertile_ratio": inter_tertile_ratio,
+        "inter_tertile_desc": inter_tertile_desc,
+    }
 
 
 # MARK: CLASS EvaluatedCombination
@@ -464,6 +825,22 @@ class EvaluatedCombination:
 
         self.coverage_threshold = coverage_threshold
 
+        # Persist the resolved row weights onto the per-region frame.
+        #
+        # `active_weights` is otherwise a local: it is the plain demand
+        # column in the common case, but the compound demand/equity/
+        # additional-data blend whenever a multi-key `weights=` dict was
+        # given. The per-equity-band means below are computed against it,
+        # so anything recomputing those bands *after* the solve -- which is
+        # what selecting a non-primary equity dimension with `equity=`
+        # does -- has no way to reproduce them from the frame alone, and
+        # would silently fall back to demand-weighting while the primary
+        # dimension's stored numbers stayed compound-weighted.
+        #
+        # Internal, and named accordingly: it is an artefact of how this
+        # combination was scored, not a property of the demand regions.
+        self.evaluated_combination_df[_ROW_WEIGHT_COL] = active_weights
+
         # Primary travel-cost statistics + equity breakdown, computed from
         # "min_cost"/"within_threshold". Any registered secondary travel
         # matrices get the identical treatment below, applied to their own
@@ -818,245 +1195,32 @@ class EvaluatedCombination:
                 "demand_beyond_by_equity_group": {},
             }
 
-        weighted_by_equity_group = {}
-        unweighted_by_equity_group = {}
-        coverage_by_equity_group = {}
-        coverage_regions_by_equity_group = {}
-        max_cost_by_equity_group = {}
-        regions_unreachable_by_equity_group = {}
-        demand_unreachable_by_equity_group = {}
-        demand_improved_by_equity_group = {}
-        demand_worsened_by_equity_group = {}
-        gap_absolute_weighted = None
-        gap_absolute_desc = "N/A (No equity data)"
-        gap_relative_weighted = None
-        gap_relative_desc = "N/A (No equity data)"
-        avg_lower_third_bins = None
-        avg_middle_third_bins = None
-        avg_upper_third_bins = None
-        inter_tertile_ratio = None
-        inter_tertile_desc = "N/A (No equity data)"
-
         # Resolved here (rather than just before the return statement, as
         # in earlier versions of this method) so the equity-group breakdown
         # below can also compute a per-band population impact.
         baseline_array = self._baseline_cost_arrays.get(cost_col)
 
-        equity_col = getattr(self.site_problem, "_equity_data_equity_col", None)
-
-        if equity_col and equity_col in df.columns:
-            grouped_df = df.groupby(equity_col)
-
-            # 1. Unweighted average by equity group
-            unweighted_by_equity_group = grouped_df[cost_col].mean().round(2).to_dict()
-
-            # 2. Weighted average by equity group (matching global composite
-            # weights logic). Restricted to this band's reachable rows for
-            # the same reason as the global weighted_average above -- a
-            # single unreachable row would otherwise turn the whole band's
-            # np.average into NaN via plain propagation. Unlike
-            # unweighted_by_equity_group/max_cost_by_equity_group (both
-            # pandas groupby aggregates, which skip NaN natively), this one
-            # calls np.average manually and needs the same explicit
-            # reachable-subset treatment as the primary computation.
-            for band, group in grouped_df:
-                group_costs = group.loc[reachable_mask.loc[group.index], cost_col]
-
-                if group_costs.empty:
-                    weighted_by_equity_group[band] = np.nan
-                    continue
-
-                # Extract matching row weights for this specific group
-                group_weights = active_weights.loc[group_costs.index]
-
-                # Avoid ZeroDivisionError if the combined weight for this band is 0
-                if group_weights.sum() > 0:
-                    weighted_by_equity_group[band] = np.average(
-                        group_costs, weights=group_weights
-                    ).round(2)
-                else:
-                    weighted_by_equity_group[band] = group_costs.mean()
-
-            # 3. Disparity Metrics & Verbal Descriptors
-            if weighted_by_equity_group:
-                weighted_vals = list(weighted_by_equity_group.values())
-                group_min_cost = min(weighted_vals)
-                group_max_cost = max(weighted_vals)
-
-                gap_absolute_weighted = group_max_cost - group_min_cost
-                unit_word = unit if unit else "units"
-                gap_absolute_desc = (
-                    f"Spread of {gap_absolute_weighted:.1f} {unit_word} "
-                    "between best and worst groups"
-                )
-
-                if group_min_cost > 0:
-                    gap_relative_weighted = group_max_cost / group_min_cost
-
-                    # Generate Relative Gap Descriptor
-                    if gap_relative_weighted <= 1.005:
-                        gap_relative_desc = "Perfect Parity"
-                    elif gap_relative_weighted <= 1.10:
-                        gap_relative_desc = (
-                            "Minimal Disparity (Worst group travels <10% longer)"
-                        )
-                    elif gap_relative_weighted <= 1.30:
-                        gap_relative_desc = (
-                            "Moderate Disparity (Worst group travels 10-30% longer)"
-                        )
-                    else:
-                        pct_longer = (gap_relative_weighted - 1.0) * 100
-                        gap_relative_desc = f"Significant Disparity (Worst group travels {pct_longer:.0f}% longer)"
-                else:
-                    gap_relative_weighted = np.nan
-                    gap_relative_desc = "N/A (Zero baseline cost)"
-
-            # 4. Coverage Equity (Thresholds by Group)
-            # Mirrors the global pair above, under the same naming rule: the
-            # unqualified dict is demand-weighted, the `regions` one is the
-            # plain share of regions in each band.
-            if within_col in df.columns:
-                coverage_regions_by_equity_group = {
-                    band: round(self._coverage_proportion(group[within_col], None), 2)
-                    for band, group in grouped_df
-                }
-                coverage_by_equity_group = {
-                    band: round(
-                        self._coverage_proportion(
-                            group[within_col],
-                            None
-                            if demand_series is None
-                            else demand_series.loc[group.index],
-                        ),
-                        2,
-                    )
-                    for band, group in grouped_df
-                }
-
-            # 5. Worst-Case Scenarios by Group
-            max_cost_by_equity_group = grouped_df[cost_col].max().round(2).to_dict()
-
-            # 5b. Left-behind headcounts by group -- who's beyond each
-            # threshold, split by equity band (e.g. "how many of the
-            # people beyond 45 minutes are in the most deprived third?").
-            for t, beyond_flags in beyond_flags_by_threshold.items():
-                beyond_threshold_metrics[t]["regions_beyond_by_equity_group"] = {
-                    band: int(beyond_flags.loc[group.index].sum())
-                    for band, group in grouped_df
-                }
-                if demand_series is not None:
-                    beyond_threshold_metrics[t]["demand_beyond_by_equity_group"] = {
-                        band: float(
-                            (
-                                beyond_flags.loc[group.index].astype(float)
-                                * demand_series.loc[group.index]
-                            ).sum()
-                        )
-                        for band, group in grouped_df
-                    }
-
-            # 5b2. Unreachable headcounts by group -- same "left behind"
-            # shape as 5b above, but for demand locations with no reachable
-            # site at all (NaN cost_col), rather than one beyond a specific
-            # cutoff.
-            unreachable_mask = ~reachable_mask
-            regions_unreachable_by_equity_group = {
-                band: int(unreachable_mask.loc[group.index].sum())
-                for band, group in grouped_df
-            }
-            if demand_series is not None:
-                demand_unreachable_by_equity_group = {
-                    band: float(
-                        demand_series.loc[group.index][
-                            unreachable_mask.loc[group.index]
-                        ].sum()
-                    )
-                    for band, group in grouped_df
-                }
-
-            # 5c. Population impact by group -- who actually benefited from
-            # this solution vs the baseline, split by equity band (e.g.
-            # "are the most deprived areas improving at a higher rate than
-            # the least deprived?"). Only computed when a baseline was
-            # supplied for this cost_col. `df.index.get_indexer` converts
-            # each group's (label) index into positions, since
-            # `baseline_array` and `df[cost_col].to_numpy()` are positional
-            # arrays aligned to `df`'s row order, not necessarily identical
-            # to its index labels.
-            if baseline_array is not None:
-                cost_array = df[cost_col].to_numpy()
-                for band, group in grouped_df:
-                    positions = df.index.get_indexer(group.index)
-                    group_demand = (
-                        None
-                        if demand_series is None
-                        else demand_series.loc[group.index].to_numpy()
-                    )
-                    band_impact = _population_impact_metrics(
-                        current=cost_array[positions],
-                        baseline=baseline_array[positions],
-                        demand=group_demand,
-                        meaningful_change_threshold=self._meaningful_change_threshold,
-                    )
-                    demand_improved_by_equity_group[band] = band_impact[
-                        "demand_improved"
-                    ]
-                    demand_worsened_by_equity_group[band] = band_impact[
-                        "demand_worsened"
-                    ]
-
-            # 6. Tertile Groupings (Averaging the bin results into thirds)
-            # Sorts the bins (e.g., 1-10) and splits them into 3 roughly
-            # equal chunks, ordered most- to least-disadvantaged per
-            # `_equity_data_disadvantaged_end` (defaults to "low" --
-            # lower bins = more deprived -- when unset, matching every
-            # pre-existing caller's assumption).
-            unique_bins = sorted(list(weighted_by_equity_group.keys()))
-            disadvantaged_end = getattr(
+        # Always aggregated against the *primary* equity dimension. Naming
+        # a non-primary one is a reporting-time choice, made by
+        # `SiteSolutionSet._recompute_equity_bands()` against the stored
+        # problem_df, not something the solve bakes in.
+        band_metrics = _equity_band_metrics(
+            df=df,
+            equity_col=getattr(self.site_problem, "_equity_data_equity_col", None),
+            cost_col=cost_col,
+            within_col=within_col,
+            row_weights=active_weights,
+            demand_series=demand_series,
+            reachable_mask=reachable_mask,
+            disadvantaged_end=getattr(
                 self.site_problem, "_equity_data_disadvantaged_end", None
-            )
-            lower_chunk, middle_chunk, upper_chunk = _split_bins_into_tertiles(
-                unique_bins, disadvantaged_end
-            )
-            if lower_chunk is not None:
-                chunks = (lower_chunk, middle_chunk, upper_chunk)
-                avg_lower_third_bins = np.mean(
-                    [weighted_by_equity_group[b] for b in chunks[0]]
-                )
-                avg_middle_third_bins = np.mean(
-                    [weighted_by_equity_group[b] for b in chunks[1]]
-                )
-                avg_upper_third_bins = np.mean(
-                    [weighted_by_equity_group[b] for b in chunks[2]]
-                )
-
-                if avg_upper_third_bins and avg_upper_third_bins > 0:
-                    inter_tertile_ratio = avg_lower_third_bins / avg_upper_third_bins
-
-                    # Generate Inter-Tertile Ratio Descriptor. "Most
-                    # deprived" always refers to `chunks[0]` above, which
-                    # `_split_bins_into_tertiles` has already ordered per
-                    # `disadvantaged_end` -- so this wording is correct
-                    # regardless of which end of the raw bin scale that is.
-                    if 0.95 <= inter_tertile_ratio <= 1.05:
-                        inter_tertile_desc = (
-                            "Balanced (Macro travel times are broadly equal)"
-                        )
-                    elif 1.05 < inter_tertile_ratio <= 1.25:
-                        pct = (inter_tertile_ratio - 1.0) * 100
-                        inter_tertile_desc = f"Slightly Inequitable (Most deprived travel {pct:.0f}% longer)"
-                    elif inter_tertile_ratio > 1.25:
-                        pct = (inter_tertile_ratio - 1.0) * 100
-                        inter_tertile_desc = f"Highly Inequitable (Most deprived travel {pct:.0f}% longer)"
-                    elif 0.75 <= inter_tertile_ratio < 0.95:
-                        pct = (1.0 - inter_tertile_ratio) * 100
-                        inter_tertile_desc = f"Slightly Progressive (Most deprived travel {pct:.0f}% shorter)"
-                    else:
-                        pct = (1.0 - inter_tertile_ratio) * 100
-                        inter_tertile_desc = f"Highly Progressive (Most deprived travel {pct:.0f}% shorter)"
-                else:
-                    inter_tertile_ratio = np.nan
-                    inter_tertile_desc = "N/A (Zero upper-third travel time)"
+            ),
+            unit=unit,
+            baseline_array=baseline_array,
+            beyond_flags_by_threshold=beyond_flags_by_threshold,
+            beyond_threshold_metrics=beyond_threshold_metrics,
+            meaningful_change_threshold=self._meaningful_change_threshold,
+        )
 
         population_impact = (
             None
@@ -1080,29 +1244,12 @@ class EvaluatedCombination:
             "regions_unreachable": regions_unreachable,
             "demand_unreachable": demand_unreachable,
             "proportion_demand_unreachable": proportion_demand_unreachable,
-            "regions_unreachable_by_equity_group": regions_unreachable_by_equity_group,
-            "demand_unreachable_by_equity_group": demand_unreachable_by_equity_group,
             "proportion_within_coverage_threshold": proportion_within_coverage_threshold,
             "proportion_regions_within_coverage_threshold": proportion_regions_within_coverage_threshold,
             "demand_within_coverage_threshold": demand_within_coverage_threshold,
             "regions_within_coverage_threshold": regions_within_coverage_threshold,
             "beyond_threshold_metrics": beyond_threshold_metrics,
-            "weighted_by_equity_group": weighted_by_equity_group,
-            "unweighted_by_equity_group": unweighted_by_equity_group,
-            "coverage_by_equity_group": coverage_by_equity_group,
-            "coverage_regions_by_equity_group": coverage_regions_by_equity_group,
-            "max_cost_by_equity_group": max_cost_by_equity_group,
-            "demand_improved_by_equity_group": demand_improved_by_equity_group,
-            "demand_worsened_by_equity_group": demand_worsened_by_equity_group,
-            "gap_absolute_weighted": gap_absolute_weighted,
-            "gap_absolute_desc": gap_absolute_desc,
-            "gap_relative_weighted": gap_relative_weighted,
-            "gap_relative_desc": gap_relative_desc,
-            "avg_lower_third_bins": avg_lower_third_bins,
-            "avg_middle_third_bins": avg_middle_third_bins,
-            "avg_upper_third_bins": avg_upper_third_bins,
-            "inter_tertile_ratio": inter_tertile_ratio,
-            "inter_tertile_desc": inter_tertile_desc,
+            **band_metrics,
             "population_impact": population_impact,
         }
 
@@ -2083,6 +2230,124 @@ class SiteSolutionSet(
             registered[matrix]["unit"],
             suffix,
         )
+
+    def _resolve_equity_view(
+        self, equity=None, matrix=None, solution_rank=1, sort_by=None, row=None
+    ):
+        """
+        Return `(equity_meta, bands)` for one solution under one equity
+        dimension -- the single entry point every `equity=`-aware reporting
+        method uses.
+
+        `bands` is keyed exactly as `_equity_band_metrics()`'s result:
+        `weighted_by_equity_group`, `inter_tertile_ratio`,
+        `gap_relative_desc` and the rest. For the primary dimension those
+        values are read straight off `solution_df`, so they are literally
+        the numbers the solve stored. For any other dimension they are
+        recomputed from that solution's `problem_df` by
+        `_equity_band_metrics()` -- the same function the solve itself
+        called, so the two paths cannot drift apart.
+
+        Returns `(None, None)` when no equity data is registered at all,
+        letting callers keep whatever "no equity data" handling they
+        already have rather than each catching an exception.
+
+        Parameters
+        ----------
+        equity : str, optional
+            Registered equity dimension label. `None` selects the primary
+            one, matching `matrix=`'s convention.
+        matrix : str, optional
+            Secondary travel matrix label -- bands are aggregated against
+            that matrix's own travel costs.
+        solution_rank, sort_by :
+            Which solution to describe, resolved exactly as the calling
+            plot resolves it. Ignored when `row` is given.
+        row : pandas.Series, optional
+            An already-selected `solution_df` row, for callers that have
+            resolved one themselves and must not risk resolving a
+            different one here.
+
+        Raises
+        ------
+        ValueError
+            If `equity` names an unregistered dimension (via
+            `_resolve_equity()`), or if it is registered but absent from
+            this solution's `problem_df` -- which means the solution
+            predates the registration.
+        """
+        problem = self.site_problem
+        equity_meta = problem._resolve_equity(equity)
+        if equity_meta is None:
+            return None, None
+
+        if row is None:
+            row = _select_solution(
+                self.solution_df, solution_rank=solution_rank, sort_by=sort_by
+            ).iloc[0]
+
+        cost_col, _, within_col, unit, suffix = self._resolve_travel_columns(matrix)
+
+        if equity_meta["label"] == problem._primary_equity_label:
+            stored = {
+                key: row[f"{stored_name}{suffix}"]
+                for key, stored_name in _EQUITY_BAND_STORED_NAMES.items()
+                if f"{stored_name}{suffix}" in row.index
+            }
+            # A secondary travel matrix only carries its dict-valued
+            # breakdowns and description strings when the solve was run
+            # with full_secondary_metrics=True. Fall through to recomputing
+            # when any are missing, rather than handing back a
+            # half-populated dict whose gaps each caller would have to
+            # handle.
+            if len(stored) == len(_EQUITY_BAND_STORED_NAMES):
+                for optional in (
+                    "demand_improved_by_equity_group",
+                    "demand_worsened_by_equity_group",
+                ):
+                    stored[optional] = row.get(f"{optional}{suffix}", {})
+                return equity_meta, stored
+
+        problem_df = row["problem_df"]
+        equity_col = equity_meta["equity_col"]
+        if equity_col not in problem_df.columns:
+            raise ValueError(
+                f"Equity dimension '{equity_meta['label']}' is registered but "
+                f"its column '{equity_col}' is not in this solution's "
+                "problem_df, so its bands cannot be computed. This solution "
+                "was produced before that dimension was registered -- re-run "
+                "solve() (or evaluate_baseline()) to pick it up."
+            )
+
+        demand_col = getattr(problem, "_demand_data_demand_col", None)
+        demand_series = (
+            problem_df[demand_col].astype(float)
+            if demand_col and demand_col in problem_df.columns
+            else None
+        )
+        # `_row_weight` is what makes a compound `weights=` blend
+        # reproducible here rather than silently degrading to
+        # demand-weighting. The fallbacks cover solutions produced before
+        # it was persisted, and problems with no demand registered at all.
+        if _ROW_WEIGHT_COL in problem_df.columns:
+            row_weights = problem_df[_ROW_WEIGHT_COL]
+        elif demand_series is not None:
+            row_weights = demand_series
+        else:
+            row_weights = pd.Series(1.0, index=problem_df.index)
+
+        bands = _equity_band_metrics(
+            df=problem_df,
+            equity_col=equity_col,
+            cost_col=cost_col,
+            within_col=within_col,
+            row_weights=row_weights,
+            demand_series=demand_series,
+            reachable_mask=problem_df[cost_col].notna(),
+            disadvantaged_end=equity_meta["disadvantaged_end"],
+            unit=unit,
+        )
+        return equity_meta, bands
 
     def _resolve_coverage_threshold(self, matrix, coverage_threshold_value):
         """
