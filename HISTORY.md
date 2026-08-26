@@ -1,3 +1,14 @@
+## v0.9.2
+
+- Secondary demand scenarios registered via `add_secondary_demand()` now get their own per-equity-band breakdowns, so "is access to these sites patterned by deprivation *under this population*?" can be answered directly, instead of building a second `SiteProblem` with the scenario registered as the primary demand and diffing the two by hand
+    - Adds the float-valued equity aggregations per scenario -- `gap_absolute_weighted__<label>`, `gap_relative_weighted__<label>`, `avg_lower_third_bins__<label>`, `avg_middle_third_bins__<label>`, `avg_upper_third_bins__<label>` and `inter_tertile_ratio__<label>` -- alongside the `weighted_average__<label>`, `proportion_within_coverage_threshold__<label>` and `demand_unreachable__<label>` columns already emitted
+    - `full_secondary_metrics=True` additionally emits the dict-valued per-band breakdowns that vary with demand (`weighted_by_equity_group__<label>`, `coverage_by_equity_group__<label>`, `demand_unreachable_by_equity_group__<label>`; `demand_improved_by_equity_group__<label>`/`demand_worsened_by_equity_group__<label>` when a baseline was supplied; `demand_beyond_threshold_<t>_by_equity_group__<label>` when `beyond_thresholds` was) plus the three description strings -- the same gate secondary *travel* matrices already use, so a registered scenario doesn't grow `solution_df` by one column per equity band by default
+    - Purely additive, and no new computation: `_compute_travel_metrics()` already produced every one of these values for each registered scenario, and they were simply never emitted. No existing column's value changes, and a solve that registers no secondary demand is unaffected
+    - The *unweighted* per-band breakdowns are deliberately still not suffixed per scenario. `unweighted_by_equity_group`, `coverage_regions_by_equity_group`, `max_cost_by_equity_group` and `regions_unreachable_by_equity_group` are each computed from the travel costs alone with no demand term, so a per-scenario copy would repeat the primary matrix's value under a new name rather than say anything about that scenario -- the same reasoning that already excludes `regions_unreachable` and the region-count coverage metrics
+    - A problem with no `add_equity_data()` call gains no columns at all, rather than six `None`s per registered scenario. A deliberate difference from secondary travel matrices, which emit their equity aggregations unconditionally: a demand scenario is cheap to register, and the no-equity default stays at the three columns above
+    - `return_solution_metrics()`'s interpretation guide gains a point 6b documenting secondary demand scenarios in their own right -- what they emit, what they deliberately omit and why -- rather than leaving them as asides under points 6, 7 and 8, two of which said the equity breakdowns were unsupported
+
+
 ## v0.9.1
 
 ### ⚠️ Breaking changes

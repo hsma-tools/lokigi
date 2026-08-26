@@ -1237,6 +1237,50 @@ class EvaluatedCombination:
             `min_cost__<label>` / `selected_site__<label>` /
             `within_threshold__<label>` regardless of this setting.
 
+        6b. Secondary demand scenarios (columns suffixed `__<label>`, e.g.
+            'weighted_average__observed_referrals'):
+
+            Registered via `add_secondary_demand(label=...)`. The same
+            travel costs as the primary matrix, re-weighted by that
+            scenario's own demand column -- so comparing an unsuffixed
+            metric against its `__<label>` twin answers "does this
+            scenario's population sit closer to, or further from, the
+            selected sites than the primary demand does?".
+
+            Deliberately narrower than point 6: only metrics that actually
+            *vary* with demand are emitted. Region counts
+            (`regions_unreachable`, `proportion_regions_within_coverage_
+            threshold`, `regions_beyond_threshold_<t>`) and the unweighted
+            per-band breakdowns (`unweighted_by_equity_group`,
+            `coverage_regions_by_equity_group`, `max_cost_by_equity_group`,
+            `regions_unreachable_by_equity_group`) are computed from the
+            travel costs alone with no demand term, so a per-scenario copy
+            would only repeat the primary matrix's value under a new name.
+
+            By default: `weighted_average__<label>`,
+            `proportion_within_coverage_threshold__<label>` and
+            `demand_unreachable__<label>`; plus, *only when equity data is
+            registered*, the float-valued equity aggregations
+            (`gap_absolute_weighted__<label>`,
+            `gap_relative_weighted__<label>`, `avg_*_third_bins__<label>`,
+            `inter_tertile_ratio__<label>`); plus the point 7/8 columns
+            when their own preconditions are met. A problem with no
+            `add_equity_data()` call therefore still pays only the three
+            columns above per scenario, rather than six `None`s alongside
+            them -- a deliberate difference from point 6, which emits its
+            equity aggregations unconditionally.
+            `full_secondary_metrics=True` additionally emits the
+            dict-valued per-band breakdowns that vary with demand
+            (`weighted_by_equity_group__<label>`,
+            `coverage_by_equity_group__<label>`,
+            `demand_unreachable_by_equity_group__<label>`) and the
+            description strings, matching point 6's gate.
+
+            When a scenario is registered with
+            `add_secondary_demand(also_weight_matrices=[...])`, it is also
+            crossed with those secondary travel matrices, suffixed
+            travel-label-first: `weighted_average__<travel>__<demand>`.
+
         7. Population impact vs baseline (`demand_improved`,
            `demand_worsened`, `demand_unchanged`, `proportion_demand_
            improved`, `proportion_demand_worsened`, `regions_improved`,
@@ -1268,9 +1312,10 @@ class EvaluatedCombination:
             When equity data is also registered, `demand_improved_by_equity_
             group` / `demand_worsened_by_equity_group` (dict per band) are
             also added -- e.g. "are the most deprived areas improving at a
-            higher rate than the least deprived?". Primary matrix only;
-            not yet broken down for secondary travel matrices/demand
-            scenarios.
+            higher rate than the least deprived?". Emitted for the primary
+            matrix always, and for secondary demand scenarios under
+            `full_secondary_metrics=True` (both dicts vary with demand).
+            Not yet broken down for secondary travel matrices.
 
         7b. Which sites actually changed (`sites_closed_vs_baseline`,
             `sites_added_vs_baseline`):
@@ -1306,9 +1351,11 @@ class EvaluatedCombination:
             headcount by default (`demand_beyond_threshold_<t>__<label>`);
             `full_secondary_metrics=True` also adds region counts and the
             equity breakdowns, matching point 6/7's pattern. Secondary
-            demand scenarios get only the demand-weighted headcount, never
-            region counts or equity breakdowns, matching point 6's "only
-            what varies with demand" rule.
+            demand scenarios get the demand-weighted headcount by default
+            and its equity breakdown
+            (`demand_beyond_threshold_<t>_by_equity_group__<label>`) under
+            `full_secondary_metrics=True`, but never the region counts,
+            matching point 6b's "only what varies with demand" rule.
 
         9. Additional sites chosen beyond required (`additional_site_names`):
 
@@ -1604,9 +1651,23 @@ class EvaluatedCombination:
         # (`weighted_average__<travel>__<demand>`) for the opt-in cross
         # with a secondary travel matrix registered via
         # also_weight_matrices; `weighted_average__<demand>` for the
-        # (default) primary-travel case. Per-scenario equity breakdowns are
-        # not yet supported and are never emitted here, regardless of
-        # full_secondary_metrics.
+        # (default) primary-travel case.
+        #
+        # The equity aggregations below follow the same "must vary with
+        # demand" test, and the same full_secondary_metrics gate, as the
+        # secondary *travel* matrix block above: float-valued aggregations
+        # whenever equity data is registered, dict-valued per-band
+        # breakdowns and description strings only when also asked for, so
+        # registering a scenario doesn't grow solution_df by one column per
+        # equity band by default. The four
+        # *unweighted* per-band breakdowns the primary matrix emits --
+        # unweighted_by_equity_group, coverage_regions_by_equity_group,
+        # max_cost_by_equity_group and regions_unreachable_by_equity_group
+        # -- are excluded for the same reason regions_unreachable is: each
+        # is computed from cost_col/within_col alone with no demand term,
+        # so a per-scenario copy would repeat the primary matrix's value
+        # under a new name rather than tell the reader anything about this
+        # scenario.
         for dlabel, per_matrix in self.secondary_demand_metrics.items():
             for tlabel, dmetrics in per_matrix.items():
                 suffix = dlabel if tlabel is None else f"{tlabel}__{dlabel}"
@@ -1617,6 +1678,56 @@ class EvaluatedCombination:
                 metrics[f"demand_unreachable__{suffix}"] = dmetrics[
                     "demand_unreachable"
                 ]
+
+                # Gated on equity data actually being registered, unlike
+                # the secondary *travel* matrix block above, which emits
+                # these unconditionally as None. A scenario is cheap to
+                # register and a problem with no add_equity_data() call has
+                # no equity answer to give, so six None columns per
+                # scenario would be pure schema noise -- keeping the
+                # no-equity default at the three columns above. An empty
+                # weighted_by_equity_group is exactly the "no equity data"
+                # signal (see _compute_travel_metrics, which only populates
+                # it inside `if equity_col and equity_col in df.columns`).
+                if dmetrics["weighted_by_equity_group"]:
+                    metrics[f"gap_absolute_weighted__{suffix}"] = dmetrics[
+                        "gap_absolute_weighted"
+                    ]
+                    metrics[f"gap_relative_weighted__{suffix}"] = dmetrics[
+                        "gap_relative_weighted"
+                    ]
+                    metrics[f"avg_lower_third_bins__{suffix}"] = dmetrics[
+                        "avg_lower_third_bins"
+                    ]
+                    metrics[f"avg_middle_third_bins__{suffix}"] = dmetrics[
+                        "avg_middle_third_bins"
+                    ]
+                    metrics[f"avg_upper_third_bins__{suffix}"] = dmetrics[
+                        "avg_upper_third_bins"
+                    ]
+                    metrics[f"inter_tertile_ratio__{suffix}"] = dmetrics[
+                        "inter_tertile_ratio"
+                    ]
+
+                    if full_secondary_metrics:
+                        metrics[f"weighted_by_equity_group__{suffix}"] = dmetrics[
+                            "weighted_by_equity_group"
+                        ]
+                        metrics[f"coverage_by_equity_group__{suffix}"] = dmetrics[
+                            "coverage_by_equity_group"
+                        ]
+                        metrics[f"demand_unreachable_by_equity_group__{suffix}"] = (
+                            dmetrics["demand_unreachable_by_equity_group"]
+                        )
+                        metrics[f"gap_absolute_description__{suffix}"] = dmetrics[
+                            "gap_absolute_desc"
+                        ]
+                        metrics[f"gap_relative_description__{suffix}"] = dmetrics[
+                            "gap_relative_desc"
+                        ]
+                        metrics[f"inter_tertile_description__{suffix}"] = dmetrics[
+                            "inter_tertile_desc"
+                        ]
 
                 demand_pi = dmetrics.get("population_impact")
                 if demand_pi is not None:
@@ -1636,11 +1747,30 @@ class EvaluatedCombination:
                         "mean_increase_among_worsened"
                     ]
 
+                    # Gated on the dict being non-empty as well as on the
+                    # flag: population_impact is non-None whenever a
+                    # baseline was supplied, but the per-band split is only
+                    # populated when equity data is registered too.
+                    if (
+                        full_secondary_metrics
+                        and dmetrics["demand_improved_by_equity_group"]
+                    ):
+                        metrics[f"demand_improved_by_equity_group__{suffix}"] = (
+                            dmetrics["demand_improved_by_equity_group"]
+                        )
+                        metrics[f"demand_worsened_by_equity_group__{suffix}"] = (
+                            dmetrics["demand_worsened_by_equity_group"]
+                        )
+
                 for t, bt in dmetrics.get("beyond_threshold_metrics", {}).items():
                     t_suffix = _format_threshold(t)
                     metrics[f"demand_beyond_threshold_{t_suffix}__{suffix}"] = bt[
                         "demand_beyond"
                     ]
+                    if full_secondary_metrics and bt["demand_beyond_by_equity_group"]:
+                        metrics[
+                            f"demand_beyond_threshold_{t_suffix}_by_equity_group__{suffix}"
+                        ] = bt["demand_beyond_by_equity_group"]
 
         return metrics
 

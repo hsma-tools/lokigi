@@ -29,6 +29,7 @@ Hand-computed future_demand proportion_within_coverage_threshold (threshold
 """
 
 import pytest
+import lokigi
 import pandas as pd
 import numpy as np
 
@@ -572,3 +573,253 @@ def test_plot_site_allocation_summary_demand_kwarg_runs(
     result = loaded_problem_with_secondary_demand.solve(p=1)
     fig = result.plot_site_allocation_summary(demand="future_demand", interactive=False)
     assert fig is not None
+
+
+# --- Per-equity-band breakdowns per demand scenario ------------------------
+#
+# `loaded_problem_with_equity`'s three LSOAs sit one-per-equity-band, so
+# every band's weighted mean collapses to that single region's cost and is
+# identical under any demand scenario -- fine for the no-crash regression
+# above, useless for checking the scenario's weights actually reach the
+# band aggregation. These tests use a four-region problem where band 1
+# holds two regions with a different demand split in each scenario, so a
+# wrong (or primary-demand-leaking) weight series produces a visibly
+# different number rather than the right one by construction.
+#
+# Hand-computed, min_cost = [10, 30, 20, 40] for LSOA_1..4 (Site_X always
+# wins -- Site_Y is 100 everywhere), bands 1/1/5/10:
+#
+#   primary demand 100/100/100/100:
+#     band 1 = (10*100 + 30*100) / 200  = 20.0
+#     band 5 = 20.0, band 10 = 40.0
+#     tertiles of [1, 5, 10] -> lower [1], upper [10]
+#     inter_tertile_ratio    = 20 / 40 = 0.5
+#     gap_absolute_weighted  = 40 - 20 = 20.0
+#
+#   future_demand 900/300/100/100:
+#     band 1 = (10*900 + 30*300) / 1200 = 15.0
+#     band 5 = 20.0, band 10 = 40.0
+#     inter_tertile_ratio    = 15 / 40 = 0.375
+#     gap_absolute_weighted  = 40 - 15 = 25.0
+
+
+@pytest.fixture
+def banded_problem_with_secondary_demand():
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    ids = ["LSOA_1", "LSOA_2", "LSOA_3", "LSOA_4"]
+    problem.add_demand(
+        pd.DataFrame({"location_id": ids, "demand": [100, 100, 100, 100]}),
+        demand_col="demand",
+        location_id_col="location_id",
+    )
+    problem.add_sites(
+        pd.DataFrame(
+            {
+                "site_id": ["Site_X", "Site_Y"],
+                "lat": [51.5, 51.6],
+                "long": [-0.1, -0.2],
+            }
+        ),
+        candidate_id_col="site_id",
+    )
+    problem.add_travel_matrix(
+        pd.DataFrame(
+            {
+                "source_id": ids,
+                "Site_X": [10.0, 30.0, 20.0, 40.0],
+                "Site_Y": [100.0, 100.0, 100.0, 100.0],
+            }
+        ),
+        source_col="source_id",
+    )
+    problem.add_equity_data(
+        pd.DataFrame({"location_id": ids, "imd_decile": [1, 1, 5, 10]}),
+        equity_col="imd_decile",
+        common_col="location_id",
+        label="equity",
+        disadvantaged_end="low",
+    )
+    problem.add_secondary_demand(
+        pd.DataFrame({"region_id": ids, "future_demand": [900, 300, 100, 100]}),
+        demand_col="future_demand",
+        location_id_col="region_id",
+        label="future_demand",
+    )
+    return problem
+
+
+def test_float_equity_aggregations_are_suffixed_per_demand_scenario(
+    banded_problem_with_secondary_demand,
+):
+    """The float-valued equity aggregations vary with demand, so each
+    scenario gets its own -- and the scenario's value must be computed from
+    the scenario's weights, not the primary demand's."""
+    row = banded_problem_with_secondary_demand.solve(p=1).solution_df.iloc[0]
+
+    assert row["inter_tertile_ratio"] == pytest.approx(0.5)
+    assert row["inter_tertile_ratio__future_demand"] == pytest.approx(0.375)
+
+    assert row["gap_absolute_weighted"] == pytest.approx(20.0)
+    assert row["gap_absolute_weighted__future_demand"] == pytest.approx(25.0)
+
+    assert row["gap_relative_weighted"] == pytest.approx(40.0 / 20.0)
+    assert row["gap_relative_weighted__future_demand"] == pytest.approx(40.0 / 15.0)
+
+    assert row["avg_lower_third_bins__future_demand"] == pytest.approx(15.0)
+    assert row["avg_middle_third_bins__future_demand"] == pytest.approx(20.0)
+    assert row["avg_upper_third_bins__future_demand"] == pytest.approx(40.0)
+
+
+def test_dict_equity_breakdowns_need_full_secondary_metrics(
+    banded_problem_with_secondary_demand,
+):
+    """Dict-valued per-band breakdowns are one column per scenario but one
+    dict entry per band, so they sit behind full_secondary_metrics -- the
+    same gate the secondary travel matrix block uses."""
+    default_cols = banded_problem_with_secondary_demand.solve(p=1).solution_df.columns
+    assert "weighted_by_equity_group__future_demand" not in default_cols
+    assert "coverage_by_equity_group__future_demand" not in default_cols
+    assert "inter_tertile_description__future_demand" not in default_cols
+    # ...while the float aggregation from the same scenario is present.
+    assert "inter_tertile_ratio__future_demand" in default_cols
+
+    row = (
+        banded_problem_with_secondary_demand.solve(
+            p=1, threshold_for_coverage=25, full_secondary_metrics=True
+        )
+        .solution_df.iloc[0]
+    )
+
+    assert row["weighted_by_equity_group"] == {1: 20.0, 5: 20.0, 10: 40.0}
+    assert row["weighted_by_equity_group__future_demand"] == {
+        1: 15.0,
+        5: 20.0,
+        10: 40.0,
+    }
+
+    # within_threshold at 25 -> [T, F, T, F] for costs [10, 30, 20, 40].
+    # Band 1 holds LSOA_1 (covered) and LSOA_2 (not), so its covered share
+    # is the covered region's demand share within the band: 100/200 = 0.5
+    # primary, 900/1200 = 0.75 under the scenario.
+    assert row["coverage_by_equity_group"] == {1: 0.5, 5: 1.0, 10: 0.0}
+    assert row["coverage_by_equity_group__future_demand"] == {
+        1: 0.75,
+        5: 1.0,
+        10: 0.0,
+    }
+
+    assert isinstance(row["inter_tertile_description__future_demand"], str)
+
+
+def test_unweighted_equity_breakdowns_never_suffixed_per_demand_scenario(
+    banded_problem_with_secondary_demand,
+):
+    """The per-band breakdowns computed from travel cost alone carry no
+    demand term, so a per-scenario copy would just repeat the primary
+    matrix's value under a new name. Excluded even under
+    full_secondary_metrics, for the same reason regions_unreachable is."""
+    columns = banded_problem_with_secondary_demand.solve(
+        p=1, threshold_for_coverage=25, full_secondary_metrics=True
+    ).solution_df.columns
+
+    for base in (
+        "unweighted_by_equity_group",
+        "coverage_regions_by_equity_group",
+        "max_cost_by_equity_group",
+        "regions_unreachable_by_equity_group",
+    ):
+        assert base in columns, f"{base} should still exist for the primary matrix"
+        assert f"{base}__future_demand" not in columns
+
+
+def test_beyond_threshold_equity_breakdown_per_demand_scenario(
+    banded_problem_with_secondary_demand,
+):
+    """beyond_thresholds' per-band headcount is demand-weighted, so it gets
+    a per-scenario variant under full_secondary_metrics. At 15, beyond =
+    [F, T, T, T]; band 1's only beyond-region is LSOA_2, whose demand is
+    100 primary but 300 under the scenario."""
+    row = (
+        banded_problem_with_secondary_demand.solve(
+            p=1, beyond_thresholds=[15], full_secondary_metrics=True
+        )
+        .solution_df.iloc[0]
+    )
+
+    assert row["demand_beyond_threshold_15_by_equity_group"] == {
+        1: 100.0,
+        5: 100.0,
+        10: 100.0,
+    }
+    assert row["demand_beyond_threshold_15_by_equity_group__future_demand"] == {
+        1: 300.0,
+        5: 100.0,
+        10: 100.0,
+    }
+
+    # Region counts don't vary with demand -- primary only.
+    assert "regions_beyond_threshold_15_by_equity_group" in row.index
+    assert "regions_beyond_threshold_15_by_equity_group__future_demand" not in row.index
+
+
+def test_no_equity_columns_for_scenario_without_equity_data(
+    loaded_problem_with_secondary_demand,
+):
+    """A problem with no add_equity_data() call has no equity answer to
+    give, so a registered scenario must not add six None columns. Unlike
+    the secondary travel matrix block, which emits them unconditionally."""
+    columns = loaded_problem_with_secondary_demand.solve(
+        p=1, full_secondary_metrics=True
+    ).solution_df.columns
+
+    for base in (
+        "gap_absolute_weighted",
+        "gap_relative_weighted",
+        "avg_lower_third_bins",
+        "avg_middle_third_bins",
+        "avg_upper_third_bins",
+        "inter_tertile_ratio",
+    ):
+        assert f"{base}__future_demand" not in columns
+
+
+def test_scenario_equity_columns_classify_as_equity(
+    banded_problem_with_secondary_demand,
+):
+    """describe_solution_columns() groups by the base name before the first
+    `__`, so the new suffixed columns must land in "Equity" rather than
+    "Other" without _SOLUTION_COLUMN_GROUPS needing per-scenario entries."""
+    from lokigi.site_solutions import _classify_solution_column
+
+    assert _classify_solution_column("inter_tertile_ratio__future_demand") == "Equity"
+    assert (
+        _classify_solution_column("weighted_by_equity_group__pt__future_demand")
+        == "Equity"
+    )
+
+    result = banded_problem_with_secondary_demand.solve(
+        p=1, threshold_for_coverage=25, full_secondary_metrics=True
+    )
+    grouped = result.describe_solution_columns(return_dict=True)
+
+    # Asserted positively rather than as "nothing landed in Other": there
+    # is no "Other" group at all here, so a `not in Other` check would pass
+    # even if the columns had gone missing entirely.
+    equity_cols = set(grouped["Equity"])
+    for base in (
+        "inter_tertile_ratio",
+        "gap_absolute_weighted",
+        "weighted_by_equity_group",
+        "coverage_by_equity_group",
+        "inter_tertile_description",
+    ):
+        assert f"{base}__future_demand" in equity_cols
+
+    scenario_cols = {
+        col
+        for cols in grouped.values()
+        for col in cols
+        if str(col).endswith("__future_demand")
+    }
+    assert scenario_cols, "no scenario columns were classified at all"
+    assert "Other" not in grouped
