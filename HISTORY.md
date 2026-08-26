@@ -1,5 +1,22 @@
 ## v0.9.2
 
+### ⚠️ Breaking changes
+
+lokigi is pre-1.0, so breaking changes can land in any minor release. Read this before upgrading -- it is detailed in the notes below.
+
+- **`add_equity_data()` no longer silently overwrites.** Calling it a second time now registers an *additional* equity dimension rather than replacing the first, and requires `primary=` to be stated explicitly so it is unambiguous which dimension the metrics describe. Re-using an existing label requires `replace=True`.
+- **`equity_data` and the `_equity_data_*` attributes are read-only.** They are now views onto whichever registered dimension is primary. Reading them is unchanged; assigning to them raises `AttributeError`.
+
+### Notes
+
+- Register several equity dimensions on one problem -- deprivation *and* rurality *and* ethnicity -- by calling `add_equity_data()` once per dimension, each under its own `label`. Real equity work is rarely one-dimensional, and until now a second call silently overwrote the first, so only one dimension could ever be analysed
+    - Exactly one dimension is the **primary**: the one `solve()` computes its `solution_df` equity columns (`inter_tertile_ratio`, `weighted_by_equity_group`, and friends) against, and the one `weights={"equity": ...}` weights by. The first dimension registered is always primary; after that, `primary=` must be given explicitly
+    - Every registered dimension -- primary or not -- is merged into each solution's `problem_df`, which is what makes the non-primary ones analysable at all. Registering an extra dimension changes no `solution_df` value: it is an analysis affordance, not a change to what is optimised or reported
+    - Adds `SiteProblem.primary_equity` (the primary dimension's metadata), `show_equity_dimensions()` (one row per registered dimension, flagging which is primary) and a `label` argument to `show_equity_data()`
+    - Registration now rejects the cases that used to fail silently or much later: re-using a label without `replace=True`; `replace=True` for a label that was never registered; `primary=False` for the only registered dimension; demoting the current primary in place; and two dimensions sharing an `equity_col`, which would collide in `problem_df` with one overwriting the other's bands
+    - The pre-solve equity-coverage check now runs per registered dimension. A gap in the primary dimension is still fatal when weighting by equity (the row weights would be NaN); a gap in a non-primary one warns, since it degrades one analysis view rather than poisoning the weights
+    - The ~50 existing call sites that read `_equity_data_equity_col` and friends across the solvers, metrics and plots were left untouched -- those attributes resolve to the primary dimension, so they keep meaning "the dimension this problem is reported against"
+    - Selecting a non-primary dimension from the analysis and plotting methods (an `equity=` argument on `check_solution_equity()`, `plot_equity_tertiles()` and the rest) is not in this release -- for now, promote a dimension with `primary=True` to report against it
 - Secondary demand scenarios registered via `add_secondary_demand()` now get their own per-equity-band breakdowns, so "is access to these sites patterned by deprivation *under this population*?" can be answered directly, instead of building a second `SiteProblem` with the scenario registered as the primary demand and diffing the two by hand
     - Adds the float-valued equity aggregations per scenario -- `gap_absolute_weighted__<label>`, `gap_relative_weighted__<label>`, `avg_lower_third_bins__<label>`, `avg_middle_third_bins__<label>`, `avg_upper_third_bins__<label>` and `inter_tertile_ratio__<label>` -- alongside the `weighted_average__<label>`, `proportion_within_coverage_threshold__<label>` and `demand_unreachable__<label>` columns already emitted
     - `full_secondary_metrics=True` additionally emits the dict-valued per-band breakdowns that vary with demand (`weighted_by_equity_group__<label>`, `coverage_by_equity_group__<label>`, `demand_unreachable_by_equity_group__<label>`; `demand_improved_by_equity_group__<label>`/`demand_worsened_by_equity_group__<label>` when a baseline was supplied; `demand_beyond_threshold_<t>_by_equity_group__<label>` when `beyond_thresholds` was) plus the three description strings -- the same gate secondary *travel* matrices already use, so a registered scenario doesn't grow `solution_df` by one column per equity band by default

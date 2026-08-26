@@ -525,27 +525,28 @@ class SiteProblem(
                     active_facilities = active_facilities.drop(
                         active_facilities.filter(regex="_y$").columns, axis=1
                     )
-            # Add equity data to the dataframe if present
-            if self.equity_data is not None:
-                # print(
-                #     f"self._joined_demand_travel_df_key_col: {self._joined_demand_travel_df_key_col}"
-                # )
-                # print(f"self._equity_data_common_col: {self._equity_data_common_col}")
-                # print(f"active_facilities: {active_facilities.head(1)}")
-                # print(f"self.equity_data: {self.equity_data.head(1)}")
-
-                # how="left": demand points missing from the equity data
-                # must keep their travel/cost rows (with NaN equity values)
-                # rather than being dropped from the evaluation. An inner
-                # join here silently shrank every metric -- max, weighted
-                # averages, coverage -- whenever the equity data didn't
-                # cover all demand locations, even when equity wasn't
-                # being weighted.
+            # Add equity data to the dataframe if present. Every
+            # registered dimension is merged, not just the primary one:
+            # only the primary drives the metrics in solution_df, but the
+            # per-region frame is what the `equity=` analysis and plotting
+            # views read their bands from, so a dimension missing here
+            # could not be selected at all. Registration already rejects
+            # two dimensions sharing an equity_col, so these merges cannot
+            # collide with each other.
+            #
+            # how="left": demand points missing from the equity data
+            # must keep their travel/cost rows (with NaN equity values)
+            # rather than being dropped from the evaluation. An inner
+            # join here silently shrank every metric -- max, weighted
+            # averages, coverage -- whenever the equity data didn't
+            # cover all demand locations, even when equity wasn't
+            # being weighted.
+            for equity_meta in self.equity_datasets.values():
                 active_facilities = pd.merge(
                     active_facilities,
-                    self.equity_data,
+                    equity_meta["data"],
                     left_on=afi,
-                    right_on=self._equity_data_common_col,
+                    right_on=equity_meta["common_col"],
                     how="left",
                     suffixes=("", "_y"),
                 )
@@ -1234,18 +1235,29 @@ class SiteProblem(
         # equity weighting (the row weights would be NaN) and silently
         # excludes those locations from equity-band breakdowns, so surface
         # it here, once, before any solving starts.
-        if self.equity_data is not None:
+        # Checked per registered dimension, since each is merged into
+        # problem_df independently and each can have its own gaps. Only the
+        # primary dimension can be fatal: weights={"equity": ...} weights by
+        # that one alone, so a gap in a non-primary dimension degrades one
+        # analysis view rather than poisoning the row weights.
+        for equity_meta in self.equity_datasets.values():
             demand_ids = self.travel_and_demand_df.index
-            equity_ids = self.equity_data[self._equity_data_common_col]
+            equity_ids = equity_meta["data"][equity_meta["common_col"]]
             missing_equity_ids = demand_ids.difference(equity_ids)
 
             if len(missing_equity_ids) > 0:
+                is_primary = equity_meta["label"] == self._primary_equity_label
+                named = (
+                    "the equity data"
+                    if len(self.equity_datasets) == 1
+                    else f"equity dimension '{equity_meta['label']}'"
+                )
                 id_summary = (
                     f"{len(missing_equity_ids)} of {len(demand_ids)} demand "
-                    f"location(s) have no matching row in the equity data "
+                    f"location(s) have no matching row in {named} "
                     f"(e.g. {list(missing_equity_ids[:5])})"
                 )
-                if any(key.lower() == "equity" for key in weights):
+                if is_primary and any(key.lower() == "equity" for key in weights):
                     raise ValueError(
                         f"Cannot weight by equity: {id_summary}. Equity row "
                         "weights cannot be computed for these locations. "
