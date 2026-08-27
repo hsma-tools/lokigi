@@ -14,6 +14,8 @@ by. Every registered dimension is merged into `problem_df`, which is what
 makes the non-primary ones analysable at all.
 """
 
+import pickle
+
 import pytest
 import pandas as pd
 
@@ -332,3 +334,118 @@ def test_copy_carries_the_whole_registry(loaded_problem_with_equity, rurality_df
     # Deep, not shared: mutating the copy must not reach the original.
     duplicate.equity_datasets["rurality"]["label"] = "changed"
     assert problem.equity_datasets["rurality"]["label"] == "rurality"
+
+
+# --- Pre-registry pickles --------------------------------------------------
+#
+# Solving offline and shipping the pickled result is a normal pattern for
+# this package, so problems and solution sets written by <= v0.9.1 exist in
+# the wild. Their state carries the flat `_equity_data_*` attributes and no
+# registry. Those attributes are now properties, and a property is a data
+# descriptor -- it wins over the unpickled `__dict__` -- so without
+# migration the load appears to succeed and then raises a bare
+# AttributeError naming an internal attribute the user never set.
+
+
+def _as_legacy_pickle(problem, equity=None):
+    """Round-trip `problem` through a pickle rewritten into the pre-registry
+    attribute layout, i.e. what v0.9.1 would have written."""
+    clone = pickle.loads(pickle.dumps(problem))
+    del clone.__dict__["equity_datasets"]
+    del clone.__dict__["_primary_equity_label"]
+    clone.__dict__.update(
+        {
+            "equity_data": None,
+            "_equity_data_type": None,
+            "_equity_data_equity_col": None,
+            "_equity_data_common_col": None,
+            "_equity_data_label": None,
+            "_equity_data_disadvantaged_end": None,
+        }
+    )
+    if equity is not None:
+        clone.__dict__.update(equity)
+    return pickle.loads(pickle.dumps(clone))
+
+
+def test_legacy_pickle_migrates_into_the_registry(loaded_problem_with_equity):
+    restored = _as_legacy_pickle(
+        loaded_problem_with_equity,
+        {
+            "equity_data": loaded_problem_with_equity.equity_data,
+            "_equity_data_type": "pandas",
+            "_equity_data_equity_col": "imd_decile",
+            "_equity_data_common_col": "location_id",
+            "_equity_data_label": "equity",
+            "_equity_data_disadvantaged_end": "low",
+        },
+    )
+
+    assert list(restored.equity_datasets) == ["equity"]
+    assert restored._primary_equity_label == "equity"
+    assert restored._equity_data_equity_col == "imd_decile"
+    assert restored._equity_data_disadvantaged_end == "low"
+
+
+def test_legacy_pickle_still_solves_with_equity_metrics(loaded_problem_with_equity):
+    """The point of migrating rather than just failing politely: the equity
+    analysis has to keep working across the upgrade."""
+    expected = loaded_problem_with_equity.copy().solve(p=1).solution_df.iloc[0]
+    restored = _as_legacy_pickle(
+        loaded_problem_with_equity,
+        {
+            "equity_data": loaded_problem_with_equity.equity_data,
+            "_equity_data_type": "pandas",
+            "_equity_data_equity_col": "imd_decile",
+            "_equity_data_common_col": "location_id",
+            "_equity_data_label": "equity",
+            "_equity_data_disadvantaged_end": "low",
+        },
+    )
+
+    row = restored.solve(p=1).solution_df.iloc[0]
+    assert row["weighted_by_equity_group"] == expected["weighted_by_equity_group"]
+    assert row["inter_tertile_ratio"] == pytest.approx(expected["inter_tertile_ratio"])
+
+
+def test_legacy_pickle_without_equity_data_restores_empty(loaded_problem):
+    restored = _as_legacy_pickle(loaded_problem)
+    assert restored.equity_datasets == {}
+    assert restored._primary_equity_label is None
+    assert restored.equity_data is None
+    assert restored.primary_equity is None
+
+
+def test_legacy_pickle_falls_back_to_column_name_when_unlabelled(
+    loaded_problem_with_equity,
+):
+    """`label` was effectively optional on the old call, but the registry
+    keys off it and cannot register a dimension under None."""
+    restored = _as_legacy_pickle(
+        loaded_problem_with_equity,
+        {
+            "equity_data": loaded_problem_with_equity.equity_data,
+            "_equity_data_type": "pandas",
+            "_equity_data_equity_col": "imd_decile",
+            "_equity_data_common_col": "location_id",
+            "_equity_data_label": None,
+            "_equity_data_disadvantaged_end": "low",
+        },
+    )
+    assert list(restored.equity_datasets) == ["imd_decile"]
+    assert restored._primary_equity_label == "imd_decile"
+
+
+def test_current_pickle_round_trips_without_stale_keys(loaded_problem_with_equity):
+    restored = pickle.loads(pickle.dumps(loaded_problem_with_equity))
+    assert list(restored.equity_datasets) == ["equity"]
+    assert restored._equity_data_equity_col == "imd_decile"
+    # The flat names must not linger in __dict__, where they would be
+    # permanently shadowed by the properties and mislead anyone inspecting
+    # the instance.
+    stale = [
+        key
+        for key in restored.__dict__
+        if key == "equity_data" or key.startswith("_equity_data_")
+    ]
+    assert stale == []

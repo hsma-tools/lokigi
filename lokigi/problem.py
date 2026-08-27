@@ -64,6 +64,69 @@ class _Problem:
         else:
             self._verbose = False
 
+    # Flat equity attributes as written by versions before the equity
+    # registry (<= v0.9.1), in the order add_equity_data() used to set them.
+    _LEGACY_EQUITY_KEYS = (
+        "equity_data",
+        "_equity_data_type",
+        "_equity_data_equity_col",
+        "_equity_data_common_col",
+        "_equity_data_label",
+        "_equity_data_disadvantaged_end",
+    )
+
+    def __setstate__(self, state):
+        """
+        Restore a pickled problem, migrating pre-registry pickles.
+
+        Solved problems and solution sets get pickled and reloaded in
+        practice -- an app that solves offline and ships the result is the
+        normal pattern -- so a pickle written by <= v0.9.1 carries the flat
+        `_equity_data_*` attributes and no `equity_datasets`. Those
+        attributes are now read-only properties over the registry, and a
+        property is a data descriptor: it wins over whatever the unpickled
+        `__dict__` holds. So without this, restoring an old pickle appears
+        to succeed and then raises a bare `AttributeError` naming
+        `_primary_equity_label` -- an internal attribute the user never
+        set -- the first time anything touches its equity data.
+
+        Rebuilding the single registered dimension from those attributes
+        keeps the equity analysis working across the upgrade, rather than
+        merely failing more politely.
+        """
+        if "equity_datasets" not in state:
+            legacy = {key: state.pop(key, None) for key in self._LEGACY_EQUITY_KEYS}
+
+            state["equity_datasets"] = {}
+            state["_primary_equity_label"] = None
+
+            if legacy["equity_data"] is not None and legacy["_equity_data_equity_col"]:
+                # `label` was optional on the old call, so fall back to the
+                # column name -- `_resolve_equity()` keys off the label and
+                # cannot register a dimension under `None`.
+                label = (
+                    legacy["_equity_data_label"] or legacy["_equity_data_equity_col"]
+                )
+                state["equity_datasets"][label] = {
+                    "data": legacy["equity_data"],
+                    "data_type": legacy["_equity_data_type"] or "pandas",
+                    "equity_col": legacy["_equity_data_equity_col"],
+                    "common_col": legacy["_equity_data_common_col"],
+                    "label": label,
+                    "disadvantaged_end": legacy["_equity_data_disadvantaged_end"]
+                    or "low",
+                }
+                state["_primary_equity_label"] = label
+        else:
+            # A current pickle should not also carry the flat attributes,
+            # but drop them if it does rather than leaving keys in
+            # `__dict__` that are permanently shadowed by the properties
+            # and would mislead anyone inspecting the instance.
+            for key in self._LEGACY_EQUITY_KEYS:
+                state.pop(key, None)
+
+        self.__dict__.update(state)
+
     ###############################
     # MARK: Equity registry
     ###############################

@@ -839,6 +839,21 @@ class EvaluatedCombination:
         #
         # Internal, and named accordingly: it is an artefact of how this
         # combination was scored, not a property of the demand regions.
+        #
+        # A user column of the same name can reach this frame -- via
+        # add_demand(drop_extra_cols=False), skip_cols, or an
+        # add_additional_data() label -- and writing over it would destroy
+        # it silently, leaving a column that still looks like the user's
+        # own while holding the solver's weights.
+        if _ROW_WEIGHT_COL in self.evaluated_combination_df.columns:
+            raise ValueError(
+                f"'{_ROW_WEIGHT_COL}' is reserved: lokigi writes the row "
+                "weights used to score each combination into that column of "
+                "problem_df. Your demand, equity or additional data brings a "
+                f"column of the same name into the per-region frame. Rename "
+                "it in the source dataframe (or drop it via "
+                "add_demand(drop_extra_cols=True)) and re-run."
+            )
         self.evaluated_combination_df[_ROW_WEIGHT_COL] = active_weights
 
         # Primary travel-cost statistics + equity breakdown, computed from

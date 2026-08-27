@@ -15,7 +15,7 @@ import pytest
 import pandas as pd
 
 import lokigi
-from lokigi.site_solutions import _EQUITY_BAND_STORED_NAMES, _ROW_WEIGHT_COL
+from lokigi.site_solutions import _EQUITY_BAND_STORED_NAMES
 
 
 def _same(a, b):
@@ -60,6 +60,66 @@ def two_dimension_problem(loaded_problem_with_equity):
     return loaded_problem_with_equity
 
 
+@pytest.fixture
+def multi_region_band_problem():
+    """A problem where equity band 1 holds TWO regions with different
+    demand, which `loaded_problem_with_equity` does not.
+
+    That distinction is load-bearing rather than incidental. With one
+    region per band, a band's weighted mean collapses to that single
+    region's cost whatever the weights are -- so any test of *how* the
+    bands are weighted passes no matter what the implementation does. This
+    fixture was added after exactly that: the compound-weights test below
+    kept passing with `_row_weight` disabled entirely.
+
+    Hand-computed, min_cost = [10, 30, 20, 40] for L1..L4 (Site_X always
+    wins -- Site_Y is 100 everywhere), bands 1/1/5/10, demand 300/100/100/100:
+
+      demand-weighted     band 1 = (10*300 + 30*100) / 400 = 15.0
+      weights={"demand": 0.6, "equity": 0.4}
+                          row weights = [1.0, 0.4, 0.2222, 0.0]
+                          band 1 = (10*1.0 + 30*0.4) / 1.4 = 15.71
+
+    Bands 5 and 10 hold one region each, so they read 20.0 and 40.0 under
+    both weightings -- band 1 is the whole test.
+    """
+    ids = ["L1", "L2", "L3", "L4"]
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(
+        pd.DataFrame({"location_id": ids, "demand": [300, 100, 100, 100]}),
+        demand_col="demand",
+        location_id_col="location_id",
+    )
+    problem.add_sites(
+        pd.DataFrame(
+            {
+                "site_id": ["Site_X", "Site_Y"],
+                "lat": [51.5, 51.6],
+                "long": [-0.1, -0.2],
+            }
+        ),
+        candidate_id_col="site_id",
+    )
+    problem.add_travel_matrix(
+        pd.DataFrame(
+            {
+                "source_id": ids,
+                "Site_X": [10.0, 30.0, 20.0, 40.0],
+                "Site_Y": [100.0] * 4,
+            }
+        ),
+        source_col="source_id",
+    )
+    problem.add_equity_data(
+        pd.DataFrame({"location_id": ids, "imd_decile": [1, 1, 5, 10]}),
+        equity_col="imd_decile",
+        common_col="location_id",
+        label="equity",
+        disadvantaged_end="low",
+    )
+    return problem
+
+
 # --- Equivalence: the recompute must reproduce what the solve stored -------
 
 
@@ -87,14 +147,17 @@ def test_naming_the_primary_dimension_explicitly_is_identical(
     assert all(_same(implicit[k], explicit[k]) for k in implicit)
 
 
-def test_recompute_reproduces_the_stored_primary_values(loaded_problem_with_equity):
+def test_recompute_reproduces_the_stored_primary_values(multi_region_band_problem):
     """The load-bearing one. Forces the recompute path for the *primary*
     dimension by temporarily clearing the registry's primary flag, then
     checks it lands on exactly the numbers the solve stored. This is what
     proves `_equity_band_metrics()` behaves identically whether it is
     called mid-solve or afterwards against problem_df."""
-    result = loaded_problem_with_equity.solve(p=1)
+    result = multi_region_band_problem.solve(p=1)
     row = result.solution_df.iloc[0]
+    # Band 1 must be a genuine weighted mean of two regions, not one
+    # region's cost wearing a weighted mean's clothing.
+    assert row["weighted_by_equity_group"][1] == pytest.approx(15.0)
 
     result.site_problem._primary_equity_label = None
     _, recomputed = result._resolve_equity_view(equity="equity")
@@ -106,22 +169,29 @@ def test_recompute_reproduces_the_stored_primary_values(loaded_problem_with_equi
 
 
 def test_recompute_reproduces_stored_values_under_compound_weights(
-    loaded_problem_with_equity,
+    multi_region_band_problem,
 ):
     """The case `_row_weight` exists for. With a multi-key weights= dict,
     the per-band means are computed against a compound demand/equity blend,
     not raw demand -- so a recompute that reached for the demand column
     would silently produce different numbers than the primary dimension's
     stored ones."""
-    result = loaded_problem_with_equity.solve(
+    result = multi_region_band_problem.solve(
         p=1, weights={"demand": 0.6, "equity": 0.4}
     )
     row = result.solution_df.iloc[0]
 
-    # The blend must actually differ from raw demand, or this proves nothing.
-    problem_df = row["problem_df"]
-    demand_col = loaded_problem_with_equity._demand_data_demand_col
-    assert not problem_df[_ROW_WEIGHT_COL].equals(problem_df[demand_col].astype(float))
+    # The two weightings must actually disagree, or a recompute using the
+    # wrong one would still land on the right answer and this would pass
+    # while testing nothing. Band 1 is where they differ: 15.71 compound
+    # against 15.0 demand-weighted (see the fixture's docstring).
+    assert row["weighted_by_equity_group"][1] == pytest.approx(15.71)
+    demand_weighted = (
+        multi_region_band_problem.copy()
+        .solve(p=1)
+        .solution_df.iloc[0]["weighted_by_equity_group"][1]
+    )
+    assert demand_weighted == pytest.approx(15.0)
 
     result.site_problem._primary_equity_label = None
     _, recomputed = result._resolve_equity_view(equity="equity")
@@ -222,3 +292,26 @@ def test_row_argument_wins_over_solution_rank(loaded_problem_with_equity):
     assert _same(
         bands["weighted_by_equity_group"], chosen["weighted_by_equity_group"]
     )
+
+
+def test_reserved_row_weight_column_name_is_rejected(loaded_problem):
+    """`_row_weight` carries the weights each combination was scored with.
+    A user column of that name can reach the same frame via
+    drop_extra_cols=False, and silently overwriting it would leave
+    something that still looks like the user's column while holding the
+    solver's numbers."""
+    ids = ["LSOA_1", "LSOA_2", "LSOA_3"]
+    loaded_problem.add_demand(
+        pd.DataFrame(
+            {
+                "location_id": ids,
+                "demand": [100, 200, 150],
+                "_row_weight": [7, 8, 9],
+            }
+        ),
+        demand_col="demand",
+        location_id_col="location_id",
+        drop_extra_cols=False,
+    )
+    with pytest.raises(ValueError, match="'_row_weight' is reserved"):
+        loaded_problem.solve(p=1)
