@@ -365,4 +365,9 @@ def test_fewer_than_three_equity_bins_skips_tertile_calculation():
 
     assert result.avg_lower_third_bins is None
     assert result.inter_tertile_ratio is None
-    assert result.inter_tertile_desc == "N/A (No equity data)"
+    # Names the real reason. Equity data IS registered here, so the old
+    # "N/A (No equity data)" sent the reader looking for a missing dataset
+    # instead of for a third band.
+    assert result.inter_tertile_desc == (
+        "N/A (needs at least 3 equity bands, found 2)"
+    )

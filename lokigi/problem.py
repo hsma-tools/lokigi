@@ -487,6 +487,20 @@ class _Problem:
 
         loaded_df, df_type = _load_spatial_or_tabular_data(equity_data)
 
+        # Copied because the continuous_measure branch below writes into
+        # this frame, and _load_spatial_or_tabular_data hands back the
+        # caller's own object when it was already a DataFrame. Without the
+        # copy, registering a continuous measure overwrote the caller's
+        # `equity_col` with bin numbers and added a `_raw` column to their
+        # frame -- destroying the scores they passed in.
+        #
+        # Worse than a one-off surprise now that dimensions are registered
+        # by label: re-registering the same frame under `replace=True`, or
+        # registering it to a second problem, re-bins the already-binned
+        # values, so the `_raw` column ends up holding bin numbers rather
+        # than the raw measure it exists to preserve. Both are silent.
+        loaded_df = loaded_df.copy()
+
         if verbose:
             if df_type == "geopandas":
                 warn(

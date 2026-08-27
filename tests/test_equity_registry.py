@@ -449,3 +449,90 @@ def test_current_pickle_round_trips_without_stale_keys(loaded_problem_with_equit
         if key == "equity_data" or key.startswith("_equity_data_")
     ]
     assert stale == []
+
+
+# --- add_equity_data() must not mutate the caller's dataframe --------------
+
+
+def test_continuous_measure_does_not_mutate_the_callers_dataframe():
+    """`continuous_measure=True` writes the bins back over `equity_col` and
+    adds a `_raw` column. Those writes used to land in the caller's own
+    frame, because a DataFrame argument is passed through by reference --
+    destroying the scores they handed in."""
+    user_df = pd.DataFrame(
+        {
+            "location_id": ["LSOA_1", "LSOA_2", "LSOA_3", "LSOA_4"],
+            "imd_score": [12.5, 30.1, 8.2, 44.0],
+        }
+    )
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_equity_data(
+        user_df,
+        equity_col="imd_score",
+        common_col="location_id",
+        label="imd",
+        continuous_measure=True,
+        n_bins=4,
+        disadvantaged_end="high",
+    )
+
+    assert list(user_df.columns) == ["location_id", "imd_score"]
+    assert user_df["imd_score"].tolist() == [12.5, 30.1, 8.2, 44.0]
+    # ...while the registered copy carries both the bins and the raw values.
+    assert problem.equity_data["imd_score"].tolist() == [2, 3, 1, 4]
+    assert problem.equity_data["imd_score_raw"].tolist() == [12.5, 30.1, 8.2, 44.0]
+
+
+def test_same_dataframe_can_be_registered_to_two_problems():
+    """The cascade the mutation caused: the second registration re-binned
+    already-binned values, so its `_raw` column -- the whole point of which
+    is preserving the raw measure -- held bin numbers instead."""
+    shared = pd.DataFrame(
+        {
+            "location_id": ["LSOA_1", "LSOA_2", "LSOA_3", "LSOA_4"],
+            "score": [12.5, 30.1, 8.2, 44.0],
+        }
+    )
+    kwargs = dict(
+        equity_col="score",
+        common_col="location_id",
+        label="s",
+        continuous_measure=True,
+        n_bins=4,
+        disadvantaged_end="high",
+    )
+    first = lokigi.site.SiteProblem(debug_mode=False)
+    first.add_equity_data(shared, **kwargs)
+    second = lokigi.site.SiteProblem(debug_mode=False)
+    second.add_equity_data(shared, **kwargs)
+
+    assert (
+        first.equity_data["score"].tolist() == second.equity_data["score"].tolist()
+    )
+    assert second.equity_data["score_raw"].tolist() == [12.5, 30.1, 8.2, 44.0]
+
+
+def test_replace_re_registration_does_not_rebin(loaded_problem):
+    """Same cascade via `replace=True`, which the registry makes an obvious
+    thing to reach for."""
+    df = pd.DataFrame(
+        {
+            "location_id": ["LSOA_1", "LSOA_2", "LSOA_3"],
+            "score": [12.5, 30.1, 8.2],
+        }
+    )
+    kwargs = dict(
+        equity_col="score",
+        common_col="location_id",
+        label="s",
+        continuous_measure=True,
+        n_bins=3,
+        disadvantaged_end="high",
+    )
+    loaded_problem.add_equity_data(df, **kwargs)
+    before = loaded_problem.equity_data["score"].tolist()
+
+    loaded_problem.add_equity_data(df, replace=True, **kwargs)
+
+    assert loaded_problem.equity_data["score"].tolist() == before
+    assert loaded_problem.equity_data["score_raw"].tolist() == [12.5, 30.1, 8.2]

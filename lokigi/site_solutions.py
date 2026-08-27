@@ -349,7 +349,18 @@ def _equity_band_metrics(
         lower_chunk, middle_chunk, upper_chunk = _split_bins_into_tertiles(
             unique_bins, disadvantaged_end
         )
-        if lower_chunk is not None:
+        if lower_chunk is None:
+            # Fewer than 3 distinct bands, so there are no tertiles to
+            # compare. Say that, rather than leaving the "N/A (No equity
+            # data)" initialiser standing: equity data *is* registered
+            # here, and reporting otherwise sends the reader looking for a
+            # missing dataset instead of the real cause.
+            # `plot_equity_tertiles()` raises for this case; the metric
+            # only has a string to explain itself with.
+            inter_tertile_desc = (
+                f"N/A (needs at least 3 equity bands, found {len(unique_bins)})"
+            )
+        else:
             chunks = (lower_chunk, middle_chunk, upper_chunk)
             avg_lower_third_bins = np.mean(
                 [weighted_by_equity_group[b] for b in chunks[0]]
