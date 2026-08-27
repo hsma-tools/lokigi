@@ -105,11 +105,15 @@ quartodoc:
             - check_solution_equity
             - plot_top_n_solution_equity
             - plot_combination_by_equity
+            - plot_equity_tertiles
             - plot_simple_pareto_front_pairs
             - plot_all_metric_pareto_front_pairs
             - compute_pareto_front
             - pareto_summary
             - plot_pareto_facets
+            - plot_pareto_summary
+            - describe_tradeoffs
+            - describe_tradeoffs_for_stakeholders
         - name: multiobjective.Metric
           children: separate
         - name: site_solutions.SolutionComparator
@@ -121,12 +125,20 @@ quartodoc:
             - compare_top_results
             - get_metric_summary
             - compare_site_allocation
+            - site_reallocation_matrix
             - population_impact_summary
             - population_impact_phrase
+            - population_impact_worst_affected
+            - population_impact_by_equity_group
+            - decision_summary
+            - find_balanced_solution
             - site_overlap
             - plot_comparison
+            - plot_site_reallocation_matrix
             - plot_population_impact_summary
             - plot_population_impact_histogram
+            - plot_population_impact_map
+            - plot_population_impact_by_equity_group
     - title: Travel Matrix Helpers
       desc: "Classes and methods which can help with generation of travel matrices"
       contents:

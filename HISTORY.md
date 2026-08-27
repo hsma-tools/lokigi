@@ -11,6 +11,8 @@ lokigi is pre-1.0, so breaking changes can land in any minor release. Read this 
 
 ### Notes
 
+- Add 12 public methods to the API reference that were implemented but never listed in `_quarto.yml`, so they did not appear in the documentation at all. `SiteSolutionSet` gains `plot_equity_tertiles`, `plot_pareto_summary`, `describe_tradeoffs` and `describe_tradeoffs_for_stakeholders`; `SolutionComparator` gains `site_reallocation_matrix`, `population_impact_worst_affected`, `population_impact_by_equity_group`, `decision_summary`, `find_balanced_solution`, `plot_site_reallocation_matrix`, `plot_population_impact_map` and `plot_population_impact_by_equity_group`
+    - Several are headline v0.9.0/v0.9.1 features. Because both classes are assembled from mixins, quartodoc does not discover their methods automatically and every one has to be listed by hand -- so a method is easy to ship and never document
 - Fix `add_equity_data(continuous_measure=True)` destroying the caller's dataframe. The binning wrote back over `equity_col` and added a `_raw` column, and a DataFrame argument is passed by reference -- so the scores handed in were replaced by bin numbers in the caller's own frame
     - The registry makes this materially worse rather than merely untidy: registering the same frame to a second problem, or re-registering it under `replace=True`, re-binned the already-binned values, leaving the `_raw` column holding bin numbers instead of the raw measure it exists to preserve. Both were silent
     - Pre-existing, and independent of which dimension is primary -- any single-dimension `continuous_measure=True` call was affected
