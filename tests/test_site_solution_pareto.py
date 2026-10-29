@@ -651,6 +651,50 @@ def test_plot_pareto_radar_interactive_show_dominated_skips_hover(
     assert len(fig.data) == _front_size(solved_solution_set) + 1
 
 
+def test_plot_pareto_radar_best_worst_scoped_to_all_options(solved_solution_set):
+    """The spoke ranges come from every solution, dominated ones included,
+    so the labels must say so -- not read as best/worst of the shapes
+    shown. solution 3 is dominated, so here the two differ."""
+    fig = solved_solution_set.plot_pareto_radar()
+    try:
+        spoke_labels = [t.get_text() for t in fig.axes[0].get_xticklabels()]
+        assert all("of all 4 options" in label for label in spoke_labels)
+        # Worst max travel time (25) only occurs in the dominated solution
+        assert "worst 25" in spoke_labels[1]
+    finally:
+        plt.close(fig)
+
+    interactive_fig = solved_solution_set.plot_pareto_radar(interactive=True)
+    assert "of all 4 options" in interactive_fig.data[0].theta[0]
+    assert interactive_fig.data[0].customdata[0][2] == "1st of all 4 options"
+    assert "across all 4 options" in interactive_fig.layout.annotations[0].text
+
+
+def test_plot_pareto_radar_interactive_caption_points_to_hover(solved_solution_set):
+    """The interactive version draws no per-point target labels, so its
+    caption must point to the hover rather than to labels that aren't there."""
+    target_metric = Metric(
+        column="max", direction="closest_to_target", target=18.0, label="Max"
+    )
+    solved_solution_set.compute_pareto_front(
+        solved_solution_set.pareto_metrics[:1]
+        + [target_metric]
+        + solved_solution_set.pareto_metrics[2:]
+    )
+    fig = solved_solution_set.plot_pareto_radar(interactive=True)
+    caption = fig.layout.annotations[0].text
+    assert "hover over a point" in caption
+    assert "small label" not in caption
+
+
+def test_plot_pareto_radar_interactive_sets_explicit_height(solved_solution_set):
+    """Plotly's 450px default leaves only a sliver for the chart once the
+    title and caption margins come out of it."""
+    fig = solved_solution_set.plot_pareto_radar(interactive=True)
+    margin = fig.layout.margin
+    assert fig.layout.height - margin.t - margin.b >= 500
+
+
 def test_plot_pareto_radar_caption_can_be_suppressed(solved_solution_set):
     fig = solved_solution_set.plot_pareto_radar(caption="")
     try:

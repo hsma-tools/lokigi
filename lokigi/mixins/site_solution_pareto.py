@@ -1248,12 +1248,18 @@ class ParetoMixin:
             )
 
     def _radar_spoke_detail(self, m, raw_range):
-        """Short note of what the outer ring and centre mean on one spoke."""
+        """Short note of what the outer ring and centre mean on one spoke.
+        The range is over every option in `solution_df` (see
+        `_pareto_normalised`), not just the Pareto front, so it says so --
+        otherwise "best"/"worst" reads as best/worst of the shapes shown."""
         if m.direction == "closest_to_target":
             return f"target = {m.target:g}"
         lo, hi = raw_range[m.column]
         worse_val, better_val = (lo, hi) if m.direction == "higher_better" else (hi, lo)
-        return f"best {_format_raw_value(better_val)}, worst {_format_raw_value(worse_val)}"
+        return (
+            f"best {_format_raw_value(better_val)}, worst {_format_raw_value(worse_val)}\n"
+            f"of all {len(self.solution_df)} options"
+        )
 
     def plot_pareto_radar(
         self,
@@ -1362,9 +1368,11 @@ class ParetoMixin:
             "How to read this chart: each coloured shape is one option that isn't beaten on "
             "every measure by any other -- there's no single best choice. Each spoke is one "
             "measure, rescaled so that further from the centre is always better: the outer "
-            "ring is the best value seen on that measure and the inner ring the worst. A bigger "
-            "shape is not automatically better overall -- its area depends on which measures "
-            "happen to sit next to each other -- so compare options spoke by spoke."
+            f"ring is the best value on that measure across all {len(self.solution_df)} "
+            "options compared, not just the ones shown in colour, and the inner ring the "
+            "worst. A bigger shape is not automatically better overall -- its area depends on "
+            "which measures happen to sit next to each other -- so compare options spoke by "
+            "spoke."
         )
         if show_dominated:
             default_caption += (
@@ -1375,13 +1383,19 @@ class ParetoMixin:
             default_caption += (
                 " For a 'target' measure, distance from the centre shows how close an option "
                 "is to the ideal value"
-                + (
+            )
+            if interactive:
+                default_caption += (
+                    "; hover over a point to see whether it sits above (+) or below "
+                    "(\u2212) that target."
+                )
+            elif show_value_labels:
+                default_caption += (
                     "; the small label next to each point shows whether it sits above (+) "
                     "or below (\u2212) that target."
-                    if show_value_labels or interactive
-                    else "."
                 )
-            )
+            else:
+                default_caption += "."
 
         if interactive:
             return self._plot_pareto_radar_interactive(
@@ -1498,7 +1512,7 @@ class ParetoMixin:
             [
                 textwrap.fill(m.label, width=20).replace("\n", "<br>")
                 + "<br><span style='font-size:10px;color:gray'>"
-                + self._radar_spoke_detail(m, raw_range)
+                + self._radar_spoke_detail(m, raw_range).replace("\n", "<br>")
                 + "</span>"
                 for m in self.pareto_metrics
             ]
@@ -1526,7 +1540,9 @@ class ParetoMixin:
             customdata = []
             for m in self.pareto_metrics:
                 rank_val = int(rank_df.loc[idx, m.column])
-                context = f"{rank_val}{_get_ordinal_suffix(rank_val)} of {rank_n}"
+                context = (
+                    f"{rank_val}{_get_ordinal_suffix(rank_val)} of all {rank_n} options"
+                )
                 if m.direction == "closest_to_target":
                     context += (
                         f"; {_signed_deviation(row[m.column] - m.target)} vs "
@@ -1557,30 +1573,56 @@ class ParetoMixin:
                 )
             )
 
+        # Explicit pixel sizing throughout: plotly's 450px default height
+        # leaves only a sliver for the chart once the title and caption
+        # margins come out of it, which shrinks the circle, scrolls the
+        # legend, and runs the bottom spoke label into the caption. Spoke
+        # labels are drawn outside the polar area, so it's inset from the
+        # sides to keep them clear of the legend, and the caption sits a
+        # fixed distance below it rather than a fraction of the plot height.
+        # Plotly can't re-wrap an annotation to the figure's width, so the
+        # caption is pre-wrapped narrow enough (~560px) to fit a typical
+        # notebook output, and shifted left into the 80px margin (which the
+        # left spoke's label needs, so it stays) to start near the edge.
+        chart_height = 560
+        caption_lines = textwrap.wrap(caption, width=100) if caption else []
+        margin = dict(t=135, b=95 + 16 * len(caption_lines), l=80)
         layout = dict(
             template="plotly_white",
+            height=chart_height + margin["t"] + margin["b"],
             polar=dict(
+                domain=dict(x=[0.15, 0.85]),
                 hole=_RADAR_HOLE / (1 + _RADAR_HOLE),
                 radialaxis=dict(
                     range=[0, 1],
                     tickvals=[0, 0.25, 0.5, 0.75, 1],
                     showticklabels=False,
                 ),
-                angularaxis=dict(direction="clockwise", rotation=90),
+                # Invisible ticks, purely to push the spoke labels clear of
+                # markers sitting on the outer ring
+                angularaxis=dict(
+                    direction="clockwise",
+                    rotation=90,
+                    ticks="outside",
+                    ticklen=10,
+                    tickcolor="rgba(0,0,0,0)",
+                ),
             ),
-            legend=dict(x=1.1, y=1),
-            margin=dict(t=110, b=60),
+            legend=dict(x=1.02, y=1),
+            margin=margin,
         )
         if title:
             layout["title"] = dict(text=f"<b>{title}</b>", x=0.02, xanchor="left")
-        if caption:
+        if caption_lines:
             layout["annotations"] = [
                 dict(
-                    text="<br>".join(textwrap.wrap(caption, width=130)),
+                    text="<br>".join(caption_lines),
                     xref="paper",
                     yref="paper",
                     x=0,
-                    y=-0.12,
+                    y=0,
+                    xshift=-50,
+                    yshift=-80,  # clears the bottom spoke's (up to 4-line) label
                     xanchor="left",
                     yanchor="top",
                     showarrow=False,
@@ -1588,7 +1630,6 @@ class ParetoMixin:
                     font=dict(size=11, color="dimgray"),
                 )
             ]
-            layout["margin"]["b"] = 60 + 16 * len(textwrap.wrap(caption, width=130))
         fig.update_layout(**layout)
         return fig
 
@@ -1816,8 +1857,9 @@ class ParetoMixin:
         default_caption = (
             "How to read this chart: each panel highlights one option that isn't beaten on "
             "every measure by any other, with the rest of the shortlist as faint outlines "
-            "behind it. Further from the centre is always better on every spoke, so a shape "
-            "that reaches out on a spoke is doing well on that measure; the boxed numbers are "
+            "behind it. Further from the centre is always better on every spoke: the outer ring "
+            f"is the best value on that measure across all {len(self.solution_df)} options "
+            "compared, not just the shortlist, and the centre the worst. The boxed numbers are "
             "the option's actual values. A bigger shape is not automatically better overall -- "
             "its area depends on which measures happen to sit next to each other."
         )
