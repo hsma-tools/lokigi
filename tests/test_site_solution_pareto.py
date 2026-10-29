@@ -846,6 +846,111 @@ def test_plot_pareto_radar_legend_wrap_at_default_leaves_labels_alone(
     assert all("<br>" not in t.name for t in fig.data)
 
 
+def test_plot_pareto_radar_scale_to_pareto_front_relabels_best_worst(
+    solved_solution_set,
+):
+    """Solution 3 (dominated) holds the worst max travel time, 25. Scaled
+    over just the front, the worst is 20, and the labels must say so."""
+    fig = solved_solution_set.plot_pareto_radar(scale_to="pareto_front")
+    try:
+        spoke_labels = [t.get_text() for t in fig.axes[0].get_xticklabels()]
+        assert all("of the 3 Pareto-optimal options" in s for s in spoke_labels)
+        assert "worst 20" in spoke_labels[1]
+        assert "across the 3 Pareto-optimal options" in fig.texts[0].get_text().replace(
+            "\n", " "
+        )
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_scale_to_pareto_front_stretches_the_front(
+    solved_solution_set,
+):
+    """Scaled over the front, every spoke has a front option at the centre
+    and one at the outer ring -- unlike over all options, where the
+    dominated solution can hold the worst value."""
+    for scale_to, stretched in [("pareto_front", True), ("all", False)]:
+        fig = solved_solution_set.plot_pareto_radar(scale_to=scale_to)
+        try:
+            radii = np.array([line.get_ydata()[:-1] for line in fig.axes[0].lines])
+            full_span = np.allclose(radii.min(axis=0), 0) and np.allclose(
+                radii.max(axis=0), 1
+            )
+            assert full_span is stretched
+        finally:
+            plt.close(fig)
+
+
+def test_plot_pareto_radar_scale_to_pareto_front_clips_dominated_outlines(
+    solved_solution_set,
+):
+    """Solution 3 falls well below the front's worst, which would draw it
+    outside the chart."""
+    normed_df, _ = solved_solution_set._pareto_normalised("pareto_front")
+    assert normed_df.min().min() < 0  # left exact, so dominance stays exact
+
+    fig = solved_solution_set.plot_pareto_radar(
+        scale_to="pareto_front", show_dominated=True
+    )
+    try:
+        for line in fig.axes[0].lines:
+            assert np.all((line.get_ydata() >= 0) & (line.get_ydata() <= 1))
+    finally:
+        plt.close(fig)
+    interactive = solved_solution_set.plot_pareto_radar(
+        interactive=True, scale_to="pareto_front", show_dominated=True
+    )
+    assert all(min(t.r) >= 0 and max(t.r) <= 1 for t in interactive.data)
+
+
+def test_plot_pareto_radar_scale_to_pareto_front_ranks_over_the_front(
+    solution_df, pareto_metrics
+):
+    """Solution 3 is still dominated (by solution 4) but now sits between
+    options 4 and 2 on average travel time, so option 2 is 4th of 4 overall
+    and 3rd of 3 on the front."""
+    solution_df.loc[solution_df["solution_rank"] == 3, "weighted_average"] = 11.5
+    solution_set = DummySolutionSet(solution_df)
+    solution_set.compute_pareto_front(pareto_metrics)
+    assert list(solution_set.solution_df["is_pareto_optimal"]) == [True, True, False, True]
+
+    over_all = solution_set.plot_pareto_radar(interactive=True)
+    over_front = solution_set.plot_pareto_radar(
+        interactive=True, scale_to="pareto_front"
+    )
+    assert _trace(over_all, "Option 2").customdata[0][2] == "4th of all 4 options"
+    assert (
+        _trace(over_front, "Option 2").customdata[0][2]
+        == "3rd of the 3 Pareto-optimal options"
+    )
+    assert "of the 3 Pareto-optimal options" in _trace(over_front, "Option 1").theta[0]
+    # Wrapping can split the hyphenated word, so check up to it
+    caption = over_front.layout.annotations[0].text.replace("<br>", " ")
+    assert "across the 3 Pareto" in caption
+
+
+def test_plot_pareto_radar_facets_scale_to_pareto_front(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar_facets(scale_to="pareto_front")
+    try:
+        caption = next(
+            t.get_text() for t in fig.texts if t.get_text().startswith("How to read")
+        ).replace("\n", " ")
+        assert "across the 3 Pareto-optimal options" in caption
+        assert "not just the shortlist" not in caption
+        # Dominance counts come from the unclipped scaling
+        assert all(
+            r"beats\ 1\ designs" in ax.get_title(loc="left") for ax in fig.axes
+        )
+    finally:
+        plt.close(fig)
+
+
+@pytest.mark.parametrize("method", ["plot_pareto_radar", "plot_pareto_radar_facets"])
+def test_plot_pareto_radar_scale_to_rejects_bad_values(solved_solution_set, method):
+    with pytest.raises(ValueError, match="scale_to must be one of"):
+        getattr(solved_solution_set, method)(scale_to="front")
+
+
 def test_plot_pareto_radar_interactive_right_margin_grows_with_legend(
     radar_solution_set,
 ):

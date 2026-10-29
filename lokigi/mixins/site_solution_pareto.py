@@ -582,21 +582,32 @@ class ParetoMixin:
                 "Pareto front has not been calculated. Please run '.compute_pareto_front() first."
             )
 
-    def _pareto_normalised(self):
+    def _pareto_normalised(self, scale_to="all"):
         """
-        Rescale every Pareto metric to 0-1 where 1 is always "better", using
-        the full solution set's range (not just the front) so axes reflect the
-        true spread of what was evaluated.
+        Rescale every Pareto metric to 0-1 where 1 is always "better".
+
+        `scale_to="all"` (the default) uses the full solution set's range, not
+        just the front, so axes reflect the true spread of what was
+        evaluated. `scale_to="pareto_front"` uses only the Pareto-optimal
+        solutions' range, which stretches the front across the whole axis;
+        dominated solutions can then fall outside 0-1 (a Pareto-optimal
+        solution never does). They are left as they are here, so dominance
+        comparisons stay exact, and callers draw them with `np.clip(.., 0, 1)`.
 
         Returns `(normed_df, raw_range)`: `normed_df` is indexed like
         `solution_df` with one column per metric, and `raw_range` maps each
-        metric column to its raw `(min, max)`.
+        metric column to the raw `(min, max)` it was scaled over.
         """
+        scoped = (
+            self.solution_df[self.solution_df["is_pareto_optimal"]]
+            if scale_to == "pareto_front"
+            else self.solution_df
+        )
         normed = {}
         raw_range = {}
         for m in self.pareto_metrics:
             col = self.solution_df[m.column]
-            lo, hi = col.min(), col.max()
+            lo, hi = scoped[m.column].min(), scoped[m.column].max()
             raw_range[m.column] = (lo, hi)
             span = (hi - lo) or 1.0  # guard against a constant column
             if m.direction == "higher_better":
@@ -605,9 +616,24 @@ class ParetoMixin:
                 normed[m.column] = 1 - (col - lo) / span
             else:  # closest_to_target
                 dev = (col - m.target).abs()
-                max_dev = dev.max() or 1.0
+                max_dev = (scoped[m.column] - m.target).abs().max() or 1.0
                 normed[m.column] = 1 - dev / max_dev
         return pd.DataFrame(normed, index=self.solution_df.index), raw_range
+
+    @staticmethod
+    def _require_scale_to(scale_to):
+        if scale_to not in ("all", "pareto_front"):
+            raise ValueError(
+                f"scale_to must be one of 'all' or 'pareto_front', got {scale_to!r}"
+            )
+
+    def _scale_phrase(self, scale_to):
+        """The set of options a radar's best/worst and ranks are over, as a
+        phrase to follow "of" / "across"."""
+        if scale_to == "pareto_front":
+            n = int(self.solution_df["is_pareto_optimal"].sum())
+            return f"the {n} Pareto-optimal options"
+        return f"all {len(self.solution_df)} options"
 
     @staticmethod
     def _pareto_option_label(row, id_col, name_col, site_diff):
@@ -1263,10 +1289,9 @@ class ParetoMixin:
                 f"plot_pareto_facets() instead."
             )
 
-    def _radar_spoke_detail(self, m, raw_range):
+    def _radar_spoke_detail(self, m, raw_range, scale_to="all"):
         """Short note of what the outer ring and centre mean on one spoke.
-        The range is over every option in `solution_df` (see
-        `_pareto_normalised`), not just the Pareto front, so it says so --
+        It names the set the range was taken over (see `_pareto_normalised`),
         otherwise "best"/"worst" reads as best/worst of the shapes shown."""
         if m.direction == "closest_to_target":
             return f"target = {m.target:g}"
@@ -1274,7 +1299,7 @@ class ParetoMixin:
         worse_val, better_val = (lo, hi) if m.direction == "higher_better" else (hi, lo)
         return (
             f"best {_format_raw_value(better_val)}, worst {_format_raw_value(worse_val)}\n"
-            f"of all {len(self.solution_df)} options"
+            f"of {self._scale_phrase(scale_to)}"
         )
 
     def _resolve_initially_shown(self, front, initially_shown, id_col):
@@ -1329,6 +1354,7 @@ class ParetoMixin:
         interactive: bool = False,
         initially_shown="all",
         legend_wrap_at: int | None = None,
+        scale_to: str = "all",
         figsize: tuple = (9, 7),
         theme: str = "whitegrid",
         other_color: str = "lightgray",
@@ -1383,6 +1409,18 @@ class ParetoMixin:
             `diff_against` makes labels long, since a wide legend squeezes
             the chart. Only the legend wraps: the interactive hover title
             keeps the full label on one line.
+        scale_to : {"all", "pareto_front"}, default "all"
+            Which options each spoke's best and worst values are taken
+            from, and so what the outer ring and centre mean. "all" scales
+            over every option compared, dominated ones included, so the
+            chart shows how good the front is against everything that was
+            evaluated. "pareto_front" scales over just the Pareto-optimal
+            options, which stretches them across the whole spoke and makes
+            the differences between them easier to see, at the cost of
+            saying nothing about how they compare with the rest. The spoke
+            labels, hover ranks and caption name whichever is used. With
+            "pareto_front", dominated outlines (`show_dominated=True`) can
+            fall outside the chart and are clipped to its edge.
         figsize : tuple, default (9, 7)
             Passed to `plt.subplots()` if `ax` is not supplied. Ignored if
             `interactive=True`.
@@ -1422,6 +1460,7 @@ class ParetoMixin:
         """
         self._require_pareto_front()
         self._require_radar_metrics()
+        self._require_scale_to(scale_to)
         if not interactive and ax is not None and ax.name != "polar":
             raise ValueError(
                 "plot_pareto_radar() needs polar axes, e.g. from "
@@ -1441,7 +1480,8 @@ class ParetoMixin:
                 f"legend_wrap_at must be a positive whole number of characters or "
                 f"None, got {legend_wrap_at!r}"
             )
-        normed_df, raw_range = self._pareto_normalised()
+        normed_df, raw_range = self._pareto_normalised(scale_to)
+        scale_phrase = self._scale_phrase(scale_to)
         metric_cols = [m.column for m in self.pareto_metrics]
         styles = _colours_and_styles(max(len(front), 1), palette)
         has_target = any(
@@ -1455,16 +1495,25 @@ class ParetoMixin:
             "How to read this chart: each coloured shape is one option that isn't beaten on "
             "every measure by any other -- there's no single best choice. Each spoke is one "
             "measure, rescaled so that further from the centre is always better: the outer "
-            f"ring is the best value on that measure across all {len(self.solution_df)} "
-            "options compared, not just the ones shown in colour, and the inner ring the "
-            "worst. A bigger shape is not automatically better overall -- its area depends on "
-            "which measures happen to sit next to each other -- so compare options spoke by "
-            "spoke."
+            f"ring is the best value on that measure across {scale_phrase}"
+            + (
+                " compared, not just the ones shown in colour"
+                if scale_to == "all"
+                else ", so it only compares the shapes shown with each other"
+            )
+            + ", and the inner ring the worst. A bigger shape is not automatically better "
+            "overall -- its area depends on which measures happen to sit next to each "
+            "other -- so compare options spoke by spoke."
         )
         if show_dominated:
             default_caption += (
                 " Grey outlines are options that were beaten everywhere by another "
-                "combination, shown only for context."
+                "combination, shown only for context"
+                + (
+                    "."
+                    if scale_to == "all"
+                    else "; any that fall outside the chart are drawn at its edge."
+                )
             )
         if has_target:
             default_caption += (
@@ -1503,6 +1552,7 @@ class ParetoMixin:
                 show_dominated,
                 shown_index,
                 legend_wrap_at,
+                scale_to,
                 fill,
                 title,
                 default_caption if caption is None else caption,
@@ -1517,7 +1567,8 @@ class ParetoMixin:
         angles = _radar_angles(len(self.pareto_metrics))
         closed_angles = _closed(angles)
         spoke_labels = [
-            f"{textwrap.fill(m.label, width=20)}\n({self._radar_spoke_detail(m, raw_range)})"
+            f"{textwrap.fill(m.label, width=20)}\n"
+            f"({self._radar_spoke_detail(m, raw_range, scale_to)})"
             for m in self.pareto_metrics
         ]
 
@@ -1525,7 +1576,9 @@ class ParetoMixin:
             for idx in rest.index:
                 ax.plot(
                     closed_angles,
-                    _closed(normed_df.loc[idx, metric_cols]),
+                    # Clipped: under scale_to="pareto_front" a dominated
+                    # option can fall outside the chart
+                    _closed(np.clip(normed_df.loc[idx, metric_cols], 0, 1)),
                     color=other_color,
                     alpha=0.5,
                     linewidth=0.8,
@@ -1603,6 +1656,7 @@ class ParetoMixin:
         show_dominated,
         shown_index,
         legend_wrap_at,
+        scale_to,
         fill,
         title,
         caption,
@@ -1612,13 +1666,17 @@ class ParetoMixin:
             [
                 textwrap.fill(m.label, width=20).replace("\n", "<br>")
                 + "<br><span style='font-size:10px;color:gray'>"
-                + self._radar_spoke_detail(m, raw_range).replace("\n", "<br>")
+                + self._radar_spoke_detail(m, raw_range, scale_to).replace("\n", "<br>")
                 + "</span>"
                 for m in self.pareto_metrics
             ]
         )
-        rank_df = normed_df.rank(method="min", ascending=False)
-        rank_n = len(normed_df)
+        # Ranked over the same set the spokes are scaled over
+        rank_source = (
+            normed_df.loc[front.index] if scale_to == "pareto_front" else normed_df
+        )
+        rank_df = rank_source.rank(method="min", ascending=False)
+        scale_phrase = self._scale_phrase(scale_to)
 
         fig = go.Figure()
 
@@ -1626,7 +1684,7 @@ class ParetoMixin:
             for idx in rest.index:
                 fig.add_trace(
                     go.Scatterpolar(
-                        r=_closed(normed_df.loc[idx, metric_cols]),
+                        r=_closed(np.clip(normed_df.loc[idx, metric_cols], 0, 1)),
                         theta=theta,
                         mode="lines",
                         line=dict(color=mcolors.to_hex(other_color), width=0.8),
@@ -1684,9 +1742,7 @@ class ParetoMixin:
             customdata = []
             for m in self.pareto_metrics:
                 rank_val = int(rank_df.loc[idx, m.column])
-                context = (
-                    f"{rank_val}{_get_ordinal_suffix(rank_val)} of all {rank_n} options"
-                )
+                context = f"{rank_val}{_get_ordinal_suffix(rank_val)} of {scale_phrase}"
                 if m.direction == "closest_to_target":
                     context += (
                         f"; {_signed_deviation(row[m.column] - m.target)} vs "
@@ -1841,6 +1897,7 @@ class ParetoMixin:
         caption: str | None = None,
         wrap_at: int | None = None,
         rank_scope: str = "all",
+        scale_to: str = "all",
     ):
         """
         Plot each Pareto-optimal solution on its own radar (spider) chart.
@@ -1882,6 +1939,11 @@ class ParetoMixin:
         caption : str, optional
             Explanatory text below the chart. A stakeholder-facing default
             is used if not provided; pass "" to suppress it.
+        scale_to : {"all", "pareto_front"}, default "all"
+            Which options each spoke is scaled over, and so what the outer
+            ring and centre mean -- see `plot_pareto_radar()`. Separate from
+            `rank_scope`, which only sets the set the Strengths/Sacrifices
+            ranks in each title are over.
 
         Returns
         -------
@@ -1891,6 +1953,7 @@ class ParetoMixin:
             raise ValueError(
                 f"rank_scope must be one of 'all' or 'pareto_front', got {rank_scope!r}"
             )
+        self._require_scale_to(scale_to)
         self._require_pareto_front()
         self._require_radar_metrics()
         sns.set_style(theme)
@@ -1918,7 +1981,7 @@ class ParetoMixin:
         )
         axes = np.array(axes).ravel()
 
-        normed_df, raw_range = self._pareto_normalised()
+        normed_df, raw_range = self._pareto_normalised(scale_to)
         metric_cols = [m.column for m in self.pareto_metrics]
         front_normed = normed_df.loc[front.index]
         front_mean = front_normed.mean()
@@ -1940,7 +2003,7 @@ class ParetoMixin:
                 for rest_idx in rest.index:
                     ax.plot(
                         closed_angles,
-                        _closed(normed_df.loc[rest_idx, metric_cols]),
+                        _closed(np.clip(normed_df.loc[rest_idx, metric_cols], 0, 1)),
                         color=other_color,
                         alpha=0.15,
                         linewidth=0.8,
@@ -2048,8 +2111,9 @@ class ParetoMixin:
             "How to read this chart: each panel highlights one option that isn't beaten on "
             "every measure by any other, with the rest of the shortlist as faint outlines "
             "behind it. Further from the centre is always better on every spoke: the outer ring "
-            f"is the best value on that measure across all {len(self.solution_df)} options "
-            "compared, not just the shortlist, and the centre the worst. The boxed numbers are "
+            f"is the best value on that measure across {self._scale_phrase(scale_to)}"
+            + (", not just the shortlist" if scale_to == "all" else "")
+            + ", and the centre the worst. The boxed numbers are "
             "the option's actual values. A bigger shape is not automatically better overall -- "
             "its area depends on which measures happen to sit next to each other."
         )
