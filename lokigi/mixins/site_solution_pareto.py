@@ -42,6 +42,14 @@ def _format_site_diff_suffix(added, removed):
     return "; ".join(parts)
 
 
+def _wrap_legend_label(label, wrap_at, newline):
+    """Wrap a legend label at `wrap_at` characters (None = leave it alone),
+    joining lines with `newline` -- "\\n" for matplotlib, "<br>" for plotly."""
+    if not wrap_at:
+        return label
+    return newline.join(textwrap.wrap(label, width=wrap_at, break_long_words=False))
+
+
 def _site_names_list(sites_val):
     """A `site_names` cell as a list of strings, whether it holds a
     list/set/tuple of names or a single pre-joined value."""
@@ -1320,6 +1328,7 @@ class ParetoMixin:
         diff_against: str | None = None,
         interactive: bool = False,
         initially_shown="all",
+        legend_wrap_at: int | None = None,
         figsize: tuple = (9, 7),
         theme: str = "whitegrid",
         other_color: str = "lightgray",
@@ -1368,6 +1377,12 @@ class ParetoMixin:
             a list, tuple or set picks specific options by their `id_col`
             value (e.g. `[1, 17]`), even when `name_col` is set. Ignored if
             `interactive=False`, though an invalid value still raises.
+        legend_wrap_at : int, optional
+            Wrap legend labels onto multiple lines at this many characters.
+            `None` (the default) leaves them on one line. Worth setting when
+            `diff_against` makes labels long, since a wide legend squeezes
+            the chart. Only the legend wraps: the interactive hover title
+            keeps the full label on one line.
         figsize : tuple, default (9, 7)
             Passed to `plt.subplots()` if `ax` is not supplied. Ignored if
             `interactive=True`.
@@ -1417,6 +1432,15 @@ class ParetoMixin:
         rest = self.solution_df[~self.solution_df["is_pareto_optimal"]].copy()
         site_diff = self._resolve_site_diff(front, diff_against) if diff_against else None
         shown_index = self._resolve_initially_shown(front, initially_shown, id_col)
+        if legend_wrap_at is not None and (
+            isinstance(legend_wrap_at, bool)
+            or not isinstance(legend_wrap_at, int)
+            or legend_wrap_at < 1
+        ):
+            raise ValueError(
+                f"legend_wrap_at must be a positive whole number of characters or "
+                f"None, got {legend_wrap_at!r}"
+            )
         normed_df, raw_range = self._pareto_normalised()
         metric_cols = [m.column for m in self.pareto_metrics]
         styles = _colours_and_styles(max(len(front), 1), palette)
@@ -1478,6 +1502,7 @@ class ParetoMixin:
                 other_color,
                 show_dominated,
                 shown_index,
+                legend_wrap_at,
                 fill,
                 title,
                 default_caption if caption is None else caption,
@@ -1519,7 +1544,11 @@ class ParetoMixin:
                 marker=marker,
                 linewidth=2.2,
                 markersize=5,
-                label=self._pareto_option_label(row, id_col, name_col, site_diff),
+                label=_wrap_legend_label(
+                    self._pareto_option_label(row, id_col, name_col, site_diff),
+                    legend_wrap_at,
+                    "\n",
+                ),
                 zorder=3,
                 clip_on=False,
             )
@@ -1573,6 +1602,7 @@ class ParetoMixin:
         other_color,
         show_dominated,
         shown_index,
+        legend_wrap_at,
         fill,
         title,
         caption,
@@ -1673,7 +1703,7 @@ class ParetoMixin:
                 if tied:
                     context += f"<br>Same value: {', '.join(tied)}"
                 customdata.append(
-                    [m.label, _format_raw_value(row[m.column]), context, sites_html]
+                    [m.label, _format_raw_value(row[m.column]), context, sites_html, name]
                 )
             r, g, b, _ = mcolors.to_rgba(colour)
             fig.add_trace(
@@ -1681,7 +1711,9 @@ class ParetoMixin:
                     r=_closed(normed_df.loc[idx, metric_cols]),
                     theta=theta,
                     customdata=_closed(customdata),
-                    name=name,
+                    # Only the legend label wraps; the hover shows `name` from
+                    # customdata so its title stays on one line
+                    name=_wrap_legend_label(name, legend_wrap_at, "<br>"),
                     legendrank=option_i + 1,
                     # "legendonly" starts the trace hidden but keeps its
                     # legend entry, so one click brings it back. Hidden
@@ -1703,7 +1735,7 @@ class ParetoMixin:
                     hoveron="points+fills" if fill else "points",
                     text=f"<b>{name}</b>{sites_html}",
                     hovertemplate=(
-                        "<b>%{fullData.name}</b><br>"
+                        "<b>%{customdata[4]}</b><br>"
                         "%{customdata[0]}: %{customdata[1]}<br>"
                         "%{customdata[2]}%{customdata[3]}<extra></extra>"
                     ),
@@ -1723,7 +1755,24 @@ class ParetoMixin:
         # left spoke's label needs, so it stays) to start near the edge.
         chart_height = 560
         caption_lines = textwrap.wrap(caption, width=100) if caption else []
-        margin = dict(t=135, b=95 + 16 * len(caption_lines), l=80)
+        # The right margin holds the legend, which plotly otherwise shifts
+        # left over the chart once its labels outgrow the default 80px
+        # (diff_against labels do, unless wrapped by legend_wrap_at)
+        longest_label_line = max(
+            (
+                len(line)
+                for t in fig.data
+                if t.showlegend is not False
+                for line in t.name.split("<br>")
+            ),
+            default=0,
+        )
+        margin = dict(
+            t=135,
+            b=95 + 16 * len(caption_lines),
+            l=80,
+            r=80 if longest_label_line <= 12 else int(7.5 * longest_label_line) + 50,
+        )
         layout = dict(
             template="plotly_white",
             height=chart_height + margin["t"] + margin["b"],

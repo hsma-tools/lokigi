@@ -815,6 +815,61 @@ def test_plot_pareto_radar_initially_shown_ignored_when_static(solved_solution_s
         solved_solution_set.plot_pareto_radar(initially_shown="sideways")
 
 
+def test_plot_pareto_radar_legend_wrap_at_interactive(radar_solution_set):
+    fig = radar_solution_set.plot_pareto_radar(
+        interactive=True, diff_against="rank_1", legend_wrap_at=12
+    )
+    wrapped = next(t for t in fig.data if t.name.startswith("Option 2"))
+    assert "<br>" in wrapped.name
+    assert all(len(line) <= 12 for line in wrapped.name.split("<br>"))
+    # The hover title keeps the whole label on one line
+    assert "<br>" not in wrapped.customdata[0][4]
+    assert wrapped.customdata[0][4].startswith("Option 2 (+Site_A")
+    assert "%{customdata[4]}" in wrapped.hovertemplate
+    assert "<br>" not in wrapped.text.split("<br><br>")[0]
+
+
+def test_plot_pareto_radar_legend_wrap_at_static(radar_solution_set):
+    fig = radar_solution_set.plot_pareto_radar(diff_against="rank_1", legend_wrap_at=12)
+    try:
+        labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+        assert "\n" in labels[1]
+        assert all(len(line) <= 12 for label in labels for line in label.split("\n"))
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_legend_wrap_at_default_leaves_labels_alone(
+    radar_solution_set,
+):
+    fig = radar_solution_set.plot_pareto_radar(interactive=True, diff_against="rank_1")
+    assert all("<br>" not in t.name for t in fig.data)
+
+
+def test_plot_pareto_radar_interactive_right_margin_grows_with_legend(
+    radar_solution_set,
+):
+    """Plotly shifts a legend wider than the right margin left over the
+    chart, so the margin follows the longest legend line -- but short labels
+    keep the original 80px."""
+    short = radar_solution_set.plot_pareto_radar(interactive=True)
+    assert short.layout.margin.r == 80
+    long_labels = radar_solution_set.plot_pareto_radar(
+        interactive=True, diff_against="rank_1"
+    )
+    assert long_labels.layout.margin.r > 150
+    wrapped = radar_solution_set.plot_pareto_radar(
+        interactive=True, diff_against="rank_1", legend_wrap_at=12
+    )
+    assert wrapped.layout.margin.r < long_labels.layout.margin.r
+
+
+@pytest.mark.parametrize("bad", [0, -5, 2.5, True, "10"])
+def test_plot_pareto_radar_legend_wrap_at_rejects_bad_values(solved_solution_set, bad):
+    with pytest.raises(ValueError, match="legend_wrap_at"):
+        solved_solution_set.plot_pareto_radar(legend_wrap_at=bad)
+
+
 def test_plot_pareto_radar_interactive_without_site_names(solution_df, pareto_metrics):
     solution_set = DummySolutionSet(solution_df.drop(columns="site_names"))
     solution_set.compute_pareto_front(pareto_metrics)
