@@ -42,6 +42,14 @@ def _format_site_diff_suffix(added, removed):
     return "; ".join(parts)
 
 
+def _site_names_list(sites_val):
+    """A `site_names` cell as a list of strings, whether it holds a
+    list/set/tuple of names or a single pre-joined value."""
+    if isinstance(sites_val, (list, set, tuple)):
+        return [str(site) for site in sites_val]
+    return [str(sites_val)]
+
+
 def _format_raw_value(raw_val):
     """Smart-format a raw metric value for an on-chart label: keep integers
     clean, float decimals concise, and add thousands separators."""
@@ -74,6 +82,10 @@ _PLOTLY_SYMBOL = {
 # every option that's worst on some metric pinches in to a single shared
 # centre point, which reads as a drawing glitch rather than "worst".
 _RADAR_HOLE = 0.25
+
+# Radial range padding on the interactive radar, in normalised units -- see
+# radial_range in _plot_pareto_radar_interactive
+_PLOTLY_RADIAL_PAD = 0.04
 
 
 def _radar_angles(n):
@@ -673,11 +685,7 @@ class ParetoMixin:
         # Site summary
         sites_str = ""
         if show_site_names:
-            sites_val = row["site_names"]
-            if isinstance(sites_val, (list, set, tuple)):
-                sites_str = ", ".join(map(str, sites_val))
-            else:
-                sites_str = str(sites_val)
+            sites_str = ", ".join(_site_names_list(row["site_names"]))
             # Wrap long site lists to keep layout clean
             sites_str = textwrap.fill(sites_str, width=wrap_at)
 
@@ -1536,7 +1544,51 @@ class ParetoMixin:
                     )
                 )
 
-        for (colour, linestyle, marker), (idx, row) in zip(styles, front.iterrows()):
+        # Plotly hands a hover inside overlapping fills to the topmost (last
+        # drawn) one containing the cursor, so draw the largest shapes first:
+        # where several overlap, the hover then names the smallest -- usually
+        # the outline nearest the cursor -- rather than whichever option
+        # happens to come last. legendrank keeps the legend in option order.
+        #
+        # The empty centre comes from starting the radial range below 0 (r=0
+        # lands at the same 20% of the radius as the static version's
+        # rorigin), not from polar.hole: with a hole, plotly's hover zone is
+        # a ring whose seam runs along 0 degrees, so every vertex on an
+        # east-pointing spoke (any 4 or 8 metrics) was unhoverable. The top
+        # is padded past 1 because plotly also drops the hover once the
+        # cursor's radius leaves the range, which left vertices exactly on
+        # the outer ring only hoverable on their inner half.
+        radial_range = [
+            -_RADAR_HOLE * (1 + _PLOTLY_RADIAL_PAD),
+            1 + _PLOTLY_RADIAL_PAD,
+        ]
+
+        def drawn_area(idx):
+            # Polygon area up to a constant factor, since the spokes are
+            # evenly spaced. Offset by the empty centre, so areas compare the
+            # shapes as drawn.
+            radii = normed_df.loc[idx, metric_cols].to_numpy() - radial_range[0]
+            return float(np.sum(radii * np.roll(radii, -1)))
+
+        def short_name(row):
+            return str(row[name_col]) if name_col else f"Option {row[id_col]}"
+
+        options = list(zip(styles, front.iterrows()))
+        draw_order = sorted(
+            range(len(options)), key=lambda i: -drawn_area(options[i][1][0])
+        )
+
+        for option_i in draw_order:
+            (colour, linestyle, marker), (idx, row) = options[option_i]
+            # One per line, since a joined list of real site names makes for
+            # a very wide tooltip. Shown both on each vertex's hover and on
+            # the shape's own (fill) hover.
+            sites_html = ""
+            if "site_names" in row.index:
+                sites_html = "<br><br><b>Sites</b><br>" + "<br>".join(
+                    f"\u2022 {site}" for site in _site_names_list(row["site_names"])
+                )
+            name = self._pareto_option_label(row, id_col, name_col, site_diff)
             customdata = []
             for m in self.pareto_metrics:
                 rank_val = int(rank_df.loc[idx, m.column])
@@ -1548,14 +1600,27 @@ class ParetoMixin:
                         f"; {_signed_deviation(row[m.column] - m.target)} vs "
                         f"target {m.target:g}"
                     )
-                customdata.append([m.label, _format_raw_value(row[m.column]), context])
+                # Options tied on a metric share the exact same vertex, and
+                # plotly can only name one of them on hover -- so whichever
+                # it picks, list the others
+                tied = [
+                    short_name(other)
+                    for other_idx, other in front.iterrows()
+                    if other_idx != idx and np.isclose(other[m.column], row[m.column])
+                ]
+                if tied:
+                    context += f"<br>Same value: {', '.join(tied)}"
+                customdata.append(
+                    [m.label, _format_raw_value(row[m.column]), context, sites_html]
+                )
             r, g, b, _ = mcolors.to_rgba(colour)
             fig.add_trace(
                 go.Scatterpolar(
                     r=_closed(normed_df.loc[idx, metric_cols]),
                     theta=theta,
                     customdata=_closed(customdata),
-                    name=self._pareto_option_label(row, id_col, name_col, site_diff),
+                    name=name,
+                    legendrank=option_i + 1,
                     mode="lines+markers",
                     line=dict(
                         color=mcolors.to_hex(colour),
@@ -1565,10 +1630,16 @@ class ParetoMixin:
                     marker=dict(symbol=_PLOTLY_SYMBOL[marker], size=7),
                     fill="toself" if fill else "none",
                     fillcolor=f"rgba({r * 255:.0f}, {g * 255:.0f}, {b * 255:.0f}, 0.1)",
+                    # Hovering inside a shape, away from any vertex, shows
+                    # the option and its sites. A fill hover displays a
+                    # scalar `text` (it can't use hovertemplate); `text` is
+                    # never drawn, since mode has no "text"
+                    hoveron="points+fills" if fill else "points",
+                    text=f"<b>{name}</b>{sites_html}",
                     hovertemplate=(
                         "<b>%{fullData.name}</b><br>"
                         "%{customdata[0]}: %{customdata[1]}<br>"
-                        "%{customdata[2]}<extra></extra>"
+                        "%{customdata[2]}%{customdata[3]}<extra></extra>"
                     ),
                 )
             )
@@ -1592,9 +1663,9 @@ class ParetoMixin:
             height=chart_height + margin["t"] + margin["b"],
             polar=dict(
                 domain=dict(x=[0.15, 0.85]),
-                hole=_RADAR_HOLE / (1 + _RADAR_HOLE),
+                # See radial_range above for why this, not polar.hole
                 radialaxis=dict(
-                    range=[0, 1],
+                    range=radial_range,
                     tickvals=[0, 0.25, 0.5, 0.75, 1],
                     showticklabels=False,
                 ),
@@ -1610,6 +1681,10 @@ class ParetoMixin:
             ),
             legend=dict(x=1.02, y=1),
             margin=margin,
+            # Down from plotly's 20px, so a vertex's detail only takes over
+            # when the cursor is actually on it; elsewhere the shape it's
+            # inside answers instead of the nearest vertex of any option
+            hoverdistance=10,
         )
         if title:
             layout["title"] = dict(text=f"<b>{title}</b>", x=0.02, xanchor="left")

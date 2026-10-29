@@ -2,6 +2,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -627,18 +628,111 @@ def test_plot_pareto_radar_rejects_cartesian_ax(solved_solution_set):
         plt.close(fig)
 
 
+def _trace(fig, name):
+    return next(trace for trace in fig.data if trace.name == name)
+
+
+def _legend_order(fig):
+    """Option names as the legend lists them -- trace order is draw order,
+    which is by shape size, not option order."""
+    front = [trace for trace in fig.data if trace.showlegend is not False]
+    return [trace.name for trace in sorted(front, key=lambda t: t.legendrank)]
+
+
 def test_plot_pareto_radar_interactive_returns_plotly_figure(solved_solution_set):
     fig = solved_solution_set.plot_pareto_radar(interactive=True)
     assert type(fig).__module__.startswith("plotly")
     assert fig.to_dict()
-    assert [trace.name for trace in fig.data] == ["Option 1", "Option 2", "Option 4"]
+    assert _legend_order(fig) == ["Option 1", "Option 2", "Option 4"]
     # Hover carries the raw value, not just the rescaled radius
-    option_1 = fig.data[0]
+    option_1 = _trace(fig, "Option 1")
     assert option_1.customdata[0][0] == "Average travel time"
     assert option_1.customdata[0][1] == "10"
     # Closed like the static version
     assert option_1.r[0] == option_1.r[-1]
     assert option_1.theta[0] == option_1.theta[-1]
+
+
+def test_plot_pareto_radar_interactive_hover_lists_sites(solved_solution_set):
+    """Every vertex of an option carries its sites, and so does the shape's
+    own fill hover, so hovering inside the shape shows them too."""
+    fig = solved_solution_set.plot_pareto_radar(interactive=True)
+    option_1 = _trace(fig, "Option 1")
+    sites = "<br><br><b>Sites</b><br>\u2022 Site A<br>\u2022 Site B"
+    assert all(point[3] == sites for point in option_1.customdata)
+    assert "%{customdata[3]}" in option_1.hovertemplate
+    assert option_1.hoveron == "points+fills"
+    assert option_1.text == f"<b>Option 1</b>{sites}"
+
+
+def test_plot_pareto_radar_interactive_no_fill_no_fill_hover(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar(interactive=True, fill=False)
+    assert all(trace.hoveron == "points" for trace in fig.data)
+
+
+def test_plot_pareto_radar_interactive_draws_smallest_shapes_last(
+    solved_solution_set,
+):
+    """Plotly gives a hover inside overlapping fills to the last-drawn one,
+    so drawing largest-first makes it name the smallest shape containing
+    the cursor rather than whichever option comes last."""
+    fig = solved_solution_set.plot_pareto_radar(interactive=True)
+    lower = fig.layout.polar.radialaxis.range[0]
+
+    def area(trace):
+        radii = np.array(trace.r[:-1]) - lower
+        return float(np.sum(radii * np.roll(radii, -1)))
+
+    areas = [area(trace) for trace in fig.data]
+    assert len(set(areas)) == len(areas)  # otherwise the order is untested
+    assert areas == sorted(areas, reverse=True)
+
+
+def test_plot_pareto_radar_interactive_hover_zone_has_no_dead_edges(
+    solved_solution_set,
+):
+    """polar.hole makes plotly's hover zone a ring with a seam along 0
+    degrees, killing hover on east-pointing spokes; and a range ending at
+    exactly 0/1 leaves best/worst vertices half outside it. The empty
+    centre comes from the range instead, padded at the top."""
+    fig = solved_solution_set.plot_pareto_radar(interactive=True)
+    polar = fig.layout.polar
+    assert not polar.hole
+    low, high = polar.radialaxis.range
+    assert low < 0 and high > 1
+
+
+def test_plot_pareto_radar_interactive_hover_names_tied_options(
+    solution_df, pareto_metrics
+):
+    """Options tied on a metric share one vertex, and plotly only names one
+    of them on hover -- so each vertex lists the others."""
+    # Option 4 now ties option 1 on coverage, and is still Pareto-optimal
+    # (better than option 1 on max travel time)
+    is_option_4 = solution_df["solution_rank"] == 4
+    solution_df.loc[is_option_4, "proportion_within_coverage_threshold"] = 0.90
+    solution_set = DummySolutionSet(solution_df)
+    solution_set.compute_pareto_front(pareto_metrics)
+    fig = solution_set.plot_pareto_radar(interactive=True)
+    coverage_spoke = 2
+    assert _trace(fig, "Option 1").customdata[coverage_spoke][2].endswith(
+        "<br>Same value: Option 4"
+    )
+    assert _trace(fig, "Option 4").customdata[coverage_spoke][2].endswith(
+        "<br>Same value: Option 1"
+    )
+    assert "Same value" not in _trace(fig, "Option 2").customdata[coverage_spoke][2]
+    # Untied spokes say nothing
+    assert "Same value" not in _trace(fig, "Option 1").customdata[0][2]
+
+
+def test_plot_pareto_radar_interactive_without_site_names(solution_df, pareto_metrics):
+    solution_set = DummySolutionSet(solution_df.drop(columns="site_names"))
+    solution_set.compute_pareto_front(pareto_metrics)
+    fig = solution_set.plot_pareto_radar(interactive=True)
+    option_1 = _trace(fig, "Option 1")
+    assert all(point[3] == "" for point in option_1.customdata)
+    assert option_1.text == "<b>Option 1</b>"
 
 
 def test_plot_pareto_radar_interactive_show_dominated_skips_hover(
@@ -665,8 +759,9 @@ def test_plot_pareto_radar_best_worst_scoped_to_all_options(solved_solution_set)
         plt.close(fig)
 
     interactive_fig = solved_solution_set.plot_pareto_radar(interactive=True)
-    assert "of all 4 options" in interactive_fig.data[0].theta[0]
-    assert interactive_fig.data[0].customdata[0][2] == "1st of all 4 options"
+    option_1 = _trace(interactive_fig, "Option 1")
+    assert "of all 4 options" in option_1.theta[0]
+    assert option_1.customdata[0][2] == "1st of all 4 options"
     assert "across all 4 options" in interactive_fig.layout.annotations[0].text
 
 
