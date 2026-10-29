@@ -5,10 +5,13 @@ registered via add_equity_data(). These were previously entirely untested --
 no fixture exercised the equity code path at all.
 """
 
+import warnings
+
 import pandas as pd
 import pytest
 
 import lokigi
+from lokigi.site_solutions import StrandedEquityBandWarning
 
 
 def test_equity_band_gap_and_tertile_metrics(loaded_problem_with_equity):
@@ -368,6 +371,244 @@ def test_fewer_than_three_equity_bins_skips_tertile_calculation():
     # Names the real reason. Equity data IS registered here, so the old
     # "N/A (No equity data)" sent the reader looking for a missing dataset
     # instead of for a third band.
-    assert result.inter_tertile_desc == (
-        "N/A (needs at least 3 equity bands, found 2)"
+    assert result.inter_tertile_desc == ("N/A (needs at least 3 equity bands, found 2)")
+
+
+def _stranded_band_problem(dead_band, bands=(1, 5, 10)):
+    """A problem where every region in `dead_band` has no reachable site.
+
+    The travel matrix carries NaN for that band's regions (registered with
+    `allow_missing=True`), which is what "entirely unreachable" means here:
+    the band contributes no travel time at all, so it cannot take part in a
+    comparison of travel times between bands.
+    """
+    ids = [f"LSOA_{i}" for i in range(len(bands))]
+    demand_df = pd.DataFrame({"location_id": ids, "demand": [100] * len(ids)})
+    candidate_df = pd.DataFrame({"site_id": ["Site_A"], "lat": [51.5], "long": [-0.1]})
+    travel_df = pd.DataFrame(
+        {
+            "source_id": ids,
+            "Site_A": [
+                float("nan") if band == dead_band else 10.0 + 5.0 * i
+                for i, band in enumerate(bands)
+            ],
+        }
     )
+    equity_df = pd.DataFrame({"location_id": ids, "imd_decile": list(bands)})
+
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
+    problem.add_sites(candidate_df, candidate_id_col="site_id")
+    problem.add_travel_matrix(travel_df, source_col="source_id", allow_missing=True)
+    problem.add_equity_data(
+        equity_df,
+        equity_col="imd_decile",
+        common_col="location_id",
+        label="deprivation",
+        disadvantaged_end="low",
+    )
+    return problem
+
+
+def test_stranded_most_deprived_band_is_not_reported_as_progressive():
+    """The regression this guards is an *inverted* conclusion, not a wrong
+    number: a solution leaving the whole most-deprived band with no
+    reachable site used to be reported as "Highly Progressive" -- the best
+    equity verdict there is.
+
+    `weighted_by_equity_group` correctly stored NaN for the stranded band,
+    but `min()`/`max()` over a plain list short-circuit on comparison, so
+    the NaN propagated into `inter_tertile_ratio`; every comparison in the
+    descriptor chain is False against NaN, and it fell through to the bare
+    `else` branch, which is the "Highly Progressive" one."""
+    problem = _stranded_band_problem(dead_band=1)
+
+    with pytest.warns(
+        UserWarning, match="leaves equity band 1 with no reachable region"
+    ):
+        result = problem.evaluate_single_solution_single_objective(
+            objective="p_median", site_indices=[0]
+        )
+
+    assert "Progressive" not in result.inter_tertile_desc
+    assert "entirely unreachable" in result.gap_absolute_desc
+
+
+def test_stranded_band_position_does_not_decide_the_metrics():
+    """The defect was position-dependent, which is why it stayed hidden:
+    Python's `min`/`max` are short-circuit comparisons, so a NaN absorbed
+    the result only when it happened to sort first and was invisible
+    otherwise. Stranding the *middle* band produced numbers byte-identical
+    to a solution that stranded nobody.
+
+    Every stranded position must now warn, name the band, and compute the
+    spread over the remaining two bands alone. Costs are 10/15/20 for
+    bands 1/5/10, so the spread over the two survivors is known exactly."""
+    costs = {1: 10.0, 5: 15.0, 10: 20.0}
+    for dead in (1, 5, 10):
+        problem = _stranded_band_problem(dead_band=dead)
+        with pytest.warns(UserWarning, match=f"leaves equity band {dead} with no"):
+            result = problem.evaluate_single_solution_single_objective(
+                objective="p_median", site_indices=[0]
+            )
+        survivors = [cost for band, cost in costs.items() if band != dead]
+        assert result.gap_absolute_weighted == pytest.approx(
+            max(survivors) - min(survivors)
+        )
+        assert result.gap_relative_weighted == pytest.approx(
+            max(survivors) / min(survivors)
+        )
+        assert f"excludes band {dead}, entirely unreachable" in result.gap_absolute_desc
+        # The stranded band is still reported as unreachable -- excluded
+        # from the disparity comparison, not dropped from the analysis.
+        assert result.regions_unreachable_by_equity_group[dead] == 1
+
+
+def test_healthy_problem_gains_no_warning_and_no_exclusion_note(
+    loaded_problem_with_equity,
+):
+    """The exclusion path must be inert when every band has a reachable
+    region -- otherwise the fix would change every existing result."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", UserWarning)
+        result = loaded_problem_with_equity.evaluate_single_solution_single_objective(
+            objective="p_median", site_indices=[0, 1]
+        )
+
+    assert "entirely unreachable" not in result.gap_absolute_desc
+    assert "entirely unreachable" not in result.inter_tertile_desc
+    assert result.inter_tertile_ratio == pytest.approx(10.0 / 15.0)
+
+
+def test_all_bands_unreachable_have_no_disparity_metrics():
+    from lokigi.site_solutions import _equity_band_metrics
+
+    df = pd.DataFrame({"band": [1, 5, 10], "cost": [float("nan")] * 3})
+    demand = pd.Series([100.0, 200.0, 150.0])
+    metrics = _equity_band_metrics(
+        df, "band", "cost", "within", demand, demand, df.cost.notna()
+    )
+    for metric in (
+        "gap_absolute_weighted",
+        "gap_relative_weighted",
+        "inter_tertile_ratio",
+    ):
+        assert metrics[metric] is None
+    for descriptor in ("gap_absolute_desc", "gap_relative_desc", "inter_tertile_desc"):
+        assert metrics[descriptor] == "N/A (no equity band has a reachable region)"
+    assert metrics["demand_unreachable_by_equity_group"] == {1: 100, 5: 200, 10: 150}
+
+
+def _three_band_problem(travel, imd=(1, 5, 10)):
+    """Three regions in equity bands 1/5/10, one per region, with
+    `travel` mapping site id -> that site's cost to each region (NaN for
+    unreachable)."""
+    ids = ["L0", "L1", "L2"]
+    problem = lokigi.site.SiteProblem(debug_mode=False)
+    problem.add_demand(
+        pd.DataFrame({"location_id": ids, "demand": [100] * 3}),
+        demand_col="demand",
+        location_id_col="location_id",
+    )
+    problem.add_sites(
+        pd.DataFrame(
+            {
+                "site_id": list(travel),
+                "lat": [51.5] * len(travel),
+                "long": [-0.1] * len(travel),
+            }
+        ),
+        candidate_id_col="site_id",
+    )
+    problem.add_travel_matrix(
+        pd.DataFrame({"source_id": ids, **travel}),
+        source_col="source_id",
+        allow_missing=True,
+    )
+    problem.add_equity_data(
+        pd.DataFrame({"location_id": ids, "imd": list(imd)}),
+        equity_col="imd",
+        common_col="location_id",
+        label="deprivation",
+    )
+    return problem
+
+
+def test_solve_does_not_warn_about_combinations_it_discards():
+    """Greedy scores {A} on the way to {B, C}. {A} strands band 1, but the
+    returned solution reaches every band -- so there is nothing to warn
+    about. The warning used to fire from inside the per-combination
+    metrics, describing a solution the caller never sees."""
+    problem = _three_band_problem(
+        {"A": [float("nan"), 10, 15], "B": [5, 6, 7], "C": [4, 9, 9]}
+    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", UserWarning)
+        result = problem.solve(
+            p=2, search_strategy="greedy", show_progress=False, unreachable_cost=1000
+        )
+    assert list(result.solution_df.iloc[0]["site_names"]) == ["B", "C"]
+
+
+def test_solve_warns_once_naming_the_returned_ranks_that_strand_a_band():
+    problem = _three_band_problem({"A": [float("nan"), 15, 20], "B": [5, 6, 7]})
+    with pytest.warns(UserWarning) as record:
+        problem.solve(
+            p=1,
+            search_strategy="brute-force",
+            show_progress=False,
+            unreachable_cost=1000,
+        )
+    stranded = [w for w in record if "no reachable region" in str(w.message)]
+    assert len(stranded) == 1
+    assert "1 of 2 returned solutions" in str(stranded[0].message)
+    assert "rank 2: band 1" in str(stranded[0].message)
+    # Attributed to the caller, not to lokigi's internals.
+    assert stranded[0].filename == __file__
+
+
+def _stranded_non_primary_problem():
+    """Region L0 is unreachable. The primary dimension puts L0 in band 1
+    alongside the reachable L1, so it strands nothing; the non-primary one
+    gives L0 a band of its own, so that band is entirely unreachable."""
+    problem = _three_band_problem({"A": [float("nan"), 15, 20]}, imd=(1, 1, 5))
+    problem.add_equity_data(
+        pd.DataFrame({"location_id": ["L0", "L1", "L2"], "rurality": [1, 5, 10]}),
+        equity_col="rurality",
+        common_col="location_id",
+        label="rurality",
+        primary=False,
+    )
+    return problem
+
+
+def test_stranded_band_in_a_non_primary_dimension_warns_and_names_it():
+    problem = _stranded_non_primary_problem()
+    with pytest.warns(StrandedEquityBandWarning, match="band 1 in 'rurality'") as record:
+        problem.solve(
+            p=1,
+            search_strategy="brute-force",
+            show_progress=False,
+            unreachable_cost=1000,
+        )
+    assert len(record) == 1
+    assert "in 'deprivation'" not in str(record[0].message)
+
+
+def test_stranded_band_warning_can_be_silenced_by_category():
+    problem = _stranded_non_primary_problem()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        warnings.filterwarnings("ignore", category=StrandedEquityBandWarning)
+        problem.solve(
+            p=1,
+            search_strategy="brute-force",
+            show_progress=False,
+            unreachable_cost=1000,
+        )
+        problem.evaluate_single_solution_single_objective(site_indices=[0])
+
+
+def test_stranded_band_warning_category_is_public_and_a_user_warning():
+    assert lokigi.StrandedEquityBandWarning is StrandedEquityBandWarning
+    assert issubclass(StrandedEquityBandWarning, UserWarning)

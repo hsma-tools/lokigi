@@ -82,7 +82,7 @@ def _evaluate_chunk(
     if not stream_top_n:
         chunk_outputs = []
         for _global_index, possible_solution in indexed_chunk:
-            metrics = site_problem.evaluate_single_solution_single_objective(
+            metrics = site_problem._evaluate_combination(
                 site_indices=possible_solution,
                 objective=objectives,
                 threshold_for_coverage=threshold_for_coverage,
@@ -103,7 +103,7 @@ def _evaluate_chunk(
     local_best = []
     local_worst = []
     for global_index, possible_solution in indexed_chunk:
-        metrics = site_problem.evaluate_single_solution_single_objective(
+        metrics = site_problem._evaluate_combination(
             site_indices=possible_solution,
             objective=objectives,
             threshold_for_coverage=threshold_for_coverage,
@@ -437,7 +437,7 @@ class GreedyMixin:
             for possible_solution in possible_combinations:
                 # print(f"Evaluating possible solution: {possible_solution}")
                 outputs.append(
-                    self.evaluate_single_solution_single_objective(
+                    self._evaluate_combination(
                         site_indices=possible_solution,
                         objective=objectives,
                         threshold_for_coverage=threshold_for_coverage,
@@ -525,7 +525,7 @@ class GreedyMixin:
                     f"Best combination for {i} sites: {[int(i) for i in best_indices]}"
                 )
 
-        best_solution_metrics = self.evaluate_single_solution_single_objective(
+        best_solution_metrics = self._evaluate_combination(
             site_indices=best_indices,
             objective=objectives,
             threshold_for_coverage=threshold_for_coverage,
@@ -627,7 +627,7 @@ class GraspMixin:
         # -------------------------------------------------------------------
         @lru_cache(maxsize=10000)
         def _get_cached_metrics(indices_tuple: tuple):
-            return self.evaluate_single_solution_single_objective(
+            return self._evaluate_combination(
                 site_indices=list(indices_tuple),
                 objective=objectives,
                 threshold_for_coverage=threshold_for_coverage,
@@ -932,7 +932,7 @@ class GraspMixin:
             # *return* unsubstituted ones -- and solve()'s final sort ranks
             # the returned pool on exactly those columns. Brute-force and
             # greedy have always passed it; this call was the odd one out.
-            final_metrics = self.evaluate_single_solution_single_objective(
+            final_metrics = self._evaluate_combination(
                 site_indices=current_solution,
                 objective=objectives,
                 threshold_for_coverage=threshold_for_coverage,  # Applied only at the end

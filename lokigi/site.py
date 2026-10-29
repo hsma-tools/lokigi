@@ -15,6 +15,7 @@ from lokigi.site_solutions import (
     EvaluatedCombination,
     SiteSolutionSet,
     _BASELINE_SITE_NAMES_KEY,
+    _warn_stranded_bands,
 )
 
 # Data manipulation imports
@@ -252,6 +253,14 @@ class SiteProblem(
         NotImplementedError
             If `capacitated=True` is requested.
 
+        Warns
+        -----
+        UserWarning
+            If an equity band has no reachable region under the primary or
+            any secondary travel matrix. That band is excluded from the
+            disparity metrics (`gap_*_weighted`, `inter_tertile_ratio`,
+            the tertile averages), which then describe the remaining bands.
+
         Notes
         -----
         The method assumes an uncapacitated assignment logic where every demand
@@ -263,6 +272,43 @@ class SiteProblem(
         See Also
         --------
         EvaluatedCombination : The class used to wrap the output of this method.
+        """
+        evaluated = self._evaluate_combination(
+            objective=objective,
+            weights=weights,
+            site_names=site_names,
+            site_indices=site_indices,
+            capacitated=capacitated,
+            threshold_for_coverage=threshold_for_coverage,
+            baseline_costs=baseline_costs,
+            meaningful_change_threshold=meaningful_change_threshold,
+            beyond_thresholds=beyond_thresholds,
+            unreachable_cost=unreachable_cost,
+        )
+        _warn_stranded_bands(
+            self, [(None, evaluated.evaluated_combination_df)], stacklevel=2
+        )
+        return evaluated
+
+    def _evaluate_combination(
+        self,
+        objective: str = "p_median",
+        weights=None,
+        site_names=None,
+        site_indices=None,
+        capacitated=False,
+        threshold_for_coverage=None,
+        baseline_costs=None,
+        meaningful_change_threshold=0.0,
+        beyond_thresholds=None,
+        unreachable_cost=None,
+    ):
+        """
+        `evaluate_single_solution_single_objective()` without its
+        stranded-band warning. The solvers call this for every combination
+        they score, most of which they discard, so a warning here would
+        describe solutions the caller never sees -- `solve()` warns once
+        about the rows it actually returns instead.
         """
         # Check for valid objectives
         if isinstance(objective, list) and len(objective) > 1:
@@ -664,13 +710,16 @@ class SiteProblem(
                 )
             site_indices = required
 
-        evaluated = self.evaluate_single_solution_single_objective(
+        evaluated = self._evaluate_combination(
             objective=objective,
             weights=weights,
             site_names=site_names,
             site_indices=site_indices,
             threshold_for_coverage=threshold_for_coverage,
             beyond_thresholds=beyond_thresholds,
+        )
+        _warn_stranded_bands(
+            self, [(None, evaluated.evaluated_combination_df)], stacklevel=2
         )
         metrics = evaluated.return_solution_metrics()
 
@@ -1412,7 +1461,7 @@ class SiteProblem(
             if index not in probe_indices:
                 probe_indices.append(index)
 
-        metrics = self.evaluate_single_solution_single_objective(
+        metrics = self._evaluate_combination(
             site_indices=probe_indices,
             objective=objective,
             threshold_for_coverage=threshold_for_coverage,
@@ -1812,6 +1861,18 @@ class SiteProblem(
             tiebreaker_col="weighted_average",
             ascending=[True, True],
         ).drop(columns=_RANK_SCORE_COL, errors="ignore")
+
+        # Checked here, over the rows actually returned, rather than as
+        # each combination is scored -- see `_warn_stranded_bands()`.
+        # stacklevel 3 reaches the caller of solve().
+        _warn_stranded_bands(
+            self,
+            [
+                (f"rank {row.solution_rank}", row.problem_df)
+                for row in solution_df.itertuples()
+            ],
+            stacklevel=3,
+        )
 
         return SiteSolutionSet(
             solution_df=solution_df,

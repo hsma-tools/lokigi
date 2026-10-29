@@ -315,3 +315,108 @@ def test_reserved_row_weight_column_name_is_rejected(loaded_problem):
     )
     with pytest.raises(ValueError, match="'_row_weight' is reserved"):
         loaded_problem.solve(p=1)
+
+
+@pytest.fixture
+def two_dimension_problem_with_thresholds(loaded_problem_with_equity):
+    """`two_dimension_problem`'s setup (IMD decile + rurality, sharing the
+    same band values by construction here so the two dimensions group
+    regions identically), solved with `beyond_thresholds=[10]` so the
+    "left behind" per-band headcounts are populated for the primary
+    dimension and available to compare a non-primary recompute against.
+
+    Site_B wins solve(p=1) here (weighted total 5750 vs 9500/6200 for
+    Site_A/Site_C), giving costs LSOA_1=25, LSOA_2=5, LSOA_3=15 -- so
+    threshold 10 splits LSOA_1 and LSOA_3 (beyond) from LSOA_2 (within)."""
+    loaded_problem_with_equity.add_equity_data(
+        pd.DataFrame(
+            {
+                "location_id": ["LSOA_1", "LSOA_2", "LSOA_3"],
+                "rurality_band": [1, 5, 10],
+            }
+        ),
+        equity_col="rurality_band",
+        common_col="location_id",
+        label="rurality",
+        disadvantaged_end="high",
+        primary=False,
+    )
+    return loaded_problem_with_equity.solve(
+        p=1, beyond_thresholds=[10], show_progress=False
+    )
+
+
+def test_beyond_threshold_recompute_matches_stored_for_a_non_primary_dimension(
+    two_dimension_problem_with_thresholds,
+):
+    """The gap this guards: `_resolve_equity_view()`'s recompute path used
+    to drop `beyond_thresholds` entirely, so `beyond_threshold_metrics`
+    came back empty for any dimension other than the primary one, even
+    though the headcounts are a direct function of problem_df's own cost
+    column and need nothing solve-time to rebuild."""
+    result = two_dimension_problem_with_thresholds
+    _, primary_bands = result._resolve_equity_view(equity="equity")
+    _, rurality_bands = result._resolve_equity_view(equity="rurality")
+
+    expected = {
+        10.0: {
+            "regions_beyond_by_equity_group": {1: 1, 5: 0, 10: 1},
+            "demand_beyond_by_equity_group": {1: 100.0, 5: 0.0, 10: 150.0},
+        }
+    }
+    assert primary_bands["beyond_threshold_metrics"] == expected
+    # Recomputed from problem_df via a different code path, but the two
+    # dimensions group these particular regions identically (same band
+    # values by construction), so the numbers must match exactly.
+    assert rurality_bands["beyond_threshold_metrics"] == expected
+
+
+def test_beyond_threshold_metrics_key_present_but_empty_with_no_thresholds(
+    two_dimension_problem,
+):
+    """A solve with no `beyond_thresholds=` must not fabricate headcounts:
+    the key exists (so callers don't need to guard for its absence) and
+    every value is the empty-dicts shape, for both the primary and a
+    recomputed dimension."""
+    result = two_dimension_problem.solve(p=1, show_progress=False)
+    for label in ("equity", "rurality"):
+        _, bands = result._resolve_equity_view(equity=label)
+        assert bands["beyond_threshold_metrics"] == {}
+
+
+@pytest.mark.parametrize("full_secondary_metrics", [False, True])
+def test_threshold_views_use_selected_matrix_and_include_unreachable_regions(
+    two_dimension_problem,
+    secondary_travel_df,
+    full_secondary_metrics,
+):
+    secondary_travel_df = secondary_travel_df.copy()
+    secondary_travel_df["Site_B"] = [float("nan"), 10.5, 50]
+    two_dimension_problem.add_secondary_travel_matrix(
+        secondary_travel_df, source_col="source_id", label="transit", allow_missing=True
+    )
+    # The stranded band is under the secondary matrix only -- still
+    # warned about, since its disparity scalars are stored regardless.
+    with pytest.warns(UserWarning, match="band 1 under 'transit'"):
+        result = two_dimension_problem.solve(
+            p=1,
+            beyond_thresholds=[10.5, 50],
+            show_progress=False,
+            full_secondary_metrics=full_secondary_metrics,
+        )
+    for equity in ("equity", "rurality"):
+        _, bands = result._resolve_equity_view(equity=equity, matrix="transit")
+        assert bands["beyond_threshold_metrics"] == {
+            10.5: {
+                "regions_beyond_by_equity_group": {1: 1, 5: 0, 10: 1},
+                "demand_beyond_by_equity_group": {1: 100.0, 5: 0.0, 10: 150.0},
+            },
+            50.0: {
+                "regions_beyond_by_equity_group": {1: 1, 5: 0, 10: 0},
+                "demand_beyond_by_equity_group": {1: 100.0, 5: 0.0, 10: 0.0},
+            },
+        }
+        _, primary = result._resolve_equity_view(equity=equity)
+        assert primary["beyond_threshold_metrics"][50.0][
+            "regions_beyond_by_equity_group"
+        ] == {1: 0, 5: 0, 10: 0}

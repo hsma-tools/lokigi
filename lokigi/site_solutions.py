@@ -86,6 +86,110 @@ _EQUITY_BAND_STORED_NAMES = {
 _BASELINE_SITE_NAMES_KEY = "__baseline_site_names__"
 
 
+def _name_bands(bands):
+    """Render a band list for a message: "band 2", "bands 2 and 3",
+    "bands 2, 3 and 5"."""
+    names = [str(b) for b in bands]
+    if len(names) == 1:
+        return f"band {names[0]}"
+    return f"bands {', '.join(names[:-1])} and {names[-1]}"
+
+
+def _stranded_bands(df, equity_col, cost_col):
+    """Equity bands in which every region has a NaN `cost_col` -- the bands
+    `_equity_band_metrics()` leaves out of the disparity metrics."""
+    if not equity_col or equity_col not in df.columns or cost_col not in df.columns:
+        return []
+    all_unreachable = df[cost_col].isna().groupby(df[equity_col]).all()
+    return sorted(all_unreachable.index[all_unreachable].tolist())
+
+
+class StrandedEquityBandWarning(UserWarning):
+    """
+    An equity band has no reachable region under a returned solution, so it
+    is excluded from that dimension's disparity metrics.
+
+    A `UserWarning` subclass of its own so it can be silenced without
+    muting every other lokigi warning::
+
+        warnings.filterwarnings("ignore", category=lokigi.StrandedEquityBandWarning)
+    """
+
+
+def _warn_stranded_bands(site_problem, frames, stacklevel):
+    """
+    Warn once about every stranded equity band across `frames`, a list of
+    `(solution_label, per_region_df)` -- `solution_label` is `None` for a
+    lone evaluation, or e.g. `"rank 1"` for a row of a solved set.
+
+    Called at the public boundary (`evaluate_single_solution_single_objective()`,
+    `evaluate_baseline()`, `solve()`), never from `_equity_band_metrics()`
+    itself: the solvers fully evaluate many combinations they then
+    discard, and a warning raised there would describe a solution the
+    caller never sees. Checks every registered equity dimension, not just
+    the primary one -- a non-primary dimension's views drop the same bands
+    when they are reported. Checks the primary matrix and every secondary
+    one, since each secondary matrix's disparity scalars are stored even
+    without `full_secondary_metrics=True`, where no descriptor is there to
+    carry the exclusion note.
+
+    Raised as `StrandedEquityBandWarning` so callers can filter it.
+    """
+    dimensions = {
+        label: meta["equity_col"]
+        for label, meta in getattr(site_problem, "equity_datasets", {}).items()
+    }
+    if not dimensions:
+        return
+    name_dimension = len(dimensions) > 1
+    cost_cols = {None: "min_cost"}
+    cost_cols.update(
+        {
+            label: f"min_cost__{label}"
+            for label in site_problem.secondary_travel_matrices
+        }
+    )
+
+    details = []
+    for solution_label, df in frames:
+        parts = []
+        for dimension, equity_col in dimensions.items():
+            for matrix, cost_col in cost_cols.items():
+                bands = _stranded_bands(df, equity_col, cost_col)
+                if bands:
+                    where = "" if matrix is None else f" under '{matrix}'"
+                    which = f" in '{dimension}'" if name_dimension else ""
+                    parts.append(f"{_name_bands(bands)}{where}{which}")
+        if parts:
+            prefix = f"{solution_label}: " if solution_label else ""
+            details.append(prefix + ", ".join(parts))
+    if not details:
+        return
+
+    shown = "; ".join(details[:5])
+    if len(details) > 5:
+        shown += f"; and {len(details) - 5} more"
+    if len(frames) == 1 and frames[0][0] is None:
+        head = f"This solution leaves equity {shown} with no reachable region."
+    else:
+        head = (
+            f"{len(details)} of {len(frames)} returned solutions leave an "
+            f"equity band with no reachable region ({shown})."
+        )
+    warnings.warn(
+        f"{head} A stranded band cannot contribute a travel time, so it is "
+        "excluded from that dimension's disparity metrics (gap_absolute_weighted, "
+        "gap_relative_weighted, inter_tertile_ratio and the tertile averages), "
+        "which then describe only the remaining bands. It is still counted in "
+        "regions_unreachable_by_equity_group and "
+        "demand_unreachable_by_equity_group. Silence with "
+        "warnings.filterwarnings('ignore', "
+        "category=lokigi.StrandedEquityBandWarning).",
+        StrandedEquityBandWarning,
+        stacklevel=stacklevel + 1,
+    )
+
+
 def _equity_band_metrics(
     df,
     equity_col,
@@ -152,7 +256,7 @@ def _equity_band_metrics(
     Returns
     -------
     dict
-        The 18 band-related keys of `_compute_travel_metrics()`'s result.
+        Band-related metrics, including the supplied threshold breakdowns.
     """
     beyond_flags_by_threshold = beyond_flags_by_threshold or {}
     if beyond_threshold_metrics is None:
@@ -211,9 +315,39 @@ def _equity_band_metrics(
             else:
                 weighted_by_equity_group[band] = group_costs.mean()
 
+        # 2b. Set aside any band with no reachable region at all.
+        # Those carry NaN from the loop above, and they must be excluded
+        # explicitly before anything aggregates them: `min`/`max` over a
+        # plain list are short-circuit comparisons, so a NaN absorbed the
+        # result when it happened to sort first and was invisible
+        # otherwise. That made every disparity metric depend on *where*
+        # the stranded band fell in the sort rather than on the travel
+        # times -- a middle band could vanish leaving numbers identical to
+        # a solution that stranded nobody, and a first band turned the
+        # whole descriptor chain NaN, which fell through to the bare
+        # `else` and reported "Highly Progressive" for a solution that
+        # left the most deprived band with nowhere to go.
+        #
+        # The descriptors name what they had to leave out. The warning is
+        # raised by `_warn_stranded_bands()` at the public boundary, not
+        # here: the solvers evaluate many combinations they then discard.
+        unreachable_bands = [
+            band for band, value in weighted_by_equity_group.items() if pd.isna(value)
+        ]
+        reachable_bands = {
+            band: value
+            for band, value in weighted_by_equity_group.items()
+            if not pd.isna(value)
+        }
+        excluded_note = ""
+        if unreachable_bands:
+            excluded_note = (
+                f"; excludes {_name_bands(unreachable_bands)}, entirely unreachable"
+            )
+
         # 3. Disparity Metrics & Verbal Descriptors
-        if weighted_by_equity_group:
-            weighted_vals = list(weighted_by_equity_group.values())
+        if reachable_bands:
+            weighted_vals = list(reachable_bands.values())
             group_min_cost = min(weighted_vals)
             group_max_cost = max(weighted_vals)
 
@@ -221,7 +355,7 @@ def _equity_band_metrics(
             unit_word = unit if unit else "units"
             gap_absolute_desc = (
                 f"Spread of {gap_absolute_weighted:.1f} {unit_word} "
-                "between best and worst groups"
+                f"between best and worst groups{excluded_note}"
             )
 
             if group_min_cost > 0:
@@ -244,6 +378,17 @@ def _equity_band_metrics(
             else:
                 gap_relative_weighted = np.nan
                 gap_relative_desc = "N/A (Zero baseline cost)"
+
+            if excluded_note:
+                gap_relative_desc += excluded_note
+        elif weighted_by_equity_group:
+            # Every band is stranded. There is no travel time anywhere to
+            # compare, so the metrics stay None -- but say which case this
+            # is, rather than leaving the "No equity data" initialiser
+            # standing over a problem that has equity data and no reachable
+            # site at all.
+            gap_absolute_desc = "N/A (no equity band has a reachable region)"
+            gap_relative_desc = "N/A (no equity band has a reachable region)"
 
         # 4. Coverage Equity (Thresholds by Group)
         # Mirrors the caller's scalar coverage pair, under the same naming
@@ -345,7 +490,7 @@ def _equity_band_metrics(
         # `disadvantaged_end` (defaults to "low" --
         # lower bins = more deprived -- when unset, matching every
         # pre-existing caller's assumption).
-        unique_bins = sorted(list(weighted_by_equity_group.keys()))
+        unique_bins = sorted(list(reachable_bands.keys()))
         lower_chunk, middle_chunk, upper_chunk = _split_bins_into_tertiles(
             unique_bins, disadvantaged_end
         )
@@ -357,20 +502,23 @@ def _equity_band_metrics(
             # missing dataset instead of the real cause.
             # `plot_equity_tertiles()` raises for this case; the metric
             # only has a string to explain itself with.
-            inter_tertile_desc = (
-                f"N/A (needs at least 3 equity bands, found {len(unique_bins)})"
-            )
+            if unreachable_bands and not reachable_bands:
+                inter_tertile_desc = "N/A (no equity band has a reachable region)"
+            elif unreachable_bands:
+                inter_tertile_desc = (
+                    "N/A (needs at least 3 equity bands, found "
+                    f"{len(unique_bins)} with a reachable region, "
+                    f"{_name_bands(unreachable_bands)} entirely unreachable)"
+                )
+            else:
+                inter_tertile_desc = (
+                    f"N/A (needs at least 3 equity bands, found {len(unique_bins)})"
+                )
         else:
             chunks = (lower_chunk, middle_chunk, upper_chunk)
-            avg_lower_third_bins = np.mean(
-                [weighted_by_equity_group[b] for b in chunks[0]]
-            )
-            avg_middle_third_bins = np.mean(
-                [weighted_by_equity_group[b] for b in chunks[1]]
-            )
-            avg_upper_third_bins = np.mean(
-                [weighted_by_equity_group[b] for b in chunks[2]]
-            )
+            avg_lower_third_bins = np.mean([reachable_bands[b] for b in chunks[0]])
+            avg_middle_third_bins = np.mean([reachable_bands[b] for b in chunks[1]])
+            avg_upper_third_bins = np.mean([reachable_bands[b] for b in chunks[2]])
 
             if avg_upper_third_bins and avg_upper_third_bins > 0:
                 inter_tertile_ratio = avg_lower_third_bins / avg_upper_third_bins
@@ -399,6 +547,9 @@ def _equity_band_metrics(
             else:
                 inter_tertile_ratio = np.nan
                 inter_tertile_desc = "N/A (Zero upper-third travel time)"
+
+            if excluded_note:
+                inter_tertile_desc += excluded_note
     return {
         "weighted_by_equity_group": weighted_by_equity_group,
         "unweighted_by_equity_group": unweighted_by_equity_group,
@@ -418,6 +569,7 @@ def _equity_band_metrics(
         "avg_upper_third_bins": avg_upper_third_bins,
         "inter_tertile_ratio": inter_tertile_ratio,
         "inter_tertile_desc": inter_tertile_desc,
+        "beyond_threshold_metrics": beyond_threshold_metrics,
     }
 
 
@@ -1274,7 +1426,6 @@ class EvaluatedCombination:
             "proportion_regions_within_coverage_threshold": proportion_regions_within_coverage_threshold,
             "demand_within_coverage_threshold": demand_within_coverage_threshold,
             "regions_within_coverage_threshold": regions_within_coverage_threshold,
-            "beyond_threshold_metrics": beyond_threshold_metrics,
             **band_metrics,
             "population_impact": population_impact,
         }
@@ -2314,6 +2465,42 @@ class SiteSolutionSet(
 
         cost_col, _, within_col, unit, suffix = self._resolve_travel_columns(matrix)
 
+        # Scalar demand counts are persisted for every requested threshold,
+        # including secondary matrices without full breakdowns. Recover only
+        # this matrix's thresholds, not another matrix's suffixed columns.
+        threshold_labels = {}
+        prefix = "demand_beyond_threshold_"
+        for column in row.index:
+            if not column.startswith(prefix):
+                continue
+            tail = column[len(prefix) :]
+            if suffix:
+                if not tail.endswith(suffix):
+                    continue
+                tail = tail[: -len(suffix)]
+            try:
+                threshold_labels[float(tail)] = tail
+            except ValueError:
+                continue
+
+        # The demand breakdown is only stored when non-empty, i.e. absent
+        # exactly when the recompute below would also leave it `{}` (no
+        # demand column). So only the regions breakdown gates the stored
+        # path; a missing demand one is that same `{}`, not a gap.
+        threshold_bands = {}
+        for threshold, label in threshold_labels.items():
+            stored_demand = row.get(
+                f"demand_beyond_threshold_{label}_by_equity_group{suffix}"
+            )
+            threshold_bands[threshold] = {
+                "regions_beyond_by_equity_group": row.get(
+                    f"regions_beyond_threshold_{label}_by_equity_group{suffix}"
+                ),
+                "demand_beyond_by_equity_group": (
+                    stored_demand if isinstance(stored_demand, dict) else {}
+                ),
+            }
+
         if equity_meta["label"] == problem._primary_equity_label:
             stored = {
                 key: row[f"{stored_name}{suffix}"]
@@ -2326,7 +2513,11 @@ class SiteSolutionSet(
             # when any are missing, rather than handing back a
             # half-populated dict whose gaps each caller would have to
             # handle.
-            if len(stored) == len(_EQUITY_BAND_STORED_NAMES):
+            if len(stored) == len(_EQUITY_BAND_STORED_NAMES) and all(
+                isinstance(breakdown["regions_beyond_by_equity_group"], dict)
+                for breakdown in threshold_bands.values()
+            ):
+                stored["beyond_threshold_metrics"] = threshold_bands
                 for optional in (
                     "demand_improved_by_equity_group",
                     "demand_worsened_by_equity_group",
@@ -2372,6 +2563,16 @@ class SiteSolutionSet(
             reachable_mask=problem_df[cost_col].notna(),
             disadvantaged_end=equity_meta["disadvantaged_end"],
             unit=unit,
+            beyond_flags_by_threshold={
+                t: ~(problem_df[cost_col] <= t) for t in threshold_labels
+            },
+            beyond_threshold_metrics={
+                t: {
+                    "regions_beyond_by_equity_group": {},
+                    "demand_beyond_by_equity_group": {},
+                }
+                for t in threshold_labels
+            },
         )
         return equity_meta, bands
 

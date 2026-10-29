@@ -2997,6 +2997,10 @@ class EquityPlotsMixin:
         instead plot the same unweighted figure ``check_solution_equity()``
         shows, for a direct comparison.
 
+        Entirely unreachable bands are excluded before splitting into thirds,
+        matching the reported disparity metrics. The default caption names
+        these exclusions; at least three reachable bands must remain.
+
         Parameters
         ----------
         solution_rank : int, default=1
@@ -3056,10 +3060,12 @@ class EquityPlotsMixin:
         ------
         ValueError
             If no equity data was registered, if fewer than 3 distinct
-            equity bands exist (a tertile split is meaningless below that),
+            equity bands have reachable regions (a tertile split is
+            meaningless below that),
             or if `matrix` names a secondary travel matrix that was not
             solved with `full_secondary_metrics=True`.
         """
+
         _, _, _, unit, suffix = self._resolve_travel_columns(matrix)
         unit_suffix = f" {unit}" if unit else ""
 
@@ -3081,6 +3087,11 @@ class EquityPlotsMixin:
         if not per_band:
             raise ValueError("No equity data loaded. Call add_equity_data() first.")
 
+        excluded_bands = [band for band, value in per_band.items() if pd.isna(value)]
+        per_band = {
+            band: value for band, value in per_band.items() if not pd.isna(value)
+        }
+
         disadvantaged_end = getattr(
             self.site_problem, "_equity_data_disadvantaged_end", None
         )
@@ -3088,7 +3099,7 @@ class EquityPlotsMixin:
         if most is None:
             raise ValueError(
                 "plot_equity_tertiles() needs at least 3 distinct equity "
-                f"bands to split into tertiles; found {len(per_band)}."
+                f"bands with a reachable region to split into tertiles; found {len(per_band)}."
             )
 
         if weighted:
@@ -3181,6 +3192,12 @@ class EquityPlotsMixin:
             "most- and least-disadvantaged thirds (highlighted); the "
             "paler middle third is not part of the ratio."
         )
+        if excluded_bands:
+            default_caption += (
+                " Entirely unreachable bands excluded: "
+                + ", ".join(str(band) for band in excluded_bands)
+                + ". Thirds are calculated over the remaining bands."
+            )
         _add_plot_caption(fig, caption, default_caption)
 
         if owns_figure:

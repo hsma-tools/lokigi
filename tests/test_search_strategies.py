@@ -125,13 +125,13 @@ def test_grasp_construction_and_local_search_use_the_real_coverage_threshold(
     evaluation call is a deterministic way to pin the real defect.
     """
     calls = []
-    original = type(five_site_problem).evaluate_single_solution_single_objective
+    original = type(five_site_problem)._evaluate_combination
 
     def spy(self, *args, **kwargs):
         calls.append(kwargs.get("threshold_for_coverage"))
         return original(self, *args, **kwargs)
 
-    type(five_site_problem).evaluate_single_solution_single_objective = spy
+    type(five_site_problem)._evaluate_combination = spy
     try:
         five_site_problem._grasp(
             p=2,
@@ -144,7 +144,7 @@ def test_grasp_construction_and_local_search_use_the_real_coverage_threshold(
             random_seed=0,
         )
     finally:
-        type(five_site_problem).evaluate_single_solution_single_objective = original
+        type(five_site_problem)._evaluate_combination = original
 
     assert calls, "Expected at least one evaluation call during _grasp"
     assert all(threshold == 15 for threshold in calls), (

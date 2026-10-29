@@ -55,7 +55,10 @@ def _build_band_solution(costs, demands=None, disadvantaged_end="low"):
     problem = lokigi.site.SiteProblem(debug_mode=False)
     problem.add_demand(demand_df, demand_col="demand", location_id_col="location_id")
     problem.add_sites(candidate_df, candidate_id_col="site_id")
-    problem.add_travel_matrix(travel_df, source_col="source_id", unit="minutes")
+    has_missing = any(pd.isna(cost) for cost in costs)
+    problem.add_travel_matrix(
+        travel_df, source_col="source_id", unit="minutes", allow_missing=has_missing
+    )
     problem.add_equity_data(
         equity_df,
         equity_col="band",
@@ -63,7 +66,39 @@ def _build_band_solution(costs, demands=None, disadvantaged_end="low"):
         label="Band",
         disadvantaged_end=disadvantaged_end,
     )
-    return problem.solve(p=1, search_strategy="brute-force", show_progress=False)
+    return problem.solve(
+        p=1,
+        search_strategy="brute-force",
+        show_progress=False,
+        unreachable_cost=1000 if has_missing else None,
+    )
+
+
+@pytest.mark.parametrize("weighted", [True, False])
+def test_stranded_band_leaves_too_few_reachable_bands_to_plot(weighted):
+    with pytest.warns(UserWarning, match="no reachable region"):
+        solution = _build_band_solution([np.nan, 15, 20])
+    with pytest.raises(ValueError, match="reachable region.*found 2"):
+        solution.plot_equity_tertiles(weighted=weighted)
+
+
+@pytest.mark.parametrize("weighted", [True, False])
+@pytest.mark.parametrize("direction", ["low", "high"])
+def test_stranded_band_plot_groups_match_remaining_band_averages(weighted, direction):
+    with pytest.warns(UserWarning, match="no reachable region"):
+        solution = _build_band_solution(
+            [np.nan, 10, 20, 30, 40, 50, 60], disadvantaged_end=direction
+        )
+    fig = solution.plot_equity_tertiles(weighted=weighted)
+    ax = fig.axes[0]
+    assert "1" not in [label.get_text() for label in ax.get_xticklabels()]
+    heights = [bar.get_height() for bar in ax.patches]
+    row = solution.solution_df.iloc[0]
+    assert np.mean(heights[:2]) == pytest.approx(row["avg_lower_third_bins"])
+    assert np.mean(heights[-2:]) == pytest.approx(row["avg_upper_third_bins"])
+    assert "Entirely unreachable bands excluded: 1" in " ".join(
+        text.get_text() for text in fig.texts
+    )
 
 
 # Deliberately not evenly divisible by 3, and decile 4's cost (30.0) is far
