@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 import lokigi.site
-from lokigi.mixins.site_solution_pareto import ParetoMixin
+from lokigi.mixins.site_solution_pareto import _SEGMENT_HOVER_POINTS, ParetoMixin
 from lokigi.multiobjective import Metric
 
 
@@ -1123,5 +1123,257 @@ def test_plot_pareto_radar_facets_wraps_strengths_to_wrap_at(solved_solution_set
             meta = ax.get_title(loc="left").split("---\n")[1].split("\n")
             assert len(meta) > 2  # actually wrapped, not just short
             assert all(len(line) <= 30 for line in meta)
+    finally:
+        plt.close(fig)
+
+
+# --- plot_pareto_summary(interactive=True) ---------------------------------
+
+
+def _front_traces(fig):
+    return [t for t in fig.data if t.showlegend is not False]
+
+
+def test_plot_pareto_summary_interactive_returns_plotly_figure(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_summary(interactive=True)
+    assert type(fig).__module__.startswith("plotly")
+    assert fig.to_dict()
+    assert _legend_order(fig) == ["Option 1", "Option 2", "Option 4"]
+
+
+def test_plot_pareto_summary_interactive_dominated_are_one_hoverless_trace(
+    solved_solution_set,
+):
+    """Hundreds of dominated solutions as traces of their own would make the
+    figure heavy, so they share one, broken into lines by None gaps."""
+    fig = solved_solution_set.plot_pareto_summary(interactive=True)
+    dominated = [t for t in fig.data if t.showlegend is False]
+    assert len(dominated) == 1
+    assert dominated[0].hoverinfo == "skip"
+    n_metrics = len(solved_solution_set.pareto_metrics)
+    assert list(dominated[0].x).count(None) == 1  # one dominated solution
+    assert len(dominated[0].x) == n_metrics + 1
+
+
+def test_plot_pareto_summary_interactive_hover_at_vertices(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_summary(interactive=True)
+    option_1 = _trace(fig, "Option 1")
+    n_metrics = len(solved_solution_set.pareto_metrics)
+    stride = _SEGMENT_HOVER_POINTS + 1
+    sites = "<br><br><b>Sites</b><br>\u2022 Site A<br>\u2022 Site B"
+
+    assert option_1.customdata[0] == (
+        "<b>Option 1</b><br>Average travel time: 10"
+        f"<br>1st of all 4 options{sites}"
+    )
+    # Vertices sit on the integer x positions, one per metric, and are drawn
+    assert list(option_1.x[::stride]) == list(range(n_metrics))
+    assert all(option_1.marker.opacity[i] == 1 for i in range(0, len(option_1.x), stride))
+
+
+def test_plot_pareto_summary_interactive_lines_are_hoverable_between_vertices(
+    solved_solution_set,
+):
+    """Plotly only hovers at points, so each segment gets invisible points
+    that show the option and its sites."""
+    fig = solved_solution_set.plot_pareto_summary(interactive=True)
+    option_1 = _trace(fig, "Option 1")
+    n_metrics = len(solved_solution_set.pareto_metrics)
+    assert len(option_1.x) == n_metrics + (n_metrics - 1) * _SEGMENT_HOVER_POINTS
+    between = [
+        (op, hover)
+        for x, op, hover in zip(option_1.x, option_1.marker.opacity, option_1.customdata)
+        if x != int(x)
+    ]
+    assert _SEGMENT_HOVER_POINTS >= 3  # enough to hover a line, not just its ends
+    assert len(between) == (n_metrics - 1) * _SEGMENT_HOVER_POINTS
+    sites = "<br><br><b>Sites</b><br>\u2022 Site A<br>\u2022 Site B"
+    assert all(op == 0 for op, _ in between)  # drawn nowhere
+    assert all(hover == f"<b>Option 1</b>{sites}" for _, hover in between)
+    # ...and they lie on the line: monotonic between vertex 0 and vertex 1
+    first_segment = [y for x, y in zip(option_1.x, option_1.y) if 0 <= x <= 1]
+    assert first_segment == sorted(first_segment) or first_segment == sorted(
+        first_segment, reverse=True
+    )
+
+
+def test_plot_pareto_summary_interactive_hover_names_tied_options(
+    solution_df, pareto_metrics
+):
+    is_option_4 = solution_df["solution_rank"] == 4
+    solution_df.loc[is_option_4, "proportion_within_coverage_threshold"] = 0.90
+    solution_set = DummySolutionSet(solution_df)
+    solution_set.compute_pareto_front(pareto_metrics)
+    fig = solution_set.plot_pareto_summary(interactive=True)
+    stride = _SEGMENT_HOVER_POINTS + 1
+    assert "<br>Same value: Option 4" in _trace(fig, "Option 1").customdata[2 * stride]
+    assert "Same value" not in _trace(fig, "Option 1").customdata[0]
+
+
+def test_plot_pareto_summary_interactive_without_site_names(solution_df, pareto_metrics):
+    solution_set = DummySolutionSet(solution_df.drop(columns="site_names"))
+    solution_set.compute_pareto_front(pareto_metrics)
+    fig = solution_set.plot_pareto_summary(interactive=True)
+    assert "Sites" not in "".join(_trace(fig, "Option 1").customdata)
+
+
+def test_plot_pareto_summary_interactive_range_labels_scope(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_summary(interactive=True)
+    ticktext = fig.layout.xaxis.ticktext
+    assert all("of all 4 options" in text for text in ticktext)
+    assert "worst 25" in ticktext[1]  # only the dominated solution has it
+    caption = fig.layout.annotations[0].text.replace("<br>", " ")
+    assert "across all 4 options" in caption
+
+
+def test_plot_pareto_summary_interactive_initially_shown(solved_solution_set):
+    assert _visible(solved_solution_set.plot_pareto_summary(interactive=True)) == {
+        "Option 1": True,
+        "Option 2": True,
+        "Option 4": True,
+    }
+    first = solved_solution_set.plot_pareto_summary(
+        interactive=True, initially_shown="first"
+    )
+    assert _visible(first) == {"Option 1": True, "Option 2": False, "Option 4": False}
+    # The shared dominated trace has no legend entry to restore it from
+    assert [t.visible for t in first.data if t.showlegend is False] == [None]
+    caption = first.layout.annotations[0].text.replace("<br>", " ")
+    assert "click a greyed-out option in the legend" in caption
+
+    picked = solved_solution_set.plot_pareto_summary(
+        interactive=True, initially_shown=[2, 4]
+    )
+    assert _visible(picked) == {"Option 1": False, "Option 2": True, "Option 4": True}
+
+
+def test_plot_pareto_summary_interactive_scale_to_pareto_front(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_summary(
+        interactive=True, scale_to="pareto_front"
+    )
+    ticktext = fig.layout.xaxis.ticktext
+    assert all("of the 3 Pareto-optimal options" in text for text in ticktext)
+    assert "worst 20" in ticktext[1]
+    # The dominated line falls off the chart unscaled, so it's clipped
+    (dominated,) = [t for t in fig.data if t.showlegend is False]
+    ys = [y for y in dominated.y if y is not None]
+    assert min(ys) >= 0 and max(ys) <= 1
+    # Every axis has a front option at the top and one at the bottom
+    stride = _SEGMENT_HOVER_POINTS + 1
+    front_y = np.array([t.y[::stride] for t in _front_traces(fig)])
+    assert np.allclose(front_y.min(axis=0), 0)
+    assert np.allclose(front_y.max(axis=0), 1)
+
+
+def test_plot_pareto_summary_interactive_scale_to_pareto_front_ranks_over_the_front(
+    solution_df, pareto_metrics
+):
+    """Solution 3 is still dominated (by solution 4) but sits between
+    options 4 and 2 on average travel time, so option 2 is 4th of 4 overall
+    and 3rd of 3 on the front."""
+    solution_df.loc[solution_df["solution_rank"] == 3, "weighted_average"] = 11.5
+    solution_set = DummySolutionSet(solution_df)
+    solution_set.compute_pareto_front(pareto_metrics)
+    sites = "<br><br><b>Sites</b><br>\u2022 Site A<br>\u2022 Site C"
+
+    over_all = solution_set.plot_pareto_summary(interactive=True)
+    over_front = solution_set.plot_pareto_summary(
+        interactive=True, scale_to="pareto_front"
+    )
+    assert _trace(over_all, "Option 2").customdata[0] == (
+        f"<b>Option 2</b><br>Average travel time: 12<br>4th of all 4 options{sites}"
+    )
+    assert _trace(over_front, "Option 2").customdata[0] == (
+        "<b>Option 2</b><br>Average travel time: 12"
+        f"<br>3rd of the 3 Pareto-optimal options{sites}"
+    )
+
+
+def test_plot_pareto_summary_interactive_legend_wrap_at(radar_solution_set):
+    fig = radar_solution_set.plot_pareto_summary(
+        interactive=True, diff_against="rank_1", legend_wrap_at=12
+    )
+    wrapped = next(t for t in fig.data if (t.name or "").startswith("Option 2"))
+    assert "<br>" in wrapped.name
+    assert all(len(line) <= 12 for line in wrapped.name.split("<br>"))
+    assert wrapped.customdata[0].startswith("<b>Option 2 (+Site_A")  # full, one line
+    # Wrapped to the threshold, the legend is as narrow as the default
+    assert fig.layout.margin.r == 80
+    unwrapped = radar_solution_set.plot_pareto_summary(
+        interactive=True, diff_against="rank_1"
+    )
+    assert unwrapped.layout.margin.r > 150
+
+
+def test_plot_pareto_summary_interactive_title_and_caption_can_be_suppressed(
+    solved_solution_set,
+):
+    fig = solved_solution_set.plot_pareto_summary(
+        interactive=True, title="", caption=""
+    )
+    assert not fig.layout.annotations
+    assert not fig.layout.title.text
+
+
+def test_plot_pareto_summary_interactive_sets_explicit_height(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_summary(interactive=True)
+    margin = fig.layout.margin
+    assert fig.layout.height - margin.t - margin.b >= 450
+
+
+def test_plot_pareto_summary_static_scale_to_pareto_front(solved_solution_set):
+    default = solved_solution_set.plot_pareto_summary()
+    front = solved_solution_set.plot_pareto_summary(scale_to="pareto_front")
+    try:
+        default_text = [t.get_text() for t in default.axes[0].texts]
+        front_text = [t.get_text() for t in front.axes[0].texts]
+        assert "25.00" in default_text  # the dominated solution's worst max
+        assert "25.00" not in front_text and "20.00" in front_text
+        for line in front.axes[0].lines:
+            ys = np.asarray(line.get_ydata())
+            assert np.all((ys >= 0) & (ys <= 1))
+        caption = " ".join(t.get_text() for t in front.texts)
+        assert "scaled over just the 3 Pareto-optimal options" in caption.replace(
+            "\n", " "
+        )
+        assert "scaled over just" not in " ".join(t.get_text() for t in default.texts)
+    finally:
+        plt.close(default)
+        plt.close(front)
+
+
+def test_plot_pareto_summary_static_legend_wrap_at(radar_solution_set):
+    fig = radar_solution_set.plot_pareto_summary(
+        diff_against="rank_1", legend_wrap_at=12
+    )
+    try:
+        labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+        assert "\n" in labels[1]
+        assert all(len(line) <= 12 for label in labels for line in label.split("\n"))
+    finally:
+        plt.close(fig)
+
+
+@pytest.mark.parametrize(
+    "kwargs, match",
+    [
+        ({"scale_to": "front"}, "scale_to must be one of"),
+        ({"legend_wrap_at": 0}, "legend_wrap_at"),
+        ({"initially_shown": "sideways"}, "initially_shown"),
+        ({"initially_shown": [3]}, "not Pareto-optimal"),
+    ],
+)
+@pytest.mark.parametrize("interactive", [True, False])
+def test_plot_pareto_summary_rejects_bad_values(
+    solved_solution_set, kwargs, match, interactive
+):
+    with pytest.raises(ValueError, match=match):
+        solved_solution_set.plot_pareto_summary(interactive=interactive, **kwargs)
+
+
+def test_plot_pareto_summary_static_ignores_initially_shown(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_summary(initially_shown="first")
+    try:
+        assert len(fig.axes[0].get_legend().get_texts()) == 3
     finally:
         plt.close(fig)

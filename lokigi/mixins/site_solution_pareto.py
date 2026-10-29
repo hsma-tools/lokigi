@@ -50,6 +50,34 @@ def _wrap_legend_label(label, wrap_at, newline):
     return newline.join(textwrap.wrap(label, width=wrap_at, break_long_words=False))
 
 
+def _sites_html(row):
+    """An option's sites as a hover section, one per line since a joined
+    list of real site names makes for a very wide tooltip. Empty if the
+    solution set has no `site_names` column."""
+    if "site_names" not in row.index:
+        return ""
+    return "<br><br><b>Sites</b><br>" + "<br>".join(
+        f"\u2022 {site}" for site in _site_names_list(row["site_names"])
+    )
+
+
+def _legend_right_margin(fig):
+    """Right margin (px) for a plotly figure whose legend sits to its right.
+    Plotly shifts a legend wider than the margin left over the chart, so it
+    follows the longest legend line -- but short labels keep the default 80px
+    (diff_against labels get long, unless wrapped by legend_wrap_at)."""
+    longest = max(
+        (
+            len(line)
+            for t in fig.data
+            if t.showlegend is not False
+            for line in t.name.split("<br>")
+        ),
+        default=0,
+    )
+    return 80 if longest <= 12 else int(7.5 * longest) + 50
+
+
 def _site_names_list(sites_val):
     """A `site_names` cell as a list of strings, whether it holds a
     list/set/tuple of names or a single pre-joined value."""
@@ -94,6 +122,10 @@ _RADAR_HOLE = 0.25
 # Radial range padding on the interactive radar, in normalised units -- see
 # radial_range in _plot_pareto_radar_interactive
 _PLOTLY_RADIAL_PAD = 0.04
+
+# Invisible hover points added along each segment of the interactive line
+# chart, so an option's line can be hovered anywhere, not only at its vertices
+_SEGMENT_HOVER_POINTS = 6
 
 
 def _radar_angles(n):
@@ -621,6 +653,48 @@ class ParetoMixin:
         return pd.DataFrame(normed, index=self.solution_df.index), raw_range
 
     @staticmethod
+    def _require_legend_wrap_at(legend_wrap_at):
+        if legend_wrap_at is not None and (
+            isinstance(legend_wrap_at, bool)
+            or not isinstance(legend_wrap_at, int)
+            or legend_wrap_at < 1
+        ):
+            raise ValueError(
+                f"legend_wrap_at must be a positive whole number of characters or "
+                f"None, got {legend_wrap_at!r}"
+            )
+
+    @staticmethod
+    def _pareto_short_name(row, id_col, name_col):
+        """An option's name without any site diff."""
+        return str(row[name_col]) if name_col else f"Option {row[id_col]}"
+
+    def _pareto_hover_context(
+        self, idx, row, m, rank_df, scale_phrase, front, id_col, name_col
+    ):
+        """The rank line of an interactive hover for one option's value on
+        one metric: its rank over the set the chart is scaled over, how far
+        from target for a target metric, and any other options tied on it."""
+        rank_val = int(rank_df.loc[idx, m.column])
+        context = f"{rank_val}{_get_ordinal_suffix(rank_val)} of {scale_phrase}"
+        if m.direction == "closest_to_target":
+            context += (
+                f"; {_signed_deviation(row[m.column] - m.target)} vs "
+                f"target {m.target:g}"
+            )
+        # Options tied on a metric share the exact same point, and plotly can
+        # only name one of them on hover -- so whichever it picks, list the
+        # others
+        tied = [
+            self._pareto_short_name(other, id_col, name_col)
+            for other_idx, other in front.iterrows()
+            if other_idx != idx and np.isclose(other[m.column], row[m.column])
+        ]
+        if tied:
+            context += f"<br>Same value: {', '.join(tied)}"
+        return context
+
+    @staticmethod
     def _require_scale_to(scale_to):
         if scale_to not in ("all", "pareto_front"):
             raise ValueError(
@@ -768,6 +842,10 @@ class ParetoMixin:
         title: str | None = None,
         caption: str | None = None,
         ax=None,
+        interactive: bool = False,
+        initially_shown="all",
+        legend_wrap_at: int | None = None,
+        scale_to: str = "all",
     ):
         """
         Plot every solution as a line across all `metrics` at once, each axis
@@ -818,12 +896,64 @@ class ParetoMixin:
         title / caption: shown above/below the chart. Sensible stakeholder-
             facing defaults are used if not provided; pass "" to suppress
             either entirely.
+        interactive: bool, default False
+            If True, returns an interactive Plotly figure. Hover a point on
+            an option's line for its raw value, its rank and the sites that
+            make up that option, or anywhere along the line for the option
+            and its sites; click a legend entry to hide that option, or
+            double-click one to show it alone. `height`,
+            `width_multiplier`, `theme`, `show_value_labels` and `ax` are
+            ignored (the hover shows how far a target metric is from its
+            target instead).
+        initially_shown: "all", "first" or list of ids, default "all"
+            Which options are visible when an interactive figure first
+            opens. The rest start greyed out in the legend, one click from
+            being shown. "all" shows every option, "first" only the first
+            option in the legend, and a list, tuple or set picks specific
+            options by their `id_col` value (e.g. `[1, 17]`), even when
+            `name_col` is set. Ignored if `interactive=False`, though an
+            invalid value still raises.
+        legend_wrap_at: int, optional
+            Wrap legend labels onto multiple lines at this many characters;
+            `None` (the default) leaves them on one line. Worth setting when
+            `diff_against` makes labels long. Only the legend wraps: the
+            interactive hover title keeps the full label on one line.
+        scale_to: {"all", "pareto_front"}, default "all"
+            Which options each axis's best and worst values are taken from.
+            "all" scales over every option compared, dominated ones
+            included, so the chart shows how good the front is against
+            everything that was evaluated. "pareto_front" scales over just
+            the Pareto-optimal options, which stretches them across the
+            whole axis and makes the differences between them easier to see,
+            at the cost of saying nothing about how they compare with the
+            rest. The axis labels, interactive hover ranks and caption name
+            whichever is used. With "pareto_front", grey dominated lines
+            that fall off the chart are drawn at its edge.
         """
-        sns.set_style(theme)
+        self._require_scale_to(scale_to)
+        self._require_legend_wrap_at(legend_wrap_at)
         front = self.solution_df[self.solution_df["is_pareto_optimal"]].copy()
         rest = self.solution_df[~self.solution_df["is_pareto_optimal"]].copy()
+        shown_index = self._resolve_initially_shown(front, initially_shown, id_col)
         site_diff = self._resolve_site_diff(front, diff_against) if diff_against else None
 
+        if interactive:
+            return self._plot_pareto_summary_interactive(
+                front,
+                rest,
+                site_diff,
+                id_col,
+                name_col,
+                other_color,
+                palette,
+                shown_index,
+                legend_wrap_at,
+                scale_to,
+                title,
+                caption,
+            )
+
+        sns.set_style(theme)
         if ax is None:
             fig, ax = plt.subplots(
                 figsize=(len(self.pareto_metrics) * width_multiplier, height)
@@ -847,13 +977,17 @@ class ParetoMixin:
             for m in self.pareto_metrics
         ]
 
-        normed_df, raw_range = self._pareto_normalised()
+        normed_df, raw_range = self._pareto_normalised(scale_to)
 
         # background: dominated solutions, unlabelled
         for idx in rest.index:
             ax.plot(
                 x_positions,
-                normed_df.loc[idx, [m.column for m in self.pareto_metrics]],
+                # Clipped: under scale_to="pareto_front" a dominated option
+                # can fall off the chart (a no-op otherwise)
+                np.clip(
+                    normed_df.loc[idx, [m.column for m in self.pareto_metrics]], 0, 1
+                ),
                 color=other_color,
                 alpha=0.5,
                 linewidth=1,
@@ -866,7 +1000,11 @@ class ParetoMixin:
             m.column for m in self.pareto_metrics if m.direction == "closest_to_target"
         }
         for (colour, linestyle, marker), (_, row) in zip(styles, front.iterrows()):
-            label = self._pareto_option_label(row, id_col, name_col, site_diff)
+            label = _wrap_legend_label(
+                self._pareto_option_label(row, id_col, name_col, site_diff),
+                legend_wrap_at,
+                "\n",
+            )
             y_vals = normed_df.loc[row.name, [m.column for m in self.pareto_metrics]]
             ax.plot(
                 x_positions,
@@ -977,9 +1115,234 @@ class ParetoMixin:
             "For a 'target' measure, height shows how close an option is to the ideal value; the small "
             "label next to each point shows whether it sits above (+) or below (\u2212) that target."
         )
+        if scale_to == "pareto_front":
+            default_caption += (
+                f" Heights are scaled over just {self._scale_phrase(scale_to)}, so the "
+                "top and bottom of each axis are the best and worst of those, and any grey line "
+                "that falls off the chart is drawn at its edge."
+            )
         _add_plot_caption(fig, caption, default_caption, width=105)
 
         fig.tight_layout()
+        return fig
+
+    def _plot_pareto_summary_interactive(
+        self,
+        front,
+        rest,
+        site_diff,
+        id_col,
+        name_col,
+        other_color,
+        palette,
+        shown_index,
+        legend_wrap_at,
+        scale_to,
+        title,
+        caption,
+    ):
+        metrics = self.pareto_metrics
+        metric_cols = [m.column for m in metrics]
+        x_positions = list(range(len(metrics)))
+        normed_df, raw_range = self._pareto_normalised(scale_to)
+        # Ranked over the same set the axes are scaled over
+        rank_source = (
+            normed_df.loc[front.index] if scale_to == "pareto_front" else normed_df
+        )
+        rank_df = rank_source.rank(method="min", ascending=False)
+        scale_phrase = self._scale_phrase(scale_to)
+        styles = _colours_and_styles(max(len(front), 1), palette)
+        has_target = any(m.direction == "closest_to_target" for m in metrics)
+
+        fig = go.Figure()
+
+        # Every dominated solution in a single trace, broken into separate
+        # lines by None gaps: hundreds of them as traces of their own would
+        # make the figure heavy to draw and to serialise
+        if len(rest):
+            xs, ys = [], []
+            for idx in rest.index:
+                xs += x_positions + [None]
+                ys += list(np.clip(normed_df.loc[idx, metric_cols], 0, 1)) + [None]
+            fig.add_trace(
+                go.Scatter(
+                    x=xs,
+                    y=ys,
+                    mode="lines",
+                    line=dict(color=mcolors.to_hex(other_color), width=1),
+                    opacity=0.5,
+                    hoverinfo="skip",
+                    showlegend=False,
+                )
+            )
+
+        for option_i, ((colour, linestyle, marker), (idx, row)) in enumerate(
+            zip(styles, front.iterrows())
+        ):
+            name = self._pareto_option_label(row, id_col, name_col, site_diff)
+            sites_html = _sites_html(row)
+
+            # Plotly can only hover at a point, not along a line between
+            # them, so each segment gets a few invisible points of its own:
+            # hovering anywhere on an option's line then shows what it is
+            # made of, while the real vertices carry the value and rank.
+            xs, ys, hovers, opacity = [], [], [], []
+            for i, m in enumerate(metrics):
+                context = self._pareto_hover_context(
+                    idx, row, m, rank_df, scale_phrase, front, id_col, name_col
+                )
+                xs.append(x_positions[i])
+                ys.append(normed_df.loc[idx, m.column])
+                opacity.append(1)
+                hovers.append(
+                    f"<b>{name}</b><br>{m.label}: {_format_raw_value(row[m.column])}"
+                    f"<br>{context}{sites_html}"
+                )
+                if i == len(metrics) - 1:
+                    break
+                for step in range(1, _SEGMENT_HOVER_POINTS + 1):
+                    t = step / (_SEGMENT_HOVER_POINTS + 1)
+                    xs.append(x_positions[i] + t)
+                    ys.append(
+                        (1 - t) * normed_df.loc[idx, m.column]
+                        + t * normed_df.loc[idx, metrics[i + 1].column]
+                    )
+                    opacity.append(0)
+                    hovers.append(f"<b>{name}</b>{sites_html}")
+
+            fig.add_trace(
+                go.Scatter(
+                    x=xs,
+                    y=ys,
+                    customdata=hovers,
+                    # Only the legend label wraps; the hover carries the full
+                    # name so its title stays on one line
+                    name=_wrap_legend_label(name, legend_wrap_at, "<br>"),
+                    legendrank=option_i + 1,
+                    # "legendonly" starts the trace hidden but keeps its
+                    # legend entry, so one click brings it back. Hidden
+                    # traces don't take part in hover.
+                    visible=True if idx in shown_index else "legendonly",
+                    mode="lines+markers",
+                    line=dict(
+                        color=mcolors.to_hex(colour),
+                        width=2.2,
+                        dash=_PLOTLY_DASH[linestyle],
+                    ),
+                    marker=dict(
+                        symbol=_PLOTLY_SYMBOL[marker], size=7, opacity=opacity
+                    ),
+                    hovertemplate="%{customdata}<extra></extra>",
+                )
+            )
+
+        if title is None:
+            title = "Comparing the shortlisted options"
+        if caption is None:
+            caption = (
+                "How to read this chart: each coloured line is one option that isn't beaten on "
+                "every measure by any other -- there's no single best choice. Higher always "
+                "means better on every axis, even though the measures use different units: the "
+                f"top of each axis is the best value on that measure across {scale_phrase}"
+                + (
+                    " compared, not just the ones shown in colour"
+                    if scale_to == "all"
+                    else ", so it only compares the lines shown with each other"
+                )
+                + " and the bottom the worst, so a line near the top of an axis is doing well "
+                "on that measure and a line near the bottom is doing poorly. Grey lines are "
+                "options that were beaten everywhere by another combination, shown only for "
+                "context"
+                + (
+                    "."
+                    if scale_to == "all"
+                    else "; any that fall off the chart are drawn at its edge."
+                )
+            )
+            if has_target:
+                caption += (
+                    " For a 'target' measure, height shows how close an option is to the "
+                    "ideal value; hover over a point to see whether it sits above (+) or "
+                    "below (\u2212) that target."
+                )
+            caption += " Hover over a point for its value, or along a line for its sites."
+            if len(shown_index) < len(front):
+                caption += (
+                    " Only some options are shown to start with -- click a greyed-out "
+                    "option in the legend to add it."
+                )
+
+        # Explicit pixel sizing, for the reasons given in
+        # _plot_pareto_radar_interactive: the 450px default leaves too little
+        # once the title, axis labels and caption margins come out of it, and
+        # the caption sits a fixed distance below the axis labels rather than
+        # a fraction of the plot height.
+        chart_height = 480
+        caption_lines = textwrap.wrap(caption, width=100) if caption else []
+        margin = dict(
+            t=90,
+            b=120 + 16 * len(caption_lines),
+            l=60,
+            r=_legend_right_margin(fig),
+        )
+        layout = dict(
+            template="plotly_white",
+            height=chart_height + margin["t"] + margin["b"],
+            xaxis=dict(
+                tickmode="array",
+                tickvals=x_positions,
+                ticktext=[
+                    textwrap.fill(m.label, width=20).replace("\n", "<br>")
+                    + "<br><span style='font-size:10px;color:gray'>"
+                    + self._metric_range_detail(m, raw_range, scale_to).replace(
+                        "\n", "<br>"
+                    )
+                    + "</span>"
+                    for m in metrics
+                ],
+                # Room either side so end vertices aren't clipped
+                range=[-0.4, len(metrics) - 0.6],
+                showgrid=True,
+                gridcolor="rgba(128,128,128,0.3)",
+                zeroline=False,
+            ),
+            yaxis=dict(
+                # Padded past 0-1: plotly drops the hover once the cursor
+                # leaves the axis range, which left vertices at exactly the
+                # best or worst value only hoverable on one side
+                range=[-0.06, 1.06],
+                showticklabels=False,
+                showgrid=False,
+                zeroline=False,
+                title=dict(text="Better \u2191 (rescaled per metric)"),
+            ),
+            legend=dict(x=1.02, y=1),
+            margin=margin,
+            hovermode="closest",
+            # Down from plotly's 20px, so a vertex's detail only takes over
+            # when the cursor is actually on it, not just near its line
+            hoverdistance=10,
+        )
+        if title:
+            layout["title"] = dict(text=f"<b>{title}</b>", x=0.02, xanchor="left")
+        if caption_lines:
+            layout["annotations"] = [
+                dict(
+                    text="<br>".join(caption_lines),
+                    xref="paper",
+                    yref="paper",
+                    x=0,
+                    y=0,
+                    xshift=-30,
+                    yshift=-105,  # clears the axis labels (up to 6 lines)
+                    xanchor="left",
+                    yanchor="top",
+                    showarrow=False,
+                    align="left",
+                    font=dict(size=11, color="dimgray"),
+                )
+            ]
+        fig.update_layout(**layout)
         return fig
 
     def plot_pareto_facets(
@@ -1289,7 +1652,7 @@ class ParetoMixin:
                 f"plot_pareto_facets() instead."
             )
 
-    def _radar_spoke_detail(self, m, raw_range, scale_to="all"):
+    def _metric_range_detail(self, m, raw_range, scale_to="all"):
         """Short note of what the outer ring and centre mean on one spoke.
         It names the set the range was taken over (see `_pareto_normalised`),
         otherwise "best"/"worst" reads as best/worst of the shapes shown."""
@@ -1471,15 +1834,7 @@ class ParetoMixin:
         rest = self.solution_df[~self.solution_df["is_pareto_optimal"]].copy()
         site_diff = self._resolve_site_diff(front, diff_against) if diff_against else None
         shown_index = self._resolve_initially_shown(front, initially_shown, id_col)
-        if legend_wrap_at is not None and (
-            isinstance(legend_wrap_at, bool)
-            or not isinstance(legend_wrap_at, int)
-            or legend_wrap_at < 1
-        ):
-            raise ValueError(
-                f"legend_wrap_at must be a positive whole number of characters or "
-                f"None, got {legend_wrap_at!r}"
-            )
+        self._require_legend_wrap_at(legend_wrap_at)
         normed_df, raw_range = self._pareto_normalised(scale_to)
         scale_phrase = self._scale_phrase(scale_to)
         metric_cols = [m.column for m in self.pareto_metrics]
@@ -1568,7 +1923,7 @@ class ParetoMixin:
         closed_angles = _closed(angles)
         spoke_labels = [
             f"{textwrap.fill(m.label, width=20)}\n"
-            f"({self._radar_spoke_detail(m, raw_range, scale_to)})"
+            f"({self._metric_range_detail(m, raw_range, scale_to)})"
             for m in self.pareto_metrics
         ]
 
@@ -1666,7 +2021,7 @@ class ParetoMixin:
             [
                 textwrap.fill(m.label, width=20).replace("\n", "<br>")
                 + "<br><span style='font-size:10px;color:gray'>"
-                + self._radar_spoke_detail(m, raw_range, scale_to).replace("\n", "<br>")
+                + self._metric_range_detail(m, raw_range, scale_to).replace("\n", "<br>")
                 + "</span>"
                 for m in self.pareto_metrics
             ]
@@ -1720,9 +2075,6 @@ class ParetoMixin:
             radii = normed_df.loc[idx, metric_cols].to_numpy() - radial_range[0]
             return float(np.sum(radii * np.roll(radii, -1)))
 
-        def short_name(row):
-            return str(row[name_col]) if name_col else f"Option {row[id_col]}"
-
         options = list(zip(styles, front.iterrows()))
         draw_order = sorted(
             range(len(options)), key=lambda i: -drawn_area(options[i][1][0])
@@ -1730,34 +2082,15 @@ class ParetoMixin:
 
         for option_i in draw_order:
             (colour, linestyle, marker), (idx, row) = options[option_i]
-            # One per line, since a joined list of real site names makes for
-            # a very wide tooltip. Shown both on each vertex's hover and on
-            # the shape's own (fill) hover.
-            sites_html = ""
-            if "site_names" in row.index:
-                sites_html = "<br><br><b>Sites</b><br>" + "<br>".join(
-                    f"\u2022 {site}" for site in _site_names_list(row["site_names"])
-                )
+            # Shown both on each vertex's hover and on the shape's own (fill)
+            # hover
+            sites_html = _sites_html(row)
             name = self._pareto_option_label(row, id_col, name_col, site_diff)
             customdata = []
             for m in self.pareto_metrics:
-                rank_val = int(rank_df.loc[idx, m.column])
-                context = f"{rank_val}{_get_ordinal_suffix(rank_val)} of {scale_phrase}"
-                if m.direction == "closest_to_target":
-                    context += (
-                        f"; {_signed_deviation(row[m.column] - m.target)} vs "
-                        f"target {m.target:g}"
-                    )
-                # Options tied on a metric share the exact same vertex, and
-                # plotly can only name one of them on hover -- so whichever
-                # it picks, list the others
-                tied = [
-                    short_name(other)
-                    for other_idx, other in front.iterrows()
-                    if other_idx != idx and np.isclose(other[m.column], row[m.column])
-                ]
-                if tied:
-                    context += f"<br>Same value: {', '.join(tied)}"
+                context = self._pareto_hover_context(
+                    idx, row, m, rank_df, scale_phrase, front, id_col, name_col
+                )
                 customdata.append(
                     [m.label, _format_raw_value(row[m.column]), context, sites_html, name]
                 )
@@ -1811,23 +2144,11 @@ class ParetoMixin:
         # left spoke's label needs, so it stays) to start near the edge.
         chart_height = 560
         caption_lines = textwrap.wrap(caption, width=100) if caption else []
-        # The right margin holds the legend, which plotly otherwise shifts
-        # left over the chart once its labels outgrow the default 80px
-        # (diff_against labels do, unless wrapped by legend_wrap_at)
-        longest_label_line = max(
-            (
-                len(line)
-                for t in fig.data
-                if t.showlegend is not False
-                for line in t.name.split("<br>")
-            ),
-            default=0,
-        )
         margin = dict(
             t=135,
             b=95 + 16 * len(caption_lines),
             l=80,
-            r=80 if longest_label_line <= 12 else int(7.5 * longest_label_line) + 50,
+            r=_legend_right_margin(fig),
         )
         layout = dict(
             template="plotly_white",
@@ -2112,7 +2433,7 @@ class ParetoMixin:
             "every measure by any other, with the rest of the shortlist as faint outlines "
             "behind it. Further from the centre is always better on every spoke: the outer ring "
             f"is the best value on that measure across {self._scale_phrase(scale_to)}"
-            + (", not just the shortlist" if scale_to == "all" else "")
+            + (" compared, not just the shortlist" if scale_to == "all" else "")
             + ", and the centre the worst. The boxed numbers are "
             "the option's actual values. A bigger shape is not automatically better overall -- "
             "its area depends on which measures happen to sit next to each other."
