@@ -112,6 +112,8 @@ quartodoc:
             - pareto_summary
             - plot_pareto_facets
             - plot_pareto_summary
+            - plot_pareto_radar
+            - plot_pareto_radar_facets
             - describe_tradeoffs
             - describe_tradeoffs_for_stakeholders
         - name: multiobjective.Metric

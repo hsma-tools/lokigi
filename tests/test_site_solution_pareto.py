@@ -513,3 +513,227 @@ def test_plot_pareto_facets_diff_against_rank_1_adds_diff_line(pareto_solution_s
 def test_plot_pareto_facets_invalid_diff_against_raises(pareto_solution_set):
     with pytest.raises(ValueError, match="diff_against must be one of"):
         pareto_solution_set.plot_pareto_facets(diff_against="sideways")
+
+
+# --- plot_pareto_radar / plot_pareto_radar_facets ---------------------------
+
+
+@pytest.fixture
+def radar_solution_set(pareto_solution_set):
+    """pareto_solution_set with a third metric, since a radar chart needs at
+    least 3 spokes to draw a shape."""
+    pareto_solution_set.compute_pareto_front(
+        pareto_solution_set.pareto_metrics
+        + [
+            Metric(
+                column="unweighted_average",
+                direction="lower_better",
+                label="Unweighted average travel time",
+                unit="minutes",
+            )
+        ]
+    )
+    return pareto_solution_set
+
+
+def _front_size(solution_set):
+    return int(solution_set.solution_df["is_pareto_optimal"].sum())
+
+
+def test_plot_pareto_radar_returns_polar_figure(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar()
+    try:
+        assert isinstance(fig, plt.Figure)
+        assert len(fig.axes) == 1
+        assert fig.axes[0].name == "polar"
+        labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+        assert labels == ["Option 1", "Option 2", "Option 4"]
+        # One filled polygon per Pareto-optimal option
+        assert len(fig.axes[0].patches) == _front_size(solved_solution_set)
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_fill_false_draws_no_polygons(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar(fill=False)
+    try:
+        assert len(fig.axes[0].patches) == 0
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_show_dominated_adds_background_lines(solved_solution_set):
+    fig_without = solved_solution_set.plot_pareto_radar()
+    fig_with = solved_solution_set.plot_pareto_radar(show_dominated=True)
+    try:
+        n_dominated = len(solved_solution_set.solution_df) - _front_size(
+            solved_solution_set
+        )
+        assert (
+            len(fig_with.axes[0].lines)
+            == len(fig_without.axes[0].lines) + n_dominated
+        )
+    finally:
+        plt.close(fig_without)
+        plt.close(fig_with)
+
+
+def test_plot_pareto_radar_polygons_are_closed(solved_solution_set):
+    """Each shape must end where it started, or the last spoke's segment
+    back to the first is silently missing and the outline has a gap."""
+    fig = solved_solution_set.plot_pareto_radar()
+    try:
+        n_metrics = len(solved_solution_set.pareto_metrics)
+        for line in fig.axes[0].lines:
+            theta, r = line.get_data()
+            assert len(theta) == n_metrics + 1
+            assert theta[0] == theta[-1]
+            assert r[0] == r[-1]
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_further_out_is_better(solved_solution_set):
+    """Solution 1 has the lowest (best) weighted_average, a lower_better
+    metric, so it must sit on the outer ring of that spoke -- and solution
+    2, the worst Pareto-optimal option on it, nearer the centre."""
+    fig = solved_solution_set.plot_pareto_radar()
+    try:
+        ax = fig.axes[0]
+        lines = {line.get_label(): line for line in ax.lines}
+        spoke = 0  # weighted_average is the first metric
+        assert lines["Option 1"].get_ydata()[spoke] == pytest.approx(1.0)
+        assert lines["Option 2"].get_ydata()[spoke] < 1.0
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_draws_onto_supplied_polar_ax(solved_solution_set):
+    fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
+    try:
+        returned = solved_solution_set.plot_pareto_radar(ax=ax)
+        assert returned is fig
+        assert len(ax.lines) == _front_size(solved_solution_set)
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_rejects_cartesian_ax(solved_solution_set):
+    fig, ax = plt.subplots()
+    try:
+        with pytest.raises(ValueError, match="needs polar axes"):
+            solved_solution_set.plot_pareto_radar(ax=ax)
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_interactive_returns_plotly_figure(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar(interactive=True)
+    assert type(fig).__module__.startswith("plotly")
+    assert fig.to_dict()
+    assert [trace.name for trace in fig.data] == ["Option 1", "Option 2", "Option 4"]
+    # Hover carries the raw value, not just the rescaled radius
+    option_1 = fig.data[0]
+    assert option_1.customdata[0][0] == "Average travel time"
+    assert option_1.customdata[0][1] == "10"
+    # Closed like the static version
+    assert option_1.r[0] == option_1.r[-1]
+    assert option_1.theta[0] == option_1.theta[-1]
+
+
+def test_plot_pareto_radar_interactive_show_dominated_skips_hover(
+    solved_solution_set,
+):
+    fig = solved_solution_set.plot_pareto_radar(interactive=True, show_dominated=True)
+    dominated = [trace for trace in fig.data if trace.showlegend is False]
+    assert len(dominated) == 1
+    assert dominated[0].hoverinfo == "skip"
+    assert len(fig.data) == _front_size(solved_solution_set) + 1
+
+
+def test_plot_pareto_radar_caption_can_be_suppressed(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar(caption="")
+    try:
+        assert not fig.texts
+    finally:
+        plt.close(fig)
+    interactive_fig = solved_solution_set.plot_pareto_radar(
+        interactive=True, caption=""
+    )
+    assert not interactive_fig.layout.annotations
+
+
+@pytest.mark.parametrize("method", ["plot_pareto_radar", "plot_pareto_radar_facets"])
+def test_plot_pareto_radar_needs_three_metrics(long_label_solution_set, method):
+    with pytest.raises(ValueError, match="at least 3 Pareto metrics.*plot_pareto_"):
+        getattr(long_label_solution_set, method)()
+
+
+@pytest.mark.parametrize("method", ["plot_pareto_radar", "plot_pareto_radar_facets"])
+def test_plot_pareto_radar_raises_before_compute(solution_set, method):
+    with pytest.raises(ValueError, match="Pareto front has not been calculated"):
+        getattr(solution_set, method)()
+
+
+def test_plot_pareto_radar_diff_against_rank_1_labels(radar_solution_set):
+    fig = radar_solution_set.plot_pareto_radar(diff_against="rank_1")
+    try:
+        labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+        assert labels[0] == "Option 1"
+        assert "+Site_A, Site_C; -Site_B, Site_D" in labels[1]
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_facets_one_polar_axes_per_option(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar_facets()
+    try:
+        # 3 options at the default ncols=3: no spare cells left over
+        assert len(fig.axes) == _front_size(solved_solution_set)
+        assert all(ax.name == "polar" for ax in fig.axes)
+        for ax in fig.axes:
+            title = ax.get_title(loc="left")
+            assert "Strengths:" in title
+            assert "Sacrifices:" in title
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_facets_deletes_unused_cells(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar_facets(ncols=2)
+    try:
+        assert len(fig.axes) == _front_size(solved_solution_set)
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_facets_diff_against_rank_1_adds_diff_line(
+    radar_solution_set,
+):
+    fig = radar_solution_set.plot_pareto_radar_facets(diff_against="rank_1")
+    try:
+        titles = [ax.get_title(loc="left") for ax in fig.axes]
+        assert not any("Diff (vs" in t for t in titles if "Option\\ 1" in t)
+        rank_2_title = next(t for t in titles if "Option\\ 2" in t)
+        assert "Diff (vs rank 1): +Site_A, Site_C; -Site_B, Site_D" in rank_2_title
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_facets_invalid_rank_scope_raises(solved_solution_set):
+    with pytest.raises(ValueError, match="rank_scope must be one of"):
+        solved_solution_set.plot_pareto_radar_facets(rank_scope="sideways")
+
+
+def test_plot_pareto_radar_facets_wraps_strengths_to_wrap_at(solved_solution_set):
+    """Radar facets are narrow, so unlike plot_pareto_facets() the
+    Strengths/Sacrifices lines are wrapped too -- otherwise long metric
+    labels run on into the neighbouring subplot."""
+    fig = solved_solution_set.plot_pareto_radar_facets(wrap_at=30)
+    try:
+        for ax in fig.axes:
+            meta = ax.get_title(loc="left").split("---\n")[1].split("\n")
+            assert len(meta) > 2  # actually wrapped, not just short
+            assert all(len(line) <= 30 for line in meta)
+    finally:
+        plt.close(fig)
