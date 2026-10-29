@@ -1269,12 +1269,57 @@ class ParetoMixin:
             f"of all {len(self.solution_df)} options"
         )
 
+    def _resolve_initially_shown(self, front, initially_shown, id_col):
+        """Index labels of the `front` rows to show initially. Validates
+        `initially_shown` whether or not the plot is interactive, since a bad
+        value is a mistake either way."""
+        if isinstance(initially_shown, str):
+            if initially_shown == "all":
+                return set(front.index)
+            if initially_shown == "first":
+                return set(front.index[:1])
+            raise ValueError(
+                f"initially_shown must be 'all', 'first' or a list of {id_col} values, "
+                f"got {initially_shown!r}"
+            )
+        try:
+            wanted = list(initially_shown)
+        except TypeError:
+            raise ValueError(
+                f"initially_shown must be 'all', 'first' or a list of {id_col} values, "
+                f"got {initially_shown!r}"
+            ) from None
+        if not wanted:
+            raise ValueError(
+                "initially_shown is empty, so no options would be shown. Pass "
+                "'all', 'first' or at least one id."
+            )
+        valid = set(front[id_col])
+        missing = [i for i in wanted if i not in valid]
+        if missing:
+            dominated = [
+                i for i in missing if i in set(self.solution_df[id_col]) - valid
+            ]
+            detail = (
+                f" ({', '.join(map(str, dominated))} exist but "
+                f"{'is' if len(dominated) == 1 else 'are'} not Pareto-optimal)"
+                if dominated
+                else ""
+            )
+            raise ValueError(
+                f"initially_shown has {id_col} values that aren't Pareto-optimal "
+                f"options: {', '.join(map(str, missing))}{detail}. "
+                f"Valid values: {', '.join(map(str, sorted(valid)))}."
+            )
+        return set(front.index[front[id_col].isin(wanted)])
+
     def plot_pareto_radar(
         self,
         id_col: str = "solution_rank",
         name_col: str | None = None,
         diff_against: str | None = None,
         interactive: bool = False,
+        initially_shown="all",
         figsize: tuple = (9, 7),
         theme: str = "whitegrid",
         other_color: str = "lightgray",
@@ -1314,6 +1359,15 @@ class ParetoMixin:
             If True, returns an interactive Plotly figure: hover a point
             for its raw value and rank, click a legend entry to hide that
             option, or double-click one to show it alone.
+        initially_shown : "all", "first" or list of ids, default "all"
+            Which options are visible when an interactive figure first
+            opens. The rest start greyed out in the legend, one click from
+            being shown -- useful when a large front makes the full overlay
+            a tangle. "all" shows every option, "first" only the first
+            option in the legend (the best-ranked Pareto-optimal one), and
+            a list, tuple or set picks specific options by their `id_col`
+            value (e.g. `[1, 17]`), even when `name_col` is set. Ignored if
+            `interactive=False`, though an invalid value still raises.
         figsize : tuple, default (9, 7)
             Passed to `plt.subplots()` if `ax` is not supplied. Ignored if
             `interactive=True`.
@@ -1362,6 +1416,7 @@ class ParetoMixin:
         front = self.solution_df[self.solution_df["is_pareto_optimal"]].copy()
         rest = self.solution_df[~self.solution_df["is_pareto_optimal"]].copy()
         site_diff = self._resolve_site_diff(front, diff_against) if diff_against else None
+        shown_index = self._resolve_initially_shown(front, initially_shown, id_col)
         normed_df, raw_range = self._pareto_normalised()
         metric_cols = [m.column for m in self.pareto_metrics]
         styles = _colours_and_styles(max(len(front), 1), palette)
@@ -1404,6 +1459,11 @@ class ParetoMixin:
                 )
             else:
                 default_caption += "."
+        if interactive and len(shown_index) < len(front):
+            default_caption += (
+                " Only some options are shown to start with -- click a greyed-out "
+                "option in the legend to add it."
+            )
 
         if interactive:
             return self._plot_pareto_radar_interactive(
@@ -1417,6 +1477,7 @@ class ParetoMixin:
                 name_col,
                 other_color,
                 show_dominated,
+                shown_index,
                 fill,
                 title,
                 default_caption if caption is None else caption,
@@ -1511,6 +1572,7 @@ class ParetoMixin:
         name_col,
         other_color,
         show_dominated,
+        shown_index,
         fill,
         title,
         caption,
@@ -1621,6 +1683,10 @@ class ParetoMixin:
                     customdata=_closed(customdata),
                     name=name,
                     legendrank=option_i + 1,
+                    # "legendonly" starts the trace hidden but keeps its
+                    # legend entry, so one click brings it back. Hidden
+                    # traces don't take part in hover.
+                    visible=True if idx in shown_index else "legendonly",
                     mode="lines+markers",
                     line=dict(
                         color=mcolors.to_hex(colour),

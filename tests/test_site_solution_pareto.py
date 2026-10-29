@@ -726,6 +726,95 @@ def test_plot_pareto_radar_interactive_hover_names_tied_options(
     assert "Same value" not in _trace(fig, "Option 1").customdata[0][2]
 
 
+def _visible(fig):
+    """Option name -> whether it starts visible (not "legendonly")."""
+    return {
+        trace.name: trace.visible != "legendonly"
+        for trace in fig.data
+        if trace.showlegend is not False
+    }
+
+
+def test_plot_pareto_radar_initially_shown_defaults_to_all(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar(interactive=True)
+    assert _visible(fig) == {"Option 1": True, "Option 2": True, "Option 4": True}
+    assert "greyed-out" not in fig.layout.annotations[0].text
+
+
+def test_plot_pareto_radar_initially_shown_first(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar(
+        interactive=True, initially_shown="first", show_dominated=True
+    )
+    assert _visible(fig) == {"Option 1": True, "Option 2": False, "Option 4": False}
+    # Hidden options keep their legend entry, so they can be clicked back on
+    assert all(
+        trace.showlegend is not False
+        for trace in fig.data
+        if trace.visible == "legendonly"
+    )
+    # Dominated background outlines have no legend entry to restore them
+    # from, so they are unaffected
+    assert [t.visible for t in fig.data if t.showlegend is False] == [None]
+    caption = fig.layout.annotations[0].text.replace("<br>", " ")
+    assert "click a greyed-out option in the legend" in caption
+
+
+@pytest.mark.parametrize(
+    "ids, expected",
+    [
+        ([2], {"Option 1": False, "Option 2": True, "Option 4": False}),
+        ((1, 4), {"Option 1": True, "Option 2": False, "Option 4": True}),
+        ({4}, {"Option 1": False, "Option 2": False, "Option 4": True}),
+    ],
+)
+def test_plot_pareto_radar_initially_shown_list_of_ids(
+    solved_solution_set, ids, expected
+):
+    fig = solved_solution_set.plot_pareto_radar(interactive=True, initially_shown=ids)
+    assert _visible(fig) == expected
+
+
+def test_plot_pareto_radar_initially_shown_ids_ignore_name_col(solved_solution_set):
+    """Ids are always id_col values, even when the legend shows names."""
+    fig = solved_solution_set.plot_pareto_radar(
+        interactive=True, name_col="scenario_name", initially_shown=[2]
+    )
+    assert _visible(fig) == {
+        "Solution Alpha": False,
+        "Solution Beta": True,
+        "Solution Delta": False,
+    }
+
+
+def test_plot_pareto_radar_initially_shown_rejects_dominated_id(solved_solution_set):
+    # Solution 3 is dominated
+    with pytest.raises(ValueError, match=r"3 exist but is not Pareto-optimal.*1, 2, 4"):
+        solved_solution_set.plot_pareto_radar(interactive=True, initially_shown=[1, 3])
+
+
+def test_plot_pareto_radar_initially_shown_rejects_unknown_id(solved_solution_set):
+    with pytest.raises(ValueError, match="aren't Pareto-optimal options: 99"):
+        solved_solution_set.plot_pareto_radar(interactive=True, initially_shown=[99])
+
+
+@pytest.mark.parametrize("bad", ["sideways", [], 5])
+def test_plot_pareto_radar_initially_shown_rejects_bad_values(solved_solution_set, bad):
+    with pytest.raises(ValueError, match="initially_shown"):
+        solved_solution_set.plot_pareto_radar(interactive=True, initially_shown=bad)
+
+
+def test_plot_pareto_radar_initially_shown_ignored_when_static(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar(initially_shown="first")
+    try:
+        assert isinstance(fig, plt.Figure)
+        assert len(fig.axes[0].lines) == _front_size(solved_solution_set)
+    finally:
+        plt.close(fig)
+    # An invalid value is still a mistake, so still raises
+    with pytest.raises(ValueError, match="initially_shown"):
+        solved_solution_set.plot_pareto_radar(initially_shown="sideways")
+
+
 def test_plot_pareto_radar_interactive_without_site_names(solution_df, pareto_metrics):
     solution_set = DummySolutionSet(solution_df.drop(columns="site_names"))
     solution_set.compute_pareto_front(pareto_metrics)
