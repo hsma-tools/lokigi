@@ -1,4 +1,4 @@
-## v0.9.2
+## v0.10.0
 
 ### ⚠️ Breaking changes
 
