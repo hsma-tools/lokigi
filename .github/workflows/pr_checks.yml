@@ -1,0 +1,80 @@
+name: PR checks
+run-name: Tests, API docs build and Quarto render for PR
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - dev_environment/**
+      - pyproject.toml
+      - uv.lock*
+      - Dockerfile
+      - pytest.ini
+      - lokigi/**
+      - lokigi_docs/**
+      - tests/**
+      - examples/**
+      - _quarto.yml
+      - _extensions/**
+      - .github/workflows/pr_checks.yml
+
+concurrency:
+  group: pr-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests (excluding slow_grasp)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Run tests
+        run: uv run pytest --verbose --tb=short -m "not slow_grasp"
+
+  docs:
+    name: API docs build and test render
+    runs-on: ubuntu-latest
+    # Uses the docs image published by the Docker and Quarto workflow, so
+    # this does not run for PRs from forks (no access to GHCR packages).
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/lokigi_docs_env:latest
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git safe directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Install local package
+        run: uv pip install -e .
+
+      - name: Build API docs with quartodoc
+        run: quartodoc build
+
+      # Same render as the deploy workflow, minus the publish step.
+      - name: Test render with Quarto
+        run: quarto render
