@@ -6,7 +6,9 @@ import math
 import numpy as np
 import pandas as pd
 
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 import seaborn as sns
 import sweetpareto.vis as spv
 import textwrap
@@ -38,6 +40,141 @@ def _format_site_diff_suffix(added, removed):
     if removed:
         parts.append(f"-{removed}")
     return "; ".join(parts)
+
+
+def _wrap_legend_label(label, wrap_at, newline):
+    """Wrap a legend label at `wrap_at` characters (None = leave it alone),
+    joining lines with `newline` -- "\\n" for matplotlib, "<br>" for plotly."""
+    if not wrap_at:
+        return label
+    return newline.join(textwrap.wrap(label, width=wrap_at, break_long_words=False))
+
+
+def _sites_html(row):
+    """An option's sites as a hover section, one per line since a joined
+    list of real site names makes for a very wide tooltip. Empty if the
+    solution set has no `site_names` column."""
+    if "site_names" not in row.index:
+        return ""
+    return "<br><br><b>Sites</b><br>" + "<br>".join(
+        f"\u2022 {site}" for site in _site_names_list(row["site_names"])
+    )
+
+
+def _legend_right_margin(fig):
+    """Right margin (px) for a plotly figure whose legend sits to its right.
+    Plotly shifts a legend wider than the margin left over the chart, so it
+    follows the longest legend line -- but short labels keep the default 80px
+    (diff_against labels get long, unless wrapped by legend_wrap_at)."""
+    longest = max(
+        (
+            len(line)
+            for t in fig.data
+            if t.showlegend is not False
+            for line in t.name.split("<br>")
+        ),
+        default=0,
+    )
+    return 80 if longest <= 12 else int(7.5 * longest) + 50
+
+
+def _site_names_list(sites_val):
+    """A `site_names` cell as a list of strings, whether it holds a
+    list/set/tuple of names or a single pre-joined value."""
+    if isinstance(sites_val, (list, set, tuple)):
+        return [str(site) for site in sites_val]
+    return [str(sites_val)]
+
+
+def _format_raw_value(raw_val):
+    """Smart-format a raw metric value for an on-chart label: keep integers
+    clean, float decimals concise, and add thousands separators."""
+    if isinstance(raw_val, (int, np.integer)):
+        return f"{raw_val:,}"
+    if isinstance(raw_val, (float, np.floating)):
+        return (
+            f"{raw_val:,.2f}".rstrip("0").rstrip(".")
+            if not raw_val.is_integer()
+            else f"{int(raw_val):,}"
+        )
+    return str(raw_val)
+
+
+# matplotlib linestyle/marker -> plotly equivalent, for the styles
+# _colours_and_styles() can hand back
+_PLOTLY_DASH = {"-": "solid", "--": "dash", "-.": "dashdot", ":": "dot"}
+_PLOTLY_SYMBOL = {
+    "o": "circle",
+    "s": "square",
+    "^": "triangle-up",
+    "D": "diamond",
+    "v": "triangle-down",
+    "P": "cross",
+    "X": "x",
+}
+
+# Empty hole at the middle of a radar chart, in normalised (0-1) units. The
+# worst value seen on a metric normalises to exactly 0, so without a hole
+# every option that's worst on some metric pinches in to a single shared
+# centre point, which reads as a drawing glitch rather than "worst".
+_RADAR_HOLE = 0.25
+
+# Radial range padding on the interactive radar, in normalised units -- see
+# radial_range in _plot_pareto_radar_interactive
+_PLOTLY_RADIAL_PAD = 0.04
+
+# Invisible hover points added along each segment of the interactive line
+# chart, so an option's line can be hovered anywhere, not only at its vertices
+_SEGMENT_HOVER_POINTS = 6
+
+
+def _radar_angles(n):
+    """Spoke angles (radians) for n metrics, starting at 12 o'clock once
+    `_style_radar_axes` has set the polar offset/direction."""
+    return np.linspace(0, 2 * np.pi, n, endpoint=False)
+
+
+def _closed(values):
+    """Repeat the first point at the end so a radar polygon closes."""
+    values = list(values)
+    return values + values[:1]
+
+
+def _style_radar_axes(ax, angles, labels, fontsize, pad):
+    """Shared polar-axes setup for the radar plots: first metric at 12
+    o'clock running clockwise, a 0-1 radial range with an empty centre, no
+    radial tick numbers (the scale is rescaled per metric, so they mean
+    nothing), and spoke labels pushed away from the plot on either side."""
+    ax.set_theta_offset(np.pi / 2)
+    ax.set_theta_direction(-1)
+    ax.set_ylim(0, 1)
+    ax.set_rorigin(-_RADAR_HOLE)
+    ax.set_yticks([0, 0.25, 0.5, 0.75, 1])
+    ax.set_yticklabels([])
+    ax.set_xticks(angles)
+    ax.set_xticklabels(labels, fontsize=fontsize)
+    ax.tick_params(axis="x", pad=pad)
+    # Centred labels on the left/right spokes overhang back across the
+    # plot; anchor them on the side facing away from it instead
+    for tick_label, angle in zip(ax.get_xticklabels(), angles):
+        x = np.cos(np.pi / 2 - angle)
+        tick_label.set_horizontalalignment(
+            "left" if x > 0.1 else ("right" if x < -0.1 else "center")
+        )
+
+
+def _radar_offset(angle, distance, turn=0.0):
+    """(dx, dy) in points for nudging a vertex label off its marker on the
+    spoke at `angle`: radially outward when `turn=0`, or rotated `turn`
+    radians anticlockwise from there (e.g. +/-pi/2 to sit beside the spoke
+    rather than on it)."""
+    display_angle = np.pi / 2 - angle + turn
+    return (distance * np.cos(display_angle), distance * np.sin(display_angle))
+
+
+def _signed_deviation(deviation):
+    sign = "+" if deviation > 0 else ("\u2212" if deviation < 0 else "\u00b1")
+    return f"{sign}{abs(deviation):.2f}"
 
 
 ##################################
@@ -471,6 +608,226 @@ class ParetoMixin:
 
         return statements
 
+    def _require_pareto_front(self):
+        if "is_pareto_optimal" not in self.solution_df:
+            raise ValueError(
+                "Pareto front has not been calculated. Please run '.compute_pareto_front() first."
+            )
+
+    def _pareto_normalised(self, scale_to="all"):
+        """
+        Rescale every Pareto metric to 0-1 where 1 is always "better".
+
+        `scale_to="all"` (the default) uses the full solution set's range, not
+        just the front, so axes reflect the true spread of what was
+        evaluated. `scale_to="pareto_front"` uses only the Pareto-optimal
+        solutions' range, which stretches the front across the whole axis;
+        dominated solutions can then fall outside 0-1 (a Pareto-optimal
+        solution never does). They are left as they are here, so dominance
+        comparisons stay exact, and callers draw them with `np.clip(.., 0, 1)`.
+
+        Returns `(normed_df, raw_range)`: `normed_df` is indexed like
+        `solution_df` with one column per metric, and `raw_range` maps each
+        metric column to the raw `(min, max)` it was scaled over.
+        """
+        scoped = (
+            self.solution_df[self.solution_df["is_pareto_optimal"]]
+            if scale_to == "pareto_front"
+            else self.solution_df
+        )
+        normed = {}
+        raw_range = {}
+        for m in self.pareto_metrics:
+            col = self.solution_df[m.column]
+            lo, hi = scoped[m.column].min(), scoped[m.column].max()
+            raw_range[m.column] = (lo, hi)
+            span = (hi - lo) or 1.0  # guard against a constant column
+            if m.direction == "higher_better":
+                normed[m.column] = (col - lo) / span
+            elif m.direction == "lower_better":
+                normed[m.column] = 1 - (col - lo) / span
+            else:  # closest_to_target
+                dev = (col - m.target).abs()
+                max_dev = (scoped[m.column] - m.target).abs().max() or 1.0
+                normed[m.column] = 1 - dev / max_dev
+        return pd.DataFrame(normed, index=self.solution_df.index), raw_range
+
+    @staticmethod
+    def _require_legend_wrap_at(legend_wrap_at):
+        if legend_wrap_at is not None and (
+            isinstance(legend_wrap_at, bool)
+            or not isinstance(legend_wrap_at, int)
+            or legend_wrap_at < 1
+        ):
+            raise ValueError(
+                f"legend_wrap_at must be a positive whole number of characters or "
+                f"None, got {legend_wrap_at!r}"
+            )
+
+    @staticmethod
+    def _pareto_short_name(row, id_col, name_col):
+        """An option's name without any site diff."""
+        return str(row[name_col]) if name_col else f"Option {row[id_col]}"
+
+    def _pareto_hover_context(
+        self, idx, row, m, rank_df, scale_phrase, front, id_col, name_col
+    ):
+        """The rank line of an interactive hover for one option's value on
+        one metric: its rank over the set the chart is scaled over, how far
+        from target for a target metric, and any other options tied on it."""
+        rank_val = int(rank_df.loc[idx, m.column])
+        context = f"{rank_val}{_get_ordinal_suffix(rank_val)} of {scale_phrase}"
+        if m.direction == "closest_to_target":
+            context += (
+                f"; {_signed_deviation(row[m.column] - m.target)} vs "
+                f"target {m.target:g}"
+            )
+        # Options tied on a metric share the exact same point, and plotly can
+        # only name one of them on hover -- so whichever it picks, list the
+        # others
+        tied = [
+            self._pareto_short_name(other, id_col, name_col)
+            for other_idx, other in front.iterrows()
+            if other_idx != idx and np.isclose(other[m.column], row[m.column])
+        ]
+        if tied:
+            context += f"<br>Same value: {', '.join(tied)}"
+        return context
+
+    @staticmethod
+    def _require_scale_to(scale_to):
+        if scale_to not in ("all", "pareto_front"):
+            raise ValueError(
+                f"scale_to must be one of 'all' or 'pareto_front', got {scale_to!r}"
+            )
+
+    def _scale_phrase(self, scale_to):
+        """The set of options a radar's best/worst and ranks are over, as a
+        phrase to follow "of" / "across"."""
+        if scale_to == "pareto_front":
+            n = int(self.solution_df["is_pareto_optimal"].sum())
+            return f"the {n} Pareto-optimal options"
+        return f"all {len(self.solution_df)} options"
+
+    @staticmethod
+    def _pareto_option_label(row, id_col, name_col, site_diff):
+        """Legend label for one option: `name_col`/"Option <id>", plus a
+        compact site diff suffix when `site_diff` is given."""
+        label = str(row[name_col]) if name_col else f"Option {row[id_col]}"
+        if site_diff is not None:
+            suffix = _format_site_diff_suffix(
+                site_diff["added"].loc[row.name], site_diff["removed"].loc[row.name]
+            )
+            if suffix:
+                label = f"{label} ({suffix})"
+        return label
+
+    def _pareto_facet_title(
+        self,
+        idx,
+        row,
+        normed_df,
+        front_mean,
+        rank_df,
+        rank_n,
+        id_col,
+        name_col,
+        show_site_names,
+        site_diff,
+        wrap_at,
+        meta_wrap_at=None,
+    ):
+        """
+        Multi-line facet title for one Pareto-optimal option: bold name (and
+        how many designs it beats), included sites, optional site diff, and
+        its strengths/sacrifices relative to the front average, each with
+        its rank. `wrap_at` wraps the site and diff lines; the
+        strengths/sacrifices lines are only wrapped if `meta_wrap_at` is
+        given.
+        """
+        # Dominance math: A candidate is dominated by us if our metrics are >= theirs
+        # on all dimensions, and strictly > on at least one.
+        curr_norm_vals = normed_df.loc[idx]
+        dominates_mask = (curr_norm_vals >= normed_df).all(axis=1) & (
+            curr_norm_vals > normed_df
+        ).any(axis=1)
+        num_dominated = dominates_mask.sum()
+
+        def _label_with_rank(m):
+            rank_val = int(rank_df.loc[idx, m.column])
+            rank_str = f"{rank_val}{_get_ordinal_suffix(rank_val)} of {rank_n}"
+            return f"{m.label} ({rank_str})"
+
+        # Relative Strengths and Weaknesses (vs the average of the Pareto Front)
+        strengths = []
+        trade_offs = []
+        for m in self.pareto_metrics:
+            val = curr_norm_vals[m.column]
+            avg = front_mean[m.column]
+            diff = val - avg
+            if diff > 0.05:  # Noticeably above front average
+                strengths.append(_label_with_rank(m))
+            elif diff < -0.05:  # Noticeably below front average
+                trade_offs.append(_label_with_rank(m))
+
+        # Fallbacks if metrics are entirely clustered around the mean
+        if not strengths:
+            strengths = [
+                _label_with_rank(m)
+                for m in self.pareto_metrics
+                if curr_norm_vals[m.column] >= curr_norm_vals.median()
+            ][:2]
+        if not trade_offs:
+            trade_offs = [
+                _label_with_rank(m)
+                for m in self.pareto_metrics
+                if curr_norm_vals[m.column] < curr_norm_vals.median()
+            ][:2]
+
+        # Label
+        label = str(row[name_col]) if name_col else f"Option {row[id_col]}"
+
+        if num_dominated > 0:
+            label = label + f": beats {num_dominated} designs"
+
+        # Site summary
+        sites_str = ""
+        if show_site_names:
+            sites_str = ", ".join(_site_names_list(row["site_names"]))
+            # Wrap long site lists to keep layout clean
+            sites_str = textwrap.fill(sites_str, width=wrap_at)
+
+        # Compile information into a neat, blocky subplot title
+        label = label.replace(" ", r"\ ")
+        title_lines = [rf"$\bf{{{label}}}$"]
+        # Now add additional info to the title, not in bold
+        if sites_str:
+            title_lines.append(f"Included: {sites_str}")
+
+        if site_diff is not None:
+            diff_suffix = _format_site_diff_suffix(
+                site_diff["added"].loc[idx], site_diff["removed"].loc[idx]
+            )
+            if diff_suffix:
+                diff_line = f"Diff (vs {site_diff['label']}): {diff_suffix}"
+                title_lines.append(textwrap.fill(diff_line, width=wrap_at))
+
+        # Narrow facets (the radar ones) also wrap these, or long metric labels
+        # run on into the neighbouring subplot
+        def _wrap_meta(line):
+            return textwrap.fill(line, width=meta_wrap_at) if meta_wrap_at else line
+
+        meta_parts = []
+        if strengths:
+            strengths_line = f"Strengths: {', '.join(strengths[:2])}"
+            meta_parts.append(f"---\n{_wrap_meta(strengths_line)}")
+        if trade_offs:
+            trade_offs_line = f"Sacrifices: {', '.join(trade_offs[:2])}"
+            meta_parts.append(f"\n{_wrap_meta(trade_offs_line)}")
+
+        title_lines.append("".join(meta_parts))
+        return "\n".join(title_lines)
+
     def plot_pareto_summary(
         self,
         id_col: str = "solution_rank",
@@ -485,6 +842,10 @@ class ParetoMixin:
         title: str | None = None,
         caption: str | None = None,
         ax=None,
+        interactive: bool = False,
+        initially_shown="all",
+        legend_wrap_at: int | None = None,
+        scale_to: str = "all",
     ):
         """
         Plot every solution as a line across all `metrics` at once, each axis
@@ -535,12 +896,64 @@ class ParetoMixin:
         title / caption: shown above/below the chart. Sensible stakeholder-
             facing defaults are used if not provided; pass "" to suppress
             either entirely.
+        interactive: bool, default False
+            If True, returns an interactive Plotly figure. Hover a point on
+            an option's line for its raw value, its rank and the sites that
+            make up that option, or anywhere along the line for the option
+            and its sites; click a legend entry to hide that option, or
+            double-click one to show it alone. `height`,
+            `width_multiplier`, `theme`, `show_value_labels` and `ax` are
+            ignored (the hover shows how far a target metric is from its
+            target instead).
+        initially_shown: "all", "first" or list of ids, default "all"
+            Which options are visible when an interactive figure first
+            opens. The rest start greyed out in the legend, one click from
+            being shown. "all" shows every option, "first" only the first
+            option in the legend, and a list, tuple or set picks specific
+            options by their `id_col` value (e.g. `[1, 17]`), even when
+            `name_col` is set. Ignored if `interactive=False`, though an
+            invalid value still raises.
+        legend_wrap_at: int, optional
+            Wrap legend labels onto multiple lines at this many characters;
+            `None` (the default) leaves them on one line. Worth setting when
+            `diff_against` makes labels long. Only the legend wraps: the
+            interactive hover title keeps the full label on one line.
+        scale_to: {"all", "pareto_front"}, default "all"
+            Which options each axis's best and worst values are taken from.
+            "all" scales over every option compared, dominated ones
+            included, so the chart shows how good the front is against
+            everything that was evaluated. "pareto_front" scales over just
+            the Pareto-optimal options, which stretches them across the
+            whole axis and makes the differences between them easier to see,
+            at the cost of saying nothing about how they compare with the
+            rest. The axis labels, interactive hover ranks and caption name
+            whichever is used. With "pareto_front", grey dominated lines
+            that fall off the chart are drawn at its edge.
         """
-        sns.set_style(theme)
+        self._require_scale_to(scale_to)
+        self._require_legend_wrap_at(legend_wrap_at)
         front = self.solution_df[self.solution_df["is_pareto_optimal"]].copy()
         rest = self.solution_df[~self.solution_df["is_pareto_optimal"]].copy()
+        shown_index = self._resolve_initially_shown(front, initially_shown, id_col)
         site_diff = self._resolve_site_diff(front, diff_against) if diff_against else None
 
+        if interactive:
+            return self._plot_pareto_summary_interactive(
+                front,
+                rest,
+                site_diff,
+                id_col,
+                name_col,
+                other_color,
+                palette,
+                shown_index,
+                legend_wrap_at,
+                scale_to,
+                title,
+                caption,
+            )
+
+        sns.set_style(theme)
         if ax is None:
             fig, ax = plt.subplots(
                 figsize=(len(self.pareto_metrics) * width_multiplier, height)
@@ -564,31 +977,17 @@ class ParetoMixin:
             for m in self.pareto_metrics
         ]
 
-        # normalise every metric to 0-1 where 1 is always "better", using the
-        # full solution set's range (not just the front) so axes reflect the
-        # true spread of what was evaluated
-        normed = {}
-        raw_range = {}
-        for m in self.pareto_metrics:
-            col = self.solution_df[m.column]
-            lo, hi = col.min(), col.max()
-            raw_range[m.column] = (lo, hi)
-            span = (hi - lo) or 1.0  # guard against a constant column
-            if m.direction == "higher_better":
-                normed[m.column] = (col - lo) / span
-            elif m.direction == "lower_better":
-                normed[m.column] = 1 - (col - lo) / span
-            else:  # closest_to_target
-                dev = (col - m.target).abs()
-                max_dev = dev.max() or 1.0
-                normed[m.column] = 1 - dev / max_dev
-        normed_df = pd.DataFrame(normed, index=self.solution_df.index)
+        normed_df, raw_range = self._pareto_normalised(scale_to)
 
         # background: dominated solutions, unlabelled
         for idx in rest.index:
             ax.plot(
                 x_positions,
-                normed_df.loc[idx, [m.column for m in self.pareto_metrics]],
+                # Clipped: under scale_to="pareto_front" a dominated option
+                # can fall off the chart (a no-op otherwise)
+                np.clip(
+                    normed_df.loc[idx, [m.column for m in self.pareto_metrics]], 0, 1
+                ),
                 color=other_color,
                 alpha=0.5,
                 linewidth=1,
@@ -601,13 +1000,11 @@ class ParetoMixin:
             m.column for m in self.pareto_metrics if m.direction == "closest_to_target"
         }
         for (colour, linestyle, marker), (_, row) in zip(styles, front.iterrows()):
-            label = str(row[name_col]) if name_col else f"Option {row[id_col]}"
-            if site_diff is not None:
-                suffix = _format_site_diff_suffix(
-                    site_diff["added"].loc[row.name], site_diff["removed"].loc[row.name]
-                )
-                if suffix:
-                    label = f"{label} ({suffix})"
+            label = _wrap_legend_label(
+                self._pareto_option_label(row, id_col, name_col, site_diff),
+                legend_wrap_at,
+                "\n",
+            )
             y_vals = normed_df.loc[row.name, [m.column for m in self.pareto_metrics]]
             ax.plot(
                 x_positions,
@@ -718,9 +1115,234 @@ class ParetoMixin:
             "For a 'target' measure, height shows how close an option is to the ideal value; the small "
             "label next to each point shows whether it sits above (+) or below (\u2212) that target."
         )
+        if scale_to == "pareto_front":
+            default_caption += (
+                f" Heights are scaled over just {self._scale_phrase(scale_to)}, so the "
+                "top and bottom of each axis are the best and worst of those, and any grey line "
+                "that falls off the chart is drawn at its edge."
+            )
         _add_plot_caption(fig, caption, default_caption, width=105)
 
         fig.tight_layout()
+        return fig
+
+    def _plot_pareto_summary_interactive(
+        self,
+        front,
+        rest,
+        site_diff,
+        id_col,
+        name_col,
+        other_color,
+        palette,
+        shown_index,
+        legend_wrap_at,
+        scale_to,
+        title,
+        caption,
+    ):
+        metrics = self.pareto_metrics
+        metric_cols = [m.column for m in metrics]
+        x_positions = list(range(len(metrics)))
+        normed_df, raw_range = self._pareto_normalised(scale_to)
+        # Ranked over the same set the axes are scaled over
+        rank_source = (
+            normed_df.loc[front.index] if scale_to == "pareto_front" else normed_df
+        )
+        rank_df = rank_source.rank(method="min", ascending=False)
+        scale_phrase = self._scale_phrase(scale_to)
+        styles = _colours_and_styles(max(len(front), 1), palette)
+        has_target = any(m.direction == "closest_to_target" for m in metrics)
+
+        fig = go.Figure()
+
+        # Every dominated solution in a single trace, broken into separate
+        # lines by None gaps: hundreds of them as traces of their own would
+        # make the figure heavy to draw and to serialise
+        if len(rest):
+            xs, ys = [], []
+            for idx in rest.index:
+                xs += x_positions + [None]
+                ys += list(np.clip(normed_df.loc[idx, metric_cols], 0, 1)) + [None]
+            fig.add_trace(
+                go.Scatter(
+                    x=xs,
+                    y=ys,
+                    mode="lines",
+                    line=dict(color=mcolors.to_hex(other_color), width=1),
+                    opacity=0.5,
+                    hoverinfo="skip",
+                    showlegend=False,
+                )
+            )
+
+        for option_i, ((colour, linestyle, marker), (idx, row)) in enumerate(
+            zip(styles, front.iterrows())
+        ):
+            name = self._pareto_option_label(row, id_col, name_col, site_diff)
+            sites_html = _sites_html(row)
+
+            # Plotly can only hover at a point, not along a line between
+            # them, so each segment gets a few invisible points of its own:
+            # hovering anywhere on an option's line then shows what it is
+            # made of, while the real vertices carry the value and rank.
+            xs, ys, hovers, opacity = [], [], [], []
+            for i, m in enumerate(metrics):
+                context = self._pareto_hover_context(
+                    idx, row, m, rank_df, scale_phrase, front, id_col, name_col
+                )
+                xs.append(x_positions[i])
+                ys.append(normed_df.loc[idx, m.column])
+                opacity.append(1)
+                hovers.append(
+                    f"<b>{name}</b><br>{m.label}: {_format_raw_value(row[m.column])}"
+                    f"<br>{context}{sites_html}"
+                )
+                if i == len(metrics) - 1:
+                    break
+                for step in range(1, _SEGMENT_HOVER_POINTS + 1):
+                    t = step / (_SEGMENT_HOVER_POINTS + 1)
+                    xs.append(x_positions[i] + t)
+                    ys.append(
+                        (1 - t) * normed_df.loc[idx, m.column]
+                        + t * normed_df.loc[idx, metrics[i + 1].column]
+                    )
+                    opacity.append(0)
+                    hovers.append(f"<b>{name}</b>{sites_html}")
+
+            fig.add_trace(
+                go.Scatter(
+                    x=xs,
+                    y=ys,
+                    customdata=hovers,
+                    # Only the legend label wraps; the hover carries the full
+                    # name so its title stays on one line
+                    name=_wrap_legend_label(name, legend_wrap_at, "<br>"),
+                    legendrank=option_i + 1,
+                    # "legendonly" starts the trace hidden but keeps its
+                    # legend entry, so one click brings it back. Hidden
+                    # traces don't take part in hover.
+                    visible=True if idx in shown_index else "legendonly",
+                    mode="lines+markers",
+                    line=dict(
+                        color=mcolors.to_hex(colour),
+                        width=2.2,
+                        dash=_PLOTLY_DASH[linestyle],
+                    ),
+                    marker=dict(
+                        symbol=_PLOTLY_SYMBOL[marker], size=7, opacity=opacity
+                    ),
+                    hovertemplate="%{customdata}<extra></extra>",
+                )
+            )
+
+        if title is None:
+            title = "Comparing the shortlisted options"
+        if caption is None:
+            caption = (
+                "How to read this chart: each coloured line is one option that isn't beaten on "
+                "every measure by any other -- there's no single best choice. Higher always "
+                "means better on every axis, even though the measures use different units: the "
+                f"top of each axis is the best value on that measure across {scale_phrase}"
+                + (
+                    " compared, not just the ones shown in colour"
+                    if scale_to == "all"
+                    else ", so it only compares the lines shown with each other"
+                )
+                + " and the bottom the worst, so a line near the top of an axis is doing well "
+                "on that measure and a line near the bottom is doing poorly. Grey lines are "
+                "options that were beaten everywhere by another combination, shown only for "
+                "context"
+                + (
+                    "."
+                    if scale_to == "all"
+                    else "; any that fall off the chart are drawn at its edge."
+                )
+            )
+            if has_target:
+                caption += (
+                    " For a 'target' measure, height shows how close an option is to the "
+                    "ideal value; hover over a point to see whether it sits above (+) or "
+                    "below (\u2212) that target."
+                )
+            caption += " Hover over a point for its value, or along a line for its sites."
+            if len(shown_index) < len(front):
+                caption += (
+                    " Only some options are shown to start with -- click a greyed-out "
+                    "option in the legend to add it."
+                )
+
+        # Explicit pixel sizing, for the reasons given in
+        # _plot_pareto_radar_interactive: the 450px default leaves too little
+        # once the title, axis labels and caption margins come out of it, and
+        # the caption sits a fixed distance below the axis labels rather than
+        # a fraction of the plot height.
+        chart_height = 480
+        caption_lines = textwrap.wrap(caption, width=100) if caption else []
+        margin = dict(
+            t=90,
+            b=120 + 16 * len(caption_lines),
+            l=60,
+            r=_legend_right_margin(fig),
+        )
+        layout = dict(
+            template="plotly_white",
+            height=chart_height + margin["t"] + margin["b"],
+            xaxis=dict(
+                tickmode="array",
+                tickvals=x_positions,
+                ticktext=[
+                    textwrap.fill(m.label, width=20).replace("\n", "<br>")
+                    + "<br><span style='font-size:10px;color:gray'>"
+                    + self._metric_range_detail(m, raw_range, scale_to).replace(
+                        "\n", "<br>"
+                    )
+                    + "</span>"
+                    for m in metrics
+                ],
+                # Room either side so end vertices aren't clipped
+                range=[-0.4, len(metrics) - 0.6],
+                showgrid=True,
+                gridcolor="rgba(128,128,128,0.3)",
+                zeroline=False,
+            ),
+            yaxis=dict(
+                # Padded past 0-1: plotly drops the hover once the cursor
+                # leaves the axis range, which left vertices at exactly the
+                # best or worst value only hoverable on one side
+                range=[-0.06, 1.06],
+                showticklabels=False,
+                showgrid=False,
+                zeroline=False,
+                title=dict(text="Better \u2191 (rescaled per metric)"),
+            ),
+            legend=dict(x=1.02, y=1),
+            margin=margin,
+            hovermode="closest",
+            # Down from plotly's 20px, so a vertex's detail only takes over
+            # when the cursor is actually on it, not just near its line
+            hoverdistance=10,
+        )
+        if title:
+            layout["title"] = dict(text=f"<b>{title}</b>", x=0.02, xanchor="left")
+        if caption_lines:
+            layout["annotations"] = [
+                dict(
+                    text="<br>".join(caption_lines),
+                    xref="paper",
+                    yref="paper",
+                    x=0,
+                    y=0,
+                    xshift=-30,
+                    yshift=-105,  # clears the axis labels (up to 6 lines)
+                    xanchor="left",
+                    yanchor="top",
+                    showarrow=False,
+                    align="left",
+                    font=dict(size=11, color="dimgray"),
+                )
+            ]
+        fig.update_layout(**layout)
         return fig
 
     def plot_pareto_facets(
@@ -815,24 +1437,7 @@ class ParetoMixin:
             for m in self.pareto_metrics
         ]
 
-        # Normalise every metric to 0-1 (where 1 is always "better")
-        normed = {}
-        raw_range = {}
-        for m in self.pareto_metrics:
-            col = self.solution_df[m.column]
-            lo, hi = col.min(), col.max()
-            raw_range[m.column] = (lo, hi)
-            span = (hi - lo) or 1.0
-            if m.direction == "higher_better":
-                normed[m.column] = (col - lo) / span
-            elif m.direction == "lower_better":
-                normed[m.column] = 1 - (col - lo) / span
-            else:  # closest_to_target
-                dev = (col - m.target).abs()
-                max_dev = dev.max() or 1.0
-                normed[m.column] = 1 - dev / max_dev
-
-        normed_df = pd.DataFrame(normed, index=self.solution_df.index)
+        normed_df, raw_range = self._pareto_normalised()
         x_positions = list(range(len(self.pareto_metrics)))
 
         # Compute average performance across the Pareto front for trade-off reference
@@ -907,24 +1512,11 @@ class ParetoMixin:
             # --- ADDED: Annotate each point on the highlighted line with its RAW value ---
             if show_raw_labels:
                 for m in self.pareto_metrics:
-                    raw_val = current_row[m.column]
                     x = x_positions[self.pareto_metrics.index(m)]
                     y = curr_y_vals[m.column]
 
-                    # Smart-format: Keep integers clean, float decimals concise, and add commas
-                    if isinstance(raw_val, (int, np.integer)):
-                        val_str = f"{raw_val:,}"
-                    elif isinstance(raw_val, (float, np.floating)):
-                        val_str = (
-                            f"{raw_val:,.2f}".rstrip("0").rstrip(".")
-                            if not raw_val.is_integer()
-                            else f"{int(raw_val):,}"
-                        )
-                    else:
-                        val_str = str(raw_val)
-
                     ax.annotate(
-                        val_str,
+                        _format_raw_value(current_row[m.column]),
                         (x, y),
                         textcoords="offset points",
                         xytext=(0, 8),  # Positioned 8 points directly above the marker
@@ -970,92 +1562,20 @@ class ParetoMixin:
             for x, m in zip(x_positions, self.pareto_metrics):
                 ax.axvline(x, color="gray", linewidth=0.8, alpha=0.3, zorder=0)
 
-            # --- Subplot Title & Meta Calculations ---
-
-            # Dominance math: A candidate is dominated by us if our metrics are >= theirs
-            # on all dimensions, and strictly > on at least one.
-            curr_norm_vals = normed_df.loc[idx]
-            dominates_mask = (curr_norm_vals >= normed_df).all(axis=1) & (
-                curr_norm_vals > normed_df
-            ).any(axis=1)
-            num_dominated = dominates_mask.sum()
-
-            def _label_with_rank(m):
-                rank_val = int(rank_df.loc[idx, m.column])
-                rank_str = f"{rank_val}{_get_ordinal_suffix(rank_val)} of {rank_n}"
-                return f"{m.label} ({rank_str})"
-
-            # Relative Strengths and Weaknesses (vs the average of the Pareto Front)
-            strengths = []
-            trade_offs = []
-            for m in self.pareto_metrics:
-                val = curr_norm_vals[m.column]
-                avg = front_mean[m.column]
-                diff = val - avg
-                if diff > 0.05:  # Noticeably above front average
-                    strengths.append(_label_with_rank(m))
-                elif diff < -0.05:  # Noticeably below front average
-                    trade_offs.append(_label_with_rank(m))
-
-            # Fallbacks if metrics are entirely clustered around the mean
-            if not strengths:
-                strengths = [
-                    _label_with_rank(m)
-                    for m in self.pareto_metrics
-                    if curr_norm_vals[m.column] >= curr_norm_vals.median()
-                ][:2]
-            if not trade_offs:
-                trade_offs = [
-                    _label_with_rank(m)
-                    for m in self.pareto_metrics
-                    if curr_norm_vals[m.column] < curr_norm_vals.median()
-                ][:2]
-
-            # Label
-            label = (
-                str(current_row[name_col])
-                if name_col
-                else f"Option {current_row[id_col]}"
-            )
-
-            if num_dominated > 0:
-                label = label + f": beats {num_dominated} designs"
-
-            # Site summary
-            sites_str = ""
-            if show_site_names:
-                sites_val = current_row["site_names"]
-                if isinstance(sites_val, (list, set, tuple)):
-                    sites_str = ", ".join(map(str, sites_val))
-                else:
-                    sites_str = str(sites_val)
-                # Wrap long site lists to keep layout clean
-                sites_str = textwrap.fill(sites_str, width=effective_wrap_at)
-
-            # Compile information into a neat, blocky subplot title
-            label = label.replace(" ", r"\ ")
-            title_lines = [rf"$\bf{{{label}}}$"]
-            # Now add additional info to the title, not in bold
-            if sites_str:
-                title_lines.append(f"Included: {sites_str}")
-
-            if site_diff is not None:
-                diff_suffix = _format_site_diff_suffix(
-                    site_diff["added"].loc[idx], site_diff["removed"].loc[idx]
-                )
-                if diff_suffix:
-                    diff_line = f"Diff (vs {site_diff['label']}): {diff_suffix}"
-                    title_lines.append(textwrap.fill(diff_line, width=effective_wrap_at))
-
-            meta_parts = []
-            if strengths:
-                meta_parts.append(f"---\nStrengths: {', '.join(strengths[:2])}")
-            if trade_offs:
-                meta_parts.append(f"\nSacrifices: {', '.join(trade_offs[:2])}")
-
-            title_lines.append("".join(meta_parts))
             ax.set_title(
-                "\n".join(title_lines),
+                self._pareto_facet_title(
+                    idx,
+                    current_row,
+                    normed_df,
+                    front_mean,
+                    rank_df,
+                    rank_n,
+                    id_col,
+                    name_col,
+                    show_site_names,
+                    site_diff,
+                    effective_wrap_at,
+                ),
                 fontsize=8.5,
                 loc="left",
                 pad=20,  # Leaves headroom for the raw-value labels near the top of the axes
@@ -1119,6 +1639,806 @@ class ParetoMixin:
         if title is None:
             title = "Individual Analysis of Pareto-Optimal Choices"
         fig.suptitle(title, fontsize=14, fontweight="bold", y=0.99)
+
+        fig.tight_layout()
+        return fig
+
+    def _require_radar_metrics(self):
+        n = len(self.pareto_metrics)
+        if n < 3:
+            raise ValueError(
+                f"A radar chart needs at least 3 Pareto metrics to draw a shape, but "
+                f"compute_pareto_front() was given {n}. Use plot_pareto_summary() or "
+                f"plot_pareto_facets() instead."
+            )
+
+    def _metric_range_detail(self, m, raw_range, scale_to="all"):
+        """Short note of what the outer ring and centre mean on one spoke.
+        It names the set the range was taken over (see `_pareto_normalised`),
+        otherwise "best"/"worst" reads as best/worst of the shapes shown."""
+        if m.direction == "closest_to_target":
+            return f"target = {m.target:g}"
+        lo, hi = raw_range[m.column]
+        worse_val, better_val = (lo, hi) if m.direction == "higher_better" else (hi, lo)
+        return (
+            f"best {_format_raw_value(better_val)}, worst {_format_raw_value(worse_val)}\n"
+            f"of {self._scale_phrase(scale_to)}"
+        )
+
+    def _resolve_initially_shown(self, front, initially_shown, id_col):
+        """Index labels of the `front` rows to show initially. Validates
+        `initially_shown` whether or not the plot is interactive, since a bad
+        value is a mistake either way."""
+        if isinstance(initially_shown, str):
+            if initially_shown == "all":
+                return set(front.index)
+            if initially_shown == "first":
+                return set(front.index[:1])
+            raise ValueError(
+                f"initially_shown must be 'all', 'first' or a list of {id_col} values, "
+                f"got {initially_shown!r}"
+            )
+        try:
+            wanted = list(initially_shown)
+        except TypeError:
+            raise ValueError(
+                f"initially_shown must be 'all', 'first' or a list of {id_col} values, "
+                f"got {initially_shown!r}"
+            ) from None
+        if not wanted:
+            raise ValueError(
+                "initially_shown is empty, so no options would be shown. Pass "
+                "'all', 'first' or at least one id."
+            )
+        valid = set(front[id_col])
+        missing = [i for i in wanted if i not in valid]
+        if missing:
+            dominated = [
+                i for i in missing if i in set(self.solution_df[id_col]) - valid
+            ]
+            detail = (
+                f" ({', '.join(map(str, dominated))} exist but "
+                f"{'is' if len(dominated) == 1 else 'are'} not Pareto-optimal)"
+                if dominated
+                else ""
+            )
+            raise ValueError(
+                f"initially_shown has {id_col} values that aren't Pareto-optimal "
+                f"options: {', '.join(map(str, missing))}{detail}. "
+                f"Valid values: {', '.join(map(str, sorted(valid)))}."
+            )
+        return set(front.index[front[id_col].isin(wanted)])
+
+    def plot_pareto_radar(
+        self,
+        id_col: str = "solution_rank",
+        name_col: str | None = None,
+        diff_against: str | None = None,
+        interactive: bool = False,
+        initially_shown="all",
+        legend_wrap_at: int | None = None,
+        scale_to: str = "all",
+        figsize: tuple = (9, 7),
+        theme: str = "whitegrid",
+        other_color: str = "lightgray",
+        palette: str = "tab10",
+        show_dominated: bool = False,
+        fill: bool = True,
+        show_value_labels: bool = False,
+        title: str | None = None,
+        caption: str | None = None,
+        ax=None,
+    ):
+        """
+        Plot every Pareto-optimal solution as a shape on a radar (spider)
+        chart, one spoke per metric, each rescaled so further from the
+        centre always means "better" regardless of whether the underlying
+        metric is minimised, maximised, or has a target value.
+
+        This shows the same data as `plot_pareto_summary()`, with the axes
+        wrapped into a circle instead of laid side by side. That's
+        analytically no better (arguably worse), but the "bigger shape =
+        doing well" reading is often easier for stakeholders to pick up
+        than a parallel coordinates plot.
+
+        Area is not a fair overall score. A shape's area depends on which
+        metrics sit next to each other: reordering the metrics passed to
+        `compute_pareto_front()` can change which option *looks* biggest
+        without any value changing. Compare options spoke by spoke. The
+        default caption says so.
+
+        Needs at least 3 metrics. With fewer, use `plot_pareto_summary()`.
+
+        Parameters
+        ----------
+        id_col, name_col, diff_against
+            As in `plot_pareto_summary()`.
+        interactive : bool, default False
+            If True, returns an interactive Plotly figure: hover a point
+            for its raw value and rank, click a legend entry to hide that
+            option, or double-click one to show it alone.
+        initially_shown : "all", "first" or list of ids, default "all"
+            Which options are visible when an interactive figure first
+            opens. The rest start greyed out in the legend, one click from
+            being shown -- useful when a large front makes the full overlay
+            a tangle. "all" shows every option, "first" only the first
+            option in the legend (the best-ranked Pareto-optimal one), and
+            a list, tuple or set picks specific options by their `id_col`
+            value (e.g. `[1, 17]`), even when `name_col` is set. Ignored if
+            `interactive=False`, though an invalid value still raises.
+        legend_wrap_at : int, optional
+            Wrap legend labels onto multiple lines at this many characters.
+            `None` (the default) leaves them on one line. Worth setting when
+            `diff_against` makes labels long, since a wide legend squeezes
+            the chart. Only the legend wraps: the interactive hover title
+            keeps the full label on one line.
+        scale_to : {"all", "pareto_front"}, default "all"
+            Which options each spoke's best and worst values are taken
+            from, and so what the outer ring and centre mean. "all" scales
+            over every option compared, dominated ones included, so the
+            chart shows how good the front is against everything that was
+            evaluated. "pareto_front" scales over just the Pareto-optimal
+            options, which stretches them across the whole spoke and makes
+            the differences between them easier to see, at the cost of
+            saying nothing about how they compare with the rest. The spoke
+            labels, hover ranks and caption name whichever is used. With
+            "pareto_front", dominated outlines (`show_dominated=True`) can
+            fall outside the chart and are clipped to its edge.
+        figsize : tuple, default (9, 7)
+            Passed to `plt.subplots()` if `ax` is not supplied. Ignored if
+            `interactive=True`.
+        theme : str, default "whitegrid"
+            Seaborn style. Ignored if `interactive=True`.
+        other_color : str, default "lightgray"
+            Colour of the dominated solutions when `show_dominated=True`.
+        palette : str, default "tab10"
+            As in `plot_pareto_summary()`.
+        show_dominated : bool, default False
+            If True, also draw every dominated solution as a thin
+            background outline. Off by default, unlike
+            `plot_pareto_summary()`: a brute-forced solution set can hold
+            hundreds of them, and on a radar they pile up into a grey disc
+            that hides the shapes that matter.
+        fill : bool, default True
+            Lightly shade the inside of each option's shape.
+        show_value_labels : bool, default False
+            Label each point on a closest_to_target spoke with its signed
+            distance from target (e.g. "+0.09"), since distance from the
+            centre alone can't show which side of the target it's on. Off
+            by default, unlike `plot_pareto_summary()`: every option's
+            label lands on the same spoke, so beyond a handful of options
+            they pile into an unreadable cluster. Interactive figures
+            always show this on hover instead.
+        title, caption : str, optional
+            Shown above/below the chart. Stakeholder-facing defaults are
+            used if not provided; pass "" to suppress either.
+        ax : matplotlib.axes.Axes, optional
+            Existing *polar* axes to plot onto, e.g. from
+            `plt.subplots(subplot_kw={"projection": "polar"})`. Ignored if
+            `interactive=True`.
+
+        Returns
+        -------
+        matplotlib.figure.Figure or plotly.graph_objects.Figure
+        """
+        self._require_pareto_front()
+        self._require_radar_metrics()
+        self._require_scale_to(scale_to)
+        if not interactive and ax is not None and ax.name != "polar":
+            raise ValueError(
+                "plot_pareto_radar() needs polar axes, e.g. from "
+                "plt.subplots(subplot_kw={'projection': 'polar'})."
+            )
+
+        front = self.solution_df[self.solution_df["is_pareto_optimal"]].copy()
+        rest = self.solution_df[~self.solution_df["is_pareto_optimal"]].copy()
+        site_diff = self._resolve_site_diff(front, diff_against) if diff_against else None
+        shown_index = self._resolve_initially_shown(front, initially_shown, id_col)
+        self._require_legend_wrap_at(legend_wrap_at)
+        normed_df, raw_range = self._pareto_normalised(scale_to)
+        scale_phrase = self._scale_phrase(scale_to)
+        metric_cols = [m.column for m in self.pareto_metrics]
+        styles = _colours_and_styles(max(len(front), 1), palette)
+        has_target = any(
+            m.direction == "closest_to_target" for m in self.pareto_metrics
+        )
+
+        if title is None:
+            title = "Comparing the shortlisted options"
+
+        default_caption = (
+            "How to read this chart: each coloured shape is one option that isn't beaten on "
+            "every measure by any other -- there's no single best choice. Each spoke is one "
+            "measure, rescaled so that further from the centre is always better: the outer "
+            f"ring is the best value on that measure across {scale_phrase}"
+            + (
+                " compared, not just the ones shown in colour"
+                if scale_to == "all"
+                else ", so it only compares the shapes shown with each other"
+            )
+            + ", and the inner ring the worst. A bigger shape is not automatically better "
+            "overall -- its area depends on which measures happen to sit next to each "
+            "other -- so compare options spoke by spoke."
+        )
+        if show_dominated:
+            default_caption += (
+                " Grey outlines are options that were beaten everywhere by another "
+                "combination, shown only for context"
+                + (
+                    "."
+                    if scale_to == "all"
+                    else "; any that fall outside the chart are drawn at its edge."
+                )
+            )
+        if has_target:
+            default_caption += (
+                " For a 'target' measure, distance from the centre shows how close an option "
+                "is to the ideal value"
+            )
+            if interactive:
+                default_caption += (
+                    "; hover over a point to see whether it sits above (+) or below "
+                    "(\u2212) that target."
+                )
+            elif show_value_labels:
+                default_caption += (
+                    "; the small label next to each point shows whether it sits above (+) "
+                    "or below (\u2212) that target."
+                )
+            else:
+                default_caption += "."
+        if interactive and len(shown_index) < len(front):
+            default_caption += (
+                " Only some options are shown to start with -- click a greyed-out "
+                "option in the legend to add it."
+            )
+
+        if interactive:
+            return self._plot_pareto_radar_interactive(
+                front,
+                rest,
+                site_diff,
+                normed_df,
+                raw_range,
+                styles,
+                id_col,
+                name_col,
+                other_color,
+                show_dominated,
+                shown_index,
+                legend_wrap_at,
+                scale_to,
+                fill,
+                title,
+                default_caption if caption is None else caption,
+            )
+
+        sns.set_style(theme)
+        if ax is None:
+            fig, ax = plt.subplots(figsize=figsize, subplot_kw={"projection": "polar"})
+        else:
+            fig = ax.figure
+
+        angles = _radar_angles(len(self.pareto_metrics))
+        closed_angles = _closed(angles)
+        spoke_labels = [
+            f"{textwrap.fill(m.label, width=20)}\n"
+            f"({self._metric_range_detail(m, raw_range, scale_to)})"
+            for m in self.pareto_metrics
+        ]
+
+        if show_dominated:
+            for idx in rest.index:
+                ax.plot(
+                    closed_angles,
+                    # Clipped: under scale_to="pareto_front" a dominated
+                    # option can fall outside the chart
+                    _closed(np.clip(normed_df.loc[idx, metric_cols], 0, 1)),
+                    color=other_color,
+                    alpha=0.5,
+                    linewidth=0.8,
+                    zorder=1,
+                )
+
+        for option_i, ((colour, linestyle, marker), (idx, row)) in enumerate(
+            zip(styles, front.iterrows())
+        ):
+            r = _closed(normed_df.loc[idx, metric_cols])
+            ax.plot(
+                closed_angles,
+                r,
+                color=colour,
+                linestyle=linestyle,
+                marker=marker,
+                linewidth=2.2,
+                markersize=5,
+                label=_wrap_legend_label(
+                    self._pareto_option_label(row, id_col, name_col, site_diff),
+                    legend_wrap_at,
+                    "\n",
+                ),
+                zorder=3,
+                clip_on=False,
+            )
+            if fill:
+                ax.fill(closed_angles, r, color=colour, alpha=0.08, zorder=2)
+            if not show_value_labels:
+                continue
+            for angle, m in zip(angles, self.pareto_metrics):
+                if m.direction != "closest_to_target":
+                    continue
+                # Every option's point sits on the same spoke, so beside it
+                # rather than along it, alternating sides so neighbouring
+                # options' labels don't stack on each other
+                side = np.pi / 2 if option_i % 2 == 0 else -np.pi / 2
+                ax.annotate(
+                    _signed_deviation(row[m.column] - m.target),
+                    (angle, normed_df.loc[idx, m.column]),
+                    textcoords="offset points",
+                    xytext=_radar_offset(angle, 9, turn=side),
+                    fontsize=7.5,
+                    color=colour,
+                    ha="center",
+                    va="center",
+                    zorder=4,
+                    # Every point is inside the axes by construction, but
+                    # matplotlib's inside-the-axes check doesn't account for
+                    # the polar rorigin hole, so leaving clipping on silently
+                    # drops these labels
+                    annotation_clip=False,
+                )
+
+        _style_radar_axes(ax, angles, spoke_labels, fontsize=9, pad=14)
+        ax.legend(loc="upper left", bbox_to_anchor=(1.15, 1), frameon=False, fontsize=9)
+        if title:
+            ax.set_title(title, fontsize=13, fontweight="bold", pad=30, loc="left")
+        _add_plot_caption(fig, caption, default_caption, width=110)
+
+        fig.tight_layout()
+        return fig
+
+    def _plot_pareto_radar_interactive(
+        self,
+        front,
+        rest,
+        site_diff,
+        normed_df,
+        raw_range,
+        styles,
+        id_col,
+        name_col,
+        other_color,
+        show_dominated,
+        shown_index,
+        legend_wrap_at,
+        scale_to,
+        fill,
+        title,
+        caption,
+    ):
+        metric_cols = [m.column for m in self.pareto_metrics]
+        theta = _closed(
+            [
+                textwrap.fill(m.label, width=20).replace("\n", "<br>")
+                + "<br><span style='font-size:10px;color:gray'>"
+                + self._metric_range_detail(m, raw_range, scale_to).replace("\n", "<br>")
+                + "</span>"
+                for m in self.pareto_metrics
+            ]
+        )
+        # Ranked over the same set the spokes are scaled over
+        rank_source = (
+            normed_df.loc[front.index] if scale_to == "pareto_front" else normed_df
+        )
+        rank_df = rank_source.rank(method="min", ascending=False)
+        scale_phrase = self._scale_phrase(scale_to)
+
+        fig = go.Figure()
+
+        if show_dominated:
+            for idx in rest.index:
+                fig.add_trace(
+                    go.Scatterpolar(
+                        r=_closed(np.clip(normed_df.loc[idx, metric_cols], 0, 1)),
+                        theta=theta,
+                        mode="lines",
+                        line=dict(color=mcolors.to_hex(other_color), width=0.8),
+                        opacity=0.5,
+                        hoverinfo="skip",
+                        showlegend=False,
+                    )
+                )
+
+        # Plotly hands a hover inside overlapping fills to the topmost (last
+        # drawn) one containing the cursor, so draw the largest shapes first:
+        # where several overlap, the hover then names the smallest -- usually
+        # the outline nearest the cursor -- rather than whichever option
+        # happens to come last. legendrank keeps the legend in option order.
+        #
+        # The empty centre comes from starting the radial range below 0 (r=0
+        # lands at the same 20% of the radius as the static version's
+        # rorigin), not from polar.hole: with a hole, plotly's hover zone is
+        # a ring whose seam runs along 0 degrees, so every vertex on an
+        # east-pointing spoke (any 4 or 8 metrics) was unhoverable. The top
+        # is padded past 1 because plotly also drops the hover once the
+        # cursor's radius leaves the range, which left vertices exactly on
+        # the outer ring only hoverable on their inner half.
+        radial_range = [
+            -_RADAR_HOLE * (1 + _PLOTLY_RADIAL_PAD),
+            1 + _PLOTLY_RADIAL_PAD,
+        ]
+
+        def drawn_area(idx):
+            # Polygon area up to a constant factor, since the spokes are
+            # evenly spaced. Offset by the empty centre, so areas compare the
+            # shapes as drawn.
+            radii = normed_df.loc[idx, metric_cols].to_numpy() - radial_range[0]
+            return float(np.sum(radii * np.roll(radii, -1)))
+
+        options = list(zip(styles, front.iterrows()))
+        draw_order = sorted(
+            range(len(options)), key=lambda i: -drawn_area(options[i][1][0])
+        )
+
+        for option_i in draw_order:
+            (colour, linestyle, marker), (idx, row) = options[option_i]
+            # Shown both on each vertex's hover and on the shape's own (fill)
+            # hover
+            sites_html = _sites_html(row)
+            name = self._pareto_option_label(row, id_col, name_col, site_diff)
+            customdata = []
+            for m in self.pareto_metrics:
+                context = self._pareto_hover_context(
+                    idx, row, m, rank_df, scale_phrase, front, id_col, name_col
+                )
+                customdata.append(
+                    [m.label, _format_raw_value(row[m.column]), context, sites_html, name]
+                )
+            r, g, b, _ = mcolors.to_rgba(colour)
+            fig.add_trace(
+                go.Scatterpolar(
+                    r=_closed(normed_df.loc[idx, metric_cols]),
+                    theta=theta,
+                    customdata=_closed(customdata),
+                    # Only the legend label wraps; the hover shows `name` from
+                    # customdata so its title stays on one line
+                    name=_wrap_legend_label(name, legend_wrap_at, "<br>"),
+                    legendrank=option_i + 1,
+                    # "legendonly" starts the trace hidden but keeps its
+                    # legend entry, so one click brings it back. Hidden
+                    # traces don't take part in hover.
+                    visible=True if idx in shown_index else "legendonly",
+                    mode="lines+markers",
+                    line=dict(
+                        color=mcolors.to_hex(colour),
+                        width=2.2,
+                        dash=_PLOTLY_DASH[linestyle],
+                    ),
+                    marker=dict(symbol=_PLOTLY_SYMBOL[marker], size=7),
+                    fill="toself" if fill else "none",
+                    fillcolor=f"rgba({r * 255:.0f}, {g * 255:.0f}, {b * 255:.0f}, 0.1)",
+                    # Hovering inside a shape, away from any vertex, shows
+                    # the option and its sites. A fill hover displays a
+                    # scalar `text` (it can't use hovertemplate); `text` is
+                    # never drawn, since mode has no "text"
+                    hoveron="points+fills" if fill else "points",
+                    text=f"<b>{name}</b>{sites_html}",
+                    hovertemplate=(
+                        "<b>%{customdata[4]}</b><br>"
+                        "%{customdata[0]}: %{customdata[1]}<br>"
+                        "%{customdata[2]}%{customdata[3]}<extra></extra>"
+                    ),
+                )
+            )
+
+        # Explicit pixel sizing throughout: plotly's 450px default height
+        # leaves only a sliver for the chart once the title and caption
+        # margins come out of it, which shrinks the circle, scrolls the
+        # legend, and runs the bottom spoke label into the caption. Spoke
+        # labels are drawn outside the polar area, so it's inset from the
+        # sides to keep them clear of the legend, and the caption sits a
+        # fixed distance below it rather than a fraction of the plot height.
+        # Plotly can't re-wrap an annotation to the figure's width, so the
+        # caption is pre-wrapped narrow enough (~560px) to fit a typical
+        # notebook output, and shifted left into the 80px margin (which the
+        # left spoke's label needs, so it stays) to start near the edge.
+        chart_height = 560
+        caption_lines = textwrap.wrap(caption, width=100) if caption else []
+        margin = dict(
+            t=135,
+            b=95 + 16 * len(caption_lines),
+            l=80,
+            r=_legend_right_margin(fig),
+        )
+        layout = dict(
+            template="plotly_white",
+            height=chart_height + margin["t"] + margin["b"],
+            polar=dict(
+                domain=dict(x=[0.15, 0.85]),
+                # See radial_range above for why this, not polar.hole
+                radialaxis=dict(
+                    range=radial_range,
+                    tickvals=[0, 0.25, 0.5, 0.75, 1],
+                    showticklabels=False,
+                ),
+                # Invisible ticks, purely to push the spoke labels clear of
+                # markers sitting on the outer ring
+                angularaxis=dict(
+                    direction="clockwise",
+                    rotation=90,
+                    ticks="outside",
+                    ticklen=10,
+                    tickcolor="rgba(0,0,0,0)",
+                ),
+            ),
+            legend=dict(x=1.02, y=1),
+            margin=margin,
+            # Down from plotly's 20px, so a vertex's detail only takes over
+            # when the cursor is actually on it; elsewhere the shape it's
+            # inside answers instead of the nearest vertex of any option
+            hoverdistance=10,
+        )
+        if title:
+            layout["title"] = dict(text=f"<b>{title}</b>", x=0.02, xanchor="left")
+        if caption_lines:
+            layout["annotations"] = [
+                dict(
+                    text="<br>".join(caption_lines),
+                    xref="paper",
+                    yref="paper",
+                    x=0,
+                    y=0,
+                    xshift=-50,
+                    yshift=-80,  # clears the bottom spoke's (up to 4-line) label
+                    xanchor="left",
+                    yanchor="top",
+                    showarrow=False,
+                    align="left",
+                    font=dict(size=11, color="dimgray"),
+                )
+            ]
+        fig.update_layout(**layout)
+        return fig
+
+    def plot_pareto_radar_facets(
+        self,
+        id_col: str = "solution_rank",
+        name_col: str | None = None,
+        show_site_names: bool = True,
+        diff_against: str | None = None,
+        ncols: int = 3,
+        size_per_facet: float = 4.0,
+        theme: str = "whitegrid",
+        other_color: str = "lightgray",
+        palette: str = "tab10",
+        show_dominated: bool = False,
+        show_raw_labels: bool = True,
+        show_value_labels: bool = False,
+        title: str | None = None,
+        caption: str | None = None,
+        wrap_at: int | None = None,
+        rank_scope: str = "all",
+        scale_to: str = "all",
+    ):
+        """
+        Plot each Pareto-optimal solution on its own radar (spider) chart.
+
+        The radar counterpart to `plot_pareto_facets()`: each facet
+        highlights one option as a filled shape, with the other
+        Pareto-optimal options as faint outlines behind it, and the same
+        title block (included sites, how many designs it beats, and its
+        strengths and sacrifices with their ranks). Further from the
+        centre is always better on every spoke.
+
+        As with `plot_pareto_radar()`, a shape's area depends on the order
+        of the metrics, so it is not a fair overall score. Needs at least 3
+        metrics; with fewer, use `plot_pareto_facets()`.
+
+        Parameters
+        ----------
+        id_col, name_col, show_site_names, diff_against, theme, other_color,
+        palette, show_raw_labels, show_value_labels, rank_scope
+            As in `plot_pareto_facets()`.
+        wrap_at : int, optional
+            Characters per line in each facet's title block. Unlike
+            `plot_pareto_facets()` this is per facet, not per figure, so it
+            isn't divided by `ncols`. Defaults to roughly what fits in
+            `size_per_facet` inches.
+        ncols : int, default 3
+            Facets per row (capped at the number of options). Defaults
+            higher than `plot_pareto_facets()` because square radar panels
+            tile side by side more naturally than wide line charts.
+        size_per_facet : float, default 4.0
+            Width of each facet in inches. Each row is taller than this,
+            to leave room for the title block.
+        show_dominated : bool, default False
+            If True, also draw every dominated solution as a very faint
+            outline. Off by default -- see `plot_pareto_radar()`.
+        title : str, optional
+            Figure title. A default is used if not provided; pass "" to
+            suppress it.
+        caption : str, optional
+            Explanatory text below the chart. A stakeholder-facing default
+            is used if not provided; pass "" to suppress it.
+        scale_to : {"all", "pareto_front"}, default "all"
+            Which options each spoke is scaled over, and so what the outer
+            ring and centre mean -- see `plot_pareto_radar()`. Separate from
+            `rank_scope`, which only sets the set the Strengths/Sacrifices
+            ranks in each title are over.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+        """
+        if rank_scope not in ("all", "pareto_front"):
+            raise ValueError(
+                f"rank_scope must be one of 'all' or 'pareto_front', got {rank_scope!r}"
+            )
+        self._require_scale_to(scale_to)
+        self._require_pareto_front()
+        self._require_radar_metrics()
+        sns.set_style(theme)
+        front = self.solution_df[self.solution_df["is_pareto_optimal"]].copy()
+        rest = self.solution_df[~self.solution_df["is_pareto_optimal"]].copy()
+        site_diff = self._resolve_site_diff(front, diff_against) if diff_against else None
+
+        n_front = len(front)
+        if n_front == 0:
+            raise ValueError("No Pareto-optimal solutions found to plot.")
+
+        ncols = min(ncols, n_front)
+        nrows = math.ceil(n_front / ncols)
+        if wrap_at is None:
+            # ~15 characters per inch at the title's 8.5pt
+            wrap_at = max(20, int(size_per_facet * 15))
+
+        fig, axes = plt.subplots(
+            nrows,
+            ncols,
+            # Taller than wide to leave room for the title block; polar axes
+            # are always square, so any more than that is dead space
+            figsize=(ncols * size_per_facet, nrows * size_per_facet * 1.2),
+            subplot_kw={"projection": "polar"},
+        )
+        axes = np.array(axes).ravel()
+
+        normed_df, raw_range = self._pareto_normalised(scale_to)
+        metric_cols = [m.column for m in self.pareto_metrics]
+        front_normed = normed_df.loc[front.index]
+        front_mean = front_normed.mean()
+        rank_source = normed_df if rank_scope == "all" else front_normed
+        rank_n = len(rank_source)
+        rank_df = rank_source.rank(method="min", ascending=False)
+
+        styles = _colours_and_styles(max(n_front, 1), palette)
+        style_map = {idx: style for style, (idx, _) in zip(styles, front.iterrows())}
+
+        angles = _radar_angles(len(self.pareto_metrics))
+        closed_angles = _closed(angles)
+        spoke_labels = [textwrap.fill(m.label, width=14) for m in self.pareto_metrics]
+
+        for i, (idx, current_row) in enumerate(front.iterrows()):
+            ax = axes[i]
+
+            if show_dominated:
+                for rest_idx in rest.index:
+                    ax.plot(
+                        closed_angles,
+                        _closed(np.clip(normed_df.loc[rest_idx, metric_cols], 0, 1)),
+                        color=other_color,
+                        alpha=0.15,
+                        linewidth=0.8,
+                        zorder=1,
+                    )
+
+            for other_idx in front.index:
+                if other_idx == idx:
+                    continue
+                colour, linestyle, _ = style_map[other_idx]
+                ax.plot(
+                    closed_angles,
+                    _closed(normed_df.loc[other_idx, metric_cols]),
+                    color=colour,
+                    linestyle=linestyle,
+                    alpha=0.2,
+                    linewidth=1.2,
+                    zorder=2,
+                )
+
+            curr_colour, curr_linestyle, curr_marker = style_map[idx]
+            curr_r = normed_df.loc[idx, metric_cols]
+            ax.plot(
+                closed_angles,
+                _closed(curr_r),
+                color=curr_colour,
+                linestyle=curr_linestyle,
+                marker=curr_marker,
+                linewidth=3,
+                markersize=6,
+                zorder=4,
+                clip_on=False,
+            )
+            ax.fill(closed_angles, _closed(curr_r), color=curr_colour, alpha=0.2, zorder=3)
+
+            for angle, m in zip(angles, self.pareto_metrics):
+                if show_raw_labels:
+                    ax.annotate(
+                        _format_raw_value(current_row[m.column]),
+                        (angle, curr_r[m.column]),
+                        textcoords="offset points",
+                        xytext=_radar_offset(angle, 11),
+                        fontsize=7.5,
+                        fontweight="bold",
+                        ha="center",
+                        va="center",
+                        zorder=5,
+                        annotation_clip=False,
+                        bbox=dict(
+                            boxstyle="round,pad=0.15",
+                            fc="white",
+                            ec=curr_colour,
+                            alpha=0.85,
+                            lw=1,
+                        ),
+                    )
+                if show_value_labels and m.direction == "closest_to_target":
+                    ax.annotate(
+                        _signed_deviation(current_row[m.column] - m.target),
+                        (angle, curr_r[m.column]),
+                        textcoords="offset points",
+                        # Beside the spoke, clear of the raw-value box
+                        # sitting radially outward
+                        xytext=_radar_offset(angle, 10, turn=-np.pi / 2),
+                        fontsize=7,
+                        color=curr_colour,
+                        fontweight="bold",
+                        ha="center",
+                        va="center",
+                        annotation_clip=False,
+                    )
+
+            # Extra pad clears the raw-value boxes sitting just outside r=1
+            _style_radar_axes(ax, angles, spoke_labels, fontsize=8, pad=20)
+            ax.set_title(
+                self._pareto_facet_title(
+                    idx,
+                    current_row,
+                    normed_df,
+                    front_mean,
+                    rank_df,
+                    rank_n,
+                    id_col,
+                    name_col,
+                    show_site_names,
+                    site_diff,
+                    wrap_at,
+                    meta_wrap_at=wrap_at,
+                ),
+                fontsize=8.5,
+                loc="left",
+                pad=28,
+                linespacing=1.3,
+            )
+
+        for j in range(n_front, len(axes)):
+            fig.delaxes(axes[j])
+
+        if title is None:
+            title = "Individual Analysis of Pareto-Optimal Choices"
+        if title:
+            fig.suptitle(title, fontsize=14, fontweight="bold", y=0.99)
+
+        default_caption = (
+            "How to read this chart: each panel highlights one option that isn't beaten on "
+            "every measure by any other, with the rest of the shortlist as faint outlines "
+            "behind it. Further from the centre is always better on every spoke: the outer ring "
+            f"is the best value on that measure across {self._scale_phrase(scale_to)}"
+            + (" compared, not just the shortlist" if scale_to == "all" else "")
+            + ", and the centre the worst. The boxed numbers are "
+            "the option's actual values. A bigger shape is not automatically better overall -- "
+            "its area depends on which measures happen to sit next to each other."
+        )
+        _add_plot_caption(fig, caption, default_caption, width=40 * ncols)
 
         fig.tight_layout()
         return fig

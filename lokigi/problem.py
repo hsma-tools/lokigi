@@ -45,12 +45,12 @@ class _Problem:
         self.spatial_weights_method = None
         self.spatial_weights_k = None
 
-        self.equity_data = None
-        self._equity_data_type = None
-        self._equity_data_equity_col = None
-        self._equity_data_common_col = None
-        self._equity_data_label = None
-        self._equity_data_disadvantaged_end = None
+        # label -> {"data", "equity_col", "common_col", "label",
+        #           "disadvantaged_end", "data_type"}. Insertion-ordered, so
+        # `_primary_equity_label` is the only thing deciding which dimension
+        # drives solve()'s metrics -- never registration order.
+        self.equity_datasets = {}
+        self._primary_equity_label = None
 
         self.geo_lookup = None
         self._geo_lookup_data_type = None
@@ -63,6 +63,226 @@ class _Problem:
             self._verbose = True
         else:
             self._verbose = False
+
+    # Flat equity attributes as written by versions before the equity
+    # registry (<= v0.9.1), in the order add_equity_data() used to set them.
+    _LEGACY_EQUITY_KEYS = (
+        "equity_data",
+        "_equity_data_type",
+        "_equity_data_equity_col",
+        "_equity_data_common_col",
+        "_equity_data_label",
+        "_equity_data_disadvantaged_end",
+    )
+
+    def __setstate__(self, state):
+        """
+        Restore a pickled problem, migrating pre-registry pickles.
+
+        Solved problems and solution sets get pickled and reloaded in
+        practice -- an app that solves offline and ships the result is the
+        normal pattern -- so a pickle written by <= v0.9.1 carries the flat
+        `_equity_data_*` attributes and no `equity_datasets`. Those
+        attributes are now read-only properties over the registry, and a
+        property is a data descriptor: it wins over whatever the unpickled
+        `__dict__` holds. So without this, restoring an old pickle appears
+        to succeed and then raises a bare `AttributeError` naming
+        `_primary_equity_label` -- an internal attribute the user never
+        set -- the first time anything touches its equity data.
+
+        Rebuilding the single registered dimension from those attributes
+        keeps the equity analysis working across the upgrade, rather than
+        merely failing more politely.
+        """
+        if "equity_datasets" not in state:
+            legacy = {key: state.pop(key, None) for key in self._LEGACY_EQUITY_KEYS}
+
+            state["equity_datasets"] = {}
+            state["_primary_equity_label"] = None
+
+            if legacy["equity_data"] is not None and legacy["_equity_data_equity_col"]:
+                # `label` was optional on the old call, so fall back to the
+                # column name -- `_resolve_equity()` keys off the label and
+                # cannot register a dimension under `None`.
+                label = (
+                    legacy["_equity_data_label"] or legacy["_equity_data_equity_col"]
+                )
+                state["equity_datasets"][label] = {
+                    "data": legacy["equity_data"],
+                    "data_type": legacy["_equity_data_type"] or "pandas",
+                    "equity_col": legacy["_equity_data_equity_col"],
+                    "common_col": legacy["_equity_data_common_col"],
+                    "label": label,
+                    "disadvantaged_end": legacy["_equity_data_disadvantaged_end"]
+                    or "low",
+                }
+                state["_primary_equity_label"] = label
+        else:
+            # A current pickle should not also carry the flat attributes,
+            # but drop them if it does rather than leaving keys in
+            # `__dict__` that are permanently shadowed by the properties
+            # and would mislead anyone inspecting the instance.
+            for key in self._LEGACY_EQUITY_KEYS:
+                state.pop(key, None)
+
+        self.__dict__.update(state)
+
+    ###############################
+    # MARK: Equity registry
+    ###############################
+
+    @property
+    def primary_equity(self):
+        """
+        The registered equity dimension that drives `solve()`'s metrics, or
+        `None` if none is registered.
+
+        Every equity dimension registered via `add_equity_data()` is merged
+        into each solution's `problem_df` and can be selected for analysis
+        by label, but exactly one is the *primary* -- the one whose bands
+        the `solution_df` equity columns (`inter_tertile_ratio`,
+        `weighted_by_equity_group`, ...) are computed against, and the one
+        `weights={"equity": ...}` weights by. Set at registration via
+        `add_equity_data(primary=...)`.
+        """
+        if self._primary_equity_label is None:
+            return None
+        return self.equity_datasets[self._primary_equity_label]
+
+    # The five attributes below were plain instance attributes before the
+    # equity registry existed, and are read in ~50 places across the
+    # solvers, metrics and plots. They are kept as read-only views onto the
+    # primary dimension so those call sites keep meaning "the dimension
+    # this problem is optimised and reported against" without each having
+    # to resolve the registry itself. Read-only deliberately: writing one
+    # of them used to half-configure a problem (e.g. a new equity_col with
+    # a stale common_col), which the registry makes impossible.
+
+    @property
+    def equity_data(self):
+        primary = self.primary_equity
+        return None if primary is None else primary["data"]
+
+    @property
+    def _equity_data_equity_col(self):
+        primary = self.primary_equity
+        return None if primary is None else primary["equity_col"]
+
+    @property
+    def _equity_data_common_col(self):
+        primary = self.primary_equity
+        return None if primary is None else primary["common_col"]
+
+    @property
+    def _equity_data_label(self):
+        primary = self.primary_equity
+        return None if primary is None else primary["label"]
+
+    @property
+    def _equity_data_disadvantaged_end(self):
+        primary = self.primary_equity
+        return None if primary is None else primary["disadvantaged_end"]
+
+    @property
+    def _equity_data_type(self):
+        primary = self.primary_equity
+        return None if primary is None else primary["data_type"]
+
+    def _resolve_primary_flag(self, label, primary, replace):
+        """
+        Decide whether an `add_equity_data()` call registers the primary
+        dimension, and reject the ambiguous cases.
+
+        The awkward case is a second call on a problem that already has a
+        dimension registered. Before the registry existed, that overwrote
+        the first -- so code written against the old behaviour expects the
+        *second* call's dimension to be the one every metric is computed
+        against. Silently registering it alongside and leaving the first as
+        primary would keep that code running while quietly changing which
+        bands its numbers describe, so `primary` is required to be explicit
+        there. First registrations, and re-registrations of a label that
+        already exists, are unambiguous and need no flag.
+        """
+        if replace and label not in self.equity_datasets:
+            raise ValueError(
+                f"replace=True was given but no equity dimension '{label}' is "
+                "registered. "
+                + (
+                    f"Registered: {sorted(self.equity_datasets)}."
+                    if self.equity_datasets
+                    else "No equity data has been registered yet -- drop "
+                    "replace=True to register this as the first dimension."
+                )
+            )
+
+        if not self.equity_datasets:
+            if primary is False:
+                raise ValueError(
+                    f"'{label}' is the only equity dimension registered, so it "
+                    "cannot be registered with primary=False -- something has "
+                    "to drive the equity metrics. Drop the argument, or pass "
+                    "primary=True."
+                )
+            return True
+
+        if label in self.equity_datasets:
+            if not replace:
+                raise ValueError(
+                    f"An equity dimension labelled '{label}' is already "
+                    "registered. Pass replace=True to overwrite it, or use a "
+                    "different label to register an additional dimension "
+                    "alongside it."
+                )
+            # Re-registering an existing label keeps its current primary
+            # status unless the caller says otherwise -- replacing the data
+            # behind a label shouldn't silently move the primary elsewhere.
+            if primary is None:
+                return self._primary_equity_label == label
+            return primary
+
+        if primary is None:
+            raise ValueError(
+                f"'{self._primary_equity_label}' is already registered as the "
+                f"primary equity dimension, so adding '{label}' needs "
+                "primary= stated explicitly: primary=True to make "
+                f"'{label}' the dimension that solve()'s equity metrics and "
+                "weights={'equity': ...} are computed against, or "
+                "primary=False to register it as an additional dimension for "
+                "analysis only. (If you meant to replace "
+                f"'{self._primary_equity_label}' rather than add to it, "
+                "re-register it under the same label with replace=True.)"
+            )
+        return primary
+
+    def _resolve_equity(self, equity=None):
+        """
+        Return one registered equity dimension's metadata dict.
+
+        `equity=None` gives the primary dimension -- the right default for
+        every caller that doesn't offer a choice. A label selects that
+        dimension instead.
+
+        Returns `None` when nothing is registered at all (so callers can
+        degrade gracefully, as several plots do), but raises when a label
+        is given that isn't registered: asking for a specific dimension and
+        silently getting the primary one back would misreport which bands a
+        chart or metric describes.
+        """
+        if equity is None:
+            return self.primary_equity
+
+        if equity not in self.equity_datasets:
+            registered = sorted(self.equity_datasets)
+            raise ValueError(
+                f"Unknown equity dimension '{equity}'. "
+                + (
+                    f"Registered: {registered}."
+                    if registered
+                    else "No equity data has been registered -- call "
+                    "add_equity_data() first."
+                )
+            )
+        return self.equity_datasets[equity]
 
     @staticmethod
     def show_travel_format():
@@ -105,6 +325,8 @@ class _Problem:
         reverse: bool = False,
         verbose: bool = True,
         direction: Literal["higher_is_better", "higher_is_worse"] | None = None,
+        primary: bool | None = None,
+        replace: bool = False,
     ):
         """
         Add a dataframe containing equity data into your problem.
@@ -113,6 +335,16 @@ class _Problem:
         the Index of Multiple Deprivation). If a continuous measure is provided,
         it is automatically discretized into deciles (or maximum possible quantiles)
         to facilitate categorical plotting and comparative equity analysis.
+
+        Call it more than once to register several equity dimensions --
+        e.g. deprivation, rurality and ethnicity -- each under its own
+        `label`. Every registered dimension is merged into each solution's
+        `problem_df`, so any of them can be selected for analysis by label.
+        Exactly one is the **primary** dimension: the one `solve()` computes
+        its `solution_df` equity columns (`inter_tertile_ratio`,
+        `weighted_by_equity_group`, ...) against, and the one
+        `weights={"equity": ...}` weights by. See `primary` below, and
+        `show_equity_dimensions()` for what is currently registered.
 
         Parameters
         ----------
@@ -167,6 +399,27 @@ class _Problem:
             governs downstream analysis rather than how bins are labelled.
         verbose: bool, default True
             If True, output additional warnings and messages
+        primary : bool, optional
+            Whether this dimension becomes the primary one (see above).
+
+            Required -- and rejected as ambiguous if omitted -- only when
+            registering a *new* label on a problem that already has an
+            equity dimension. That case used to overwrite the existing
+            dimension, so silently registering alongside it and leaving the
+            first as primary would keep old code running while quietly
+            changing which bands its numbers describe.
+
+            Defaults are unambiguous everywhere else: the first dimension
+            registered is always primary (passing `primary=False` for it
+            raises), and re-registering an existing label with
+            `replace=True` keeps that label's current primary status unless
+            you say otherwise.
+        replace : bool, default False
+            Overwrite the dimension already registered under `label`.
+            Without it, re-using a label raises rather than silently
+            replacing the data behind it. Passing it for a label that isn't
+            registered also raises, rather than quietly registering a new
+            dimension.
         direction : {"higher_is_better", "higher_is_worse"}, optional
             .. deprecated::
                 Use ``disadvantaged_end`` instead. ``"higher_is_better"``
@@ -180,7 +433,14 @@ class _Problem:
         ------
         ValueError
             If `continuous_measure` is True but the data cannot be meaningfully
-            binned due to too many identical values.
+            binned due to too many identical values; if `label` is already
+            registered and `replace` is not True; if `replace=True` names a
+            label that is not registered; if a new label is registered
+            alongside an existing dimension without an explicit `primary`;
+            if `primary=False` is given for the only registered dimension;
+            or if `equity_col` is already used by another registered
+            dimension (they share one per-region frame, so one would
+            overwrite the other).
 
         Notes
         -----
@@ -189,6 +449,10 @@ class _Problem:
         this may result in fewer than 10 bins. The method handles this dynamically
         to ensure the resulting categories always start at 1.
         """
+        # Resolved before any data is parsed so an ambiguous registration
+        # fails immediately, rather than after binning a large frame.
+        is_primary = self._resolve_primary_flag(label, primary, replace)
+
         if direction is not None:
             if disadvantaged_end is not None:
                 raise ValueError(
@@ -222,6 +486,20 @@ class _Problem:
             )
 
         loaded_df, df_type = _load_spatial_or_tabular_data(equity_data)
+
+        # Copied because the continuous_measure branch below writes into
+        # this frame, and _load_spatial_or_tabular_data hands back the
+        # caller's own object when it was already a DataFrame. Without the
+        # copy, registering a continuous measure overwrote the caller's
+        # `equity_col` with bin numbers and added a `_raw` column to their
+        # frame -- destroying the scores they passed in.
+        #
+        # Worse than a one-off surprise now that dimensions are registered
+        # by label: re-registering the same frame under `replace=True`, or
+        # registering it to a second problem, re-bins the already-binned
+        # values, so the `_raw` column ends up holding bin numbers rather
+        # than the raw measure it exists to preserve. Both are silent.
+        loaded_df = loaded_df.copy()
 
         if verbose:
             if df_type == "geopandas":
@@ -267,15 +545,81 @@ class _Problem:
         if continuous_measure:
             cols_to_include.append(f"{equity_col}_raw")
 
-        self.equity_data = loaded_df[cols_to_include]
-        self._equity_data_type = "pandas"  # We drop any geometry data here
-        self._equity_data_equity_col = equity_col
-        self._equity_data_common_col = common_col
-        self._equity_data_label = label
-        self._equity_data_disadvantaged_end = disadvantaged_end
+        # Two dimensions sharing an equity_col would collide when both are
+        # merged into the same problem_df, and the second would silently
+        # overwrite the first's bands there. Checked against the resolved
+        # column name (post-binning), and only against the datasets this
+        # call is not itself replacing.
+        for other_label, other in self.equity_datasets.items():
+            if other_label != label and other["equity_col"] == equity_col:
+                raise ValueError(
+                    f"Equity dimension '{other_label}' already uses the column "
+                    f"'{equity_col}'. Two dimensions cannot share a column "
+                    "name -- they are merged into the same per-region frame, "
+                    "where one would overwrite the other. Rename the column in "
+                    "one of the two source frames before registering."
+                )
 
-    def show_equity_data(self):
-        return self.equity_data
+        self.equity_datasets[label] = {
+            "data": loaded_df[cols_to_include],
+            "data_type": "pandas",  # We drop any geometry data here
+            "equity_col": equity_col,
+            "common_col": common_col,
+            "label": label,
+            "disadvantaged_end": disadvantaged_end,
+        }
+        if is_primary:
+            self._primary_equity_label = label
+        elif self._primary_equity_label == label:
+            # Re-registering the current primary as primary=False would
+            # otherwise leave _primary_equity_label pointing at a dimension
+            # that no longer claims to be primary.
+            raise ValueError(
+                f"'{label}' is currently the primary equity dimension, so it "
+                "cannot be re-registered with primary=False. Promote another "
+                "dimension with primary=True first, or re-register this one "
+                "with primary=True."
+            )
+
+    def show_equity_data(self, label=None):
+        """
+        The registered equity data for one dimension, or the primary
+        dimension's when `label` is omitted. Returns `None` if no equity
+        data is registered; raises if `label` names an unregistered
+        dimension.
+        """
+        resolved = self._resolve_equity(label)
+        return None if resolved is None else resolved["data"]
+
+    def show_equity_dimensions(self):
+        """
+        One row per registered equity dimension: its label, the column its
+        bands live in, the join column, which end of the scale is the
+        disadvantaged one, and whether it is the primary dimension.
+
+        Returns an empty DataFrame with those columns when nothing is
+        registered, rather than `None`, so callers can display it either
+        way.
+        """
+        return pd.DataFrame(
+            [
+                {
+                    "label": meta["label"],
+                    "equity_col": meta["equity_col"],
+                    "common_col": meta["common_col"],
+                    "disadvantaged_end": meta["disadvantaged_end"],
+                    "primary": name == self._primary_equity_label,
+                }
+                for name, meta in self.equity_datasets.items()
+            ],
+            columns=[
+                "label",
+                "equity_col",
+                "common_col",
+                "disadvantaged_end",
+                "primary",
+            ],
+        )
 
     ###############################
     # MARK: Region geometry

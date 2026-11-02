@@ -539,7 +539,11 @@ def test_plot_region_geometry_layer_equity_colorbar_falls_back_to_raw_column(
 ):
     """If add_equity_data() was never given a label=, the colour bar
     falls back to the raw equity column name rather than showing nothing."""
-    plottable_problem._equity_data_label = None
+    # Written through the registry rather than by assigning to
+    # `_equity_data_label`, which is a read-only view onto the primary
+    # dimension since the equity registry landed.
+    primary = plottable_problem.primary_equity
+    primary["label"] = None
     ax = plottable_problem.plot_region_geometry_layer(
         plot_equity=True, add_basemap=False
     )

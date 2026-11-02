@@ -2,11 +2,12 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import pytest
 
 import lokigi.site
-from lokigi.mixins.site_solution_pareto import ParetoMixin
+from lokigi.mixins.site_solution_pareto import _SEGMENT_HOVER_POINTS, ParetoMixin
 from lokigi.multiobjective import Metric
 
 
@@ -513,3 +514,866 @@ def test_plot_pareto_facets_diff_against_rank_1_adds_diff_line(pareto_solution_s
 def test_plot_pareto_facets_invalid_diff_against_raises(pareto_solution_set):
     with pytest.raises(ValueError, match="diff_against must be one of"):
         pareto_solution_set.plot_pareto_facets(diff_against="sideways")
+
+
+# --- plot_pareto_radar / plot_pareto_radar_facets ---------------------------
+
+
+@pytest.fixture
+def radar_solution_set(pareto_solution_set):
+    """pareto_solution_set with a third metric, since a radar chart needs at
+    least 3 spokes to draw a shape."""
+    pareto_solution_set.compute_pareto_front(
+        pareto_solution_set.pareto_metrics
+        + [
+            Metric(
+                column="unweighted_average",
+                direction="lower_better",
+                label="Unweighted average travel time",
+                unit="minutes",
+            )
+        ]
+    )
+    return pareto_solution_set
+
+
+def _front_size(solution_set):
+    return int(solution_set.solution_df["is_pareto_optimal"].sum())
+
+
+def test_plot_pareto_radar_returns_polar_figure(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar()
+    try:
+        assert isinstance(fig, plt.Figure)
+        assert len(fig.axes) == 1
+        assert fig.axes[0].name == "polar"
+        labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+        assert labels == ["Option 1", "Option 2", "Option 4"]
+        # One filled polygon per Pareto-optimal option
+        assert len(fig.axes[0].patches) == _front_size(solved_solution_set)
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_fill_false_draws_no_polygons(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar(fill=False)
+    try:
+        assert len(fig.axes[0].patches) == 0
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_show_dominated_adds_background_lines(solved_solution_set):
+    fig_without = solved_solution_set.plot_pareto_radar()
+    fig_with = solved_solution_set.plot_pareto_radar(show_dominated=True)
+    try:
+        n_dominated = len(solved_solution_set.solution_df) - _front_size(
+            solved_solution_set
+        )
+        assert (
+            len(fig_with.axes[0].lines)
+            == len(fig_without.axes[0].lines) + n_dominated
+        )
+    finally:
+        plt.close(fig_without)
+        plt.close(fig_with)
+
+
+def test_plot_pareto_radar_polygons_are_closed(solved_solution_set):
+    """Each shape must end where it started, or the last spoke's segment
+    back to the first is silently missing and the outline has a gap."""
+    fig = solved_solution_set.plot_pareto_radar()
+    try:
+        n_metrics = len(solved_solution_set.pareto_metrics)
+        for line in fig.axes[0].lines:
+            theta, r = line.get_data()
+            assert len(theta) == n_metrics + 1
+            assert theta[0] == theta[-1]
+            assert r[0] == r[-1]
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_further_out_is_better(solved_solution_set):
+    """Solution 1 has the lowest (best) weighted_average, a lower_better
+    metric, so it must sit on the outer ring of that spoke -- and solution
+    2, the worst Pareto-optimal option on it, nearer the centre."""
+    fig = solved_solution_set.plot_pareto_radar()
+    try:
+        ax = fig.axes[0]
+        lines = {line.get_label(): line for line in ax.lines}
+        spoke = 0  # weighted_average is the first metric
+        assert lines["Option 1"].get_ydata()[spoke] == pytest.approx(1.0)
+        assert lines["Option 2"].get_ydata()[spoke] < 1.0
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_draws_onto_supplied_polar_ax(solved_solution_set):
+    fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
+    try:
+        returned = solved_solution_set.plot_pareto_radar(ax=ax)
+        assert returned is fig
+        assert len(ax.lines) == _front_size(solved_solution_set)
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_rejects_cartesian_ax(solved_solution_set):
+    fig, ax = plt.subplots()
+    try:
+        with pytest.raises(ValueError, match="needs polar axes"):
+            solved_solution_set.plot_pareto_radar(ax=ax)
+    finally:
+        plt.close(fig)
+
+
+def _trace(fig, name):
+    return next(trace for trace in fig.data if trace.name == name)
+
+
+def _legend_order(fig):
+    """Option names as the legend lists them -- trace order is draw order,
+    which is by shape size, not option order."""
+    front = [trace for trace in fig.data if trace.showlegend is not False]
+    return [trace.name for trace in sorted(front, key=lambda t: t.legendrank)]
+
+
+def test_plot_pareto_radar_interactive_returns_plotly_figure(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar(interactive=True)
+    assert type(fig).__module__.startswith("plotly")
+    assert fig.to_dict()
+    assert _legend_order(fig) == ["Option 1", "Option 2", "Option 4"]
+    # Hover carries the raw value, not just the rescaled radius
+    option_1 = _trace(fig, "Option 1")
+    assert option_1.customdata[0][0] == "Average travel time"
+    assert option_1.customdata[0][1] == "10"
+    # Closed like the static version
+    assert option_1.r[0] == option_1.r[-1]
+    assert option_1.theta[0] == option_1.theta[-1]
+
+
+def test_plot_pareto_radar_interactive_hover_lists_sites(solved_solution_set):
+    """Every vertex of an option carries its sites, and so does the shape's
+    own fill hover, so hovering inside the shape shows them too."""
+    fig = solved_solution_set.plot_pareto_radar(interactive=True)
+    option_1 = _trace(fig, "Option 1")
+    sites = "<br><br><b>Sites</b><br>\u2022 Site A<br>\u2022 Site B"
+    assert all(point[3] == sites for point in option_1.customdata)
+    assert "%{customdata[3]}" in option_1.hovertemplate
+    assert option_1.hoveron == "points+fills"
+    assert option_1.text == f"<b>Option 1</b>{sites}"
+
+
+def test_plot_pareto_radar_interactive_no_fill_no_fill_hover(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar(interactive=True, fill=False)
+    assert all(trace.hoveron == "points" for trace in fig.data)
+
+
+def test_plot_pareto_radar_interactive_draws_smallest_shapes_last(
+    solved_solution_set,
+):
+    """Plotly gives a hover inside overlapping fills to the last-drawn one,
+    so drawing largest-first makes it name the smallest shape containing
+    the cursor rather than whichever option comes last."""
+    fig = solved_solution_set.plot_pareto_radar(interactive=True)
+    lower = fig.layout.polar.radialaxis.range[0]
+
+    def area(trace):
+        radii = np.array(trace.r[:-1]) - lower
+        return float(np.sum(radii * np.roll(radii, -1)))
+
+    areas = [area(trace) for trace in fig.data]
+    assert len(set(areas)) == len(areas)  # otherwise the order is untested
+    assert areas == sorted(areas, reverse=True)
+
+
+def test_plot_pareto_radar_interactive_hover_zone_has_no_dead_edges(
+    solved_solution_set,
+):
+    """polar.hole makes plotly's hover zone a ring with a seam along 0
+    degrees, killing hover on east-pointing spokes; and a range ending at
+    exactly 0/1 leaves best/worst vertices half outside it. The empty
+    centre comes from the range instead, padded at the top."""
+    fig = solved_solution_set.plot_pareto_radar(interactive=True)
+    polar = fig.layout.polar
+    assert not polar.hole
+    low, high = polar.radialaxis.range
+    assert low < 0 and high > 1
+
+
+def test_plot_pareto_radar_interactive_hover_names_tied_options(
+    solution_df, pareto_metrics
+):
+    """Options tied on a metric share one vertex, and plotly only names one
+    of them on hover -- so each vertex lists the others."""
+    # Option 4 now ties option 1 on coverage, and is still Pareto-optimal
+    # (better than option 1 on max travel time)
+    is_option_4 = solution_df["solution_rank"] == 4
+    solution_df.loc[is_option_4, "proportion_within_coverage_threshold"] = 0.90
+    solution_set = DummySolutionSet(solution_df)
+    solution_set.compute_pareto_front(pareto_metrics)
+    fig = solution_set.plot_pareto_radar(interactive=True)
+    coverage_spoke = 2
+    assert _trace(fig, "Option 1").customdata[coverage_spoke][2].endswith(
+        "<br>Same value: Option 4"
+    )
+    assert _trace(fig, "Option 4").customdata[coverage_spoke][2].endswith(
+        "<br>Same value: Option 1"
+    )
+    assert "Same value" not in _trace(fig, "Option 2").customdata[coverage_spoke][2]
+    # Untied spokes say nothing
+    assert "Same value" not in _trace(fig, "Option 1").customdata[0][2]
+
+
+def _visible(fig):
+    """Option name -> whether it starts visible (not "legendonly")."""
+    return {
+        trace.name: trace.visible != "legendonly"
+        for trace in fig.data
+        if trace.showlegend is not False
+    }
+
+
+def test_plot_pareto_radar_initially_shown_defaults_to_all(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar(interactive=True)
+    assert _visible(fig) == {"Option 1": True, "Option 2": True, "Option 4": True}
+    assert "greyed-out" not in fig.layout.annotations[0].text
+
+
+def test_plot_pareto_radar_initially_shown_first(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar(
+        interactive=True, initially_shown="first", show_dominated=True
+    )
+    assert _visible(fig) == {"Option 1": True, "Option 2": False, "Option 4": False}
+    # Hidden options keep their legend entry, so they can be clicked back on
+    assert all(
+        trace.showlegend is not False
+        for trace in fig.data
+        if trace.visible == "legendonly"
+    )
+    # Dominated background outlines have no legend entry to restore them
+    # from, so they are unaffected
+    assert [t.visible for t in fig.data if t.showlegend is False] == [None]
+    caption = fig.layout.annotations[0].text.replace("<br>", " ")
+    assert "click a greyed-out option in the legend" in caption
+
+
+@pytest.mark.parametrize(
+    "ids, expected",
+    [
+        ([2], {"Option 1": False, "Option 2": True, "Option 4": False}),
+        ((1, 4), {"Option 1": True, "Option 2": False, "Option 4": True}),
+        ({4}, {"Option 1": False, "Option 2": False, "Option 4": True}),
+    ],
+)
+def test_plot_pareto_radar_initially_shown_list_of_ids(
+    solved_solution_set, ids, expected
+):
+    fig = solved_solution_set.plot_pareto_radar(interactive=True, initially_shown=ids)
+    assert _visible(fig) == expected
+
+
+def test_plot_pareto_radar_initially_shown_ids_ignore_name_col(solved_solution_set):
+    """Ids are always id_col values, even when the legend shows names."""
+    fig = solved_solution_set.plot_pareto_radar(
+        interactive=True, name_col="scenario_name", initially_shown=[2]
+    )
+    assert _visible(fig) == {
+        "Solution Alpha": False,
+        "Solution Beta": True,
+        "Solution Delta": False,
+    }
+
+
+def test_plot_pareto_radar_initially_shown_rejects_dominated_id(solved_solution_set):
+    # Solution 3 is dominated
+    with pytest.raises(ValueError, match=r"3 exist but is not Pareto-optimal.*1, 2, 4"):
+        solved_solution_set.plot_pareto_radar(interactive=True, initially_shown=[1, 3])
+
+
+def test_plot_pareto_radar_initially_shown_rejects_unknown_id(solved_solution_set):
+    with pytest.raises(ValueError, match="aren't Pareto-optimal options: 99"):
+        solved_solution_set.plot_pareto_radar(interactive=True, initially_shown=[99])
+
+
+@pytest.mark.parametrize("bad", ["sideways", [], 5])
+def test_plot_pareto_radar_initially_shown_rejects_bad_values(solved_solution_set, bad):
+    with pytest.raises(ValueError, match="initially_shown"):
+        solved_solution_set.plot_pareto_radar(interactive=True, initially_shown=bad)
+
+
+def test_plot_pareto_radar_initially_shown_ignored_when_static(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar(initially_shown="first")
+    try:
+        assert isinstance(fig, plt.Figure)
+        assert len(fig.axes[0].lines) == _front_size(solved_solution_set)
+    finally:
+        plt.close(fig)
+    # An invalid value is still a mistake, so still raises
+    with pytest.raises(ValueError, match="initially_shown"):
+        solved_solution_set.plot_pareto_radar(initially_shown="sideways")
+
+
+def test_plot_pareto_radar_legend_wrap_at_interactive(radar_solution_set):
+    fig = radar_solution_set.plot_pareto_radar(
+        interactive=True, diff_against="rank_1", legend_wrap_at=12
+    )
+    wrapped = next(t for t in fig.data if t.name.startswith("Option 2"))
+    assert "<br>" in wrapped.name
+    assert all(len(line) <= 12 for line in wrapped.name.split("<br>"))
+    # The hover title keeps the whole label on one line
+    assert "<br>" not in wrapped.customdata[0][4]
+    assert wrapped.customdata[0][4].startswith("Option 2 (+Site_A")
+    assert "%{customdata[4]}" in wrapped.hovertemplate
+    assert "<br>" not in wrapped.text.split("<br><br>")[0]
+
+
+def test_plot_pareto_radar_legend_wrap_at_static(radar_solution_set):
+    fig = radar_solution_set.plot_pareto_radar(diff_against="rank_1", legend_wrap_at=12)
+    try:
+        labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+        assert "\n" in labels[1]
+        assert all(len(line) <= 12 for label in labels for line in label.split("\n"))
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_legend_wrap_at_default_leaves_labels_alone(
+    radar_solution_set,
+):
+    fig = radar_solution_set.plot_pareto_radar(interactive=True, diff_against="rank_1")
+    assert all("<br>" not in t.name for t in fig.data)
+
+
+def test_plot_pareto_radar_scale_to_pareto_front_relabels_best_worst(
+    solved_solution_set,
+):
+    """Solution 3 (dominated) holds the worst max travel time, 25. Scaled
+    over just the front, the worst is 20, and the labels must say so."""
+    fig = solved_solution_set.plot_pareto_radar(scale_to="pareto_front")
+    try:
+        spoke_labels = [t.get_text() for t in fig.axes[0].get_xticklabels()]
+        assert all("of the 3 Pareto-optimal options" in s for s in spoke_labels)
+        assert "worst 20" in spoke_labels[1]
+        assert "across the 3 Pareto-optimal options" in fig.texts[0].get_text().replace(
+            "\n", " "
+        )
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_scale_to_pareto_front_stretches_the_front(
+    solved_solution_set,
+):
+    """Scaled over the front, every spoke has a front option at the centre
+    and one at the outer ring -- unlike over all options, where the
+    dominated solution can hold the worst value."""
+    for scale_to, stretched in [("pareto_front", True), ("all", False)]:
+        fig = solved_solution_set.plot_pareto_radar(scale_to=scale_to)
+        try:
+            radii = np.array([line.get_ydata()[:-1] for line in fig.axes[0].lines])
+            full_span = np.allclose(radii.min(axis=0), 0) and np.allclose(
+                radii.max(axis=0), 1
+            )
+            assert full_span is stretched
+        finally:
+            plt.close(fig)
+
+
+def test_plot_pareto_radar_scale_to_pareto_front_clips_dominated_outlines(
+    solved_solution_set,
+):
+    """Solution 3 falls well below the front's worst, which would draw it
+    outside the chart."""
+    normed_df, _ = solved_solution_set._pareto_normalised("pareto_front")
+    assert normed_df.min().min() < 0  # left exact, so dominance stays exact
+
+    fig = solved_solution_set.plot_pareto_radar(
+        scale_to="pareto_front", show_dominated=True
+    )
+    try:
+        for line in fig.axes[0].lines:
+            assert np.all((line.get_ydata() >= 0) & (line.get_ydata() <= 1))
+    finally:
+        plt.close(fig)
+    interactive = solved_solution_set.plot_pareto_radar(
+        interactive=True, scale_to="pareto_front", show_dominated=True
+    )
+    assert all(min(t.r) >= 0 and max(t.r) <= 1 for t in interactive.data)
+
+
+def test_plot_pareto_radar_scale_to_pareto_front_ranks_over_the_front(
+    solution_df, pareto_metrics
+):
+    """Solution 3 is still dominated (by solution 4) but now sits between
+    options 4 and 2 on average travel time, so option 2 is 4th of 4 overall
+    and 3rd of 3 on the front."""
+    solution_df.loc[solution_df["solution_rank"] == 3, "weighted_average"] = 11.5
+    solution_set = DummySolutionSet(solution_df)
+    solution_set.compute_pareto_front(pareto_metrics)
+    assert list(solution_set.solution_df["is_pareto_optimal"]) == [True, True, False, True]
+
+    over_all = solution_set.plot_pareto_radar(interactive=True)
+    over_front = solution_set.plot_pareto_radar(
+        interactive=True, scale_to="pareto_front"
+    )
+    assert _trace(over_all, "Option 2").customdata[0][2] == "4th of all 4 options"
+    assert (
+        _trace(over_front, "Option 2").customdata[0][2]
+        == "3rd of the 3 Pareto-optimal options"
+    )
+    assert "of the 3 Pareto-optimal options" in _trace(over_front, "Option 1").theta[0]
+    # Wrapping can split the hyphenated word, so check up to it
+    caption = over_front.layout.annotations[0].text.replace("<br>", " ")
+    assert "across the 3 Pareto" in caption
+
+
+def test_plot_pareto_radar_facets_scale_to_pareto_front(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar_facets(scale_to="pareto_front")
+    try:
+        caption = next(
+            t.get_text() for t in fig.texts if t.get_text().startswith("How to read")
+        ).replace("\n", " ")
+        assert "across the 3 Pareto-optimal options" in caption
+        assert "not just the shortlist" not in caption
+        # Dominance counts come from the unclipped scaling
+        assert all(
+            r"beats\ 1\ designs" in ax.get_title(loc="left") for ax in fig.axes
+        )
+    finally:
+        plt.close(fig)
+
+
+@pytest.mark.parametrize("method", ["plot_pareto_radar", "plot_pareto_radar_facets"])
+def test_plot_pareto_radar_scale_to_rejects_bad_values(solved_solution_set, method):
+    with pytest.raises(ValueError, match="scale_to must be one of"):
+        getattr(solved_solution_set, method)(scale_to="front")
+
+
+def test_plot_pareto_radar_interactive_right_margin_grows_with_legend(
+    radar_solution_set,
+):
+    """Plotly shifts a legend wider than the right margin left over the
+    chart, so the margin follows the longest legend line -- but short labels
+    keep the original 80px."""
+    short = radar_solution_set.plot_pareto_radar(interactive=True)
+    assert short.layout.margin.r == 80
+    long_labels = radar_solution_set.plot_pareto_radar(
+        interactive=True, diff_against="rank_1"
+    )
+    assert long_labels.layout.margin.r > 150
+    wrapped = radar_solution_set.plot_pareto_radar(
+        interactive=True, diff_against="rank_1", legend_wrap_at=12
+    )
+    assert wrapped.layout.margin.r < long_labels.layout.margin.r
+
+
+@pytest.mark.parametrize("bad", [0, -5, 2.5, True, "10"])
+def test_plot_pareto_radar_legend_wrap_at_rejects_bad_values(solved_solution_set, bad):
+    with pytest.raises(ValueError, match="legend_wrap_at"):
+        solved_solution_set.plot_pareto_radar(legend_wrap_at=bad)
+
+
+def test_plot_pareto_radar_interactive_without_site_names(solution_df, pareto_metrics):
+    solution_set = DummySolutionSet(solution_df.drop(columns="site_names"))
+    solution_set.compute_pareto_front(pareto_metrics)
+    fig = solution_set.plot_pareto_radar(interactive=True)
+    option_1 = _trace(fig, "Option 1")
+    assert all(point[3] == "" for point in option_1.customdata)
+    assert option_1.text == "<b>Option 1</b>"
+
+
+def test_plot_pareto_radar_interactive_show_dominated_skips_hover(
+    solved_solution_set,
+):
+    fig = solved_solution_set.plot_pareto_radar(interactive=True, show_dominated=True)
+    dominated = [trace for trace in fig.data if trace.showlegend is False]
+    assert len(dominated) == 1
+    assert dominated[0].hoverinfo == "skip"
+    assert len(fig.data) == _front_size(solved_solution_set) + 1
+
+
+def test_plot_pareto_radar_best_worst_scoped_to_all_options(solved_solution_set):
+    """The spoke ranges come from every solution, dominated ones included,
+    so the labels must say so -- not read as best/worst of the shapes
+    shown. solution 3 is dominated, so here the two differ."""
+    fig = solved_solution_set.plot_pareto_radar()
+    try:
+        spoke_labels = [t.get_text() for t in fig.axes[0].get_xticklabels()]
+        assert all("of all 4 options" in label for label in spoke_labels)
+        # Worst max travel time (25) only occurs in the dominated solution
+        assert "worst 25" in spoke_labels[1]
+    finally:
+        plt.close(fig)
+
+    interactive_fig = solved_solution_set.plot_pareto_radar(interactive=True)
+    option_1 = _trace(interactive_fig, "Option 1")
+    assert "of all 4 options" in option_1.theta[0]
+    assert option_1.customdata[0][2] == "1st of all 4 options"
+    assert "across all 4 options" in interactive_fig.layout.annotations[0].text
+
+
+def test_plot_pareto_radar_interactive_caption_points_to_hover(solved_solution_set):
+    """The interactive version draws no per-point target labels, so its
+    caption must point to the hover rather than to labels that aren't there."""
+    target_metric = Metric(
+        column="max", direction="closest_to_target", target=18.0, label="Max"
+    )
+    solved_solution_set.compute_pareto_front(
+        solved_solution_set.pareto_metrics[:1]
+        + [target_metric]
+        + solved_solution_set.pareto_metrics[2:]
+    )
+    fig = solved_solution_set.plot_pareto_radar(interactive=True)
+    caption = fig.layout.annotations[0].text
+    assert "hover over a point" in caption
+    assert "small label" not in caption
+
+
+def test_plot_pareto_radar_interactive_sets_explicit_height(solved_solution_set):
+    """Plotly's 450px default leaves only a sliver for the chart once the
+    title and caption margins come out of it."""
+    fig = solved_solution_set.plot_pareto_radar(interactive=True)
+    margin = fig.layout.margin
+    assert fig.layout.height - margin.t - margin.b >= 500
+
+
+def test_plot_pareto_radar_caption_can_be_suppressed(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar(caption="")
+    try:
+        assert not fig.texts
+    finally:
+        plt.close(fig)
+    interactive_fig = solved_solution_set.plot_pareto_radar(
+        interactive=True, caption=""
+    )
+    assert not interactive_fig.layout.annotations
+
+
+@pytest.mark.parametrize("method", ["plot_pareto_radar", "plot_pareto_radar_facets"])
+def test_plot_pareto_radar_needs_three_metrics(long_label_solution_set, method):
+    with pytest.raises(ValueError, match="at least 3 Pareto metrics.*plot_pareto_"):
+        getattr(long_label_solution_set, method)()
+
+
+@pytest.mark.parametrize("method", ["plot_pareto_radar", "plot_pareto_radar_facets"])
+def test_plot_pareto_radar_raises_before_compute(solution_set, method):
+    with pytest.raises(ValueError, match="Pareto front has not been calculated"):
+        getattr(solution_set, method)()
+
+
+def test_plot_pareto_radar_diff_against_rank_1_labels(radar_solution_set):
+    fig = radar_solution_set.plot_pareto_radar(diff_against="rank_1")
+    try:
+        labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+        assert labels[0] == "Option 1"
+        assert "+Site_A, Site_C; -Site_B, Site_D" in labels[1]
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_facets_one_polar_axes_per_option(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar_facets()
+    try:
+        # 3 options at the default ncols=3: no spare cells left over
+        assert len(fig.axes) == _front_size(solved_solution_set)
+        assert all(ax.name == "polar" for ax in fig.axes)
+        for ax in fig.axes:
+            title = ax.get_title(loc="left")
+            assert "Strengths:" in title
+            assert "Sacrifices:" in title
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_facets_deletes_unused_cells(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_radar_facets(ncols=2)
+    try:
+        assert len(fig.axes) == _front_size(solved_solution_set)
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_facets_diff_against_rank_1_adds_diff_line(
+    radar_solution_set,
+):
+    fig = radar_solution_set.plot_pareto_radar_facets(diff_against="rank_1")
+    try:
+        titles = [ax.get_title(loc="left") for ax in fig.axes]
+        assert not any("Diff (vs" in t for t in titles if "Option\\ 1" in t)
+        rank_2_title = next(t for t in titles if "Option\\ 2" in t)
+        assert "Diff (vs rank 1): +Site_A, Site_C; -Site_B, Site_D" in rank_2_title
+    finally:
+        plt.close(fig)
+
+
+def test_plot_pareto_radar_facets_invalid_rank_scope_raises(solved_solution_set):
+    with pytest.raises(ValueError, match="rank_scope must be one of"):
+        solved_solution_set.plot_pareto_radar_facets(rank_scope="sideways")
+
+
+def test_plot_pareto_radar_facets_wraps_strengths_to_wrap_at(solved_solution_set):
+    """Radar facets are narrow, so unlike plot_pareto_facets() the
+    Strengths/Sacrifices lines are wrapped too -- otherwise long metric
+    labels run on into the neighbouring subplot."""
+    fig = solved_solution_set.plot_pareto_radar_facets(wrap_at=30)
+    try:
+        for ax in fig.axes:
+            meta = ax.get_title(loc="left").split("---\n")[1].split("\n")
+            assert len(meta) > 2  # actually wrapped, not just short
+            assert all(len(line) <= 30 for line in meta)
+    finally:
+        plt.close(fig)
+
+
+# --- plot_pareto_summary(interactive=True) ---------------------------------
+
+
+def _front_traces(fig):
+    return [t for t in fig.data if t.showlegend is not False]
+
+
+def test_plot_pareto_summary_interactive_returns_plotly_figure(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_summary(interactive=True)
+    assert type(fig).__module__.startswith("plotly")
+    assert fig.to_dict()
+    assert _legend_order(fig) == ["Option 1", "Option 2", "Option 4"]
+
+
+def test_plot_pareto_summary_interactive_dominated_are_one_hoverless_trace(
+    solved_solution_set,
+):
+    """Hundreds of dominated solutions as traces of their own would make the
+    figure heavy, so they share one, broken into lines by None gaps."""
+    fig = solved_solution_set.plot_pareto_summary(interactive=True)
+    dominated = [t for t in fig.data if t.showlegend is False]
+    assert len(dominated) == 1
+    assert dominated[0].hoverinfo == "skip"
+    n_metrics = len(solved_solution_set.pareto_metrics)
+    assert list(dominated[0].x).count(None) == 1  # one dominated solution
+    assert len(dominated[0].x) == n_metrics + 1
+
+
+def test_plot_pareto_summary_interactive_hover_at_vertices(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_summary(interactive=True)
+    option_1 = _trace(fig, "Option 1")
+    n_metrics = len(solved_solution_set.pareto_metrics)
+    stride = _SEGMENT_HOVER_POINTS + 1
+    sites = "<br><br><b>Sites</b><br>\u2022 Site A<br>\u2022 Site B"
+
+    assert option_1.customdata[0] == (
+        "<b>Option 1</b><br>Average travel time: 10"
+        f"<br>1st of all 4 options{sites}"
+    )
+    # Vertices sit on the integer x positions, one per metric, and are drawn
+    assert list(option_1.x[::stride]) == list(range(n_metrics))
+    assert all(option_1.marker.opacity[i] == 1 for i in range(0, len(option_1.x), stride))
+
+
+def test_plot_pareto_summary_interactive_lines_are_hoverable_between_vertices(
+    solved_solution_set,
+):
+    """Plotly only hovers at points, so each segment gets invisible points
+    that show the option and its sites."""
+    fig = solved_solution_set.plot_pareto_summary(interactive=True)
+    option_1 = _trace(fig, "Option 1")
+    n_metrics = len(solved_solution_set.pareto_metrics)
+    assert len(option_1.x) == n_metrics + (n_metrics - 1) * _SEGMENT_HOVER_POINTS
+    between = [
+        (op, hover)
+        for x, op, hover in zip(option_1.x, option_1.marker.opacity, option_1.customdata)
+        if x != int(x)
+    ]
+    assert _SEGMENT_HOVER_POINTS >= 3  # enough to hover a line, not just its ends
+    assert len(between) == (n_metrics - 1) * _SEGMENT_HOVER_POINTS
+    sites = "<br><br><b>Sites</b><br>\u2022 Site A<br>\u2022 Site B"
+    assert all(op == 0 for op, _ in between)  # drawn nowhere
+    assert all(hover == f"<b>Option 1</b>{sites}" for _, hover in between)
+    # ...and they lie on the line: monotonic between vertex 0 and vertex 1
+    first_segment = [y for x, y in zip(option_1.x, option_1.y) if 0 <= x <= 1]
+    assert first_segment == sorted(first_segment) or first_segment == sorted(
+        first_segment, reverse=True
+    )
+
+
+def test_plot_pareto_summary_interactive_hover_names_tied_options(
+    solution_df, pareto_metrics
+):
+    is_option_4 = solution_df["solution_rank"] == 4
+    solution_df.loc[is_option_4, "proportion_within_coverage_threshold"] = 0.90
+    solution_set = DummySolutionSet(solution_df)
+    solution_set.compute_pareto_front(pareto_metrics)
+    fig = solution_set.plot_pareto_summary(interactive=True)
+    stride = _SEGMENT_HOVER_POINTS + 1
+    assert "<br>Same value: Option 4" in _trace(fig, "Option 1").customdata[2 * stride]
+    assert "Same value" not in _trace(fig, "Option 1").customdata[0]
+
+
+def test_plot_pareto_summary_interactive_without_site_names(solution_df, pareto_metrics):
+    solution_set = DummySolutionSet(solution_df.drop(columns="site_names"))
+    solution_set.compute_pareto_front(pareto_metrics)
+    fig = solution_set.plot_pareto_summary(interactive=True)
+    assert "Sites" not in "".join(_trace(fig, "Option 1").customdata)
+
+
+def test_plot_pareto_summary_interactive_range_labels_scope(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_summary(interactive=True)
+    ticktext = fig.layout.xaxis.ticktext
+    assert all("of all 4 options" in text for text in ticktext)
+    assert "worst 25" in ticktext[1]  # only the dominated solution has it
+    caption = fig.layout.annotations[0].text.replace("<br>", " ")
+    assert "across all 4 options" in caption
+
+
+def test_plot_pareto_summary_interactive_initially_shown(solved_solution_set):
+    assert _visible(solved_solution_set.plot_pareto_summary(interactive=True)) == {
+        "Option 1": True,
+        "Option 2": True,
+        "Option 4": True,
+    }
+    first = solved_solution_set.plot_pareto_summary(
+        interactive=True, initially_shown="first"
+    )
+    assert _visible(first) == {"Option 1": True, "Option 2": False, "Option 4": False}
+    # The shared dominated trace has no legend entry to restore it from
+    assert [t.visible for t in first.data if t.showlegend is False] == [None]
+    caption = first.layout.annotations[0].text.replace("<br>", " ")
+    assert "click a greyed-out option in the legend" in caption
+
+    picked = solved_solution_set.plot_pareto_summary(
+        interactive=True, initially_shown=[2, 4]
+    )
+    assert _visible(picked) == {"Option 1": False, "Option 2": True, "Option 4": True}
+
+
+def test_plot_pareto_summary_interactive_scale_to_pareto_front(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_summary(
+        interactive=True, scale_to="pareto_front"
+    )
+    ticktext = fig.layout.xaxis.ticktext
+    assert all("of the 3 Pareto-optimal options" in text for text in ticktext)
+    assert "worst 20" in ticktext[1]
+    # The dominated line falls off the chart unscaled, so it's clipped
+    (dominated,) = [t for t in fig.data if t.showlegend is False]
+    ys = [y for y in dominated.y if y is not None]
+    assert min(ys) >= 0 and max(ys) <= 1
+    # Every axis has a front option at the top and one at the bottom
+    stride = _SEGMENT_HOVER_POINTS + 1
+    front_y = np.array([t.y[::stride] for t in _front_traces(fig)])
+    assert np.allclose(front_y.min(axis=0), 0)
+    assert np.allclose(front_y.max(axis=0), 1)
+
+
+def test_plot_pareto_summary_interactive_scale_to_pareto_front_ranks_over_the_front(
+    solution_df, pareto_metrics
+):
+    """Solution 3 is still dominated (by solution 4) but sits between
+    options 4 and 2 on average travel time, so option 2 is 4th of 4 overall
+    and 3rd of 3 on the front."""
+    solution_df.loc[solution_df["solution_rank"] == 3, "weighted_average"] = 11.5
+    solution_set = DummySolutionSet(solution_df)
+    solution_set.compute_pareto_front(pareto_metrics)
+    sites = "<br><br><b>Sites</b><br>\u2022 Site A<br>\u2022 Site C"
+
+    over_all = solution_set.plot_pareto_summary(interactive=True)
+    over_front = solution_set.plot_pareto_summary(
+        interactive=True, scale_to="pareto_front"
+    )
+    assert _trace(over_all, "Option 2").customdata[0] == (
+        f"<b>Option 2</b><br>Average travel time: 12<br>4th of all 4 options{sites}"
+    )
+    assert _trace(over_front, "Option 2").customdata[0] == (
+        "<b>Option 2</b><br>Average travel time: 12"
+        f"<br>3rd of the 3 Pareto-optimal options{sites}"
+    )
+
+
+def test_plot_pareto_summary_interactive_legend_wrap_at(radar_solution_set):
+    fig = radar_solution_set.plot_pareto_summary(
+        interactive=True, diff_against="rank_1", legend_wrap_at=12
+    )
+    wrapped = next(t for t in fig.data if (t.name or "").startswith("Option 2"))
+    assert "<br>" in wrapped.name
+    assert all(len(line) <= 12 for line in wrapped.name.split("<br>"))
+    assert wrapped.customdata[0].startswith("<b>Option 2 (+Site_A")  # full, one line
+    # Wrapped to the threshold, the legend is as narrow as the default
+    assert fig.layout.margin.r == 80
+    unwrapped = radar_solution_set.plot_pareto_summary(
+        interactive=True, diff_against="rank_1"
+    )
+    assert unwrapped.layout.margin.r > 150
+
+
+def test_plot_pareto_summary_interactive_title_and_caption_can_be_suppressed(
+    solved_solution_set,
+):
+    fig = solved_solution_set.plot_pareto_summary(
+        interactive=True, title="", caption=""
+    )
+    assert not fig.layout.annotations
+    assert not fig.layout.title.text
+
+
+def test_plot_pareto_summary_interactive_sets_explicit_height(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_summary(interactive=True)
+    margin = fig.layout.margin
+    assert fig.layout.height - margin.t - margin.b >= 450
+
+
+def test_plot_pareto_summary_static_scale_to_pareto_front(solved_solution_set):
+    default = solved_solution_set.plot_pareto_summary()
+    front = solved_solution_set.plot_pareto_summary(scale_to="pareto_front")
+    try:
+        default_text = [t.get_text() for t in default.axes[0].texts]
+        front_text = [t.get_text() for t in front.axes[0].texts]
+        assert "25.00" in default_text  # the dominated solution's worst max
+        assert "25.00" not in front_text and "20.00" in front_text
+        for line in front.axes[0].lines:
+            ys = np.asarray(line.get_ydata())
+            assert np.all((ys >= 0) & (ys <= 1))
+        caption = " ".join(t.get_text() for t in front.texts)
+        assert "scaled over just the 3 Pareto-optimal options" in caption.replace(
+            "\n", " "
+        )
+        assert "scaled over just" not in " ".join(t.get_text() for t in default.texts)
+    finally:
+        plt.close(default)
+        plt.close(front)
+
+
+def test_plot_pareto_summary_static_legend_wrap_at(radar_solution_set):
+    fig = radar_solution_set.plot_pareto_summary(
+        diff_against="rank_1", legend_wrap_at=12
+    )
+    try:
+        labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+        assert "\n" in labels[1]
+        assert all(len(line) <= 12 for label in labels for line in label.split("\n"))
+    finally:
+        plt.close(fig)
+
+
+@pytest.mark.parametrize(
+    "kwargs, match",
+    [
+        ({"scale_to": "front"}, "scale_to must be one of"),
+        ({"legend_wrap_at": 0}, "legend_wrap_at"),
+        ({"initially_shown": "sideways"}, "initially_shown"),
+        ({"initially_shown": [3]}, "not Pareto-optimal"),
+    ],
+)
+@pytest.mark.parametrize("interactive", [True, False])
+def test_plot_pareto_summary_rejects_bad_values(
+    solved_solution_set, kwargs, match, interactive
+):
+    with pytest.raises(ValueError, match=match):
+        solved_solution_set.plot_pareto_summary(interactive=interactive, **kwargs)
+
+
+def test_plot_pareto_summary_static_ignores_initially_shown(solved_solution_set):
+    fig = solved_solution_set.plot_pareto_summary(initially_shown="first")
+    try:
+        assert len(fig.axes[0].get_legend().get_texts()) == 3
+    finally:
+        plt.close(fig)
