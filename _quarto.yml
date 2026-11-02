@@ -78,6 +78,11 @@ quartodoc:
       contents:
         - name: site.SiteProblem
           children: separate
+          exclude:
+            # quartodoc (dynamic: true) builds a self-referencing alias for
+            # documented properties inherited from a base class (here
+            # _Problem), which griffe rejects as a CyclicAliasError.
+            - primary_equity
         - name: site.SiteSolutionSet
           children: separate
           members:

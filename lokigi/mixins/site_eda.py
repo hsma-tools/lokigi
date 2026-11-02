@@ -461,10 +461,10 @@ class SiteSolutionHotspotCalculationMixin(SiteProblemHotspotCalculationMixin):
         -------
         pd.DataFrame
 
-        Warns
-        -----
-        UserWarning
-            If multiple rows share ``solution_rank``; the first is used.
+        Warnings
+        --------
+        A ``UserWarning`` is emitted if multiple rows share ``solution_rank``;
+        the first is used.
         """
         ctx = self._prob_ctx
         id_col = ctx._region_geometry_layer_common_col

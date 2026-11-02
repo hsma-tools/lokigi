@@ -253,13 +253,13 @@ class SiteProblem(
         NotImplementedError
             If `capacitated=True` is requested.
 
-        Warns
-        -----
-        UserWarning
-            If an equity band has no reachable region under the primary or
-            any secondary travel matrix. That band is excluded from the
-            disparity metrics (`gap_*_weighted`, `inter_tertile_ratio`,
-            the tertile averages), which then describe the remaining bands.
+        Warnings
+        --------
+        A `UserWarning` is emitted if an equity band has no reachable region
+        under the primary or any secondary travel matrix. That band is
+        excluded from the disparity metrics (`gap_*_weighted`,
+        `inter_tertile_ratio`, the tertile averages), which then describe the
+        remaining bands.
 
         Notes
         -----

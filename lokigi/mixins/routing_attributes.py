@@ -187,11 +187,11 @@ class RoutingAttributeMixin:
             them fractionally over the maximum shift time, but it will first try to fairly assign
             to all resources.
 
-        Warns
-        -----
-        UserWarning
-            If both ``starting_location`` and ``starting_coordinates`` are provided.
-            In this case, ``starting_coordinates`` will be used.
+        Warnings
+        --------
+        A ``UserWarning`` is emitted if both ``starting_location`` and
+        ``starting_coordinates`` are provided. In this case,
+        ``starting_coordinates`` will be used.
         """
 
         if starting_location is not None and starting_coordinates is not None:
