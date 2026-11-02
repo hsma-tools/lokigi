@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.10.18">
+<meta name="generator" content="quarto-1.10.20">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -42,12 +42,12 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-b85bc7c33db8c58e0ec93c3465666fed.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-17888a1159294d3eb470f19f6f52f5a5.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-0ae969d3293726db143f6e9eb89af930.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-e9116e874763087f90fa188e1bb6cd75.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-32996061cbfd2997963ec587d192a074.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-59d5d759fae5c7ef960ea34314d7736a.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-94d1a654004185df51e1626478c60bff.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -307,22 +307,27 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#v0.9.1" id="toc-v0.9.1" class="nav-link active" data-scroll-target="#v0.9.1">v0.9.1</a>
+  <li><a href="#v0.10.0" id="toc-v0.10.0" class="nav-link active" data-scroll-target="#v0.10.0">v0.10.0</a>
   <ul class="collapse">
   <li><a href="#breaking-changes" id="toc-breaking-changes" class="nav-link" data-scroll-target="#breaking-changes">⚠️ Breaking changes</a></li>
   <li><a href="#notes" id="toc-notes" class="nav-link" data-scroll-target="#notes">Notes</a></li>
   </ul></li>
-  <li><a href="#v0.9.0" id="toc-v0.9.0" class="nav-link" data-scroll-target="#v0.9.0">v0.9.0</a>
+  <li><a href="#v0.9.1" id="toc-v0.9.1" class="nav-link" data-scroll-target="#v0.9.1">v0.9.1</a>
   <ul class="collapse">
   <li><a href="#breaking-changes-1" id="toc-breaking-changes-1" class="nav-link" data-scroll-target="#breaking-changes-1">⚠️ Breaking changes</a></li>
+  <li><a href="#notes-1" id="toc-notes-1" class="nav-link" data-scroll-target="#notes-1">Notes</a></li>
+  </ul></li>
+  <li><a href="#v0.9.0" id="toc-v0.9.0" class="nav-link" data-scroll-target="#v0.9.0">v0.9.0</a>
+  <ul class="collapse">
+  <li><a href="#breaking-changes-2" id="toc-breaking-changes-2" class="nav-link" data-scroll-target="#breaking-changes-2">⚠️ Breaking changes</a></li>
   <li><a href="#new-features" id="toc-new-features" class="nav-link" data-scroll-target="#new-features">New Features</a></li>
   <li><a href="#other" id="toc-other" class="nav-link" data-scroll-target="#other">Other</a></li>
   </ul></li>
   <li><a href="#v0.8.0" id="toc-v0.8.0" class="nav-link" data-scroll-target="#v0.8.0">v0.8.0</a></li>
   <li><a href="#v0.7.0" id="toc-v0.7.0" class="nav-link" data-scroll-target="#v0.7.0">v0.7.0</a>
   <ul class="collapse">
-  <li><a href="#breaking-changes-2" id="toc-breaking-changes-2" class="nav-link" data-scroll-target="#breaking-changes-2">⚠️ Breaking changes</a></li>
-  <li><a href="#notes-1" id="toc-notes-1" class="nav-link" data-scroll-target="#notes-1">Notes</a></li>
+  <li><a href="#breaking-changes-3" id="toc-breaking-changes-3" class="nav-link" data-scroll-target="#breaking-changes-3">⚠️ Breaking changes</a></li>
+  <li><a href="#notes-2" id="toc-notes-2" class="nav-link" data-scroll-target="#notes-2">Notes</a></li>
   </ul></li>
   <li><a href="#v0.5.0" id="toc-v0.5.0" class="nav-link" data-scroll-target="#v0.5.0">v0.5.0</a></li>
   <li><a href="#v0.4.1" id="toc-v0.4.1" class="nav-link" data-scroll-target="#v0.4.1">v0.4.1</a></li>
@@ -342,17 +347,112 @@ ul.task-list li input[type="checkbox"] {
 
 
 
-<section id="v0.9.1" class="level2">
-<h2 class="anchored" data-anchor-id="v0.9.1">v0.9.1</h2>
+<section id="v0.10.0" class="level2">
+<h2 class="anchored" data-anchor-id="v0.10.0">v0.10.0</h2>
 <section id="breaking-changes" class="level3">
 <h3 class="anchored" data-anchor-id="breaking-changes">⚠️ Breaking changes</h3>
+<p>lokigi is pre-1.0, so breaking changes can land in any minor release. Read this before upgrading – it is detailed in the notes below.</p>
+<ul>
+<li><strong><code>add_equity_data()</code> no longer silently overwrites.</strong> Calling it a second time now registers an <em>additional</em> equity dimension rather than replacing the first, and requires <code>primary=</code> to be stated explicitly so it is unambiguous which dimension the metrics describe. Re-using an existing label requires <code>replace=True</code>.</li>
+<li><strong><code>equity_data</code> and the <code>_equity_data_*</code> attributes are read-only.</strong> They are now views onto whichever registered dimension is primary. Reading them is unchanged; assigning to them raises <code>AttributeError</code>.</li>
+<li><strong><code>problem_df</code> gains a reserved <code>_row_weight</code> column.</strong> A demand, equity or additional dataset that brings a column of that name into the per-region frame now raises rather than being silently overwritten.</li>
+<li><strong>A fully-unreachable equity band is now excluded from the disparity metrics, with a warning.</strong> <code>gap_absolute_weighted</code>, <code>gap_relative_weighted</code>, <code>inter_tertile_ratio</code> and the tertile averages change value for any solution that leaves a whole band with no reachable site – previously they were computed with a NaN in the mix and were wrong in a way that depended on where the band sorted.</li>
+<li><strong><code>plot_equity_tertiles()</code> raises when fewer than 3 bands have a reachable region.</strong> A solution that strands a band can now leave too few bands to split into thirds, where it previously drew a plot from the NaN-corrupted values.</li>
+<li><strong><code>inter_tertile_description</code> reports a different string for problems with fewer than 3 equity bands.</strong> It said <code>"N/A (No equity data)"</code> even when equity data was registered; it now names the real cause. The metric itself (<code>inter_tertile_ratio</code>) is unchanged and still <code>None</code>.</li>
+</ul>
+</section>
+<section id="notes" class="level3">
+<h3 class="anchored" data-anchor-id="notes">Notes</h3>
+<ul>
+<li>Fix a fully-unreachable equity band silently corrupting every disparity metric. A band whose regions all have NaN travel cost correctly stored <code>NaN</code> in <code>weighted_by_equity_group</code>, but that NaN then went straight into <code>min()</code>/<code>max()</code> over a plain Python list, and into the tertile means
+<ul>
+<li><code>min</code>/<code>max</code> are short-circuit comparisons, so the NaN <strong>absorbed</strong> the result when it happened to sort first and was <strong>invisible</strong> otherwise – which failure you got was decided by where the stranded band fell in the sort. With a <em>middle</em> band stranded, the metrics were byte-identical to a solution that stranded nobody</li>
+<li>Worst case: with the <em>most deprived</em> band stranded, <code>inter_tertile_ratio</code> became NaN, every comparison in the descriptor chain evaluated False, and it fell through to the bare <code>else</code> – reporting <strong>“Highly Progressive”</strong>, the best equity verdict available, for a solution that left the most deprived band with nowhere to go</li>
+<li>Unreachable bands are now partitioned out before any aggregation, so the remaining bands still yield usable numbers, and the descriptors carry an explicit <code>"; excludes band N, entirely unreachable"</code>. When <em>every</em> band is stranded the metrics stay <code>None</code> with <code>"N/A (no equity band has a reachable region)"</code>. The stranded band is still counted in <code>regions_unreachable_by_equity_group</code> and <code>demand_unreachable_by_equity_group</code></li>
+<li><code>solve()</code>, <code>evaluate_baseline()</code> and <code>evaluate_single_solution_single_objective()</code> raise one <code>lokigi.StrandedEquityBandWarning</code> (a <code>UserWarning</code> subclass) naming each returned solution (by rank), matrix and – when several are registered – equity dimension that strands a band. Non-primary dimensions are checked too. Only the returned rows are checked – not the many combinations a search scores and discards</li>
+<li>To silence it: <code>warnings.filterwarnings("ignore", category=lokigi.StrandedEquityBandWarning)</code></li>
+<li><code>plot_equity_tertiles()</code> excludes the same bands before assigning thirds, and its default caption names them</li>
+<li>Pre-existing since before the equity registry. A problem where every band has a reachable region is unaffected – no warning, and identical values</li>
+</ul></li>
+<li>Fix <code>beyond_threshold_metrics</code> coming back empty for any equity dimension other than the primary one, and for secondary travel matrices. <code>SiteSolutionSet._resolve_equity_view()</code> rebuilt a non-primary view without the <code>beyond_thresholds</code> the solve was run with, so the per-band “left behind” headcounts were missing
+<ul>
+<li>They are now recomputed from <code>problem_df</code> for the selected dimension and matrix, and read back from the stored columns for the primary dimension. Regions with no reachable site count as beyond every threshold</li>
+<li>With no <code>beyond_thresholds=</code>, the key is present but empty</li>
+</ul></li>
+<li>Add 12 public methods to the API reference that were implemented but never listed in <code>_quarto.yml</code>, so they did not appear in the documentation at all. <code>SiteSolutionSet</code> gains <code>plot_equity_tertiles</code>, <code>plot_pareto_summary</code>, <code>describe_tradeoffs</code> and <code>describe_tradeoffs_for_stakeholders</code>; <code>SolutionComparator</code> gains <code>site_reallocation_matrix</code>, <code>population_impact_worst_affected</code>, <code>population_impact_by_equity_group</code>, <code>decision_summary</code>, <code>find_balanced_solution</code>, <code>plot_site_reallocation_matrix</code>, <code>plot_population_impact_map</code> and <code>plot_population_impact_by_equity_group</code>
+<ul>
+<li>Several are headline v0.9.0/v0.9.1 features. Because both classes are assembled from mixins, quartodoc does not discover their methods automatically and every one has to be listed by hand – so a method is easy to ship and never document</li>
+</ul></li>
+<li>Fix <code>add_equity_data(continuous_measure=True)</code> destroying the caller’s dataframe. The binning wrote back over <code>equity_col</code> and added a <code>_raw</code> column, and a DataFrame argument is passed by reference – so the scores handed in were replaced by bin numbers in the caller’s own frame
+<ul>
+<li>The registry makes this materially worse rather than merely untidy: registering the same frame to a second problem, or re-registering it under <code>replace=True</code>, re-binned the already-binned values, leaving the <code>_raw</code> column holding bin numbers instead of the raw measure it exists to preserve. Both were silent</li>
+<li>Pre-existing, and independent of which dimension is primary – any single-dimension <code>continuous_measure=True</code> call was affected</li>
+</ul></li>
+<li>Report the real reason when <code>inter_tertile_ratio</code> cannot be computed. With fewer than 3 distinct equity bands there are no tertiles to compare, but <code>inter_tertile_description</code> said <code>"N/A (No equity data)"</code> – sending the reader looking for a missing dataset rather than for a third band. <code>plot_equity_tertiles()</code> already raised a clear error for this case; the metric only has a string to explain itself with</li>
+<li>Migrate pickles written before the equity registry. Solving offline and shipping the pickled result is a normal pattern for this package, so <code>SiteProblem</code>/<code>SiteSolutionSet</code> objects pickled by v0.9.1 and earlier exist in the wild, carrying the flat <code>_equity_data_*</code> attributes and no registry
+<ul>
+<li>Those attributes are properties now, and a property is a data descriptor – it wins over whatever the unpickled <code>__dict__</code> holds. Loading an old pickle therefore appeared to succeed and then raised a bare <code>AttributeError</code> naming <code>_primary_equity_label</code>, an internal attribute the user never set, the first time anything touched its equity data</li>
+<li><code>_Problem.__setstate__()</code> rebuilds the single registered dimension from those attributes, so the equity analysis keeps working across the upgrade rather than merely failing more politely. An unlabelled dimension falls back to its column name, since the registry keys off the label</li>
+</ul></li>
+<li>Reserve <code>_row_weight</code> on <code>problem_df</code>, holding the per-region weights each combination was actually scored with – the demand column normally, or the compound blend under a multi-key <code>weights=</code> dict
+<ul>
+<li>Exists so per-band aggregations can be recomputed after a solve (which is what selecting a non-primary equity dimension will do) against the same weighting the stored numbers used, rather than silently degrading to demand-weighting</li>
+<li>Raises if a user dataset brings a column of the same name into the per-region frame, which <code>add_demand(drop_extra_cols=False)</code> and <code>skip_cols</code> both allow. Overwriting it would leave a column that still looked like the user’s own while holding the solver’s weights</li>
+</ul></li>
+<li>Extract the per-equity-band aggregation into a single internal function shared by the solve-time and post-hoc paths, so a chart and the number printed beside it cannot drift apart. No metric value changes</li>
+<li>Register several equity dimensions on one problem – deprivation <em>and</em> rurality <em>and</em> ethnicity – by calling <code>add_equity_data()</code> once per dimension, each under its own <code>label</code>. Real equity work is rarely one-dimensional, and until now a second call silently overwrote the first, so only one dimension could ever be analysed
+<ul>
+<li>Exactly one dimension is the <strong>primary</strong>: the one <code>solve()</code> computes its <code>solution_df</code> equity columns (<code>inter_tertile_ratio</code>, <code>weighted_by_equity_group</code>, and friends) against, and the one <code>weights={"equity": ...}</code> weights by. The first dimension registered is always primary; after that, <code>primary=</code> must be given explicitly</li>
+<li>Every registered dimension – primary or not – is merged into each solution’s <code>problem_df</code>, which is what makes the non-primary ones analysable at all. Registering an extra dimension changes no <code>solution_df</code> value: it is an analysis affordance, not a change to what is optimised or reported</li>
+<li>Adds <code>SiteProblem.primary_equity</code> (the primary dimension’s metadata), <code>show_equity_dimensions()</code> (one row per registered dimension, flagging which is primary) and a <code>label</code> argument to <code>show_equity_data()</code></li>
+<li>Registration now rejects the cases that used to fail silently or much later: re-using a label without <code>replace=True</code>; <code>replace=True</code> for a label that was never registered; <code>primary=False</code> for the only registered dimension; demoting the current primary in place; and two dimensions sharing an <code>equity_col</code>, which would collide in <code>problem_df</code> with one overwriting the other’s bands</li>
+<li>The pre-solve equity-coverage check now runs per registered dimension. A gap in the primary dimension is still fatal when weighting by equity (the row weights would be NaN); a gap in a non-primary one warns, since it degrades one analysis view rather than poisoning the weights</li>
+<li>The ~50 existing call sites that read <code>_equity_data_equity_col</code> and friends across the solvers, metrics and plots were left untouched – those attributes resolve to the primary dimension, so they keep meaning “the dimension this problem is reported against”</li>
+<li>Selecting a non-primary dimension from the analysis and plotting methods (an <code>equity=</code> argument on <code>check_solution_equity()</code>, <code>plot_equity_tertiles()</code> and the rest) is not in this release – for now, promote a dimension with <code>primary=True</code> to report against it</li>
+</ul></li>
+<li>Secondary demand scenarios registered via <code>add_secondary_demand()</code> now get their own per-equity-band breakdowns, so “is access to these sites patterned by deprivation <em>under this population</em>?” can be answered directly, instead of building a second <code>SiteProblem</code> with the scenario registered as the primary demand and diffing the two by hand
+<ul>
+<li>Adds the float-valued equity aggregations per scenario – <code>gap_absolute_weighted__&lt;label&gt;</code>, <code>gap_relative_weighted__&lt;label&gt;</code>, <code>avg_lower_third_bins__&lt;label&gt;</code>, <code>avg_middle_third_bins__&lt;label&gt;</code>, <code>avg_upper_third_bins__&lt;label&gt;</code> and <code>inter_tertile_ratio__&lt;label&gt;</code> – alongside the <code>weighted_average__&lt;label&gt;</code>, <code>proportion_within_coverage_threshold__&lt;label&gt;</code> and <code>demand_unreachable__&lt;label&gt;</code> columns already emitted</li>
+<li><code>full_secondary_metrics=True</code> additionally emits the dict-valued per-band breakdowns that vary with demand (<code>weighted_by_equity_group__&lt;label&gt;</code>, <code>coverage_by_equity_group__&lt;label&gt;</code>, <code>demand_unreachable_by_equity_group__&lt;label&gt;</code>; <code>demand_improved_by_equity_group__&lt;label&gt;</code>/<code>demand_worsened_by_equity_group__&lt;label&gt;</code> when a baseline was supplied; <code>demand_beyond_threshold_&lt;t&gt;_by_equity_group__&lt;label&gt;</code> when <code>beyond_thresholds</code> was) plus the three description strings – the same gate secondary <em>travel</em> matrices already use, so a registered scenario doesn’t grow <code>solution_df</code> by one column per equity band by default</li>
+<li>Purely additive, and no new computation: <code>_compute_travel_metrics()</code> already produced every one of these values for each registered scenario, and they were simply never emitted. No existing column’s value changes, and a solve that registers no secondary demand is unaffected</li>
+<li>The <em>unweighted</em> per-band breakdowns are deliberately still not suffixed per scenario. <code>unweighted_by_equity_group</code>, <code>coverage_regions_by_equity_group</code>, <code>max_cost_by_equity_group</code> and <code>regions_unreachable_by_equity_group</code> are each computed from the travel costs alone with no demand term, so a per-scenario copy would repeat the primary matrix’s value under a new name rather than say anything about that scenario – the same reasoning that already excludes <code>regions_unreachable</code> and the region-count coverage metrics</li>
+<li>A problem with no <code>add_equity_data()</code> call gains no columns at all, rather than six <code>None</code>s per registered scenario. A deliberate difference from secondary travel matrices, which emit their equity aggregations unconditionally: a demand scenario is cheap to register, and the no-equity default stays at the three columns above</li>
+<li><code>return_solution_metrics()</code>’s interpretation guide gains a point 6b documenting secondary demand scenarios in their own right – what they emit, what they deliberately omit and why – rather than leaving them as asides under points 6, 7 and 8, two of which said the equity breakdowns were unsupported</li>
+</ul></li>
+<li>Add <code>interactive=True</code> to <code>plot_pareto_summary()</code>, a Plotly version of the parallel coordinates chart carrying over what the interactive radar learnt
+<ul>
+<li>Hover a point on an option’s line for its raw value, its rank and the sites that make up that option, or anywhere along the line for the option and its sites. Plotly only hovers at points, so each segment gets invisible points of its own; options tied on a value share one point, and each lists the others since Plotly can only name one</li>
+<li>Click a legend entry to hide an option, or double-click one to show it alone. <code>initially_shown="all" | "first" | [ids]</code> chooses which options start visible, <code>legend_wrap_at=</code> wraps long legend labels (the hover title keeps the full label), and <code>scale_to="all" | "pareto_front"</code> chooses which options each axis’s best and worst are taken from – the same parameters, with the same meanings, as <code>plot_pareto_radar()</code></li>
+<li><code>legend_wrap_at</code> and <code>scale_to</code> also work on the static chart, and <code>initially_shown</code> is validated but ignored there. The new parameters come after <code>ax</code>, so existing positional calls are unaffected, and the default static chart is unchanged</li>
+<li>Every dominated solution is drawn as one trace broken into lines, rather than one trace each, so a large brute-forced solution set stays quick to draw and to serialise</li>
+</ul></li>
+<li>Add <code>SiteSolutionSet.plot_pareto_radar()</code> and <code>plot_pareto_radar_facets()</code>, radar (spider) chart counterparts to <code>plot_pareto_summary()</code> and <code>plot_pareto_facets()</code>. Same data, same “rescaled so better is always further out” normalisation – analytically no better than the parallel coordinates versions, but “a bigger shape is doing well” is often easier for stakeholders to read
+<ul>
+<li><code>plot_pareto_radar(interactive=True)</code> returns a Plotly figure: hover a vertex for its raw value and rank, or anywhere inside a shape for the sites that make up that option; click a legend entry to hide that option, or double-click one to show it alone. <code>plot_pareto_radar_facets()</code> is static only</li>
+<li><code>plot_pareto_radar(interactive=True, initially_shown=...)</code> chooses which options are visible when the figure first opens: <code>"all"</code> (default), <code>"first"</code>, or a list of option ids such as <code>[1, 17]</code>. The rest start greyed out in the legend, one click from being shown. A large front is a tangle as an overlay, and this lets a report open on one option or a pre-selected shortlist. An id that isn’t a Pareto-optimal option raises, naming the valid ones</li>
+<li><code>scale_to="all" | "pareto_front"</code> on <code>plot_pareto_radar()</code> and <code>plot_pareto_radar_facets()</code> chooses which options each spoke’s best and worst are taken from. <code>"all"</code> (the default) shows how good the front is against everything evaluated; <code>"pareto_front"</code> stretches just the Pareto-optimal options across the whole spoke, making the differences between them easier to see but saying nothing about how they compare with the rest. It rescales the chart itself, not just the label, and the spoke labels, hover ranks and captions follow it. Dominated outlines (<code>show_dominated=True</code>) can fall outside the chart under <code>"pareto_front"</code> and are clipped to its edge</li>
+<li><code>plot_pareto_radar(legend_wrap_at=...)</code> wraps legend labels at that many characters, static and interactive. <code>diff_against</code> labels can run to a whole list of sites, and a wide legend squeezes the chart. Only the legend wraps: the interactive hover title keeps the full label on one line. The interactive figure’s right margin now grows with the longest legend line, so a long legend no longer covers the chart’s right-hand spoke label</li>
+<li>Where shapes overlap, the hover names the smallest one containing the cursor (they are drawn largest first, as Plotly gives the hover to the topmost fill), and a vertex shared by several options tied on that value lists the others, since Plotly can only name one</li>
+<li>A shape’s area depends on the order of the metrics passed to <code>compute_pareto_front()</code>, so it is not a fair overall score – reordering them can change which option <em>looks</em> biggest. Both default captions say so</li>
+<li>Each spoke’s best/worst values, the hover ranks and the captions state that they span every option compared (e.g.&nbsp;“of all 91 options”), not just the Pareto-optimal shapes shown – the same full-set scaling <code>plot_pareto_summary()</code> uses</li>
+<li>Needs at least 3 metrics, and raises pointing at the parallel coordinates versions otherwise</li>
+<li><code>show_dominated</code> defaults to <code>False</code>, unlike <code>plot_pareto_summary()</code>: on a radar, hundreds of brute-forced dominated solutions pile up into a grey disc that hides the front</li>
+<li><code>show_value_labels</code> (signed distance from target) also defaults to <code>False</code> on <code>plot_pareto_radar()</code>: every option’s label lands on the same spoke, so beyond a handful of options they pile up unreadably. The interactive version shows it on hover regardless</li>
+</ul></li>
+</ul>
+</section>
+</section>
+<section id="v0.9.1" class="level2">
+<h2 class="anchored" data-anchor-id="v0.9.1">v0.9.1</h2>
+<section id="breaking-changes-1" class="level3">
+<h3 class="anchored" data-anchor-id="breaking-changes-1">⚠️ Breaking changes</h3>
 <p>lokigi is pre-1.0, so breaking changes can land in any minor release. Read this before upgrading – it is detailed in the notes below.</p>
 <ul>
 <li><strong>The equity tertile split now keeps both ends equal-sized.</strong> <code>avg_lower_third_bins</code>, <code>avg_upper_third_bins</code>, <code>inter_tertile_ratio</code>, <code>inter_tertile_description</code>, and the tertile-ordered outputs built on the same split all change on any problem whose equity bands don’t divide evenly by 3 – deciles (the common case) and quintiles both qualify.</li>
 </ul>
 </section>
-<section id="notes" class="level3">
-<h3 class="anchored" data-anchor-id="notes">Notes</h3>
+<section id="notes-1" class="level3">
+<h3 class="anchored" data-anchor-id="notes-1">Notes</h3>
 <ul>
 <li>Add <code>SiteSolutionSet.plot_equity_tertiles()</code>, a bar chart of average travel time per equity band (ordered most- to least-disadvantaged) with the most- and least-disadvantaged thirds highlighted and their own averages drawn across their bars – visually decomposing <code>inter_tertile_ratio</code> as “these bars against those bars” instead of leaving the reader to reason about a single number hovering near 1
 <ul>
@@ -375,8 +475,8 @@ ul.task-list li input[type="checkbox"] {
 <ul>
 <li>Add a <code>caption</code> parameter to <code>plot_accessibility()</code>: <code>None</code> (the default) prints a stakeholder-facing “how to read this” explanation of the region shading – and, depending on <code>show_site_ratio</code> below, of the site markers too – below the chart; pass <code>""</code> to suppress it or a custom string to replace it, matching the existing <code>caption</code> convention on <code>plot_pareto_summary()</code>/<code>plot_site_reallocation_matrix()</code>/<code>plot_population_impact_histogram()</code>. Also factors the shared caption-rendering logic those four now use into <code>lokigi.plot_utils._add_plot_caption()</code> (internal, no behaviour change to the existing three)</li>
 </ul>
-<section id="breaking-changes-1" class="level3">
-<h3 class="anchored" data-anchor-id="breaking-changes-1">⚠️ Breaking changes</h3>
+<section id="breaking-changes-2" class="level3">
+<h3 class="anchored" data-anchor-id="breaking-changes-2">⚠️ Breaking changes</h3>
 <p>lokigi is pre-1.0, so breaking changes can land in any minor release. Read this before upgrading – it is detailed in the notes below.</p>
 <ul>
 <li><strong><code>ParetoMetric</code> is renamed <code>Metric</code>.</strong> It now describes a metric for <code>solve(rank_on=...)</code>’s single-objective ranking as well as for Pareto fronts, so the old name would have been actively misleading at the new call site. No alias is kept: <code>from lokigi.multiobjective import ParetoMetric</code> fails with a clear <code>ImportError</code> rather than changing behaviour silently. Update the import and the constructor calls; every field, default and method is unchanged. <code>SiteSolutionSet.pareto_metrics</code> and <code>compute_pareto_front(metrics=...)</code> keep their names.</li>
@@ -625,8 +725,8 @@ ul.task-list li input[type="checkbox"] {
 <section id="v0.7.0" class="level2">
 <h2 class="anchored" data-anchor-id="v0.7.0">v0.7.0</h2>
 <p><em>Note: this is what is actually live on PyPI as <code>lokigi==0.7.0</code>. <code>pyproject.toml</code> was mistakenly bumped straight from <code>0.5.0</code> to <code>0.7.0</code> for what should have been the <code>0.6.0</code> release, so a <code>0.6.0</code> was never published. The entries below are what actually shipped under that version; the genuinely-new <code>v0.8.0</code> work above had not yet been published as of this correction.</em></p>
-<section id="breaking-changes-2" class="level3">
-<h3 class="anchored" data-anchor-id="breaking-changes-2">⚠️ Breaking changes</h3>
+<section id="breaking-changes-3" class="level3">
+<h3 class="anchored" data-anchor-id="breaking-changes-3">⚠️ Breaking changes</h3>
 <p>lokigi is pre-1.0, so breaking changes can land in any minor release. Read these before upgrading – each is detailed in the notes below.</p>
 <ul>
 <li><code>proportion_within_coverage_threshold</code> and <code>coverage_by_equity_group</code> now report <strong>demand-weighted</strong> values rather than counts of regions. Existing numbers change on any problem with non-uniform demand. The previous behaviour is available as <code>proportion_regions_within_coverage_threshold</code> / <code>coverage_regions_by_equity_group</code></li>
@@ -636,8 +736,8 @@ ul.task-list li input[type="checkbox"] {
 <li><strong><code>show_basemap</code> has been removed</strong> from <code>plot_region_geometry_layer()</code>, <code>plot_hotspots()</code> and <code>plot_quadrant_map()</code>. Use <code>add_basemap</code>, which is now the argument name on every plotting method. Passing the old name raises a <code>TypeError</code> naming the replacement</li>
 </ul>
 </section>
-<section id="notes-1" class="level3">
-<h3 class="anchored" data-anchor-id="notes-1">Notes</h3>
+<section id="notes-2" class="level3">
+<h3 class="anchored" data-anchor-id="notes-2">Notes</h3>
 <ul>
 <li>Add support for secondary travel matrices via <code>add_secondary_travel_matrix(travel_matrix_df, source_col, label, ...)</code>
 <ul>
@@ -1232,7 +1332,7 @@ ul.task-list li input[type="checkbox"] {
       &nbsp;
     </div>   
     <div class="nav-footer-center">
-<p><a href="https://www.hsma.co.uk/"><img src="../lokigi_docs/assets/hsma_logo.png" class="img-fluid" width="150"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <a href="https://arc-swp.nihr.ac.uk/"><img src="../lokigi_docs/assets/nihr_logo.png" class="img-fluid" width="250"></a><br><br> <em>This work is independent research supported by the National Institute for Health and Care Research Applied Research Collaboration South West Peninsula.<br> The views expressed in this publication are those of the author(s) and not necessarily those of the National Institute for Health and Care Research or the Department of Health and Social Care.</em> <br><br></p>
+<p><a href="https://www.hsma.co.uk/"><img src="../lokigi_docs/assets/hsma_logo.png" class="img-fluid" width="150"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <a href="https://arc-swp.nihr.ac.uk/"><img src="../lokigi_docs/assets/nihr_logo.png" class="img-fluid" width="250"></a><br><br> <em>This work is independent research supported by the National Institute for Health and Care Research Applied Research Collaboration South West.<br> The views expressed in this publication are those of the author(s) and not necessarily those of the National Institute for Health and Care Research or the Department of Health and Social Care.</em> <br><br></p>
 </div>
     <div class="nav-footer-right">
       &nbsp;

@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.10.18">
+<meta name="generator" content="quarto-1.10.20">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -77,12 +77,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-b85bc7c33db8c58e0ec93c3465666fed.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-17888a1159294d3eb470f19f6f52f5a5.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-0ae969d3293726db143f6e9eb89af930.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-e9116e874763087f90fa188e1bb6cd75.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-32996061cbfd2997963ec587d192a074.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-59d5d759fae5c7ef960ea34314d7736a.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-94d1a654004185df51e1626478c60bff.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -358,9 +358,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    reverse<span class="op">=</span><span class="va">False</span>,</span>
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    verbose<span class="op">=</span><span class="va">True</span>,</span>
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    direction<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    primary<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    replace<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Add a dataframe containing equity data into your problem.</p>
 <p>This method associates demand points with an equity metric (such as the Index of Multiple Deprivation). If a continuous measure is provided, it is automatically discretized into deciles (or maximum possible quantiles) to facilitate categorical plotting and comparative equity analysis.</p>
+<p>Call it more than once to register several equity dimensions – e.g.&nbsp;deprivation, rurality and ethnicity – each under its own <code>label</code>. Every registered dimension is merged into each solution’s <code>problem_df</code>, so any of them can be selected for analysis by label. Exactly one is the <strong>primary</strong> dimension: the one <code>solve()</code> computes its <code>solution_df</code> equity columns (<code>inter_tertile_ratio</code>, <code>weighted_by_equity_group</code>, …) against, and the one <code>weights={"equity": ...}</code> weights by. See <code>primary</code> below, and <code>show_equity_dimensions()</code> for what is currently registered.</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters">
 <h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
 <table class="caption-top table">
@@ -428,6 +431,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>True</code></td>
 </tr>
 <tr class="odd">
+<td>primary</td>
+<td>bool</td>
+<td>Whether this dimension becomes the primary one (see above). Required – and rejected as ambiguous if omitted – only when registering a <em>new</em> label on a problem that already has an equity dimension. That case used to overwrite the existing dimension, so silently registering alongside it and leaving the first as primary would keep old code running while quietly changing which bands its numbers describe. Defaults are unambiguous everywhere else: the first dimension registered is always primary (passing <code>primary=False</code> for it raises), and re-registering an existing label with <code>replace=True</code> keeps that label’s current primary status unless you say otherwise.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td>replace</td>
+<td>bool</td>
+<td>Overwrite the dimension already registered under <code>label</code>. Without it, re-using a label raises rather than silently replacing the data behind it. Passing it for a label that isn’t registered also raises, rather than quietly registering a new dimension.</td>
+<td><code>False</code></td>
+</tr>
+<tr class="odd">
 <td>direction</td>
 <td>(higher_is_better, higher_is_worse)</td>
 <td>.. deprecated:: Use <code>disadvantaged_end</code> instead. <code>"higher_is_better"</code> (higher values = more advantaged, e.g.&nbsp;DLUHC IMD deciles) maps to <code>disadvantaged_end="low"</code>; <code>"higher_is_worse"</code> (higher values = more disadvantaged, e.g.&nbsp;raw IMD scores) maps to <code>disadvantaged_end="high"</code>. Passing both arguments raises a <code>ValueError</code>.</td>
@@ -440,9 +455,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-raises anchored" data-anchor-id="raises">Raises</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 6%">
-<col style="width: 9%">
-<col style="width: 84%">
+<col style="width: 1%">
+<col style="width: 2%">
+<col style="width: 96%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -455,7 +470,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td></td>
 <td>ValueError</td>
-<td>If <code>continuous_measure</code> is True but the data cannot be meaningfully binned due to too many identical values.</td>
+<td>If <code>continuous_measure</code> is True but the data cannot be meaningfully binned due to too many identical values; if <code>label</code> is already registered and <code>replace</code> is not True; if <code>replace=True</code> names a label that is not registered; if a new label is registered alongside an existing dimension without an explicit <code>primary</code>; if <code>primary=False</code> is given for the only registered dimension; or if <code>equity_col</code> is already used by another registered dimension (they share one per-region frame, so one would overwrite the other).</td>
 </tr>
 </tbody>
 </table>
@@ -889,7 +904,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       &nbsp;
     </div>   
     <div class="nav-footer-center">
-<p><a href="https://www.hsma.co.uk/"><img src="../lokigi_docs/assets/hsma_logo.png" class="img-fluid" width="150"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <a href="https://arc-swp.nihr.ac.uk/"><img src="../lokigi_docs/assets/nihr_logo.png" class="img-fluid" width="250"></a><br><br> <em>This work is independent research supported by the National Institute for Health and Care Research Applied Research Collaboration South West Peninsula.<br> The views expressed in this publication are those of the author(s) and not necessarily those of the National Institute for Health and Care Research or the Department of Health and Social Care.</em> <br><br></p>
+<p><a href="https://www.hsma.co.uk/"><img src="../lokigi_docs/assets/hsma_logo.png" class="img-fluid" width="150"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <a href="https://arc-swp.nihr.ac.uk/"><img src="../lokigi_docs/assets/nihr_logo.png" class="img-fluid" width="250"></a><br><br> <em>This work is independent research supported by the National Institute for Health and Care Research Applied Research Collaboration South West.<br> The views expressed in this publication are those of the author(s) and not necessarily those of the National Institute for Health and Care Research or the Department of Health and Social Care.</em> <br><br></p>
 </div>
     <div class="nav-footer-right">
       &nbsp;

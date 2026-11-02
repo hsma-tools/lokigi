@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.10.18">
+<meta name="generator" content="quarto-1.10.20">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -77,12 +77,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-b85bc7c33db8c58e0ec93c3465666fed.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-17888a1159294d3eb470f19f6f52f5a5.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-0ae969d3293726db143f6e9eb89af930.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-e9116e874763087f90fa188e1bb6cd75.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-32996061cbfd2997963ec587d192a074.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-59d5d759fae5c7ef960ea34314d7736a.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-94d1a654004185df51e1626478c60bff.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -400,9 +400,52 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <ol start="6" type="1">
 <li><p>Secondary travel matrices (columns suffixed <code>__&lt;label&gt;</code>, e.g. ’weighted_average__public_transport’):</p>
 <p>Registered via <code>add_secondary_travel_matrix(label=...)</code>. Same metrics and sort direction as their unsuffixed counterparts above (1a/1b/5/5c), computed against that matrix’s own travel costs instead of the primary matrix. By default, only the core scalar metrics (both coverage proportions and the unreachable headcounts included) plus the float-valued equity aggregations (gap_absolute_weighted, gap_relative_weighted, avg_*_third_bins, inter_tertile_ratio) are included per matrix, to keep this table from growing unboundedly with each registered matrix – pass <code>full_secondary_metrics=True</code> to also include the dict-valued equity breakdowns and description strings, matching what the primary matrix already returns. The underlying per-region <code>problem_df</code> always carries <code>min_cost__&lt;label&gt;</code> / <code>selected_site__&lt;label&gt;</code> / <code>within_threshold__&lt;label&gt;</code> regardless of this setting.</p></li>
+</ol>
+<p>6b. Secondary demand scenarios (columns suffixed <code>__&lt;label&gt;</code>, e.g. ’weighted_average__observed_referrals’):</p>
+<pre><code>Registered via `add_secondary_demand(label=...)`. The same
+travel costs as the primary matrix, re-weighted by that
+scenario's own demand column -- so comparing an unsuffixed
+metric against its `__&lt;label&gt;` twin answers "does this
+scenario's population sit closer to, or further from, the
+selected sites than the primary demand does?".
+
+Deliberately narrower than point 6: only metrics that actually
+*vary* with demand are emitted. Region counts
+(`regions_unreachable`, `proportion_regions_within_coverage_
+threshold`, `regions_beyond_threshold_&lt;t&gt;`) and the unweighted
+per-band breakdowns (`unweighted_by_equity_group`,
+`coverage_regions_by_equity_group`, `max_cost_by_equity_group`,
+`regions_unreachable_by_equity_group`) are computed from the
+travel costs alone with no demand term, so a per-scenario copy
+would only repeat the primary matrix's value under a new name.
+
+By default: `weighted_average__&lt;label&gt;`,
+`proportion_within_coverage_threshold__&lt;label&gt;` and
+`demand_unreachable__&lt;label&gt;`; plus, *only when equity data is
+registered*, the float-valued equity aggregations
+(`gap_absolute_weighted__&lt;label&gt;`,
+`gap_relative_weighted__&lt;label&gt;`, `avg_*_third_bins__&lt;label&gt;`,
+`inter_tertile_ratio__&lt;label&gt;`); plus the point 7/8 columns
+when their own preconditions are met. A problem with no
+`add_equity_data()` call therefore still pays only the three
+columns above per scenario, rather than six `None`s alongside
+them -- a deliberate difference from point 6, which emits its
+equity aggregations unconditionally.
+`full_secondary_metrics=True` additionally emits the
+dict-valued per-band breakdowns that vary with demand
+(`weighted_by_equity_group__&lt;label&gt;`,
+`coverage_by_equity_group__&lt;label&gt;`,
+`demand_unreachable_by_equity_group__&lt;label&gt;`) and the
+description strings, matching point 6's gate.
+
+When a scenario is registered with
+`add_secondary_demand(also_weight_matrices=[...])`, it is also
+crossed with those secondary travel matrices, suffixed
+travel-label-first: `weighted_average__&lt;travel&gt;__&lt;demand&gt;`.</code></pre>
+<ol start="7" type="1">
 <li><p>Population impact vs baseline (<code>demand_improved</code>, <code>demand_worsened</code>, <code>demand_unchanged</code>, <code>proportion_demand_ improved</code>, <code>proportion_demand_worsened</code>, <code>regions_improved</code>, <code>regions_worsened</code>, <code>regions_unchanged</code>, <code>mean_reduction_among_improved</code>, <code>mean_increase_among_worsened</code>, <code>max_reduction</code>, <code>max_increase</code>):</p>
 <p>Only present when a baseline was supplied (<code>solve(baseline=...)</code>, or a baseline was passed to <code>evaluate_single_solution_single_  objective()</code> directly) – absent otherwise, not <code>NaN</code>, so <code>solution_df</code>’s schema is unchanged for callers that never ask for a baseline. <code>demand_*</code>/<code>mean_*</code> are HIGHER-is-better for the <code>_improved</code>/<code>reduction</code> names (more people better off, or a bigger improvement) and LOWER-is-better for the <code>_worsened</code>/ <code>increase</code> names; <code>*_unchanged</code> is directionless. See <code>SolutionComparator.population_impact_summary()</code> for the equivalent baseline-vs-candidate comparison without solving via <code>solve(baseline=...)</code>. Secondary travel matrices and secondary demand scenarios get only the demand-weighted subset (<code>demand_improved__&lt;label&gt;</code>, <code>demand_worsened__&lt;label&gt;</code>, <code>demand_unchanged__&lt;label&gt;</code>, <code>mean_reduction_among_improved__  &lt;label&gt;</code>, <code>mean_increase_among_worsened__&lt;label&gt;</code>) by default; <code>full_secondary_metrics=True</code> also adds the region counts and max change (<code>regions_improved__&lt;label&gt;</code>, etc.) for secondary travel matrices. Demand scenarios never get the region-count/max variants (region membership doesn’t vary with demand), matching point 6’s “only what varies with demand” rule.</p>
-<p>When equity data is also registered, <code>demand_improved_by_equity_  group</code> / <code>demand_worsened_by_equity_group</code> (dict per band) are also added – e.g.&nbsp;“are the most deprived areas improving at a higher rate than the least deprived?”. Primary matrix only; not yet broken down for secondary travel matrices/demand scenarios.</p></li>
+<p>When equity data is also registered, <code>demand_improved_by_equity_  group</code> / <code>demand_worsened_by_equity_group</code> (dict per band) are also added – e.g.&nbsp;“are the most deprived areas improving at a higher rate than the least deprived?”. Emitted for the primary matrix always, and for secondary demand scenarios under <code>full_secondary_metrics=True</code> (both dicts vary with demand). Not yet broken down for secondary travel matrices.</p></li>
 </ol>
 <p>7b. Which sites actually changed (<code>sites_closed_vs_baseline</code>, <code>sites_added_vs_baseline</code>):</p>
 <pre><code>`sites_closed_vs_baseline` is the baseline's own site names
@@ -417,7 +460,7 @@ rest of this point (a baseline was supplied); absent, not empty
 lists, otherwise.</code></pre>
 <ol start="8" type="1">
 <li><p>“Left behind” headcounts (<code>demand_beyond_threshold_&lt;t&gt;</code>, <code>regions_beyond_threshold_&lt;t&gt;</code>, one pair per threshold <code>t</code> in <code>beyond_thresholds</code>, plus a <code>_by_equity_group</code> dict variant of each when equity data is registered):</p>
-<p>LOWER is better – the opposite direction from the coverage metrics in point 5, since these count people/regions a threshold crossing leaves <em>outside</em> rather than within. A distinct concept from <code>threshold_for_coverage</code>/‘coverage metrics’ even though both compare a travel cost against a cutoff: “covered” (good, one threshold) vs “beyond” (bad, any number of thresholds at once). Thresholds are independent, not cumulative – <code>demand_beyond_threshold_45</code> is not a subset of <code>demand_beyond_threshold_30</code>’s complement; each is a fresh count against its own cutoff. Only present when <code>beyond_thresholds</code> was supplied – absent, not <code>NaN</code>, otherwise. Secondary travel matrices get the demand-weighted headcount by default (<code>demand_beyond_threshold_&lt;t&gt;__&lt;label&gt;</code>); <code>full_secondary_metrics=True</code> also adds region counts and the equity breakdowns, matching point 6/7’s pattern. Secondary demand scenarios get only the demand-weighted headcount, never region counts or equity breakdowns, matching point 6’s “only what varies with demand” rule.</p></li>
+<p>LOWER is better – the opposite direction from the coverage metrics in point 5, since these count people/regions a threshold crossing leaves <em>outside</em> rather than within. A distinct concept from <code>threshold_for_coverage</code>/‘coverage metrics’ even though both compare a travel cost against a cutoff: “covered” (good, one threshold) vs “beyond” (bad, any number of thresholds at once). Thresholds are independent, not cumulative – <code>demand_beyond_threshold_45</code> is not a subset of <code>demand_beyond_threshold_30</code>’s complement; each is a fresh count against its own cutoff. Only present when <code>beyond_thresholds</code> was supplied – absent, not <code>NaN</code>, otherwise. Secondary travel matrices get the demand-weighted headcount by default (<code>demand_beyond_threshold_&lt;t&gt;__&lt;label&gt;</code>); <code>full_secondary_metrics=True</code> also adds region counts and the equity breakdowns, matching point 6/7’s pattern. Secondary demand scenarios get the demand-weighted headcount by default and its equity breakdown (<code>demand_beyond_threshold_&lt;t&gt;_by_equity_group__&lt;label&gt;</code>) under <code>full_secondary_metrics=True</code>, but never the region counts, matching point 6b’s “only what varies with demand” rule.</p></li>
 <li><p>Additional sites chosen beyond required (<code>additional_site_names</code>):</p>
 <p><code>site_names</code> with the required sites (flagged via <code>add_sites(required_sites_col=...)</code>) removed – e.g.&nbsp;for a “we have 4 sites and are opening 1 more” problem, this is just the new site, rather than all 5 names, which otherwise look identical across every solution that all correctly keep the same 4 required sites. Only present when at least one required site is configured; absent, not an empty list, otherwise.</p></li>
 <li><p>Sites not selected (<code>unselected_site_names</code>):</p>
@@ -849,7 +892,7 @@ lists, otherwise.</code></pre>
       &nbsp;
     </div>   
     <div class="nav-footer-center">
-<p><a href="https://www.hsma.co.uk/"><img src="../lokigi_docs/assets/hsma_logo.png" class="img-fluid" width="150"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <a href="https://arc-swp.nihr.ac.uk/"><img src="../lokigi_docs/assets/nihr_logo.png" class="img-fluid" width="250"></a><br><br> <em>This work is independent research supported by the National Institute for Health and Care Research Applied Research Collaboration South West Peninsula.<br> The views expressed in this publication are those of the author(s) and not necessarily those of the National Institute for Health and Care Research or the Department of Health and Social Care.</em> <br><br></p>
+<p><a href="https://www.hsma.co.uk/"><img src="../lokigi_docs/assets/hsma_logo.png" class="img-fluid" width="150"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <a href="https://arc-swp.nihr.ac.uk/"><img src="../lokigi_docs/assets/nihr_logo.png" class="img-fluid" width="250"></a><br><br> <em>This work is independent research supported by the National Institute for Health and Care Research Applied Research Collaboration South West.<br> The views expressed in this publication are those of the author(s) and not necessarily those of the National Institute for Health and Care Research or the Department of Health and Social Care.</em> <br><br></p>
 </div>
     <div class="nav-footer-right">
       &nbsp;

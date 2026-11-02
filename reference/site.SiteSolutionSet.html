@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.10.18">
+<meta name="generator" content="quarto-1.10.20">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -77,12 +77,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-b85bc7c33db8c58e0ec93c3465666fed.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-17888a1159294d3eb470f19f6f52f5a5.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-0ae969d3293726db143f6e9eb89af930.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-e9116e874763087f90fa188e1bb6cd75.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-32996061cbfd2997963ec587d192a074.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-59d5d759fae5c7ef960ea34314d7736a.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-94d1a654004185df51e1626478c60bff.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -691,24 +691,48 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Plot maps of travel cost for each equity group, for one solution.</td>
 </tr>
 <tr class="even">
+<td><a href="../reference/lokigi.site.SiteSolutionSet.plot_equity_tertiles.html#lokigi.site.SiteSolutionSet.plot_equity_tertiles">plot_equity_tertiles</a></td>
+<td>Bar chart of average travel time per equity band, ordered most- to</td>
+</tr>
+<tr class="odd">
 <td><a href="../reference/lokigi.site.SiteSolutionSet.plot_simple_pareto_front_pairs.html#lokigi.site.SiteSolutionSet.plot_simple_pareto_front_pairs">plot_simple_pareto_front_pairs</a></td>
 <td>Plot a Pareto front for two selected solution metrics.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="../reference/lokigi.site.SiteSolutionSet.plot_all_metric_pareto_front_pairs.html#lokigi.site.SiteSolutionSet.plot_all_metric_pareto_front_pairs">plot_all_metric_pareto_front_pairs</a></td>
 <td>Plot Pareto fronts for all pairs of solution metrics.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="../reference/lokigi.site.SiteSolutionSet.compute_pareto_front.html#lokigi.site.SiteSolutionSet.compute_pareto_front">compute_pareto_front</a></td>
 <td>Flag which solutions in <code>df</code> are Pareto-optimal across <code>metrics</code>.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="../reference/lokigi.site.SiteSolutionSet.pareto_summary.html#lokigi.site.SiteSolutionSet.pareto_summary">pareto_summary</a></td>
 <td>Return just the Pareto-optimal solutions, with metric columns</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="../reference/lokigi.site.SiteSolutionSet.plot_pareto_facets.html#lokigi.site.SiteSolutionSet.plot_pareto_facets">plot_pareto_facets</a></td>
 <td>Plot each non-dominated (Pareto-optimal) solution on its own subplot facet.</td>
+</tr>
+<tr class="even">
+<td><a href="../reference/lokigi.site.SiteSolutionSet.plot_pareto_summary.html#lokigi.site.SiteSolutionSet.plot_pareto_summary">plot_pareto_summary</a></td>
+<td>Plot every solution as a line across all <code>metrics</code> at once, each axis</td>
+</tr>
+<tr class="odd">
+<td><a href="../reference/lokigi.site.SiteSolutionSet.plot_pareto_radar.html#lokigi.site.SiteSolutionSet.plot_pareto_radar">plot_pareto_radar</a></td>
+<td>Plot every Pareto-optimal solution as a shape on a radar (spider)</td>
+</tr>
+<tr class="even">
+<td><a href="../reference/lokigi.site.SiteSolutionSet.plot_pareto_radar_facets.html#lokigi.site.SiteSolutionSet.plot_pareto_radar_facets">plot_pareto_radar_facets</a></td>
+<td>Plot each Pareto-optimal solution on its own radar (spider) chart.</td>
+</tr>
+<tr class="odd">
+<td><a href="../reference/lokigi.site.SiteSolutionSet.describe_tradeoffs.html#lokigi.site.SiteSolutionSet.describe_tradeoffs">describe_tradeoffs</a></td>
+<td>Plain-English trade-off statements comparing every Pareto-optimal</td>
+</tr>
+<tr class="even">
+<td><a href="../reference/lokigi.site.SiteSolutionSet.describe_tradeoffs_for_stakeholders.html#lokigi.site.SiteSolutionSet.describe_tradeoffs_for_stakeholders">describe_tradeoffs_for_stakeholders</a></td>
+<td>Stakeholder-facing version of describe_tradeoffs().</td>
 </tr>
 </tbody>
 </table>
@@ -1138,7 +1162,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       &nbsp;
     </div>   
     <div class="nav-footer-center">
-<p><a href="https://www.hsma.co.uk/"><img src="../lokigi_docs/assets/hsma_logo.png" class="img-fluid" width="150"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <a href="https://arc-swp.nihr.ac.uk/"><img src="../lokigi_docs/assets/nihr_logo.png" class="img-fluid" width="250"></a><br><br> <em>This work is independent research supported by the National Institute for Health and Care Research Applied Research Collaboration South West Peninsula.<br> The views expressed in this publication are those of the author(s) and not necessarily those of the National Institute for Health and Care Research or the Department of Health and Social Care.</em> <br><br></p>
+<p><a href="https://www.hsma.co.uk/"><img src="../lokigi_docs/assets/hsma_logo.png" class="img-fluid" width="150"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <a href="https://arc-swp.nihr.ac.uk/"><img src="../lokigi_docs/assets/nihr_logo.png" class="img-fluid" width="250"></a><br><br> <em>This work is independent research supported by the National Institute for Health and Care Research Applied Research Collaboration South West.<br> The views expressed in this publication are those of the author(s) and not necessarily those of the National Institute for Health and Care Research or the Department of Health and Social Care.</em> <br><br></p>
 </div>
     <div class="nav-footer-right">
       &nbsp;
